@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Capitán · Fjord VI</title></head>
+<body><div class="app">
+<header class="top topGreen"><div><b>CAPITÁN</b><small>Control de embarque</small></div><a href="/logout">Salir</a></header>
+<main class="wrap">
+{% if msg %}<div class="toast">{% if msg=='cierre_ok' %}Embarque cerrado y cargos recalculados.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='estado_actualizado' %}Estado operativo actualizado.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+<section class="heroCard greenHero">
+  <div><span class="eyebrow">Salida activa</span><h1>{{outing.title}}</h1><p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p></div><span class="pill {{readiness.level}}">{{outing.status}}</span>
+</section>
+<section class="stats"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Pendientes</small><b>{{pending}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div></section>
+<div class="progress green"><span style="width: {{(present / outing.max_crew * 100)|round(0)}}%"></span></div>
+<section class="notice {{readiness.level}}"><b>{{readiness.label}}</b><span>{{readiness.detail}}</span></section>
+<section class="timeline" id="flujo">
+  <div class="step done"><div class="dot">1</div><div><b>Lista</b><span>{{active_count}} activos</span></div></div>
+  <div class="step {% if present >= outing.min_crew %}done{% else %}warn{% endif %}"><div class="dot">2</div><div><b>Mínimo</b><span>{{present}} / {{outing.min_crew}} presentes</span></div></div>
+  <div class="step {% if pending == 0 %}done{% else %}warn{% endif %}"><div class="dot">3</div><div><b>Pendientes</b><span>{{pending}} por confirmar</span></div></div>
+  <div class="step"><div class="dot">4</div><div><b>Cierre</b><span>Liquida cargos</span></div></div>
+</section>
+<section class="card" id="estado">
+  <div class="cardTitle"><div><span class="eyebrow">Estado operativo</span><h2>Decisión del capitán</h2></div></div>
+  <form class="gridForm captainStatus" method="post" action="/captain/outing_status"><select class="input" name="status"><option>En embarque</option><option>Demorada</option><option>Cancelada por capitán</option><option>Programada</option><option>En reservas</option></select><button class="btn green">Actualizar estado</button></form>
+</section>
+<section class="card" id="tripulacion">
+  <div class="cardTitle"><div><span class="eyebrow">Lista del día</span><h2>Tripulación</h2></div><span class="pill">mín. {{outing.min_crew}}</span></div>
+  {% for r in reservations %}
+  <div class="row {% if r.cancelled_at %}disabled{% endif %}"><div><b>{{loop.index}}. {{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div><div class="actions">{% if r.cancelled_at %}<span class="pill bad">Cancelado</span>{% elif r.attendance == 'Presente' %}<span class="pill ok">Presente</span><form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger">Ausente</button></form>{% elif r.attendance in ['Ausente','No embarcable'] %}<span class="pill bad">{{r.attendance}}</span><form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>{% else %}<form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form><form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger">Ausente</button></form>{% endif %}</div></div>
+  {% endfor %}
+</section>
+<section class="card soft" id="cierre">
+  <h2>Cierre de embarque</h2>
+  <p>Al cerrar, todo pendiente pasa a ausente. Si un invitado figura presente pero su socio responsable no embarcó, queda no embarcable. El sistema calcula cargos.</p>
+  {% if present >= outing.min_crew %}<div class="alert ok">Se cumple el mínimo reglamentario.</div>{% else %}<div class="alert bad">No se cumple todavía el mínimo de {{outing.min_crew}}.</div>{% endif %}
+  <form method="post" action="/captain/close"><button class="btn green">Cerrar embarque y liquidar</button></form>
+  <a class="btn light" href="/admin/manifest.csv">Descargar manifest CSV</a>
+</section>
+</main><nav class="bottom"><a class="on" href="#tripulacion">Lista</a><a href="#estado">Estado</a><a href="#flujo">Flujo</a><a href="#cierre">Cierre</a></nav></div></body></html>

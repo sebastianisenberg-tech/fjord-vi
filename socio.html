@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Socio · Fjord VI</title></head>
+<body><div class="app">
+<header class="top topBlue"><div><b>FJORD VI</b><small>Paseos de fin de semana</small></div><a href="/logout">Salir</a></header>
+<main class="wrap">
+{% if msg %}<div class="toast">{% if msg=='cupo_completo' %}Cupo completo: no quedan lugares activos.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable.{% elif msg=='duplicado' %}Ese DNI ya tiene una reserva en esta salida.{% elif msg=='datos_invalidos' %}Revisá nombre, DNI y tipo de pasajero.{% elif msg=='cancelado' %}Reserva cancelada correctamente.{% elif msg=='reserva_ok' %}Reserva de socio registrada.{% elif msg=='invitado_ok' %}Invitado agregado.{% elif msg=='ya_anotado' %}Ya estabas anotado.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+<section class="heroCard">
+  <div><span class="eyebrow">Hola, {{user.name.split(' ')[0]}}</span><h1>{{outing.title}}</h1><p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p></div>
+  <span class="pill {{readiness.level}}">{{readiness.label}}</span>
+</section>
+<section class="stats">
+  <div><small>Ocupación</small><b>{{active_count}} / {{outing.max_crew}}</b></div>
+  <div><small>Libres</small><b>{{remaining}}</b></div>
+  <div><small>Mínimo</small><b>{{outing.min_crew}}</b></div>
+</section>
+<div class="progress"><span style="width: {{(active_count / outing.max_crew * 100)|round(0)}}%"></span></div>
+<section class="notice {{readiness.level}}"><b>{{readiness.detail}}</b><span>Resumen inmediato para saber si la salida tiene cupo, si sigue condicional y cuándo hay riesgo de cargo.</span></section>
+<section class="timeline" id="estado">
+  <div class="step done"><div class="dot">1</div><div><b>Reserva</b><span>Socio titular primero.</span></div></div>
+  <div class="step {% if cutoff %}done{% else %}warn{% endif %}"><div class="dot">2</div><div><b>Corte 48h</b><span>{{cutoff_at.strftime('%d/%m %H:%M')}}</span></div></div>
+  <div class="step {% if late_window %}warn{% else %}done{% endif %}"><div class="dot">3</div><div><b>Cancelación</b><span>Libre hasta {{cancel_deadline.strftime('%d/%m %H:%M')}}</span></div></div>
+  <div class="step"><div class="dot">4</div><div><b>Embarque</b><span>Capitán confirma presentes.</span></div></div>
+</section>
+<section class="ruleGrid" id="reglas">
+  <div class="rule"><b>Invitados</b><span>{% if cutoff %}Ya pasó el corte de 48h: los invitados activos quedan firmes según estado.{% else %}Condicionales hasta el corte. Socios conservan prioridad hasta ese momento.{% endif %}</span></div>
+  <div class="rule"><b>Cargos</b><span>Socio no-show o cancelación tardía: 70% de tarifa invitado. Invitado no-show: 100%.</span></div>
+</section>
+<section class="card" id="reserva">
+  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
+  {% for r in mine %}{% if r.dni == user.dni %}
+  <div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}</small></div>{% if not r.cancelled_at %}<form method="post" action="/socio/cancel/{{r.id}}"><button class="mini danger">Cancelar</button></form>{% else %}<span class="pill bad">Cancelado</span>{% endif %}</div>
+  {% endif %}{% endfor %}
+  {% if not has_self %}<form method="post" action="/socio/add_self"><button class="btn navy">Anotarme como socio</button></form>{% endif %}
+</section>
+<section class="card" id="invitados">
+  <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados y menores</h2></div><span class="pill">Invitado $ {{fee|money}}</span></div>
+  {% set ns = namespace(count=0) %}
+  {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}
+  <div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div>{% if not r.cancelled_at %}<form method="post" action="/socio/cancel/{{r.id}}"><button class="mini danger">Cancelar</button></form>{% else %}<span class="pill bad">Cancelado</span>{% endif %}</div>
+  {% endif %}{% endfor %}
+  {% if ns.count == 0 %}<div class="empty">Todavía no agregaste invitados ni menores.</div>{% endif %}
+  <form class="gridForm guestForm" method="post" action="/socio/add_guest">
+    <input class="input" name="name" placeholder="Nombre y apellido">
+    <input class="input" name="dni" placeholder="DNI">
+    <select class="input" name="kind"><option value="invitado">Invitado</option><option value="menor">Hijo menor hasta 13</option></select>
+    <button class="btn light">Agregar</button>
+  </form>
+</section>
+<section class="card soft" id="cargos">
+  <h2>Resumen reglamentario</h2>
+  <p>Máximo 9 tripulantes sin contar capitán. Mínimo 2 para cerrar embarque. Un invitado no embarca si no embarca su socio responsable.</p>
+</section>
+</main>
+<nav class="bottom"><a class="on" href="#reserva">Reserva</a><a href="#invitados">Invitados</a><a href="#estado">Estado</a><a href="#reglas">Reglas</a></nav>
+</div></body></html>
