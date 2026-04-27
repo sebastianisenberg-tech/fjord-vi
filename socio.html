@@ -23,11 +23,36 @@
 .ruleLine b { margin-right:4px; }
 </style>
 
+
+<script>
+function toggleHijoMenorField() {
+  const tipo = document.getElementById("guest_kind");
+  const bloque = document.getElementById("hijo_menor_fields");
+  if (!tipo || !bloque) return;
+  bloque.style.display = (tipo.value === "hijo_menor") ? "block" : "none";
+}
+document.addEventListener("DOMContentLoaded", toggleHijoMenorField);
+</script>
+
+
+<style>
+.badgeTipo.hijo_menor, .badgeTipo.menor { background:#f1f5f9; color:#475569; }
+</style>
+
 </head>
 <body><div class="app">
 <header class="top topBlue"><div><b>FJORD VI</b><small>Paseos de fin de semana</small></div><a href="/logout">Salir</a></header>
 <main class="wrap">
 {% if msg %}<div class="toast">{% if msg=='cupo_completo' %}Cupo completo: no quedan lugares activos en esta salida.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable en esta salida.{% elif msg=='duplicado' %}Ese DNI ya tiene una reserva activa en esta salida.{% elif msg=='datos_invalidos' %}Revisá nombre, DNI y tipo de pasajero.{% elif msg=='cancelado' %}Reserva cancelada correctamente en esta salida.{% elif msg=='reserva_ok' %}Reserva de socio registrada en esta salida.{% elif msg=='invitado_ok' %}Invitado agregado o reactivado en esta salida.{% elif msg=='reactivado' %}Reserva reactivada correctamente en esta salida.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa en esta salida.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+
+
+<section class="card">
+  <div class="muted">
+    <b>Invitado</b> Paga la tarifa vigente al navegar o si no embarca.<br>
+    <b>Hijo menor de socio no socio</b> Sin cargo al navegar. Si no embarca o cancela tarde, paga tarifa completa.<br>
+    <b>Socios</b> Sin cargo al navegar. Si no embarcan o cancelan tarde, 70%.
+  </div>
+</section>
 
 <section class="card" id="salidas">
   <div class="cardTitle"><div><span class="eyebrow">Calendario publicado</span><h2>Elegí una salida</h2></div></div>
@@ -106,8 +131,18 @@
     <input type="hidden" name="outing_id" value="{{outing.id}}">
     <input class="input" name="name" placeholder="Nombre y apellido">
     <input class="input" name="dni" placeholder="DNI">
-    <select class="input" name="kind"><option value="invitado">Invitado</option><option value="menor">Hijo menor no socio hasta 13</option></select>
-    <button class="btn light">Agregar invitado o menor</button>
+    <select id="guest_kind" name="kind" onchange="toggleHijoMenorField()"  class="input" >
+      <option value="invitado">Invitado</option>
+      <option value="hijo_menor">Hijo menor de socio no socio</option>
+    </select>
+    
+    <div id="hijo_menor_fields" style="display:none; margin-top:6px;">
+      <input type="date" name="birth_date" class="input">
+      <div class="muted" style="font-size:12px; margin-top:4px;">
+        La condición de hijo menor se valida contra la fecha de la salida. Solo aplica a hijos de socio que no sean socios.
+      </div>
+    </div>
+<button class="btn light">Agregar invitado o menor</button>
   </form>
   {% elif not closed and not has_self %}
   <div class="empty">Para agregar invitados, primero tenés que estar anotado como socio titular en esta salida.</div>
