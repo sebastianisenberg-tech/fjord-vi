@@ -144,7 +144,26 @@ def require_role(*roles):
     return dep
 
 def active_reservations(rows):
-    return [r for r in rows if r.cancelled_at is None and r.status != "Cancelado"]
+    """Reservas que ocupan cupo operativo.
+
+    Importante: antes del cierre, el capitán puede mover tripulantes
+    entre Por confirmar / Presente / Ausente sin que el sistema los bloquee.
+    Los ausentes y no embarcables quedan visibles en la lista y pueden tener
+    cargo calculado, pero no ocupan cupo operativo.
+    """
+    return [
+        r for r in rows
+        if r.cancelled_at is None
+        and r.status != "Cancelado"
+        and r.attendance not in ("Ausente", "No embarcable")
+    ]
+
+def default_reservation_status(outing: Outing, r: Reservation) -> str:
+    if r.kind == "menor":
+        return "Hijo menor hasta 13"
+    if r.kind == "invitado" and not cutoff_passed(outing):
+        return "Condicional hasta 48h"
+    return "Confirmado"
 
 def cutoff_at(outing: Outing) -> datetime:
     return outing.departure_at - timedelta(hours=48)
@@ -381,14 +400,24 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     r = db.get(Reservation, rid)
     if not r or value not in ["Presente", "Ausente", "Por confirmar"]:
         raise HTTPException(400)
-    if r.cancelled_at is not None:
-        raise HTTPException(400, "Reserva cancelada")
-    r.attendance = value
-    if value == "Ausente":
-        outing = db.get(Outing, r.outing_id)
-        r.charge_amount = reservation_charge(outing, r)
-    elif value == "Presente":
+
+    outing = db.get(Outing, r.outing_id)
+    if outing and outing.status == "Embarque cerrado":
+        raise HTTPException(400, "El embarque ya fue cerrado")
+
+    # Regla operativa: hasta el cierre, el capitán puede rearmar la tripulación.
+    # Por eso una reserva cancelada/ausente puede volver a lista o pasar a presente.
+    if value in ("Presente", "Por confirmar"):
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.cancel_reason = ""
         r.charge_amount = 0
+        r.attendance = value
+    elif value == "Ausente":
+        r.attendance = "Ausente"
+        r.charge_amount = reservation_charge(outing, r)
+        # No la convertimos en estado terminal. Queda reversible hasta el cierre.
+
     db.commit()
     log(db, user.name, "asistencia", f"{r.person_name}: {value}")
     return RedirectResponse("/captain?msg=asistencia_actualizada", status_code=303)
