@@ -356,7 +356,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     })
 
 @app.post("/socio/add_self")
-def add_self(outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
@@ -376,7 +376,7 @@ def add_self(outing_id: int = Form(...), db: Session = Depends(db_session), user
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
-def add_guest(outing_id: int = Form(...), name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     dni_clean = norm_dni(dni)
@@ -405,7 +405,7 @@ def add_guest(outing_id: int = Form(...), name: str = Form(...), dni: str = Form
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_ok", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
-def cancel_reservation(rid: int, outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
     ensure_outing_editable(outing)
@@ -441,7 +441,7 @@ def cancel_reservation(rid: int, outing_id: int = Form(...), db: Session = Depen
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")
-def reactivate_by_socio(rid: int, outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
@@ -469,7 +469,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     })
 
 @app.post("/captain/outing_status")
-def outing_status(outing_id: int = Form(...), status: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def outing_status(outing_id: Optional[int] = Form(None), status: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing = selected_outing(db, outing_id)
     if status not in ["En reservas", "En embarque", "Demorada", "Cancelada por capitán", "Programada"]:
         raise HTTPException(400)
@@ -503,7 +503,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 @app.post("/captain/close")
-def close_boarding(outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing, reservations, active, present, *_ = outing_context(db, outing_id)
     if present < outing.min_crew:
         raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
