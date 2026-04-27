@@ -751,3 +751,17 @@ def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_r
     db.commit()
     log(db, user.name, "demo reset", "Datos demo V18 reiniciados")
     return RedirectResponse("/admin?msg=demo_reset", status_code=303)
+
+
+
+
+@app.post("/admin/reset_clean")
+def admin_reset_clean(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    db.query(AuditLog).delete()
+    db.query(Reservation).delete()
+    db.query(Outing).delete()
+    db.commit()
+    log(db, user.name, "sistema limpio", "Salidas, reservas, cargos y auditoría demo eliminados. Usuarios conservados.")
+    persist_json(db)
+    return RedirectResponse("/admin?msg=Sistema limpio creado", status_code=303)
+
