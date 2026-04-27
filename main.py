@@ -16,6 +16,20 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
+
+# =========================
+# FORMATO VISUAL / LEGIBILIDAD
+# =========================
+def clean_join(*parts):
+    cleaned = []
+    for p in parts:
+        if p is None:
+            continue
+        s = str(p).strip()
+        if s:
+            cleaned.append(s)
+    return " · ".join(cleaned)
+
 APP_DIR = Path(__file__).parent
 DATA_DIR = Path(os.getenv("DATA_DIR", APP_DIR))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
