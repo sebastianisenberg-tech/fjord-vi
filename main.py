@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
 import csv
 import hashlib
@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, 
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 
@@ -38,7 +38,7 @@ JSON_BACKUP_PATH = Path(os.getenv("JSON_BACKUP_PATH", DATA_DIR / "fjord_vi_data.
 SECRET_KEY = os.getenv("SECRET_KEY", "pilot-secret-change-me")
 MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
-INVITED_FEE = float(os.getenv("INVITED_FEE", "4500"))
+INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = "v19-multi-salida"
 
@@ -81,6 +81,7 @@ class Reservation(Base):
     attendance = Column(String, default="Por confirmar")
     charge_amount = Column(Numeric(12,2), default=0)
     cancel_reason = Column(String, default="")
+    birth_date = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     cancelled_at = Column(DateTime, nullable=True)
     __table_args__ = (UniqueConstraint("outing_id", "dni", name="uq_outing_dni"),)
@@ -94,6 +95,24 @@ class AuditLog(Base):
     detail = Column(Text, default="")
 
 Base.metadata.create_all(engine)
+
+def ensure_schema():
+    """Agrega columnas nuevas sin borrar datos existentes.
+
+    Render/Postgres no modifica tablas ya creadas con create_all().
+    Esta migración liviana mantiene compatibilidad con SQLite y Postgres.
+    """
+    inspector = inspect(engine)
+    try:
+        reservation_columns = [c["name"] for c in inspector.get_columns("reservations")]
+    except Exception:
+        reservation_columns = []
+
+    if "birth_date" not in reservation_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN birth_date VARCHAR"))
+
+ensure_schema()
 app = FastAPI(title="Fjord VI V19 Multi Salida")
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
@@ -108,6 +127,47 @@ def db_session():
 
 def norm_dni(v: str) -> str:
     return "".join(ch for ch in (v or "") if ch.isdigit())
+
+
+def canonical_kind(kind: str) -> str:
+    """Normaliza tipos viejos y nuevos.
+
+    socio: socio del club, sin distinguir edad.
+    invitado: cualquier no socio que no entra en bonificación.
+    hijo_menor: hijo menor de socio que no es socio.
+    """
+    k = (kind or "").strip()
+    if k in ("menor", "hijo_menor", "hijo_socio"):
+        return "hijo_menor"
+    if k == "socio":
+        return "socio"
+    return "invitado"
+
+def display_kind(kind: str) -> str:
+    k = canonical_kind(kind)
+    if k == "socio":
+        return "socio"
+    if k == "hijo_menor":
+        return "hijo menor de socio no socio"
+    return "invitado"
+
+def parse_birth_date(value: Optional[str]):
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except Exception:
+        return None
+
+def age_on(birth: date, on_date: date) -> int:
+    return on_date.year - birth.year - ((on_date.month, on_date.day) < (birth.month, birth.day))
+
+def is_under_18_on(birth_value: Optional[str], on_dt: datetime) -> bool:
+    birth = parse_birth_date(birth_value)
+    if not birth:
+        return False
+    return age_on(birth, on_dt.date()) < 18
+
 
 def hash_password(password: str, salt: Optional[str] = None) -> str:
     salt = salt or secrets.token_hex(16)
@@ -159,7 +219,7 @@ def export_state(db: Session) -> dict:
             {"id": r.id, "outing_id": r.outing_id, "person_name": r.person_name, "dni": r.dni, "kind": r.kind,
              "responsible_user_id": r.responsible_user_id, "status": r.status, "attendance": r.attendance,
              "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "",
-             "created_at": dt_to_str(r.created_at), "cancelled_at": dt_to_str(r.cancelled_at)}
+             "birth_date": r.birth_date or "", "created_at": dt_to_str(r.created_at), "cancelled_at": dt_to_str(r.cancelled_at)}
             for r in db.query(Reservation).order_by(Reservation.id).all()
         ],
         "audit_logs": [
@@ -200,7 +260,8 @@ def import_state(db: Session, data: dict):
                            dni=norm_dni(r.get("dni") or ""), kind=r.get("kind") or "invitado",
                            responsible_user_id=r.get("responsible_user_id"), status=r.get("status") or "Confirmado",
                            attendance=r.get("attendance") or "Por confirmar", charge_amount=float(r.get("charge_amount") or 0),
-                           cancel_reason=r.get("cancel_reason") or "", created_at=str_to_dt(r.get("created_at")) or datetime.utcnow(),
+                           cancel_reason=r.get("cancel_reason") or "", birth_date=r.get("birth_date") or None,
+                           created_at=str_to_dt(r.get("created_at")) or datetime.utcnow(),
                            cancelled_at=str_to_dt(r.get("cancelled_at"))))
     db.commit()
     for l in data.get("audit_logs", []):
@@ -287,9 +348,10 @@ def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
     r.cancel_reason = ""
 
 def default_reservation_status(outing: Outing, r: Reservation) -> str:
-    if r.kind == "menor":
-        return "Hijo menor hasta 13"
-    if r.kind == "invitado" and not cutoff_passed(outing):
+    k = canonical_kind(r.kind)
+    if k == "hijo_menor":
+        return "Hijo menor de socio no socio"
+    if k == "invitado" and not cutoff_passed(outing):
         return "Condicional hasta 48h"
     return "Confirmado"
 
@@ -309,13 +371,19 @@ def late_window_passed(outing: Outing) -> bool:
 def reservation_charge(outing: Outing, r: Reservation) -> float:
     """Cargo reglamentario por plaza perdida.
 
+    Esta función se usa para cancelación tardía, ausencia o no embarcable.
+    No se usa para cobrar navegación normal.
+
     Socio, incluido socio menor: 70% de tarifa invitado.
-    Invitado, incluido menor no socio: 100% de tarifa invitado.
+    Invitado, de cualquier edad: 100% de tarifa invitado.
+    Hijo menor de socio no socio: navega sin cargo, pero si no embarca
+    o cancela tarde paga 100% de tarifa invitado por plaza perdida.
     """
     fee = float(outing.guest_fee or 0)
-    if r.kind == "socio":
+    k = canonical_kind(r.kind)
+    if k == "socio":
         return round(fee * LATE_SOCIO_RATE, 2)
-    if r.kind in ("invitado", "menor"):
+    if k in ("invitado", "hijo_menor"):
         return fee
     return 0.0
 
@@ -358,7 +426,7 @@ def seed():
                 Reservation(outing_id=o.id, person_name="Pedro Martínez", dni="28456456", kind="socio", responsible_user_id=None),
                 Reservation(outing_id=o.id, person_name="Lucía Fernández", dni="36777888", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
                 Reservation(outing_id=o.id, person_name="Diego Sánchez", dni="30456789", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="menor", responsible_user_id=socio.id, status="Hijo menor hasta 13"),
+                Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
             ])
             db.commit()
             log(db, "sistema", "seed", "Datos demo V18 creados")
@@ -413,12 +481,12 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
     present = sum(1 for r in active if r.attendance == "Presente")
     absent = sum(1 for r in reservations if r.attendance in ("Ausente", "No embarcable"))
     pending = sum(1 for r in active if r.attendance == "Por confirmar")
-    socios_presentes = sum(1 for r in active if r.kind == "socio" and r.attendance == "Presente")
+    socios_presentes = sum(1 for r in active if canonical_kind(r.kind) == "socio" and r.attendance == "Presente")
     return outing, reservations, active, present, absent, pending, socios_presentes
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "database": DB_URL, "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
+    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
@@ -487,12 +555,21 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
-def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), birth_date: Optional[str] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     dni_clean = norm_dni(dni)
-    if kind not in ("invitado", "menor") or not name.strip() or not dni_clean:
+    kind = canonical_kind(kind)
+
+    if kind not in ("invitado", "hijo_menor") or not name.strip() or not dni_clean:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
+
+    if kind == "hijo_menor":
+        # Solo se pide fecha para esta categoría especial. No se pide a invitados adultos.
+        if not birth_date or not is_under_18_on(birth_date, outing.departure_at):
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=hijo_menor_invalido", status_code=303)
+    else:
+        birth_date = None
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if not self_row or not reservation_is_active(self_row):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
@@ -506,11 +583,12 @@ def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni:
     if existing:
         existing.person_name = name.strip()
         existing.kind = kind
+        existing.birth_date = birth_date
         existing.responsible_user_id = user.id
         reactivate_reservation(db, outing, existing)
     else:
-        status = "Hijo menor hasta 13" if kind == "menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
-        db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status))
+        status = "Hijo menor de socio no socio" if kind == "hijo_menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
+        db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status, birth_date=birth_date))
     db.commit()
     log(db, user.name, "agrega/reactiva invitado", f"{name.strip()} / {outing.title}")
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_ok", status_code=303)
@@ -621,7 +699,7 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     if present > outing.max_crew:
         raise HTTPException(400, f"Se supera el máximo de {outing.max_crew}")
     users = {u.id: u for u in db.query(User).all()}
-    present_dnis = {r.dni for r in active if r.kind == "socio" and r.attendance == "Presente"}
+    present_dnis = {r.dni for r in active if canonical_kind(r.kind) == "socio" and r.attendance == "Presente"}
     for r in reservations:
         if r.cancelled_at is not None:
             if r.charge_amount is None:
@@ -629,7 +707,7 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
             continue
         if r.attendance == "Por confirmar":
             r.attendance = "Ausente"
-        if r.kind in ("invitado", "menor") and r.attendance == "Presente":
+        if canonical_kind(r.kind) in ("invitado", "hijo_menor") and r.attendance == "Presente":
             responsible = users.get(r.responsible_user_id)
             if responsible and responsible.dni not in present_dnis:
                 r.attendance = "No embarcable"
@@ -760,7 +838,7 @@ def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_r
         Reservation(outing_id=o.id, person_name="Carlos Rodríguez", dni="23452345", kind="socio", responsible_user_id=None),
         Reservation(outing_id=o.id, person_name="Ana López", dni="32111333", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
         Reservation(outing_id=o.id, person_name="Pedro Martínez", dni="28456456", kind="socio", responsible_user_id=None),
-        Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="menor", responsible_user_id=socio.id, status="Hijo menor hasta 13"),
+        Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
     ])
     db.commit()
     log(db, user.name, "demo reset", "Datos demo V18 reiniciados")
