@@ -1,66 +1,73 @@
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: linear-gradient(180deg, #f8fbff 0%, #f3f6fb 100%);
-    color: #102033;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  background: linear-gradient(180deg, #f5f7fb, #e9eef6);
+  color: #102033;
 }
 
 .container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 16px;
 }
 
 .card {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: 0 14px 36px rgba(7, 26, 51, 0.12);
+  background: white;
+  border-radius: 18px;
+  padding: 28px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
 }
 
 .mark {
-    font-weight: bold;
-    margin-bottom: 10px;
+  font-weight: bold;
+  font-size: 13px;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  color: #5c6f82;
 }
 
 h1 {
-    margin-bottom: 6px;
+  margin-bottom: 10px;
+  font-size: 22px;
 }
 
 .muted {
-    color: #617086;
-    margin-bottom: 18px;
+  color: #6b7c8f;
+  margin-bottom: 20px;
 }
 
 input {
-    width: 100%;
-    padding: 10px;
-    margin: 6px 0 12px;
-    border-radius: 8px;
-    border: 1px solid #dbe4ef;
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0 16px;
+  border-radius: 10px;
+  border: 1px solid #d6dde6;
+  font-size: 16px;
 }
 
 button {
-    width: 100%;
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    background: #071a33;
-    color: white;
-    font-weight: bold;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(180deg, #0d2b4c, #071a33);
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
 }
 
 .demoBox {
-    margin-top: 16px;
-    font-size: 14px;
+  margin-top: 18px;
+  font-size: 14px;
 }
 
 .version {
-    display: block;
-    margin-top: 12px;
-    font-size: 12px;
-    color: #617086;
+  display: block;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #8a97a6;
 }
