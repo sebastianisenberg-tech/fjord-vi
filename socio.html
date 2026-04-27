@@ -2,21 +2,25 @@
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Socio · Fjord VI</title>
 <style>
-/* V20 legibilidad socio: separadores visibles y textos no pegados */
-.meta-line,
-.person-meta,
-.rulesText {
-  line-height: 1.35;
-}
-.sep {
-  display: inline;
-  margin: 0 .24rem;
-  color: #64748b;
-}
-.person-name {
+/* V21 socio: legibilidad y badges por tipo */
+.badgeTipo {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 800;
-  margin-right: .18rem;
+  line-height: 1.2;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: capitalize;
 }
+.badgeTipo.socio { background:#dcfce7; color:#166534; }
+.badgeTipo.invitado { background:#dbeafe; color:#1d4ed8; }
+.badgeTipo.menor { background:#f1f5f9; color:#475569; }
+.personHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.personHeader b { margin-right:2px; }
+.ruleLine b { margin-right:4px; }
 </style>
 
 </head>
@@ -57,15 +61,15 @@
   <div class="step"><div class="dot">4</div><div><b>Embarque</b><span>Capitán confirma presentes.</span></div></div>
 </section>
 <section class="ruleGrid" id="reglas">
-  <div class="rule"><b>Invitados</b><span>{% if cutoff %}Ya pasó el corte de 48h: los invitados activos quedan firmes según estado.{% else %}Condicionales hasta el corte. Socios conservan prioridad hasta ese momento.{% endif %}</span></div>
-  <div class="rule"><b>Cargos</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100% si cancela tarde o no embarca.</span></div>
+  <div class="rule"><b>Invitados</b> <span>{% if cutoff %}Ya pasó el corte de 48h: los invitados activos quedan firmes según estado.{% else %}Condicionales hasta el corte. Socios conservan prioridad hasta ese momento.{% endif %}</span></div>
+  <div class="rule"><b>Cargos</b> <span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100% si cancela tarde o no embarca.</span></div>
 </section>
 <section class="card" id="reserva">
   <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva activa</span>{% endif %}</div>
 
   {% if self_reservation %}
   <div class="row {% if not has_self %}disabled{% endif %}">
-    <div><b>{{self_reservation.person_name}}</b><small>{{self_reservation.kind}} · {{self_reservation.status}} · {{self_reservation.attendance}}{% if self_reservation.charge_amount %} · cargo $ {{self_reservation.charge_amount|money}}{% endif %}</small></div>
+    <div><b>{{self_reservation.person_name}}</b><small><span class="badgeTipo {{self_reservation.kind|lower}}">{{self_reservation.kind}}</span> · {{self_reservation.status}} · {{self_reservation.attendance}}{% if self_reservation.charge_amount %} · cargo $ {{self_reservation.charge_amount|money}}{% endif %}</small></div>
     {% if closed %}
       <span class="pill">Cerrado</span>
     {% elif has_self %}
@@ -85,7 +89,7 @@
   {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}
   {% set active_guest = (not r.cancelled_at and r.status != 'Cancelado' and r.attendance not in ['Ausente','No embarcable']) %}
   <div class="row {% if not active_guest %}disabled{% endif %}">
-    <div><b>{{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div>
+    <div><b>{{r.person_name}}</b><small><span class="badgeTipo {{r.kind|lower}}">{{r.kind}}</span> · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div>
     {% if closed %}
       <span class="pill">Cerrado</span>
     {% elif active_guest %}
