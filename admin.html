@@ -1,49 +1,36 @@
 <!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<title>Admin Fjord VI</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Admin · Fjord VI</title></head>
+<body><div class="app wide">
+<header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout">Salir</a></header>
+<main class="wrap">
+{% if msg %}<div class="toast">{% if msg=='salida_creada' %}Salida creada correctamente, sin tripulantes precargados.{% elif msg=='demo_reset' %}Datos demo reiniciados.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+<section class="heroCard purpleHero"><div><span class="eyebrow">V19 multi-salida</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
+<section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
+{% if outing %}<section class="notice {{readiness.level}}"><b>{{readiness.detail}}</b><span>Los datos visibles pertenecen solo a la salida seleccionada.</span></section>{% endif %}
+<section class="split" id="dashboard">
+  <div class="miniPanel"><span>Presentes marcados</span><b>{{present}}</b></div>
+  <div class="miniPanel"><span>Pendientes de embarque</span><b>{{pending}}</b></div>
+</section>
+<section class="card" id="crear"><div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Nueva salida</h2></div></div><form class="gridForm adminForm" method="post" action="/admin/new_outing"><input class="input" name="title" placeholder="Título"><input class="input" name="destination" placeholder="Destino"><input class="input" type="datetime-local" name="departure_at"><input class="input" type="number" name="guest_fee" value="4500"><button class="btn purple">Crear salida vacía</button></form></section>
+<section class="card" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Control</span><h2>Salidas publicadas</h2></div></div>{% for o in outings %}<a class="row compact {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}" style="text-decoration:none;color:inherit"><div><b>{{o.departure_at.strftime('%d/%m %H:%M')}}</b><small>{{o.title}} · {{o.destination}} · {{o.status}} · {{active_counts[o.id]}} activos / {{counts[o.id]}} registros</small></div><span class="pill">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span></a>{% endfor %}</section>
+{% if outing %}
+<section class="card" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in reservations %}<div class="row {% if r.cancelled_at %}disabled{% endif %}"><div><b>{{r.person_name}}</b><small>DNI {{r.dni}} · {{r.kind}} · {{r.status}} · {{r.attendance}}</small></div><span class="pill {% if r.charge_amount %}warn{% endif %}">{% if r.charge_amount %}$ {{r.charge_amount|money}}{% else %}sin cargo{% endif %}</span></div>{% endfor %}{% if reservations|length == 0 %}<div class="empty">Esta salida todavía no tiene tripulantes anotados.</div>{% endif %}</section>
+<section class="card" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Liquidaciones de esta salida</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in charges %}<div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · DNI {{r.dni}} · {{r.cancel_reason or r.attendance}}</small></div><b>$ {{r.charge_amount|money}}</b></div>{% endfor %}{% if charges|length == 0 %}<div class="empty">Sin cargos generados para esta salida.</div>{% endif %}</section>
+{% endif %}
+<section class="card" id="herramientas"><div class="cardTitle"><div><span class="eyebrow">Demo</span><h2>Herramientas del piloto</h2></div></div><p>Reinicia salidas, reservas y logs demo sin borrar usuarios.</p><form method="post" action="/admin/demo_reset"><button class="btn light">Reiniciar datos demo</button></form></section>
 
-<body style="font-family:Arial; margin:20px;">
-
-<h2>Panel administrativo</h2>
-
-<h3>Crear salida</h3>
-<form action="/admin/create_outing" method="post">
-  <input name="title" placeholder="Título"><br><br>
-  <input name="destination" placeholder="Destino"><br><br>
-  <input name="date" placeholder="Fecha (YYYY-MM-DD HH:MM)"><br><br>
-  <input name="price" value="4500"><br><br>
-  <button type="submit">Crear salida vacía</button>
-</form>
-
-<hr>
-
-<h3>Salidas publicadas</h3>
-{% for o in outings %}
-  <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-    <b>{{o.title}}</b><br>
-    {{o.date}}<br>
-    {{o.destination}}<br>
-    Activos: {{o.active}}<br>
-    <a href="/admin/select_outing/{{o.id}}">Seleccionar</a>
+<section class="card" id="backup-json">
+  <div class="eyebrow">RESGUARDO</div>
+  <h2>Backup JSON</h2>
+  <p class="muted">Descarga o restaura el estado completo del piloto: salidas, reservas, cargos y auditoría.</p>
+  <div class="actions">
+    <a class="mini okBtn" href="/admin/backup">Descargar backup JSON</a>
   </div>
-{% endfor %}
+  <form method="post" action="/admin/restore" enctype="multipart/form-data" style="margin-top:12px;">
+    <input type="file" name="file" required>
+    <button class="mini" type="submit">Restaurar JSON</button>
+  </form>
+</section>
 
-<hr>
-
-<h3>Backup JSON</h3>
-
-<a href="/admin/backup">
-  <button>Descargar backup</button>
-</a>
-
-<form action="/admin/restore" method="post" enctype="multipart/form-data">
-  <input type="file" name="file" required>
-  <button type="submit">Restaurar JSON</button>
-</form>
-
-</body>
-</html>
+<section class="card" id="logs"><div class="cardTitle"><div><span class="eyebrow">Trazabilidad</span><h2>Auditoría</h2></div></div>{% for l in logs %}<div class="row compact"><div><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div></div>{% endfor %}</section>
+</main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav></div></body></html>
