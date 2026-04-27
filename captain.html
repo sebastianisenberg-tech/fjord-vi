@@ -23,7 +23,39 @@
 <section class="card" id="tripulacion">
   <div class="cardTitle"><div><span class="eyebrow">Lista del día</span><h2>Tripulación</h2></div><span class="pill">mín. {{outing.min_crew}}</span></div>
   {% for r in reservations %}
-  <div class="row {% if r.cancelled_at %}disabled{% endif %}"><div><b>{{loop.index}}. {{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div><div class="actions">{% if r.cancelled_at %}<span class="pill bad">Cancelado</span>{% elif r.attendance == 'Presente' %}<span class="pill ok">Presente</span><form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger">Ausente</button></form>{% elif r.attendance in ['Ausente','No embarcable'] %}<span class="pill bad">{{r.attendance}}</span><form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>{% else %}<form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form><form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger">Ausente</button></form>{% endif %}</div></div>
+  <div class="row {% if r.cancelled_at %}disabled{% endif %}">
+    <div>
+      <b>{{loop.index}}. {{r.person_name}}</b>
+      <small>{{r.kind}} · {{r.status}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small>
+    </div>
+
+    <div class="actions attendanceActions">
+      {% if r.cancelled_at %}
+        <span class="pill bad">Cancelado</span>
+
+      {% elif r.attendance == 'Presente' %}
+        <span class="pill ok">Estado: Presente</span>
+        <form method="post" action="/captain/attendance/{{r.id}}/Ausente">
+          <button class="mini danger">Marcar ausente</button>
+        </form>
+
+      {% elif r.attendance in ['Ausente','No embarcable'] %}
+        <span class="pill bad">Estado: {{r.attendance}}</span>
+        <form method="post" action="/captain/attendance/{{r.id}}/Presente">
+          <button class="mini okBtn">Marcar presente</button>
+        </form>
+
+      {% else %}
+        <span class="pill">Estado: Por confirmar</span>
+        <form method="post" action="/captain/attendance/{{r.id}}/Presente">
+          <button class="mini okBtn">Marcar presente</button>
+        </form>
+        <form method="post" action="/captain/attendance/{{r.id}}/Ausente">
+          <button class="mini danger">Marcar ausente</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
   {% endfor %}
 </section>
 <section class="card soft" id="cierre">
