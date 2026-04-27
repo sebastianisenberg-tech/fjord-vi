@@ -4,11 +4,12 @@ import csv
 import hashlib
 import hmac
 import io
+import json
 import os
 import secrets
 from typing import Optional
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,6 +20,7 @@ APP_DIR = Path(__file__).parent
 DATA_DIR = Path(os.getenv("DATA_DIR", APP_DIR))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR/'fjord_v18_pilot.db'}")
+JSON_BACKUP_PATH = Path(os.getenv("JSON_BACKUP_PATH", DATA_DIR / "fjord_vi_data.json"))
 SECRET_KEY = os.getenv("SECRET_KEY", "pilot-secret-change-me")
 MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
@@ -78,6 +80,7 @@ class AuditLog(Base):
     detail = Column(Text, default="")
 
 Base.metadata.create_all(engine)
+restore_json_if_db_empty()
 
 app = FastAPI(title="Fjord VI V19 Multi Salida")
 
@@ -118,9 +121,101 @@ def unsign_value(signed: str) -> Optional[str]:
     expected = hmac.new(SECRET_KEY.encode(), value.encode(), hashlib.sha256).hexdigest()
     return value if hmac.compare_digest(sig, expected) else None
 
+
+def dt_to_str(v):
+    return v.isoformat() if v else None
+
+def str_to_dt(v):
+    return datetime.fromisoformat(v) if v else None
+
+def export_state(db: Session) -> dict:
+    return {
+        "version": VERSION,
+        "exported_at": datetime.utcnow().isoformat(),
+        "users": [
+            {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no, "role": u.role,
+             "password_hash": u.password_hash, "active": bool(u.active)}
+            for u in db.query(User).order_by(User.id).all()
+        ],
+        "outings": [
+            {"id": o.id, "title": o.title, "destination": o.destination, "departure_at": dt_to_str(o.departure_at),
+             "status": o.status, "max_crew": o.max_crew, "min_crew": o.min_crew, "guest_fee": float(o.guest_fee or 0),
+             "notes": o.notes or "", "created_at": dt_to_str(o.created_at)}
+            for o in db.query(Outing).order_by(Outing.id).all()
+        ],
+        "reservations": [
+            {"id": r.id, "outing_id": r.outing_id, "person_name": r.person_name, "dni": r.dni, "kind": r.kind,
+             "responsible_user_id": r.responsible_user_id, "status": r.status, "attendance": r.attendance,
+             "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "",
+             "created_at": dt_to_str(r.created_at), "cancelled_at": dt_to_str(r.cancelled_at)}
+            for r in db.query(Reservation).order_by(Reservation.id).all()
+        ],
+        "audit_logs": [
+            {"id": l.id, "created_at": dt_to_str(l.created_at), "actor": l.actor, "action": l.action, "detail": l.detail or ""}
+            for l in db.query(AuditLog).order_by(AuditLog.id).all()
+        ],
+    }
+
+def persist_json(db: Session):
+    try:
+        JSON_BACKUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = JSON_BACKUP_PATH.with_suffix(".tmp")
+        tmp.write_text(json.dumps(export_state(db), ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(JSON_BACKUP_PATH)
+    except Exception:
+        pass
+
+def import_state(db: Session, data: dict):
+    db.query(AuditLog).delete()
+    db.query(Reservation).delete()
+    db.query(Outing).delete()
+    db.query(User).delete()
+    db.commit()
+    for u in data.get("users", []):
+        db.add(User(id=u.get("id"), name=u.get("name") or "", dni=norm_dni(u.get("dni") or ""),
+                    member_no=u.get("member_no"), role=u.get("role") or "socio",
+                    password_hash=u.get("password_hash") or hash_password("demo1234"), active=bool(u.get("active", True))))
+    db.commit()
+    for o in data.get("outings", []):
+        db.add(Outing(id=o.get("id"), title=o.get("title") or "Salida", destination=o.get("destination") or "",
+                      departure_at=str_to_dt(o.get("departure_at")) or datetime.utcnow(), status=o.get("status") or "En reservas",
+                      max_crew=int(o.get("max_crew") or MAX_CREW), min_crew=int(o.get("min_crew") or MIN_CREW),
+                      guest_fee=float(o.get("guest_fee") or INVITED_FEE), notes=o.get("notes") or "",
+                      created_at=str_to_dt(o.get("created_at")) or datetime.utcnow()))
+    db.commit()
+    for r in data.get("reservations", []):
+        db.add(Reservation(id=r.get("id"), outing_id=r.get("outing_id"), person_name=r.get("person_name") or "",
+                           dni=norm_dni(r.get("dni") or ""), kind=r.get("kind") or "invitado",
+                           responsible_user_id=r.get("responsible_user_id"), status=r.get("status") or "Confirmado",
+                           attendance=r.get("attendance") or "Por confirmar", charge_amount=float(r.get("charge_amount") or 0),
+                           cancel_reason=r.get("cancel_reason") or "", created_at=str_to_dt(r.get("created_at")) or datetime.utcnow(),
+                           cancelled_at=str_to_dt(r.get("cancelled_at"))))
+    db.commit()
+    for l in data.get("audit_logs", []):
+        db.add(AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or datetime.utcnow(),
+                        actor=l.get("actor") or "sistema", action=l.get("action") or "import", detail=l.get("detail") or ""))
+    db.commit()
+    persist_json(db)
+
+def restore_json_if_db_empty():
+    if not JSON_BACKUP_PATH.exists():
+        return False
+    db = SessionLocal()
+    try:
+        if db.query(User).count() or db.query(Outing).count() or db.query(Reservation).count():
+            return False
+        data = json.loads(JSON_BACKUP_PATH.read_text(encoding="utf-8"))
+        import_state(db, data)
+        return True
+    except Exception:
+        return False
+    finally:
+        db.close()
+
 def log(db: Session, actor: str, action: str, detail: str = ""):
     db.add(AuditLog(actor=actor, action=action, detail=detail))
     db.commit()
+    persist_json(db)
 
 def current_user(request: Request, db: Session = Depends(db_session)) -> Optional[User]:
     uid = unsign_value(request.cookies.get("fjord_uid", ""))
@@ -269,6 +364,7 @@ def refresh_reservation_states(db: Session, outing: Outing):
                 changed = True
         if changed:
             db.commit()
+            persist_json(db)
 
 def selected_outing(db: Session, outing_id: Optional[int] = None):
     if outing_id:
@@ -307,7 +403,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "database": DB_URL}
+    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "database": DB_URL, "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
@@ -583,6 +679,22 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
         writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, r.kind, float(r.charge_amount), r.cancel_reason or r.attendance])
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
     return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+@app.get("/admin/export_data.json")
+def export_data_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    data = json.dumps(export_state(db), ensure_ascii=False, indent=2)
+    return Response(data, media_type="application/json", headers={"Content-Disposition": "attachment; filename=fjord_vi_backup.json"})
+
+@app.post("/admin/import_data")
+async def import_data_json(file: UploadFile = File(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    raw = await file.read()
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(400, "Archivo JSON inválido")
+    import_state(db, data)
+    log(db, user.name, "import json", "Datos restaurados desde backup JSON")
+    return RedirectResponse("/admin?msg=json_importado", status_code=303)
 
 @app.post("/admin/demo_reset")
 def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
