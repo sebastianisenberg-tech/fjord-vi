@@ -1,29 +1,45 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css"><title>Fjord VI</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+<title>Fjord VI</title>
 </head>
-<body class="loginBody">
-  <main class="loginShell">
-    <section class="loginCard">
-      <div class="mark">FJORD VI</div>
-      <h1>Paseos de fin de semana</h1>
-      <p class="muted">Piloto V17 con reservas, invitados, control de embarque y liquidación.</p>
-      {% if error %}<div class="alert bad">DNI o clave incorrectos.</div>{% endif %}
-      <form method="post" action="/login">
-        <label>DNI</label><input class="input" name="dni" placeholder="20123456" autocomplete="username">
-        <label>Clave</label><input class="input" name="password" type="password" placeholder="demo1234" autocomplete="current-password">
-        <button class="btn navy">Ingresar al sistema</button>
-      </form>
-      <div class="demoBox">
-        <b>Accesos demo</b>
-        <span>Socio: 20123456 / demo1234</span>
-        <span>Capitán: 30999111 / demo1234</span>
-        <span>Admin: 27999111 / demo1234</span>
-      </div>
-      <small class="version">{{version}}</small>
-    </section>
-  </main>
-</body>
-</html>
+
+<body>
+
+<div class="container center">
+  <div class="card" style="max-width:420px;width:100%;padding:28px">
+
+    <div class="mark">FJORD VI</div>
+
+    <h1 style="margin-bottom:6px">Paseos de fin de semana</h1>
+    <p class="muted" style="margin-bottom:18px">
+      Piloto con reservas, invitados y control de embarque
+    </p>
+
+    {% if error %}
+      <div class="alert bad">DNI o clave incorrectos</div>
+    {% endif %}
+
+    <form method="post" action="/login" style="display:flex;flex-direction:column;gap:10px">
+
+      <label>DNI</label>
+      <input name="dni" required>
+
+      <label>Clave</label>
+      <input type="password" name="password" required>
+
+      <button class="btn navy">Ingresar al sistema</button>
+
+    </form>
+
+    <div class="card" style="margin-top:16px;padding:12px">
+      <b>Accesos demo</b><br>
+      Socio: 20123456 / demo1234<br>
+      Capitán: 30999111 / demo1234<br>
+      Admin: 27999111 / demo1234
+    </div>
+
+    <
