@@ -24,7 +24,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "4500"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v18-deploy-ready"
+VERSION = "v19-multi-salida"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -79,7 +79,7 @@ class AuditLog(Base):
 
 Base.metadata.create_all(engine)
 
-app = FastAPI(title="Fjord VI V18 Deploy Ready")
+app = FastAPI(title="Fjord VI V19 Multi Salida")
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
 templates = Jinja2Templates(directory=str(APP_DIR))
@@ -187,7 +187,8 @@ def cutoff_at(outing: Outing) -> datetime:
     return outing.departure_at - timedelta(hours=48)
 
 def cancellation_deadline(outing: Outing) -> datetime:
-    return outing.departure_at - timedelta(days=4)
+    # Para paseos de fin de semana, el corte reglamentario operativo/contable es 48 horas antes.
+    return cutoff_at(outing)
 
 def cutoff_passed(outing: Outing) -> bool:
     return datetime.utcnow() >= cutoff_at(outing)
@@ -196,10 +197,15 @@ def late_window_passed(outing: Outing) -> bool:
     return datetime.utcnow() >= cancellation_deadline(outing)
 
 def reservation_charge(outing: Outing, r: Reservation) -> float:
+    """Cargo reglamentario por plaza perdida.
+
+    Socio, incluido socio menor: 70% de tarifa invitado.
+    Invitado, incluido menor no socio: 100% de tarifa invitado.
+    """
     fee = float(outing.guest_fee or 0)
     if r.kind == "socio":
         return round(fee * LATE_SOCIO_RATE, 2)
-    if r.kind == "invitado":
+    if r.kind in ("invitado", "menor"):
         return fee
     return 0.0
 
@@ -270,8 +276,13 @@ def selected_outing(db: Session, outing_id: Optional[int] = None):
     else:
         outing = db.query(Outing).filter(Outing.status != "Embarque cerrado").order_by(Outing.departure_at.asc()).first()
         outing = outing or db.query(Outing).order_by(Outing.departure_at.desc()).first()
+    if not outing:
+        return None
     refresh_reservation_states(db, outing)
     return outing
+
+def visible_outings(db: Session):
+    return db.query(Outing).order_by(Outing.departure_at.asc()).all()
 
 def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict:
     if not outing:
@@ -325,14 +336,17 @@ def logout():
     return resp
 
 @app.get("/socio", response_class=HTMLResponse)
-def socio(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db)
+def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    outings = visible_outings(db)
+    outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
+    if not outing:
+        return templates.TemplateResponse("socio.html", {"request": request, "user": user, "outing": None, "outings": outings, "msg": request.query_params.get("msg")})
     mine = [r for r in reservations if r.dni == user.dni or r.responsible_user_id == user.id]
     has_self = any(r.dni == user.dni and reservation_is_active(r) for r in mine)
     self_reservation = next((r for r in mine if r.dni == user.dni), None)
     ready = readiness_state(outing, len(active))
     return templates.TemplateResponse("socio.html", {
-        "request": request, "user": user, "outing": outing, "reservations": reservations,
+        "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "mine": mine, "has_self": has_self, "self_reservation": self_reservation,
         "active_count": len(active), "remaining": max(0, outing.max_crew - len(active)),
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
@@ -342,14 +356,14 @@ def socio(request: Request, db: Session = Depends(db_session), user: User = Depe
     })
 
 @app.post("/socio/add_self")
-def add_self(db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    outing, reservations, active, *_ = outing_context(db)
+def add_self(outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if existing and reservation_is_active(existing):
-        return RedirectResponse("/socio?msg=ya_anotado", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if len(active) >= outing.max_crew:
-        return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     if existing:
         existing.kind = "socio"
         existing.person_name = user.name
@@ -359,25 +373,25 @@ def add_self(db: Session = Depends(db_session), user: User = Depends(require_rol
         db.add(Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id))
     db.commit()
     log(db, user.name, "reserva socio", outing.title)
-    return RedirectResponse("/socio?msg=reserva_ok", status_code=303)
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
-def add_guest(name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    outing, reservations, active, *_ = outing_context(db)
+def add_guest(outing_id: int = Form(...), name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     dni_clean = norm_dni(dni)
     if kind not in ("invitado", "menor") or not name.strip() or not dni_clean:
-        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if not self_row or not reservation_is_active(self_row):
-        return RedirectResponse("/socio?msg=socio_requerido", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
     if existing and existing.responsible_user_id != user.id:
-        return RedirectResponse("/socio?msg=duplicado", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
     if existing and reservation_is_active(existing):
-        return RedirectResponse("/socio?msg=duplicado", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
     if len(active) >= outing.max_crew:
-        return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     if existing:
         existing.person_name = name.strip()
         existing.kind = kind
@@ -388,60 +402,81 @@ def add_guest(name: str = Form(...), dni: str = Form(...), kind: str = Form("inv
         db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status))
     db.commit()
     log(db, user.name, "agrega/reactiva invitado", f"{name.strip()} / {outing.title}")
-    return RedirectResponse("/socio?msg=invitado_ok", status_code=303)
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_ok", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
-def cancel_reservation(rid: int, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def cancel_reservation(rid: int, outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
-    outing = selected_outing(db)
+    outing = selected_outing(db, outing_id)
     ensure_outing_editable(outing)
     if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
-    r.cancelled_at = datetime.utcnow()
+
+    now = datetime.utcnow()
+    r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
     r.cancel_reason = "Cancelado por socio"
     r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
+
+    # Regla operativa: si el socio titular se baja de una salida,
+    # sus invitados/menores de esa misma salida quedan automáticamente fuera.
+    # No pueden ocupar cupo ni embarcar sin el socio responsable.
+    if r.dni == user.dni:
+        dependientes = db.query(Reservation).filter(
+            Reservation.outing_id == outing.id,
+            Reservation.responsible_user_id == user.id,
+            Reservation.dni != user.dni,
+            Reservation.cancelled_at.is_(None)
+        ).all()
+        for dep in dependientes:
+            dep.cancelled_at = now
+            dep.status = "Cancelado"
+            dep.attendance = "Ausente"
+            dep.cancel_reason = "Cancelado por baja del socio responsable"
+            dep.charge_amount = reservation_charge(outing, dep) if late_window_passed(outing) else 0
+
     db.commit()
-    log(db, user.name, "cancela reserva", f"{r.person_name} / cargo {r.charge_amount}")
-    return RedirectResponse("/socio?msg=cancelado", status_code=303)
+    log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount}")
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")
-def reactivate_by_socio(rid: int, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def reactivate_by_socio(rid: int, outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
-    outing, reservations, active, *_ = outing_context(db)
+    outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
     if reservation_is_active(r):
-        return RedirectResponse("/socio?msg=ya_anotado", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if len(active) >= outing.max_crew:
-        return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     reactivate_reservation(db, outing, r)
     db.commit()
-    log(db, user.name, "reactiva reserva", r.person_name)
-    return RedirectResponse("/socio?msg=reactivado", status_code=303)
+    log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
 
 @app.get("/captain", response_class=HTMLResponse)
-def captain(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
-    outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db)
+def captain(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+    outings = visible_outings(db)
+    outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     ready = readiness_state(outing, len(active), present)
     return templates.TemplateResponse("captain.html", {
-        "request": request, "user": user, "outing": outing, "reservations": reservations,
+        "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
         "pending": pending, "socios_presentes": socios_presentes, "readiness": ready,
         "cutoff": cutoff_passed(outing), "cutoff_at": cutoff_at(outing), "msg": request.query_params.get("msg")
     })
 
 @app.post("/captain/outing_status")
-def outing_status(status: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
-    outing = selected_outing(db)
+def outing_status(outing_id: int = Form(...), status: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+    outing = selected_outing(db, outing_id)
     if status not in ["En reservas", "En embarque", "Demorada", "Cancelada por capitán", "Programada"]:
         raise HTTPException(400)
     outing.status = status
     db.commit()
-    log(db, user.name, "estado salida", status)
-    return RedirectResponse("/captain?msg=estado_actualizado", status_code=303)
+    log(db, user.name, "estado salida", f"{outing.title}: {status}")
+    return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/captain/attendance/{rid}/{value}")
 def attendance(rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
@@ -453,8 +488,6 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     if outing and outing.status == "Embarque cerrado":
         raise HTTPException(400, "El embarque ya fue cerrado")
 
-    # Regla operativa: hasta el cierre, el capitán puede rearmar la tripulación.
-    # Por eso una reserva cancelada/ausente puede volver a lista o pasar a presente.
     if value in ("Presente", "Por confirmar"):
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
@@ -464,15 +497,14 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     elif value == "Ausente":
         r.attendance = "Ausente"
         r.charge_amount = reservation_charge(outing, r)
-        # No la convertimos en estado terminal. Queda reversible hasta el cierre.
 
     db.commit()
-    log(db, user.name, "asistencia", f"{r.person_name}: {value}")
-    return RedirectResponse("/captain?msg=asistencia_actualizada", status_code=303)
+    log(db, user.name, "asistencia", f"{r.person_name}: {value} / {outing.title}")
+    return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 @app.post("/captain/close")
-def close_boarding(db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
-    outing, reservations, active, present, *_ = outing_context(db)
+def close_boarding(outing_id: int = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+    outing, reservations, active, present, *_ = outing_context(db, outing_id)
     if present < outing.min_crew:
         raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
     if present > outing.max_crew:
@@ -481,6 +513,8 @@ def close_boarding(db: Session = Depends(db_session), user: User = Depends(requi
     present_dnis = {r.dni for r in active if r.kind == "socio" and r.attendance == "Presente"}
     for r in reservations:
         if r.cancelled_at is not None:
+            if r.charge_amount is None:
+                r.charge_amount = 0
             continue
         if r.attendance == "Por confirmar":
             r.attendance = "Ausente"
@@ -494,19 +528,21 @@ def close_boarding(db: Session = Depends(db_session), user: User = Depends(requi
             r.charge_amount = 0
     outing.status = "Embarque cerrado"
     db.commit()
-    log(db, user.name, "cierre embarque", f"presentes {present}")
-    return RedirectResponse("/captain?msg=cierre_ok", status_code=303)
+    log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present}")
+    return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
 
 @app.get("/admin", response_class=HTMLResponse)
-def admin(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db)
-    charges = db.query(Reservation).filter(Reservation.charge_amount > 0).all()
-    outings = db.query(Outing).order_by(Outing.departure_at.asc()).all()
+def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    outings = visible_outings(db)
+    outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
+    charges = db.query(Reservation).filter(Reservation.outing_id == outing.id, Reservation.charge_amount > 0).all() if outing else []
     logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(15).all()
     total_charges = sum(float(r.charge_amount or 0) for r in charges)
     ready = readiness_state(outing, len(active), present)
+    counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
+    active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
     return templates.TemplateResponse("admin.html", {
-        "request": request, "user": user, "outing": outing, "outings": outings,
+        "request": request, "user": user, "outing": outing, "outings": outings, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
         "total_charges": total_charges, "logs": logs, "readiness": ready,
@@ -516,29 +552,37 @@ def admin(request: Request, db: Session = Depends(db_session), user: User = Depe
 @app.post("/admin/new_outing")
 def new_outing(title: str = Form(...), destination: str = Form(...), departure_at: str = Form(...), guest_fee: float = Form(INVITED_FEE), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     dep = datetime.fromisoformat(departure_at)
-    db.add(Outing(title=title.strip(), destination=destination.strip(), departure_at=dep, guest_fee=guest_fee, status="En reservas", max_crew=MAX_CREW, min_crew=MIN_CREW))
+    o = Outing(title=title.strip(), destination=destination.strip(), departure_at=dep, guest_fee=guest_fee, status="En reservas", max_crew=MAX_CREW, min_crew=MIN_CREW)
+    db.add(o)
     db.commit()
-    log(db, user.name, "nueva salida", title.strip())
-    return RedirectResponse("/admin?msg=salida_creada", status_code=303)
+    db.refresh(o)
+    log(db, user.name, "nueva salida", f"{title.strip()} / salida vacía")
+    return RedirectResponse(f"/admin?outing_id={o.id}&msg=salida_creada", status_code=303)
 
 @app.get("/admin/manifest.csv")
-def manifest_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
-    outing, reservations, *_ = outing_context(db)
+def manifest_csv(outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
+    outing, reservations, *_ = outing_context(db, outing_id)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["salida", "fecha", "nombre", "dni", "tipo", "estado_reserva", "asistencia", "cargo", "responsable_id", "cancelado_en"])
+    writer.writerow(["salida_id", "salida", "fecha", "nombre", "dni", "tipo", "estado_reserva", "asistencia", "cargo", "responsable_id", "cancelado_en"])
     for r in reservations:
-        writer.writerow([outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, r.kind, r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
-    return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=manifest_fjord_vi_v18.csv"})
+        writer.writerow([outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, r.kind, r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
+    filename = f"manifest_fjord_vi_salida_{outing.id}.csv"
+    return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @app.get("/admin/charges.csv")
-def charges_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    outing = selected_outing(db, outing_id)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["fecha_liquidacion", "nombre", "dni", "tipo", "importe", "motivo"])
-    for r in db.query(Reservation).filter(Reservation.charge_amount > 0).all():
-        writer.writerow([datetime.utcnow().date(), r.person_name, r.dni, r.kind, float(r.charge_amount), r.cancel_reason or r.attendance])
-    return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=liquidaciones_fjord_vi_v18.csv"})
+    writer.writerow(["salida_id", "salida", "fecha_liquidacion", "nombre", "dni", "tipo", "importe", "motivo"])
+    q = db.query(Reservation).filter(Reservation.charge_amount > 0)
+    if outing:
+        q = q.filter(Reservation.outing_id == outing.id)
+    for r in q.all():
+        writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, r.kind, float(r.charge_amount), r.cancel_reason or r.attendance])
+    filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
+    return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @app.post("/admin/demo_reset")
 def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
