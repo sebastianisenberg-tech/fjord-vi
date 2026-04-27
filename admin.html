@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Admin · Fjord VI</title></head>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Admin · Fjord VI</title>
+<style>
+.dangerBtn{background:#991b1b!important;color:#fff!important;border:0!important}
+</style>
+
+</head>
 <body><div class="app wide">
 <header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout">Salir</a></header>
 <main class="wrap">
@@ -18,6 +23,16 @@
 <section class="card" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Liquidaciones de esta salida</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in charges %}<div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · DNI {{r.dni}} · {{r.cancel_reason or r.attendance}}</small></div><b>$ {{r.charge_amount|money}}</b></div>{% endfor %}{% if charges|length == 0 %}<div class="empty">Sin cargos generados para esta salida.</div>{% endif %}</section>
 {% endif %}
 <section class="card" id="herramientas"><div class="cardTitle"><div><span class="eyebrow">Demo</span><h2>Herramientas del piloto</h2></div></div><p>Reinicia salidas, reservas y logs demo sin borrar usuarios.</p><form method="post" action="/admin/demo_reset"><button class="btn light">Reiniciar datos demo</button></form></section>
+
+
+<section class="card" id="sistema-limpio">
+  <div class="eyebrow">OPERACIÓN REAL</div>
+  <h2>Sistema limpio</h2>
+  <p class="muted">Borra salidas, reservas, cargos y auditoría demo. Conserva los usuarios. Usar para empezar una operación real desde cero.</p>
+  <form method="post" action="/admin/reset_clean" onsubmit="return confirm('Esto borra TODAS las salidas, reservas, cargos y auditoría. Conserva usuarios. ¿Seguro?');">
+    <button class="mini dangerBtn" type="submit">Sistema limpio sin demo</button>
+  </form>
+</section>
 
 <section class="card" id="backup-json">
   <div class="eyebrow">RESGUARDO</div>
