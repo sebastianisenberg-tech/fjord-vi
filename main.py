@@ -158,6 +158,24 @@ def active_reservations(rows):
         and r.attendance not in ("Ausente", "No embarcable")
     ]
 
+def reservation_is_active(r: Reservation) -> bool:
+    return (
+        r.cancelled_at is None
+        and r.status != "Cancelado"
+        and r.attendance not in ("Ausente", "No embarcable")
+    )
+
+def ensure_outing_editable(outing: Outing):
+    if outing and outing.status == "Embarque cerrado":
+        raise HTTPException(status_code=400, detail="La salida ya fue cerrada")
+
+def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
+    r.cancelled_at = None
+    r.status = default_reservation_status(outing, r)
+    r.attendance = "Por confirmar"
+    r.charge_amount = 0
+    r.cancel_reason = ""
+
 def default_reservation_status(outing: Outing, r: Reservation) -> str:
     if r.kind == "menor":
         return "Hijo menor hasta 13"
@@ -310,31 +328,33 @@ def logout():
 def socio(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db)
     mine = [r for r in reservations if r.dni == user.dni or r.responsible_user_id == user.id]
-    has_self = any(r.dni == user.dni and r.cancelled_at is None for r in mine)
+    has_self = any(r.dni == user.dni and reservation_is_active(r) for r in mine)
+    self_reservation = next((r for r in mine if r.dni == user.dni), None)
     ready = readiness_state(outing, len(active))
     return templates.TemplateResponse("socio.html", {
         "request": request, "user": user, "outing": outing, "reservations": reservations,
-        "active": active, "mine": mine, "has_self": has_self, "active_count": len(active),
-        "remaining": max(0, outing.max_crew - len(active)), "readiness": ready,
-        "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
+        "active": active, "mine": mine, "has_self": has_self, "self_reservation": self_reservation,
+        "active_count": len(active), "remaining": max(0, outing.max_crew - len(active)),
+        "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
         "cutoff_at": cutoff_at(outing), "cancel_deadline": cancellation_deadline(outing),
-        "fee": float(outing.guest_fee), "msg": request.query_params.get("msg")
+        "fee": float(outing.guest_fee), "msg": request.query_params.get("msg"),
+        "closed": outing.status == "Embarque cerrado"
     })
 
 @app.post("/socio/add_self")
 def add_self(db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db)
+    ensure_outing_editable(outing)
+    existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
+    if existing and reservation_is_active(existing):
+        return RedirectResponse("/socio?msg=ya_anotado", status_code=303)
     if len(active) >= outing.max_crew:
         return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
-    existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
-    if existing and existing.cancelled_at is None:
-        return RedirectResponse("/socio?msg=ya_anotado", status_code=303)
-    if existing and existing.cancelled_at is not None:
-        existing.cancelled_at = None
-        existing.status = "Confirmado"
-        existing.attendance = "Por confirmar"
-        existing.charge_amount = 0
-        existing.cancel_reason = ""
+    if existing:
+        existing.kind = "socio"
+        existing.person_name = user.name
+        existing.responsible_user_id = user.id
+        reactivate_reservation(db, outing, existing)
     else:
         db.add(Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id))
     db.commit()
@@ -344,25 +364,37 @@ def add_self(db: Session = Depends(db_session), user: User = Depends(require_rol
 @app.post("/socio/add_guest")
 def add_guest(name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db)
-    if len(active) >= outing.max_crew:
-        return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
+    ensure_outing_editable(outing)
     dni_clean = norm_dni(dni)
     if kind not in ("invitado", "menor") or not name.strip() or not dni_clean:
         return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
-    if not db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni, cancelled_at=None).first():
+    self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
+    if not self_row or not reservation_is_active(self_row):
         return RedirectResponse("/socio?msg=socio_requerido", status_code=303)
-    if db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first():
+    existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
+    if existing and existing.responsible_user_id != user.id:
         return RedirectResponse("/socio?msg=duplicado", status_code=303)
-    status = "Hijo menor hasta 13" if kind == "menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
-    db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status))
+    if existing and reservation_is_active(existing):
+        return RedirectResponse("/socio?msg=duplicado", status_code=303)
+    if len(active) >= outing.max_crew:
+        return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
+    if existing:
+        existing.person_name = name.strip()
+        existing.kind = kind
+        existing.responsible_user_id = user.id
+        reactivate_reservation(db, outing, existing)
+    else:
+        status = "Hijo menor hasta 13" if kind == "menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
+        db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status))
     db.commit()
-    log(db, user.name, "agrega invitado", f"{name.strip()} / {outing.title}")
+    log(db, user.name, "agrega/reactiva invitado", f"{name.strip()} / {outing.title}")
     return RedirectResponse("/socio?msg=invitado_ok", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
 def cancel_reservation(rid: int, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing = selected_outing(db)
+    ensure_outing_editable(outing)
     if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
     r.cancelled_at = datetime.utcnow()
@@ -373,6 +405,22 @@ def cancel_reservation(rid: int, db: Session = Depends(db_session), user: User =
     db.commit()
     log(db, user.name, "cancela reserva", f"{r.person_name} / cargo {r.charge_amount}")
     return RedirectResponse("/socio?msg=cancelado", status_code=303)
+
+@app.post("/socio/reactivate/{rid}")
+def reactivate_by_socio(rid: int, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    r = db.get(Reservation, rid)
+    outing, reservations, active, *_ = outing_context(db)
+    ensure_outing_editable(outing)
+    if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
+        raise HTTPException(403)
+    if reservation_is_active(r):
+        return RedirectResponse("/socio?msg=ya_anotado", status_code=303)
+    if len(active) >= outing.max_crew:
+        return RedirectResponse("/socio?msg=cupo_completo", status_code=303)
+    reactivate_reservation(db, outing, r)
+    db.commit()
+    log(db, user.name, "reactiva reserva", r.person_name)
+    return RedirectResponse("/socio?msg=reactivado", status_code=303)
 
 @app.get("/captain", response_class=HTMLResponse)
 def captain(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):

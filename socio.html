@@ -4,7 +4,7 @@
 <body><div class="app">
 <header class="top topBlue"><div><b>FJORD VI</b><small>Paseos de fin de semana</small></div><a href="/logout">Salir</a></header>
 <main class="wrap">
-{% if msg %}<div class="toast">{% if msg=='cupo_completo' %}Cupo completo: no quedan lugares activos.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable.{% elif msg=='duplicado' %}Ese DNI ya tiene una reserva en esta salida.{% elif msg=='datos_invalidos' %}Revisá nombre, DNI y tipo de pasajero.{% elif msg=='cancelado' %}Reserva cancelada correctamente.{% elif msg=='reserva_ok' %}Reserva de socio registrada.{% elif msg=='invitado_ok' %}Invitado agregado.{% elif msg=='ya_anotado' %}Ya estabas anotado.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+{% if msg %}<div class="toast">{% if msg=='cupo_completo' %}Cupo completo: no quedan lugares activos.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable.{% elif msg=='duplicado' %}Ese DNI ya tiene una reserva activa en esta salida.{% elif msg=='datos_invalidos' %}Revisá nombre, DNI y tipo de pasajero.{% elif msg=='cancelado' %}Reserva cancelada correctamente.{% elif msg=='reserva_ok' %}Reserva de socio registrada.{% elif msg=='invitado_ok' %}Invitado agregado o reactivado.{% elif msg=='reactivado' %}Reserva reactivada correctamente.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 <section class="heroCard">
   <div><span class="eyebrow">Hola, {{user.name.split(' ')[0]}}</span><h1>{{outing.title}}</h1><p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p></div>
   <span class="pill {{readiness.level}}">{{readiness.label}}</span>
@@ -27,25 +27,52 @@
   <div class="rule"><b>Cargos</b><span>Socio no-show o cancelación tardía: 70% de tarifa invitado. Invitado no-show: 100%.</span></div>
 </section>
 <section class="card" id="reserva">
-  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
-  {% for r in mine %}{% if r.dni == user.dni %}
-  <div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}</small></div>{% if not r.cancelled_at %}<form method="post" action="/socio/cancel/{{r.id}}"><button class="mini danger">Cancelar</button></form>{% else %}<span class="pill bad">Cancelado</span>{% endif %}</div>
-  {% endif %}{% endfor %}
-  {% if not has_self %}<form method="post" action="/socio/add_self"><button class="btn navy">Anotarme como socio</button></form>{% endif %}
+  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva activa</span>{% endif %}</div>
+
+  {% if self_reservation %}
+  <div class="row {% if not has_self %}disabled{% endif %}">
+    <div><b>{{self_reservation.person_name}}</b><small>{{self_reservation.kind}} · {{self_reservation.status}} · {{self_reservation.attendance}}{% if self_reservation.charge_amount %} · cargo $ {{self_reservation.charge_amount|money}}{% endif %}</small></div>
+    {% if closed %}
+      <span class="pill">Cerrado</span>
+    {% elif has_self %}
+      <form method="post" action="/socio/cancel/{{self_reservation.id}}"><button class="mini danger">Darme de baja</button></form>
+    {% else %}
+      <form method="post" action="/socio/reactivate/{{self_reservation.id}}"><button class="mini okBtn">Volver a anotarme</button></form>
+    {% endif %}
+  </div>
+  {% elif not closed %}
+  <form method="post" action="/socio/add_self"><button class="btn navy">Anotarme como socio</button></form>
+  {% endif %}
+
 </section>
 <section class="card" id="invitados">
   <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados y menores</h2></div><span class="pill">Invitado $ {{fee|money}}</span></div>
   {% set ns = namespace(count=0) %}
   {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}
-  <div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div>{% if not r.cancelled_at %}<form method="post" action="/socio/cancel/{{r.id}}"><button class="mini danger">Cancelar</button></form>{% else %}<span class="pill bad">Cancelado</span>{% endif %}</div>
+  {% set active_guest = (not r.cancelled_at and r.status != 'Cancelado' and r.attendance not in ['Ausente','No embarcable']) %}
+  <div class="row {% if not active_guest %}disabled{% endif %}">
+    <div><b>{{r.person_name}}</b><small>{{r.kind}} · {{r.status}} · {{r.attendance}}{% if r.charge_amount %} · cargo $ {{r.charge_amount|money}}{% endif %}</small></div>
+    {% if closed %}
+      <span class="pill">Cerrado</span>
+    {% elif active_guest %}
+      <form method="post" action="/socio/cancel/{{r.id}}"><button class="mini danger">Dar de baja</button></form>
+    {% else %}
+      <form method="post" action="/socio/reactivate/{{r.id}}"><button class="mini okBtn">Volver a dar de alta</button></form>
+    {% endif %}
+  </div>
   {% endif %}{% endfor %}
   {% if ns.count == 0 %}<div class="empty">Todavía no agregaste invitados ni menores.</div>{% endif %}
+
+  {% if not closed and has_self %}
   <form class="gridForm guestForm" method="post" action="/socio/add_guest">
     <input class="input" name="name" placeholder="Nombre y apellido">
     <input class="input" name="dni" placeholder="DNI">
     <select class="input" name="kind"><option value="invitado">Invitado</option><option value="menor">Hijo menor hasta 13</option></select>
-    <button class="btn light">Agregar</button>
+    <button class="btn light">Agregar invitado o menor</button>
   </form>
+  {% elif not closed and not has_self %}
+  <div class="empty">Para agregar invitados, primero tenés que estar anotado como socio titular.</div>
+  {% endif %}
 </section>
 <section class="card soft" id="cargos">
   <h2>Resumen reglamentario</h2>
