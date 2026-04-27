@@ -1,4 +1,3 @@
-from fastapi.responses import FileResponse
 from datetime import datetime, timedelta
 from pathlib import Path
 import csv
@@ -11,7 +10,7 @@ import secrets
 from typing import Optional
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text
@@ -81,53 +80,7 @@ class AuditLog(Base):
     detail = Column(Text, default="")
 
 Base.metadata.create_all(engine)
-restore_json_if_db_empty()
-
 app = FastAPI(title="Fjord VI V19 Multi Salida")
-
-
-
-# =========================
-# JSON BACKUP / RESTORE
-# =========================
-DATA_FILE = "data.json"
-
-def export_state():
-    return {
-        "OUTINGS": OUTINGS,
-        "RESERVATIONS": RESERVATIONS,
-        "LOGS": LOGS,
-        "USERS": USERS,
-        "NEXT_OUTING_ID": NEXT_OUTING_ID,
-        "NEXT_RESERVATION_ID": NEXT_RESERVATION_ID,
-    }
-
-def import_state(data):
-    global OUTINGS, RESERVATIONS, LOGS, USERS, NEXT_OUTING_ID, NEXT_RESERVATION_ID
-    OUTINGS = data.get("OUTINGS", OUTINGS)
-    RESERVATIONS = data.get("RESERVATIONS", RESERVATIONS)
-    LOGS = data.get("LOGS", LOGS)
-    USERS = data.get("USERS", USERS)
-    NEXT_OUTING_ID = data.get("NEXT_OUTING_ID", NEXT_OUTING_ID)
-    NEXT_RESERVATION_ID = data.get("NEXT_RESERVATION_ID", NEXT_RESERVATION_ID)
-
-def save_state():
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(export_state(), f, ensure_ascii=False, indent=2, default=str)
-    except Exception as e:
-        print("JSON autosave error:", e)
-
-def load_state():
-    if not os.path.exists(DATA_FILE):
-        return
-    try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        import_state(data)
-        print("JSON state loaded")
-    except Exception as e:
-        print("JSON load error:", e)
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
 templates = Jinja2Templates(directory=str(APP_DIR))
@@ -256,6 +209,9 @@ def restore_json_if_db_empty():
         return False
     finally:
         db.close()
+
+# Restore JSON backup at startup only if the database is empty
+restore_json_if_db_empty()
 
 def log(db: Session, actor: str, action: str, detail: str = ""):
     db.add(AuditLog(actor=actor, action=action, detail=detail))
@@ -455,19 +411,15 @@ def index(request: Request, db: Session = Depends(db_session), user: Optional[Us
     if not user:
         return templates.TemplateResponse("login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
     if user.role == "captain":
-        save_state()
         return RedirectResponse("/captain", status_code=303)
     if user.role == "admin":
-        save_state()
         return RedirectResponse("/admin", status_code=303)
-    save_state()
     return RedirectResponse("/socio", status_code=303)
 
 @app.post("/login")
 def login(dni: str = Form(...), password: str = Form(...), db: Session = Depends(db_session)):
     user = db.query(User).filter_by(dni=norm_dni(dni), active=True).first()
     if not user or not verify_password(password, user.password_hash):
-        save_state()
         return RedirectResponse("/?error=1", status_code=303)
     log(db, user.name, "login", user.role)
     resp = RedirectResponse("/", status_code=303)
@@ -506,10 +458,8 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
     ensure_outing_editable(outing)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if existing and reservation_is_active(existing):
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if len(active) >= outing.max_crew:
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     if existing:
         existing.kind = "socio"
@@ -520,7 +470,6 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
         db.add(Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id))
     db.commit()
     log(db, user.name, "reserva socio", outing.title)
-    save_state()
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
@@ -529,21 +478,16 @@ def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni:
     ensure_outing_editable(outing)
     dni_clean = norm_dni(dni)
     if kind not in ("invitado", "menor") or not name.strip() or not dni_clean:
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if not self_row or not reservation_is_active(self_row):
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
     if existing and existing.responsible_user_id != user.id:
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
     if existing and reservation_is_active(existing):
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
     if len(active) >= outing.max_crew:
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     if existing:
         existing.person_name = name.strip()
@@ -555,7 +499,6 @@ def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni:
         db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status))
     db.commit()
     log(db, user.name, "agrega/reactiva invitado", f"{name.strip()} / {outing.title}")
-    save_state()
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_ok", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
@@ -592,7 +535,6 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
 
     db.commit()
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount}")
-    save_state()
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")
@@ -603,15 +545,12 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
     if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
     if reservation_is_active(r):
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if len(active) >= outing.max_crew:
-        save_state()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     reactivate_reservation(db, outing, r)
     db.commit()
     log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
-    save_state()
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
 
 @app.get("/captain", response_class=HTMLResponse)
@@ -634,7 +573,6 @@ def outing_status(outing_id: Optional[int] = Form(None), status: str = Form(...)
     outing.status = status
     db.commit()
     log(db, user.name, "estado salida", f"{outing.title}: {status}")
-    save_state()
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/captain/attendance/{rid}/{value}")
@@ -659,7 +597,6 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
 
     db.commit()
     log(db, user.name, "asistencia", f"{r.person_name}: {value} / {outing.title}")
-    save_state()
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 @app.post("/captain/close")
@@ -689,7 +626,6 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     outing.status = "Embarque cerrado"
     db.commit()
     log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present}")
-    save_state()
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -718,7 +654,6 @@ def new_outing(title: str = Form(...), destination: str = Form(...), departure_a
     db.commit()
     db.refresh(o)
     log(db, user.name, "nueva salida", f"{title.strip()} / salida vacía")
-    save_state()
     return RedirectResponse(f"/admin?outing_id={o.id}&msg=salida_creada", status_code=303)
 
 @app.get("/admin/manifest.csv")
@@ -746,10 +681,32 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
     return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
+
+@app.get("/admin/backup")
+def admin_backup(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    persist_json(db)
+    return FileResponse(
+        str(JSON_BACKUP_PATH),
+        media_type="application/json",
+        filename="fjord_vi_backup.json"
+    )
+
 @app.get("/admin/export_data.json")
 def export_data_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     data = json.dumps(export_state(db), ensure_ascii=False, indent=2)
     return Response(data, media_type="application/json", headers={"Content-Disposition": "attachment; filename=fjord_vi_backup.json"})
+
+
+@app.post("/admin/restore")
+async def admin_restore(file: UploadFile = File(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    raw = await file.read()
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(400, "Archivo JSON inválido")
+    import_state(db, data)
+    log(db, user.name, "restore json", "Datos restaurados desde backup JSON")
+    return RedirectResponse("/admin?msg=json_restaurado", status_code=303)
 
 @app.post("/admin/import_data")
 async def import_data_json(file: UploadFile = File(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
@@ -760,7 +717,6 @@ async def import_data_json(file: UploadFile = File(...), db: Session = Depends(d
         raise HTTPException(400, "Archivo JSON inválido")
     import_state(db, data)
     log(db, user.name, "import json", "Datos restaurados desde backup JSON")
-    save_state()
     return RedirectResponse("/admin?msg=json_importado", status_code=303)
 
 @app.post("/admin/demo_reset")
@@ -794,31 +750,4 @@ def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_r
     ])
     db.commit()
     log(db, user.name, "demo reset", "Datos demo V18 reiniciados")
-    save_state()
     return RedirectResponse("/admin?msg=demo_reset", status_code=303)
-
-
-
-@app.get("/admin/backup")
-def admin_backup():
-    save_state()
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(export_state(), f, ensure_ascii=False, indent=2, default=str)
-    return FileResponse(
-        DATA_FILE,
-        media_type="application/json",
-        filename="fjord_vi_backup.json"
-    )
-
-@app.post("/admin/restore")
-async def admin_restore(file: UploadFile):
-    content = await file.read()
-    data = json.loads(content.decode("utf-8"))
-    import_state(data)
-    save_state()
-    save_state()
-    return RedirectResponse("/admin?msg=Backup restaurado", status_code=303)
-
-# Load persisted JSON state on startup
-load_state()
