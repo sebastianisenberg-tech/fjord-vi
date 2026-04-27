@@ -491,7 +491,7 @@ def health():
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
     if not user:
-        return templates.TemplateResponse("login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
+        return templates.TemplateResponse(request, "login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
     if user.role == "captain":
         return RedirectResponse("/captain", status_code=303)
     if user.role == "admin":
@@ -519,12 +519,12 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     outings = visible_outings(db)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     if not outing:
-        return templates.TemplateResponse("socio.html", {"request": request, "user": user, "outing": None, "outings": outings, "msg": request.query_params.get("msg")})
+        return templates.TemplateResponse(request, "socio.html", {"request": request, "user": user, "outing": None, "outings": outings, "msg": request.query_params.get("msg")})
     mine = [r for r in reservations if r.dni == user.dni or r.responsible_user_id == user.id]
     has_self = any(r.dni == user.dni and reservation_is_active(r) for r in mine)
     self_reservation = next((r for r in mine if r.dni == user.dni), None)
     ready = readiness_state(outing, len(active))
-    return templates.TemplateResponse("socio.html", {
+    return templates.TemplateResponse(request, "socio.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "mine": mine, "has_self": has_self, "self_reservation": self_reservation,
         "active_count": len(active), "remaining": max(0, outing.max_crew - len(active)),
@@ -650,7 +650,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     outings = visible_outings(db)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     ready = readiness_state(outing, len(active), present)
-    return templates.TemplateResponse("captain.html", {
+    return templates.TemplateResponse(request, "captain.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
         "pending": pending, "socios_presentes": socios_presentes, "readiness": ready,
@@ -730,7 +730,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     ready = readiness_state(outing, len(active), present)
     counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
     active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
-    return templates.TemplateResponse("admin.html", {
+    return templates.TemplateResponse(request, "admin.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
