@@ -161,3 +161,45 @@ h1 { margin-bottom: 10px; font-size: 22px; }
   #tripulacion .row { grid-template-columns: 1fr 210px; align-items: center; }
   .actions { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* V4 - Header contraste fuerte Socio/Admin/Capitán */
+header.top,
+.top.topBlue,
+.top.topPurple,
+.top.topGreen {
+  background: linear-gradient(135deg, #0f766e 0%, #047857 52%, #064e3b 100%) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255,255,255,.16) !important;
+  box-shadow: 0 8px 24px rgba(6,78,59,.22) !important;
+}
+
+header.top b,
+header.top small,
+.top.topBlue b,
+.top.topBlue small,
+.top.topPurple b,
+.top.topPurple small,
+.top.topGreen b,
+.top.topGreen small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.18) !important;
+}
+
+header.top a,
+.top.topBlue a,
+.top.topPurple a,
+.top.topGreen a {
+  color: #ffffff !important;
+  background: rgba(255,255,255,.20) !important;
+  border: 1px solid rgba(255,255,255,.34) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+header.top a:active,
+.top.topBlue a:active,
+.top.topPurple a:active,
+.top.topGreen a:active {
+  background: rgba(255,255,255,.30) !important;
+}
