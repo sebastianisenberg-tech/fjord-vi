@@ -52,6 +52,8 @@ class User(Base):
     name = Column(String, nullable=False)
     dni = Column(String, unique=True, nullable=False)
     member_no = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
     role = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     active = Column(Boolean, default=True)
@@ -112,6 +114,17 @@ def ensure_schema():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE reservations ADD COLUMN birth_date VARCHAR"))
 
+    try:
+        user_columns = [c["name"] for c in inspector.get_columns("users")]
+    except Exception:
+        user_columns = []
+
+    with engine.begin() as conn:
+        if "email" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
+        if "phone" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
+
 ensure_schema()
 app = FastAPI(title="Fjord VI V19 Multi Salida")
 
@@ -126,7 +139,15 @@ def db_session():
         db.close()
 
 def norm_dni(v: str) -> str:
-    return "".join(ch for ch in (v or "") if ch.isdigit())
+    """Normaliza DNI, pasaporte o documento extranjero.
+
+    Mantiene letras y números, elimina puntos, espacios, guiones y símbolos.
+    Ejemplos:
+    - 41.325.286 -> 41325286
+    - AB 123456 -> AB123456
+    - P-9087-X -> P9087X
+    """
+    return "".join(ch for ch in (v or "").upper() if ch.isalnum())
 
 
 def canonical_kind(kind: str) -> str:
@@ -205,7 +226,8 @@ def export_state(db: Session) -> dict:
         "version": VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "users": [
-            {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no, "role": u.role,
+            {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no,
+             "email": u.email or "", "phone": u.phone or "", "role": u.role,
              "password_hash": u.password_hash, "active": bool(u.active)}
             for u in db.query(User).order_by(User.id).all()
         ],
@@ -245,7 +267,8 @@ def import_state(db: Session, data: dict):
     db.commit()
     for u in data.get("users", []):
         db.add(User(id=u.get("id"), name=u.get("name") or "", dni=norm_dni(u.get("dni") or ""),
-                    member_no=u.get("member_no"), role=u.get("role") or "socio",
+                    member_no=u.get("member_no"), email=u.get("email") or None, phone=u.get("phone") or None,
+                    role=u.get("role") or "socio",
                     password_hash=u.get("password_hash") or hash_password("demo1234"), active=bool(u.get("active", True))))
     db.commit()
     for o in data.get("outings", []):
@@ -397,9 +420,9 @@ def seed():
     try:
         if db.query(User).count() == 0:
             db.add_all([
-                User(name="Juan Pérez", dni="20123456", member_no="1234", role="socio", password_hash=hash_password("demo1234")),
-                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", role="captain", password_hash=hash_password("demo1234")),
-                User(name="Admin Club", dni="27999111", member_no="ADM-01", role="admin", password_hash=hash_password("demo1234")),
+                User(name="Juan Pérez", dni="20123456", member_no="1234", email="juan@example.com", phone="", role="socio", password_hash=hash_password("demo1234")),
+                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234")),
+                User(name="Admin Club", dni="27999111", member_no="ADM-01", email="admin@example.com", phone="", role="admin", password_hash=hash_password("demo1234")),
             ])
             db.commit()
 
@@ -494,7 +517,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
+    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.head("/")
 def head_index():
@@ -808,35 +831,6 @@ def outing_status(
 
     return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
 
-
-    # Reapertura controlada: permite corregir una salida cerrada por error
-    # o volver a embarque si la operación sigue viva.
-    if old_status == "Embarque cerrado" and status in ("En embarque", "Demorada", "Reprogramada", "En reservas"):
-        outing.status = status
-        db.commit()
-        log(db, user.name, "reabre/cambia salida cerrada", f"{outing.title}: {old_status} -> {status}")
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
-
-    # Cualquier salida cancelada puede reabrirse solo por capitán/admin.
-    if old_status == "Cancelada por capitán" and status in ("En embarque", "Demorada", "Reprogramada", "En reservas"):
-        outing.status = status
-        db.commit()
-        log(db, user.name, "reabre salida cancelada", f"{outing.title}: {old_status} -> {status}")
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
-
-    # Realizada es final administrativo, salvo cancelación expresa por capitán/admin.
-    if old_status == "Realizada" and status not in ("Cancelada por capitán",):
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
-
-    # Evita usar "Embarque cerrado" como estado manual; cerrar debe liquidar.
-    if status == "Embarque cerrado":
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=usar_cierre", status_code=303)
-
-    outing.status = status
-    db.commit()
-    log(db, user.name, "estado salida", f"{outing.title}: {old_status} -> {status}")
-    return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
-
 @app.post("/captain/attendance/{rid}/{value}")
 def attendance(rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     r = db.get(Reservation, rid)
@@ -893,8 +887,141 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
         "total_charges": total_charges, "logs": logs, "readiness": ready,
+        "users": db.query(User).order_by(User.name.asc()).all(),
         "msg": request.query_params.get("msg")
     })
+
+
+@app.post("/admin/create_user")
+def create_user(
+    name: str = Form(...),
+    dni: str = Form(...),
+    member_no: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    role: str = Form("socio"),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    dni_clean = norm_dni(dni)
+    if not name.strip() or not dni_clean:
+        return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
+
+    if role not in ("socio", "captain", "admin"):
+        return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
+
+    existing = db.query(User).filter_by(dni=dni_clean).first()
+    if existing:
+        return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
+
+    new_user = User(
+        name=name.strip(),
+        dni=dni_clean,
+        member_no=member_no.strip() or None,
+        email=email.strip() or None,
+        phone=phone.strip() or None,
+        role=role,
+        password_hash=hash_password("demo1234"),
+        active=True
+    )
+    db.add(new_user)
+    db.commit()
+    log(db, user.name, "alta usuario", f"{new_user.name} / {new_user.dni} / {new_user.role}")
+    return RedirectResponse("/admin?msg=usuario_creado", status_code=303)
+
+
+@app.post("/admin/reset_password/{uid}")
+def reset_password(
+    uid: int,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    target = db.get(User, uid)
+    if not target:
+        raise HTTPException(404, "Usuario inexistente")
+
+    target.password_hash = hash_password("demo1234")
+    db.commit()
+    log(db, user.name, "reset password", f"{target.name} / {target.dni}")
+    return RedirectResponse("/admin?msg=clave_reseteada", status_code=303)
+
+
+@app.post("/admin/toggle_user/{uid}")
+def toggle_user(
+    uid: int,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    target = db.get(User, uid)
+    if not target:
+        raise HTTPException(404, "Usuario inexistente")
+
+    if target.id == user.id and target.active:
+        return RedirectResponse("/admin?msg=no_puede_desactivarse", status_code=303)
+
+    target.active = not bool(target.active)
+    db.commit()
+    log(db, user.name, "toggle usuario", f"{target.name} / activo={target.active}")
+    return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
+
+
+@app.post("/admin/update_user/{uid}")
+def update_user(
+    uid: int,
+    name: str = Form(...),
+    dni: str = Form(...),
+    member_no: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    role: str = Form("socio"),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    target = db.get(User, uid)
+    if not target:
+        raise HTTPException(404, "Usuario inexistente")
+
+    dni_clean = norm_dni(dni)
+    if not name.strip() or not dni_clean:
+        return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
+
+    if role not in ("socio", "captain", "admin"):
+        return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
+
+    existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first()
+    if existing:
+        return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
+
+    target.name = name.strip()
+    target.dni = dni_clean
+    target.member_no = member_no.strip() or None
+    target.email = email.strip() or None
+    target.phone = phone.strip() or None
+    target.role = role
+    db.commit()
+    log(db, user.name, "edita usuario", f"{target.name} / {target.dni} / {target.role}")
+    return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
+
+
+@app.get("/admin/users.json")
+def users_json(
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    users = db.query(User).order_by(User.name.asc()).all()
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "dni": u.dni,
+            "member_no": u.member_no or "",
+            "email": u.email or "",
+            "phone": u.phone or "",
+            "role": u.role,
+            "active": bool(u.active)
+        }
+        for u in users
+    ]
 
 @app.post("/admin/new_outing")
 def new_outing(title: str = Form(...), destination: str = Form(...), departure_at: str = Form(...), guest_fee: float = Form(INVITED_FEE), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
