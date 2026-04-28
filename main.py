@@ -555,10 +555,32 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
-def add_guest(outing_id: Optional[int] = Form(None), name: Optional[str] = Form(None), nombre: Optional[str] = Form(None), dni: Optional[str] = Form(None), kind: str = Form("invitado"), birth_date: Optional[str] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+async def add_guest(
+    request: Request,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    form = await request.form()
+
+    outing_id_raw = form.get("outing_id")
+    name = form.get("name")
+    nombre = form.get("nombre")
+    dni = form.get("dni")
+    kind = form.get("kind", "invitado")
+    birth_date = form.get("birth_date")
+
+    try:
+        outing_id = int(outing_id_raw) if outing_id_raw else None
+    except Exception:
+        outing_id = None
+
     outing, reservations, active, *_ = outing_context(db, outing_id)
+    if not outing:
+        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
+
     ensure_outing_editable(outing)
-    # Compatibilidad de formulario:
+
+    # Compatibilidad total de formulario:
     # socio.html nuevo envía "name"; versiones anteriores podían enviar "nombre".
     person_name = (name or nombre or "").strip()
     dni_clean = norm_dni(dni or "")
@@ -568,21 +590,28 @@ def add_guest(outing_id: Optional[int] = Form(None), name: Optional[str] = Form(
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
 
     if kind == "hijo_menor":
-        # Solo se pide fecha para esta categoría especial. No se pide a invitados adultos.
+        # Solo se pide fecha para esta categoría especial.
+        # Valida que sea menor de 18 años a la fecha de salida.
         if not birth_date or not is_under_18_on(birth_date, outing.departure_at):
             return RedirectResponse(f"/socio?outing_id={outing.id}&msg=hijo_menor_invalido", status_code=303)
     else:
         birth_date = None
+
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if not self_row or not reservation_is_active(self_row):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
+
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
+
     if existing and existing.responsible_user_id != user.id:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
+
     if existing and reservation_is_active(existing):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
+
     if len(active) >= outing.max_crew:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
+
     if existing:
         existing.person_name = person_name
         existing.kind = kind
@@ -591,9 +620,19 @@ def add_guest(outing_id: Optional[int] = Form(None), name: Optional[str] = Form(
         reactivate_reservation(db, outing, existing)
     else:
         status = "Hijo menor de socio no socio" if kind == "hijo_menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
-        db.add(Reservation(outing_id=outing.id, person_name=person_name, dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status, birth_date=birth_date))
+        db.add(Reservation(
+            outing_id=outing.id,
+            person_name=person_name,
+            dni=dni_clean,
+            kind=kind,
+            responsible_user_id=user.id,
+            status=status,
+            birth_date=birth_date
+        ))
+
     db.commit()
     log(db, user.name, "agrega/reactiva invitado", f"{person_name} / {outing.title}")
+
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_ok", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
