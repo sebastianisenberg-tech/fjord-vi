@@ -349,6 +349,7 @@ def active_reservations(rows):
         r for r in rows
         if r.cancelled_at is None
         and r.status != "Cancelado"
+        and not is_captain_cancelled(r)
         and r.attendance not in ("Ausente", "No embarcable")
     ]
 
@@ -356,6 +357,7 @@ def reservation_is_active(r: Reservation) -> bool:
     return (
         r.cancelled_at is None
         and r.status != "Cancelado"
+        and not is_captain_cancelled(r)
         and r.attendance not in ("Ausente", "No embarcable")
     )
 
@@ -420,14 +422,33 @@ def is_closed_outing(outing: Outing) -> bool:
     return bool(outing and outing.status == "Embarque cerrado")
 
 
+def is_captain_cancelled(r: Reservation) -> bool:
+    reason = (getattr(r, "cancel_reason", "") or "").strip().lower()
+    status = (getattr(r, "status", "") or "").strip().lower()
+    text = f"{reason} {status}"
+    return ("cancelado por capitán" in text or "cancelada por capitán" in text or "cancelado por capitan" in text or "cancelada por capitan" in text)
+
+
+def effective_charge(r: Reservation) -> float:
+    if is_captain_cancelled(r):
+        return 0.0
+    return float(getattr(r, "charge_amount", 0) or 0)
+
+
 def reservation_view(outing: Outing, r: Reservation) -> dict:
     k = canonical_kind(r.kind)
     raw_attendance = r.attendance or "Por confirmar"
-    cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
-    charge = float(r.charge_amount or 0)
+    captain_cancelled = is_captain_cancelled(r)
+    cancelled = bool(r.cancelled_at) or r.status == "Cancelado" or captain_cancelled
+    charge = effective_charge(r)
     closed = is_closed_outing(outing)
 
-    if cancelled:
+    if captain_cancelled:
+        estado_fisico = "Cancelado por capitán"
+        estado_reglamentario = "No embarcado"
+        level = "bad"
+        alert = "Cancelado por capitán"
+    elif cancelled:
         estado_fisico = "Cancelado"
         estado_reglamentario = "No embarcado"
         level = "bad"
@@ -502,7 +523,7 @@ def charge_summary(rows) -> dict:
     minor_items = []
     total = 0.0
     for r in rows:
-        charge = float(r.charge_amount or 0)
+        charge = effective_charge(r)
         if charge <= 0:
             continue
         total += charge
@@ -868,6 +889,12 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     for r in reservations:
         k = canonical_kind(r.kind)
 
+        if is_captain_cancelled(r):
+            r.charge_amount = 0
+            r.attendance = "Ausente"
+            r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
+            continue
+
         if r.cancelled_at is not None:
             if r.charge_amount is None:
                 r.charge_amount = 0
@@ -999,9 +1026,9 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
 def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     outings = visible_outings(db)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
-    charges = db.query(Reservation).filter(Reservation.outing_id == outing.id, Reservation.charge_amount > 0).all() if outing else []
+    charges = [r for r in db.query(Reservation).filter(Reservation.outing_id == outing.id).all() if effective_charge(r) > 0] if outing else []
     logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(15).all()
-    total_charges = sum(float(r.charge_amount or 0) for r in charges)
+    total_charges = sum(effective_charge(r) for r in charges)
     ready = readiness_state(outing, len(active), present)
     counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
     active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
@@ -1177,7 +1204,7 @@ def manifest_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessi
     writer = csv.writer(output, delimiter=';')
     writer.writerow(["salida_id", "salida", "fecha", "nombre", "dni", "tipo", "estado_reserva", "asistencia", "cargo", "responsable_id", "cancelado_en"])
     for r in reservations:
-        writer.writerow([outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, canonical_kind(r.kind), r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
+        writer.writerow([outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, canonical_kind(r.kind), r.status, r.attendance, effective_charge(r), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
     filename = f"manifest_fjord_vi_salida_{outing.id}.csv"
     return csv_response_excel(output, filename)
 
@@ -1187,11 +1214,14 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
     output = io.StringIO()
     writer = csv.writer(output, delimiter=';')
     writer.writerow(["salida_id", "salida", "fecha_liquidacion", "nombre", "dni", "tipo", "importe", "motivo"])
-    q = db.query(Reservation).filter(Reservation.charge_amount > 0)
+    q = db.query(Reservation)
     if outing:
         q = q.filter(Reservation.outing_id == outing.id)
     for r in q.all():
-        writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, canonical_kind(r.kind), float(r.charge_amount), r.cancel_reason or r.attendance])
+        charge = effective_charge(r)
+        if charge <= 0:
+            continue
+        writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, canonical_kind(r.kind), charge, r.cancel_reason or r.attendance])
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
     return csv_response_excel(output, filename)
 
