@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", toggleHijoMenorField);
 </script>
 </head>
 <body><div class="app">
-<header class="top topBlue"><div><b>FJORD VI</b><small>Paseos de fin de semana</small></div><a href="/logout">Salir</a></header>
+<header class="top topBlue"><div><b>FJORD VI</b><small>Paseos de fin de semana</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
 {% if msg %}<div class="toast">{% if msg=='cupo_completo' %}Cupo completo: no quedan lugares activos en esta salida.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable en esta salida.{% elif msg=='duplicado' %}Ese DNI ya tiene una reserva activa en esta salida.{% elif msg=='datos_invalidos' %}Revisá nombre, DNI y tipo de pasajero.{% elif msg=='cancelado' %}Reserva cancelada correctamente en esta salida.{% elif msg=='reserva_ok' %}Reserva de socio registrada en esta salida.{% elif msg=='invitado_ok' %}Invitado agregado o reactivado en esta salida.{% elif msg=='reactivado' %}Reserva reactivada correctamente en esta salida.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa en esta salida.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 

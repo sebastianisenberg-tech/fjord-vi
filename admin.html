@@ -3,7 +3,7 @@
 <style>.dangerBtn{background:#991b1b!important;color:#fff!important;border:0!important}</style>
 </head>
 <body><div class="app wide">
-<header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout">Salir</a></header>
+<header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
 {% if msg %}<div class="toast">
 {% if msg=='salida_creada' %}Salida creada correctamente, sin tripulantes precargados.
@@ -18,7 +18,7 @@
 {% else %}Operación registrada.
 {% endif %}</div>{% endif %}
 
-<section class="heroCard purpleHero"><div><span class="eyebrow">V24 operativo auditable</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
+<section class="heroCard purpleHero"><div><span class="eyebrow">V25 consolidación operativa</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
 <section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
 {% if outing %}<section class="notice {{readiness.level}}"><b>{{readiness.detail}}</b><span>Los datos visibles pertenecen solo a la salida seleccionada.</span></section>{% endif %}
 
@@ -31,7 +31,15 @@
 <section class="card auditBox" id="estado-final">
   <div class="cardTitle"><div><span class="eyebrow">Acta de salida</span><h2>{{final_summary.label}}</h2></div><span class="pill {% if final_summary.closed %}ok{% else %}warn{% endif %}">{{final_summary.liquidacion}}</span></div>
   <p>{{final_summary.detail}}</p>
+  <div class="actaCounters"><div><span>Embarcados</span><b>{{acta.embarked_count}}</b></div><div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div><div><span>Pendientes</span><b>{{acta.pending_count}}</b></div><div><span>Cargos</span><b>$ {{acta.total_label}}</b></div></div>
   {% if not final_summary.closed and charge_summary.total > 0 %}<div class="alert warn">Hay cargos preliminares por asistencia/cancelaciones. La liquidación definitiva se consolida al cierre del capitán.</div>{% endif %}
+</section>
+
+<section class="card actaBox" id="acta-detalle">
+  <div class="cardTitle"><div><span class="eyebrow">Resumen final</span><h2>Acta operativa</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV completo</a></div>
+  <div class="actaSection ok"><h3>Embarcados</h3>{% if acta.embarked %}{% for i in acta.embarked %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}{% if i.charge > 0 %} · Cargo $ {{i.charge_label}}{% endif %}</small></div>{% endfor %}{% else %}<div class="empty">Sin embarcados confirmados.</div>{% endif %}</div>
+  <div class="actaSection bad"><h3>No embarcados</h3>{% if acta.not_embarked %}{% for i in acta.not_embarked %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}{% if i.charge > 0 %} · Cargo $ {{i.charge_label}}{% else %} · Sin cargo{% endif %}</small></div>{% endfor %}{% else %}<div class="empty">Sin no embarcados.</div>{% endif %}</div>
+  {% if acta.pending %}<div class="actaSection warn"><h3>Pendientes</h3>{% for i in acta.pending %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}</small></div>{% endfor %}</div>{% endif %}
 </section>
 {% endif %}
 

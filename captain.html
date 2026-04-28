@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Capitán · Fjord VI</title></head>
 <body><div class="app">
-<header class="top topGreen"><div><b>CAPITÁN</b><small>Control de embarque</small></div><a href="/logout">Salir</a></header>
+<header class="top topGreen"><div><b>CAPITÁN</b><small>Control de embarque</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
 {% if msg %}<div class="toast">{% if msg=='cierre_ok' %}Embarque cerrado y cargos recalculados para esta salida.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='estado_actualizado' %}Estado operativo actualizado.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 
@@ -27,6 +27,7 @@
 <section class="card auditBox" id="estado-final">
   <div class="cardTitle"><div><span class="eyebrow">Acta operativa</span><h2>{{final_summary.label}}</h2></div><span class="pill {% if final_summary.closed %}ok{% else %}warn{% endif %}">{{final_summary.liquidacion}}</span></div>
   <p>{{final_summary.detail}}</p>
+  <div class="actaCounters"><div><span>Embarcados</span><b>{{acta.embarked_count}}</b></div><div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div><div><span>Pendientes</span><b>{{acta.pending_count}}</b></div><div><span>Cargos</span><b>$ {{acta.total_label}}</b></div></div>
   {% if not final_summary.closed and charge_summary.total > 0 %}<div class="alert warn">Hay cargos preliminares por cambios de asistencia. Se consolidan al cerrar embarque.</div>{% endif %}
 </section>
 
@@ -85,7 +86,7 @@
 </section>
 
 <section class="card" id="cargos-capitan">
-  <div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div><span class="pill warn">Total $ {{charge_summary.total_label}}</span></div>
+  <div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div><span class="pill {% if charge_summary.total > 0 %}warn{% else %}ok{% endif %}">Total $ {{charge_summary.total_label}}</span></div>
   {% if charge_summary.total == 0 %}<div class="empty">Sin cargos generados hasta ahora.</div>{% endif %}
   {% if charge_summary.invitados %}<h3>Invitados</h3>{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% endif %}
   {% if charge_summary.socios %}<h3>Socios</h3>{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% endif %}

@@ -23,3 +23,13 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Corrige la detección visual de salida cerrada usando `Embarque cerrado` como estado real.
 - Mantiene la reapertura por capitán, con trazabilidad por auditoría.
 - No cambia estructura de base de datos ni requiere migración.
+
+## V25 consolidación operativa
+- Agrega acta operativa en Admin con embarcados, no embarcados, pendientes y total de cargos.
+- Agrega contadores de acta también en Capitán para lectura rápida durante la salida.
+- Mejora el CSV de manifest con estado físico, condición reglamentaria, motivo visible y cargo efectivo.
+- Mejora el CSV de cargos con motivo calculado desde la misma lógica central de `reservation_view()`.
+- Corrige textos residuales: cancelado por capitán queda como no embarcado y sin cargo visible.
+- Agranda y mejora el botón `Salir` en todas las pantallas.
+- Agrega estilos visuales para acta, contadores, badges y lectura mobile.
+- No cambia base de datos ni requiere migraciones.

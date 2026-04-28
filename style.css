@@ -315,3 +315,84 @@ header.top a:active,
 @media (min-width: 640px) {
   .stateGrid { grid-template-columns: 1fr 1fr; }
 }
+
+/* V25 consolidación: acta final, salida visible y lectura operativa */
+.logoutBtn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 36px !important;
+  padding: 8px 16px !important;
+  border-radius: 999px !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: .2px !important;
+  text-decoration: none !important;
+}
+.actaCounters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.actaCounters > div {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+}
+.actaCounters span {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .45px;
+}
+.actaCounters b {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+  line-height: 1;
+}
+.actaBox h3,
+#liquidacion h3,
+#cargos-capitan h3 {
+  margin: 14px 0 6px;
+  font-size: 14px;
+  color: #0f172a;
+}
+.actaSection {
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 10px;
+  margin-top: 10px;
+  background: #fff;
+}
+.actaSection.ok { border-left: 5px solid var(--green); }
+.actaSection.bad { border-left: 5px solid var(--danger); }
+.actaSection.warn { border-left: 5px solid var(--warn); }
+.actaItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.actaItem:last-child { border-bottom: 0; }
+.actaItem b { font-size: 13.5px; line-height: 1.2; }
+.actaItem small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.manifestCard.critical.bad,
+.manifestCard.critical .badgeAlert.bad {
+  font-weight: 900;
+}
+.badgeAlert.ok { background: var(--green-soft); color: var(--green); }
+.badgeAlert.bad { background: var(--danger-soft); color: var(--danger); }
+.badgeAlert.warn { background: var(--warn-soft); color: var(--warn); }
+@media (min-width: 640px) {
+  .actaCounters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
