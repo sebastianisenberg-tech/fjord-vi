@@ -27,6 +27,50 @@
 .metaText {
   color: #334155;
 }
+
+/* V22 admin: usuarios más visibles en mobile */
+.userCard {
+  border-left: 4px solid #64748b;
+  padding-left: 10px;
+}
+.userHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.userName {
+  font-weight: 900;
+  font-size: 15px;
+  color: #0f172a;
+  line-height: 1.15;
+}
+.userRole {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.userRole.socio {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.userRole.captain {
+  background: #dcfce7;
+  color: #166534;
+}
+.userRole.admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+.userMeta {
+  font-size: 12px;
+  color: #475569;
+  margin-top: 3px;
+  line-height: 1.35;
+}
 </style>
 
 </head>
@@ -86,16 +130,19 @@
 
   {% if users is defined and users|length > 0 %}
     {% for u in users %}
-    <div class="row compact {% if not u.active %}disabled{% endif %}">
+    <div class="row compact userCard {% if not u.active %}disabled{% endif %}">
       <div>
-        <b>{{u.name}}</b>
-        <small>
-          {{u.role}} · Doc {{u.dni}}
+        <div class="userHeader">
+          <span class="userName">{{u.name}}</span>
+          <span class="userRole {{u.role}}">{{u.role}}</span>
+        </div>
+        <div class="userMeta">
+          Doc {{u.dni}}
           {% if u.member_no %} · Socio {{u.member_no}}{% endif %}
           {% if u.email %} · {{u.email}}{% endif %}
           {% if u.phone %} · {{u.phone}}{% endif %}
           · {% if u.active %}activo{% else %}inactivo{% endif %}
-        </small>
+        </div>
       </div>
       <div class="actions">
         <form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave de {{u.name}} a demo1234?');">
