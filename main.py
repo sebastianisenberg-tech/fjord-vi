@@ -555,13 +555,16 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
-def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni: str = Form(...), kind: str = Form("invitado"), birth_date: Optional[str] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def add_guest(outing_id: Optional[int] = Form(None), name: Optional[str] = Form(None), nombre: Optional[str] = Form(None), dni: Optional[str] = Form(None), kind: str = Form("invitado"), birth_date: Optional[str] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
-    dni_clean = norm_dni(dni)
+    # Compatibilidad de formulario:
+    # socio.html nuevo envía "name"; versiones anteriores podían enviar "nombre".
+    person_name = (name or nombre or "").strip()
+    dni_clean = norm_dni(dni or "")
     kind = canonical_kind(kind)
 
-    if kind not in ("invitado", "hijo_menor") or not name.strip() or not dni_clean:
+    if kind not in ("invitado", "hijo_menor") or not person_name or not dni_clean:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
 
     if kind == "hijo_menor":
@@ -581,16 +584,16 @@ def add_guest(outing_id: Optional[int] = Form(None), name: str = Form(...), dni:
     if len(active) >= outing.max_crew:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
     if existing:
-        existing.person_name = name.strip()
+        existing.person_name = person_name
         existing.kind = kind
         existing.birth_date = birth_date
         existing.responsible_user_id = user.id
         reactivate_reservation(db, outing, existing)
     else:
         status = "Hijo menor de socio no socio" if kind == "hijo_menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
-        db.add(Reservation(outing_id=outing.id, person_name=name.strip(), dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status, birth_date=birth_date))
+        db.add(Reservation(outing_id=outing.id, person_name=person_name, dni=dni_clean, kind=kind, responsible_user_id=user.id, status=status, birth_date=birth_date))
     db.commit()
-    log(db, user.name, "agrega/reactiva invitado", f"{name.strip()} / {outing.title}")
+    log(db, user.name, "agrega/reactiva invitado", f"{person_name} / {outing.title}")
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_ok", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
