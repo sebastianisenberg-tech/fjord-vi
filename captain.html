@@ -33,14 +33,10 @@
   <form class="gridForm captainStatus" method="post" action="/captain/outing_status">
     <input type="hidden" name="outing_id" value="{{outing.id}}">
     <select class="input" name="status">
-      <option value="En embarque" {% if outing.status == 'En embarque' %}selected{% endif %}>En embarque</option>
-      <option value="Demorada" {% if outing.status == 'Demorada' %}selected{% endif %}>Demorar salida</option>
-      <option value="Reprogramada" {% if outing.status == 'Reprogramada' %}selected{% endif %}>Reprogramar</option>
-      <option value="Cerrar embarque y liquidar">Cerrar embarque y liquidar</option>
-      <option value="Cancelada por capitán" {% if outing.status == 'Cancelada por capitán' %}selected{% endif %}>Cancelar salida por capitán</option>
-      <option value="Programada" {% if outing.status == 'Programada' %}selected{% endif %}>Programada</option>
-      <option value="En reservas" {% if outing.status == 'En reservas' %}selected{% endif %}>En reservas</option>
-    </select>
+  <option value="En reservas" {% if outing.status == 'En reservas' %}selected{% endif %}>Operativa / Reabrir</option>
+  <option value="Embarque cerrado" {% if outing.status == 'Embarque cerrado' %}selected{% endif %}>Cerrar lista y embarcar</option>
+  <option value="Cancelada por capitán" {% if outing.status == 'Cancelada por capitán' %}selected{% endif %}>Cancelar salida</option>
+</select>
     <button class="btn green">Actualizar estado</button>
   </form>
 </section>
