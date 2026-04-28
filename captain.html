@@ -34,7 +34,7 @@
     <input type="hidden" name="outing_id" value="{{outing.id}}">
     <select class="input" name="status">
   <option value="En reservas" {% if outing.status == 'En reservas' %}selected{% endif %}>Operativa / Reabrir</option>
-  <option value="Embarque cerrado" {% if outing.status == 'Embarque cerrado' %}selected{% endif %}>Cerrar lista y embarcar</option>
+  <option value="Cerrar embarque y liquidar">Cerrar lista y liquidar</option>
   <option value="Cancelada por capitán" {% if outing.status == 'Cancelada por capitán' %}selected{% endif %}>Cancelar salida</option>
 </select>
     <button class="btn green">Actualizar estado</button>
