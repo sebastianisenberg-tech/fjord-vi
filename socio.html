@@ -69,7 +69,15 @@ document.addEventListener("DOMContentLoaded", toggleHijoMenorField);
 
 {% if outing %}
 <section class="heroCard">
-  <div><span class="eyebrow">Hola, {{user.name.split(' ')[0]}}</span><h1>{{outing.title}}</h1><p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p></div>
+  <div>
+    <span class="eyebrow">Sesión activa</span>
+    <h2 style="margin:0;font-size:22px;font-weight:900;line-height:1.15;">{{user.name}}</h2>
+    <small class="muted" style="display:block;margin-top:3px;font-size:13px;">
+      {% if user.member_no %}Socio Nº {{user.member_no}} · {% endif %}Documento {{user.dni}}
+    </small>
+    <h1 style="margin-top:10px;">{{outing.title}}</h1>
+    <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
+  </div>
   <span class="pill {{readiness.level}}">{{readiness.label}}</span>
 </section>
 <section class="stats">
@@ -130,7 +138,7 @@ document.addEventListener("DOMContentLoaded", toggleHijoMenorField);
   <form class="gridForm guestForm" method="post" action="/socio/add_guest">
     <input type="hidden" name="outing_id" value="{{outing.id}}">
     <input class="input" name="name" placeholder="Nombre y apellido">
-    <input class="input" name="dni" placeholder="DNI">
+    <input class="input" name="dni" placeholder="DNI / Pasaporte / Documento">
     <select id="guest_kind" name="kind" onchange="toggleHijoMenorField()"  class="input" >
       <option value="invitado">Invitado</option>
       <option value="hijo_menor">Hijo menor de socio no socio</option>
@@ -143,6 +151,9 @@ document.addEventListener("DOMContentLoaded", toggleHijoMenorField);
       </div>
     </div>
 <button class="btn light">Agregar invitado o menor</button>
+    <div class="muted" style="font-size:12px;margin-top:6px;">
+      El documento se guarda sin puntos, espacios ni guiones. Acepta letras y números para pasaportes o documentos extranjeros.
+    </div>
   </form>
   {% elif not closed and not has_self %}
   <div class="empty">Para agregar invitados, primero tenés que estar anotado como socio titular en esta salida.</div>
