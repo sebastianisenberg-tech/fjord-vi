@@ -336,9 +336,21 @@ def reservation_is_active(r: Reservation) -> bool:
         and r.attendance not in ("Ausente", "No embarcable")
     )
 
-def ensure_outing_editable(outing: Outing):
-    if outing and outing.status == "Embarque cerrado":
+def outing_is_closed(outing: Optional[Outing]) -> bool:
+    return bool(outing and outing.status == "Embarque cerrado")
+
+def outing_is_past(outing: Optional[Outing]) -> bool:
+    # Para acciones del socio, una salida con fecha/hora pasada deja de ser operable.
+    # Puede quedar visible como historial, pero no admite altas, bajas ni reactivaciones.
+    return bool(outing and outing.departure_at < datetime.utcnow())
+
+def ensure_outing_editable(outing: Optional[Outing]):
+    if not outing:
+        raise HTTPException(status_code=400, detail="Salida inexistente")
+    if outing_is_closed(outing):
         raise HTTPException(status_code=400, detail="La salida ya fue cerrada")
+    if outing_is_past(outing):
+        raise HTTPException(status_code=400, detail="La salida ya pasó")
 
 def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
     r.cancelled_at = None
@@ -453,7 +465,15 @@ def selected_outing(db: Session, outing_id: Optional[int] = None):
     if outing_id:
         outing = db.get(Outing, outing_id)
     else:
-        outing = db.query(Outing).filter(Outing.status != "Embarque cerrado").order_by(Outing.departure_at.asc()).first()
+        now = datetime.utcnow()
+        # Por defecto se abre la próxima salida futura no cerrada.
+        # Si no existe, se muestra la salida más reciente como historial.
+        outing = (
+            db.query(Outing)
+            .filter(Outing.status != "Embarque cerrado", Outing.departure_at >= now)
+            .order_by(Outing.departure_at.asc())
+            .first()
+        )
         outing = outing or db.query(Outing).order_by(Outing.departure_at.desc()).first()
     if not outing:
         return None
@@ -486,7 +506,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
+    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "operability_guard": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.head("/")
 def head_index():
@@ -538,7 +558,9 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
         "cutoff_at": cutoff_at(outing), "cancel_deadline": cancellation_deadline(outing),
         "fee": float(outing.guest_fee), "msg": request.query_params.get("msg"),
-        "closed": outing.status == "Embarque cerrado"
+        "closed": outing.status == "Embarque cerrado",
+        "past": outing_is_past(outing),
+        "operable": (not outing_is_closed(outing) and not outing_is_past(outing))
     })
 
 @app.post("/socio/add_self")
