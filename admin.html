@@ -33,7 +33,19 @@
 <body><div class="app wide">
 <header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout">Salir</a></header>
 <main class="wrap">
-{% if msg %}<div class="toast">{% if msg=='salida_creada' %}Salida creada correctamente, sin tripulantes precargados.{% elif msg=='demo_reset' %}Datos demo reiniciados.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+{% if msg %}<div class="toast">
+{% if msg=='salida_creada' %}Salida creada correctamente, sin tripulantes precargados.
+{% elif msg=='demo_reset' %}Datos demo reiniciados.
+{% elif msg=='usuario_creado' %}Usuario creado correctamente. Clave inicial: demo1234.
+{% elif msg=='usuario_existente' %}Ya existe un usuario con ese documento.
+{% elif msg=='usuario_actualizado' %}Usuario actualizado correctamente.
+{% elif msg=='clave_reseteada' %}Clave reseteada a demo1234.
+{% elif msg=='datos_usuario_invalidos' %}Revisá nombre y documento del usuario.
+{% elif msg=='rol_invalido' %}Rol inválido.
+{% elif msg=='no_puede_desactivarse' %}No podés desactivar tu propio usuario administrador.
+{% else %}Operación registrada.
+{% endif %}
+</div>{% endif %}
 <section class="heroCard purpleHero"><div><span class="eyebrow">V19 multi-salida</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
 <section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
 {% if outing %}<section class="notice {{readiness.level}}"><b>{{readiness.detail}}</b><span>Los datos visibles pertenecen solo a la salida seleccionada.</span></section>{% endif %}
@@ -47,6 +59,61 @@
 <section class="card" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in reservations %}<div class="row {% if r.cancelled_at %}disabled{% endif %}"><div><b>{{r.person_name}}</b><small>DNI {{r.dni}} · {{r.kind}} · {{r.status}} · {{r.attendance}}</small></div><span class="pill {% if r.charge_amount %}warn{% endif %}">{% if r.charge_amount %}$ {{r.charge_amount|money}}{% else %}sin cargo{% endif %}</span></div>{% endfor %}{% if reservations|length == 0 %}<div class="empty">Esta salida todavía no tiene tripulantes anotados.</div>{% endif %}</section>
 <section class="card" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Liquidaciones de esta salida</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in charges %}<div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · DNI {{r.dni}} · {{r.cancel_reason or r.attendance}}</small></div><b>$ {{r.charge_amount|money}}</b></div>{% endfor %}{% if charges|length == 0 %}<div class="empty">Sin cargos generados para esta salida.</div>{% endif %}</section>
 {% endif %}
+
+<section class="card" id="usuarios">
+  <div class="cardTitle">
+    <div><span class="eyebrow">Accesos</span><h2>Usuarios del sistema</h2></div>
+    <span class="pill">clave inicial demo1234</span>
+  </div>
+
+  <form class="gridForm adminForm" method="post" action="/admin/create_user">
+    <input class="input" name="name" placeholder="Nombre y apellido" required>
+    <input class="input" name="dni" placeholder="DNI / Pasaporte / Documento" required>
+    <input class="input" name="member_no" placeholder="Nº de socio">
+    <input class="input" type="email" name="email" placeholder="Email">
+    <input class="input" name="phone" placeholder="Celular / WhatsApp">
+    <select class="input" name="role">
+      <option value="socio">Socio</option>
+      <option value="captain">Capitán</option>
+      <option value="admin">Administrador</option>
+    </select>
+    <button class="btn purple">Crear usuario</button>
+  </form>
+
+  <p class="muted" style="margin-top:10px;">
+    El documento se normaliza sin puntos, espacios ni guiones. Acepta letras y números para pasaportes o documentos extranjeros.
+  </p>
+
+  {% if users is defined and users|length > 0 %}
+    {% for u in users %}
+    <div class="row compact {% if not u.active %}disabled{% endif %}">
+      <div>
+        <b>{{u.name}}</b>
+        <small>
+          {{u.role}} · Doc {{u.dni}}
+          {% if u.member_no %} · Socio {{u.member_no}}{% endif %}
+          {% if u.email %} · {{u.email}}{% endif %}
+          {% if u.phone %} · {{u.phone}}{% endif %}
+          · {% if u.active %}activo{% else %}inactivo{% endif %}
+        </small>
+      </div>
+      <div class="actions">
+        <form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave de {{u.name}} a demo1234?');">
+          <button class="mini" type="submit">Reset clave</button>
+        </form>
+        <form method="post" action="/admin/toggle_user/{{u.id}}" onsubmit="return confirm('Cambiar estado de {{u.name}}?');">
+          <button class="mini {% if u.active %}dangerBtn{% else %}okBtn{% endif %}" type="submit">
+            {% if u.active %}Desactivar{% else %}Activar{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">Todavía no hay usuarios cargados o el backend no envió la lista.</div>
+  {% endif %}
+</section>
+
 <section class="card" id="herramientas"><div class="cardTitle"><div><span class="eyebrow">Demo</span><h2>Herramientas del piloto</h2></div></div><p>Reinicia salidas, reservas y logs demo sin borrar usuarios.</p><form method="post" action="/admin/demo_reset"><button class="btn light">Reiniciar datos demo</button></form></section>
 
 
@@ -73,4 +140,4 @@
 </section>
 
 <section class="card" id="logs"><div class="cardTitle"><div><span class="eyebrow">Trazabilidad</span><h2>Auditoría</h2></div></div>{% for l in logs %}<div class="row compact"><div><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div></div>{% endfor %}</section>
-</main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav></div></body></html>
+</main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#usuarios">Usuarios</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav></div></body></html>
