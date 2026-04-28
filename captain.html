@@ -58,7 +58,7 @@
         <span><b>Condición reglamentaria:</b> {{v.estado_reglamentario}}</span>
       </div>
       <small class="metaText">DNI {{r.dni}} · {{r.status}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
-      {% if v.charge > 0 %}<div class="chargeLine">Cargo: $ {{v.charge_label}}</div>{% endif %}
+      {% if v.charge > 0 %}<div class="chargeLine">Cargo firme: $ {{v.charge_label}}</div>{% elif v.charge_is_preliminary %}<div class="chargeLine preliminary">Preliquidación: $ {{v.charge_preview_label}} <span>No firme hasta cierre</span></div>{% endif %}
     </div>
 
     <div class="actions attendanceActions">

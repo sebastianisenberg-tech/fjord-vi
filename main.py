@@ -40,7 +40,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v25-consolidacion-operativa"
+VERSION = "v26.1-contabilidad-cerrada-revisada"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -433,11 +433,77 @@ def is_captain_cancelled(r: Reservation) -> bool:
     return ("cancelado por capitán" in text or "cancelada por capitán" in text or "cancelado por capitan" in text or "cancelada por capitan" in text)
 
 
+def actual_charge(outing: Outing, r: Reservation) -> float:
+    """Cargo contable FIRME.
+
+    Regla madre V26.1:
+    - Antes del cierre del capitán no hay deuda firme: solo preliquidación/proyección.
+    - Si el capitán cancela la salida, todos los cargos son $0.
+    - Cancelado por capitán individual: siempre $0.
+    - Solo una salida cerrada por capitán puede producir cargo firme.
+    """
+    if not outing or not r:
+        return 0.0
+    if is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r):
+        return 0.0
+    if not is_closed_outing(outing):
+        return 0.0
+
+    k = canonical_kind(r.kind)
+    raw_attendance = r.attendance or "Por confirmar"
+    cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
+
+    if cancelled:
+        return float(r.charge_amount or 0)
+
+    if raw_attendance in ("Ausente", "No embarcable"):
+        stored = float(r.charge_amount or 0)
+        return stored if stored > 0 else reservation_charge(outing, r)
+
+    if raw_attendance == "Presente":
+        if k == "invitado":
+            return float(outing.guest_fee or 0)
+        return 0.0
+
+    return 0.0
+
+
+def projected_charge(outing: Outing, r: Reservation) -> float:
+    """Cargo proyectado/preliminar.
+
+    No es deuda firme. Sirve para advertir lo que podría corresponder si la
+    salida se realiza y el capitán cierra embarque. Si la salida es cancelada
+    por capitán, toda proyección pasa a $0.
+    """
+    if not outing or not r:
+        return 0.0
+    if is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r):
+        return 0.0
+    if is_closed_outing(outing):
+        return actual_charge(outing, r)
+
+    k = canonical_kind(r.kind)
+    raw_attendance = r.attendance or "Por confirmar"
+    cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
+
+    if cancelled:
+        return float(r.charge_amount or 0)
+
+    if raw_attendance in ("Ausente", "No embarcable"):
+        stored = float(r.charge_amount or 0)
+        return stored if stored > 0 else reservation_charge(outing, r)
+
+    if raw_attendance == "Presente" and k == "invitado":
+        return float(outing.guest_fee or 0)
+
+    return 0.0
+
+
 def effective_charge(r: Reservation) -> float:
+    """Compatibilidad: si no se conoce la salida, solo se elimina cargo de capitán."""
     if is_captain_cancelled(r):
         return 0.0
     return float(getattr(r, "charge_amount", 0) or 0)
-
 
 def reservation_view(outing: Outing, r: Reservation) -> dict:
     """Vista única y auditable de una reserva.
@@ -450,8 +516,10 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     raw_attendance = r.attendance or "Por confirmar"
     captain_cancelled = is_captain_cancelled(r)
     cancelled = bool(r.cancelled_at) or r.status == "Cancelado" or captain_cancelled
-    charge = effective_charge(r)
+    charge = actual_charge(outing, r)
+    charge_preview = projected_charge(outing, r)
     closed = is_closed_outing(outing)
+    preliminary = (not closed) and charge == 0 and charge_preview > 0
     outing_cancelled = is_outing_cancelled_by_captain(outing)
 
     if outing_cancelled:
@@ -503,11 +571,18 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         elif raw_attendance == "No embarcable":
             motivo = motivo or "No embarcado: socio responsable ausente"
         elif cancelled:
-            motivo = motivo or "Cancelación con cargo"
+            motivo = motivo or "Cancelación tardía con cargo firme"
         elif raw_attendance == "Ausente":
             motivo = motivo or "Ausencia / plaza no utilizada"
         else:
             motivo = motivo or "Cargo reglamentario"
+    elif preliminary:
+        if cancelled:
+            motivo = motivo or "Preliquidación por baja tardía, no firme hasta cierre"
+        elif raw_attendance in ("Ausente", "No embarcable"):
+            motivo = motivo or "Preliquidación por ausencia/no embarque, no firme hasta cierre"
+        else:
+            motivo = "Tarifa de invitado pendiente de cierre"
     elif cancelled:
         motivo = motivo or "Cancelado sin cargo"
     elif raw_attendance == "No embarcable":
@@ -538,13 +613,16 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         "alert": alert,
         "motivo": motivo,
         "charge": charge,
-        "critical": bool(charge > 0 or is_not_embarked or cancelled),
+        "charge_preview": charge_preview,
+        "charge_is_preliminary": preliminary,
+        "critical": bool(charge > 0 or preliminary or is_not_embarked or cancelled),
         "closed": closed,
         "cancelled": cancelled,
         "active": reservation_is_active(r),
         "embarked": is_embarked,
         "not_embarked": is_not_embarked,
         "charge_label": human_money(charge),
+        "charge_preview_label": human_money(charge_preview),
     }
 
 def reservation_views(outing: Outing, rows) -> dict:
@@ -593,6 +671,9 @@ def final_acta(outing: Outing, reservations) -> dict:
             "motivo": v["motivo"],
             "charge": v["charge"],
             "charge_label": v["charge_label"],
+            "charge_preview": v.get("charge_preview", 0),
+            "charge_preview_label": v.get("charge_preview_label", "0"),
+            "charge_is_preliminary": v.get("charge_is_preliminary", False),
             "level": v["level"],
         }
         if v["embarked"]:
@@ -1291,14 +1372,14 @@ def manifest_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessi
     writer.writerow([
         "salida_id", "salida", "fecha_salida", "nombre", "dni", "tipo",
         "estado_fisico", "condicion_reglamentaria", "motivo", "cargo",
-        "estado_reserva", "asistencia_original", "responsable_id", "cancelado_en"
+        "cargo_estimado", "estado_reserva", "asistencia_original", "responsable_id", "cancelado_en"
     ])
     for r in reservations:
         v = reservation_view(outing, r)
         writer.writerow([
             outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni,
             v["tipo_label"], v["estado_fisico"], v["estado_reglamentario"], v["motivo"],
-            v["charge"], r.status, r.attendance, r.responsible_user_id or "",
+            v["charge"], v["charge_preview"], r.status, r.attendance, r.responsible_user_id or "",
             r.cancelled_at.isoformat() if r.cancelled_at else ""
         ])
     filename = f"manifest_fjord_vi_salida_{outing.id}.csv"

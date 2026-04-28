@@ -1,3 +1,12 @@
+# V26.1 - Contabilidad cerrada revisada
+
+- Separa cargo firme de preliquidación/proyección.
+- Antes del cierre del capitán no hay deuda firme.
+- Si la salida es cancelada por capitán, todos los cargos y proyecciones quedan en $0.
+- Cancelado por capitán individual queda sin cargo y no ocupa cupo.
+- Manifest CSV agrega cargo estimado además de cargo firme.
+- Pantallas muestran “Preliquidación” cuando corresponde y aclaran que no es firme hasta cierre.
+
 # Changelog
 
 ## V18 Deploy Ready

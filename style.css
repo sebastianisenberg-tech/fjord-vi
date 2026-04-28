@@ -396,3 +396,7 @@ header.top a:active,
 @media (min-width: 640px) {
   .actaCounters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* V26.1: preliquidación visible, no cargo firme */
+.chargeLine.preliminary{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;}
+.chargeLine.preliminary span{font-weight:700;margin-left:4px;}
