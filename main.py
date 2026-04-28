@@ -423,15 +423,21 @@ def is_closed_outing(outing: Outing) -> bool:
 def reservation_view(outing: Outing, r: Reservation) -> dict:
     k = canonical_kind(r.kind)
     raw_attendance = r.attendance or "Por confirmar"
+    reason_text = (r.cancel_reason or "").strip()
+    reason_lower = reason_text.lower()
     cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
+    # Algunas operaciones históricas dejaron el motivo de cancelación sin cambiar attendance/status.
+    # Para la vista operativa, cualquier reserva con motivo de cancelación debe leerse como no embarcada.
+    reason_says_cancelled = reason_lower.startswith("cancelad") or "cancelad" in reason_lower or "no embarcado" in reason_lower
+    cancelled_for_view = cancelled or reason_says_cancelled
     charge = float(r.charge_amount or 0)
     closed = is_closed_outing(outing)
 
-    if cancelled:
-        estado_fisico = "Cancelado"
+    if cancelled_for_view:
+        estado_fisico = "Cancelado" if cancelled else raw_attendance
         estado_reglamentario = "No embarcado"
         level = "bad"
-        alert = "Reserva cancelada"
+        alert = "No embarcado" if reason_says_cancelled and not cancelled else "Reserva cancelada"
     elif raw_attendance == "No embarcable":
         estado_fisico = "Presente informado"
         estado_reglamentario = "No embarcado"
@@ -455,12 +461,12 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
 
     motivo = r.cancel_reason or ""
     if charge > 0:
-        if k == "invitado" and raw_attendance == "Presente" and not cancelled:
+        if cancelled_for_view:
+            motivo = motivo or "Cancelación / no embarcado con cargo"
+        elif k == "invitado" and raw_attendance == "Presente":
             motivo = motivo or "Tarifa de invitado embarcado"
         elif raw_attendance == "No embarcable":
             motivo = motivo or "No embarcado: socio responsable ausente"
-        elif cancelled:
-            motivo = motivo or "Cancelación con cargo"
         elif raw_attendance == "Ausente":
             motivo = motivo or "Ausencia / plaza no utilizada"
         else:
@@ -484,9 +490,9 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         "alert": alert,
         "motivo": motivo,
         "charge": charge,
-        "critical": bool(charge > 0 or raw_attendance in ("No embarcable", "Ausente") or cancelled),
+        "critical": bool(charge > 0 or raw_attendance in ("No embarcable", "Ausente") or cancelled_for_view),
         "closed": closed,
-        "cancelled": cancelled,
+        "cancelled": cancelled_for_view,
         "active": reservation_is_active(r),
         "charge_label": human_money(charge),
     }
