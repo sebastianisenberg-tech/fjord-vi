@@ -40,7 +40,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.1-contabilidad-cerrada-revisada"
+VERSION = "v26.2-reapertura-contable"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -1091,6 +1091,51 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
 
     outing.status = "Embarque cerrado"
 
+
+def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reservations):
+    """Reconstruye la preliquidación al reabrir una salida.
+
+    Si el capitán canceló la salida, todos los cargos quedaron en $0.
+    Al reabrir, las bajas tardías previas vuelven a tener preliquidación
+    si la salida podría realizarse finalmente. No genera cargo firme.
+    """
+    if not outing:
+        return
+
+    late = late_window_passed(outing)
+
+    for r in reservations:
+        if is_captain_cancelled(r):
+            r.charge_amount = 0
+            r.attendance = "Ausente"
+            r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
+            continue
+
+        cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
+
+        if cancelled:
+            r.attendance = "Ausente"
+            if not r.cancel_reason:
+                r.cancel_reason = "Cancelado por socio"
+            r.charge_amount = reservation_charge(outing, r) if late else 0
+            continue
+
+        if r.attendance == "Ausente" and not (r.cancel_reason or "").strip():
+            r.attendance = "Por confirmar"
+            r.charge_amount = 0
+            r.cancel_reason = ""
+            continue
+
+        if r.attendance in ("Ausente", "No embarcable"):
+            r.charge_amount = reservation_charge(outing, r) if late else 0
+            if r.charge_amount and not r.cancel_reason:
+                r.cancel_reason = "Ausencia / plaza no utilizada"
+            continue
+
+        r.charge_amount = 0
+        if r.attendance in ("Presente", "Por confirmar") and not is_captain_cancelled(r):
+            r.cancel_reason = ""
+
 @app.post("/captain/outing_status")
 def outing_status(
     outing_id: Optional[int] = Form(None),
@@ -1109,9 +1154,11 @@ def outing_status(
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
 
         for r in reservations:
+            # La cancelación total por capitán anula toda preliquidación,
+            # pero no borra cancel_reason/cancelled_at. Así, si el capitán
+            # reabre la salida, se puede reconstruir la preliquidación de
+            # bajas tardías previas sin perder trazabilidad.
             r.charge_amount = 0
-            if r.attendance == "Por confirmar":
-                r.attendance = "Ausente"
 
         outing.status = "Cancelada por capitán"
 
@@ -1139,9 +1186,11 @@ def outing_status(
 
     # ===== REABRIR =====
     if status == "Reservas abiertas":
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
         outing.status = "En reservas"
+        recalculate_preliquidation_after_reopen(db, outing, reservations)
         db.commit()
-        log(db, user.name, "reapertura", f"{outing.title} / desde {old_status}")
+        log(db, user.name, "reapertura", f"{outing.title} / desde {old_status} / preliquidaciones recalculadas")
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
     return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
