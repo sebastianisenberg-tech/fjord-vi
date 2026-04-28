@@ -73,6 +73,44 @@
 }
 </style>
 
+
+<style>
+/* V23 operación audit-able: estados físicos/reglamentarios, cargos claros y alertas */
+.opSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.opSummary .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:10px}
+.opSummary small{display:block;color:#64748b;font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.04em}
+.opSummary b{display:block;color:#0f172a;font-size:18px;margin-top:3px}
+@media(max-width:640px){.opSummary{grid-template-columns:1fr 1fr}.opSummary .box.wide{grid-column:1/-1}}
+.badgeLine{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center}
+.badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900;line-height:1.2}
+.badge.socio{background:#dcfce7;color:#166534}
+.badge.invitado{background:#e0f2fe;color:#0369a1}
+.badge.hijo{background:#fef3c7;color:#92400e}
+.badge.present{background:#d1fae5;color:#047857}
+.badge.absent{background:#fee2e2;color:#991b1b}
+.badge.pending{background:#e2e8f0;color:#475569}
+.badge.boarded{background:#ccfbf1;color:#0f766e}
+.badge.noboard{background:#fee2e2;color:#b91c1c}
+.badge.charge{background:#ffedd5;color:#c2410c}
+.badge.lock{background:#ede9fe;color:#6d28d9}
+.reservationCard{border-left:4px solid #0f766e}
+.reservationCard.invited{border-left-color:#0284c7}
+.reservationCard.critical{border-left-color:#b91c1c;background:#fff7f7}
+.twoState{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.twoState div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:8px}
+.twoState small{display:block;color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.twoState b{font-size:13px;color:#0f172a}
+@media(max-width:520px){.twoState{grid-template-columns:1fr}}
+.chargeSummary{display:grid;gap:8px;margin-top:8px}
+.chargeItem{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:10px}
+.chargeItem .why{display:block;color:#64748b;font-size:12px;margin-top:2px}
+.chargeItem b.amount{white-space:nowrap;color:#0f172a}
+.finalState{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.finalState .pill{font-weight:900}
+.logHighlight{border-left:4px solid #0f766e;padding-left:10px}
+.logHighlight.reopen{border-left-color:#c2410c;background:#fff7ed}
+</style>
+
 </head>
 <body><div class="app wide">
 <header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout">Salir</a></header>
@@ -94,14 +132,66 @@
 <section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
 {% if outing %}<section class="notice {{readiness.level}}"><b>{{readiness.detail}}</b><span>Los datos visibles pertenecen solo a la salida seleccionada.</span></section>{% endif %}
 <section class="split" id="dashboard">
-  <div class="miniPanel"><span>Presentes marcados</span><b>{{present}}</b></div>
-  <div class="miniPanel"><span>Pendientes de embarque</span><b>{{pending}}</b></div>
+  <div class="miniPanel"><span>{% if outing and outing.status == 'closed' %}Tripulación final{% else %}Presentes marcados{% endif %}</span><b>{{present}}</b></div>
+  <div class="miniPanel"><span>{% if outing and outing.status == 'closed' %}Confirmación final{% else %}Pendientes de embarque{% endif %}</span><b>{% if outing and outing.status == 'closed' %}Completa{% else %}{{pending}}{% endif %}</b></div>
 </section>
+{% if outing %}
+<section class="card" id="estado-final">
+  <div class="cardTitle"><div><span class="eyebrow">Estado operativo</span><h2>Resumen final de la salida</h2></div><span class="pill {{readiness.level}}">{{readiness.label}}</span></div>
+  <div class="opSummary">
+    <div class="box"><small>Tripulación</small><b>{{active_count}} / {{outing.max_crew}}</b></div>
+    <div class="box"><small>Presentes</small><b>{{present}}</b></div>
+    <div class="box"><small>Cargos</small><b>$ {{total_charges|money}}</b></div>
+    <div class="box wide"><small>Liquidación</small><b>{% if outing.status == 'closed' %}Cerrada / completa{% else %}Abierta{% endif %}</b></div>
+  </div>
+  <div class="finalState">
+    <span class="pill">Lista: {{active_count}} activos</span>
+    <span class="pill">Mínimo: {{present}} / 2 presentes</span>
+    <span class="pill">Pendientes: {% if outing.status == 'closed' %}0 final{% else %}{{pending}}{% endif %}</span>
+    <span class="pill">Estado: {{outing.status}}</span>
+  </div>
+</section>
+{% endif %}
 <section class="card" id="crear"><div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Nueva salida</h2></div></div><form class="gridForm adminForm" method="post" action="/admin/new_outing"><input class="input" name="title" placeholder="Título"><input class="input" name="destination" placeholder="Destino"><input class="input" type="datetime-local" name="departure_at"><input class="input" type="number" name="guest_fee" value="45000"><button class="btn purple">Crear salida vacía</button></form></section>
 <section class="card" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Control</span><h2>Salidas publicadas</h2></div></div>{% for o in outings %}<a class="row compact {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}" style="text-decoration:none;color:inherit"><div><b>{{o.departure_at.strftime('%d/%m %H:%M')}}</b><small>{{o.title}} · {{o.destination}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</small></div><span class="pill">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span></a>{% endfor %}</section>
 {% if outing %}
-<section class="card" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in reservations %}<div class="row {% if r.cancelled_at %}disabled{% endif %}"><div><b>{{r.person_name}}</b><small>DNI {{r.dni}} · {{r.kind}} · {{r.status}} · {{r.attendance}}</small></div><span class="pill {% if r.charge_amount %}warn{% endif %}">{% if r.charge_amount %}$ {{r.charge_amount|money}}{% else %}sin cargo{% endif %}</span></div>{% endfor %}{% if reservations|length == 0 %}<div class="empty">Esta salida todavía no tiene tripulantes anotados.</div>{% endif %}</section>
-<section class="card" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Liquidaciones de esta salida</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>{% for r in charges %}<div class="row"><div><b>{{r.person_name}}</b><small>{{r.kind}} · DNI {{r.dni}} · {{r.cancel_reason or r.attendance}}</small></div><b>$ {{r.charge_amount|money}}</b></div>{% endfor %}{% if charges|length == 0 %}<div class="empty">Sin cargos generados para esta salida.</div>{% endif %}</section>
+<section class="card" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>
+{% for r in reservations %}
+  {% set has_charge = r.charge_amount and r.charge_amount > 0 %}
+  {% set is_present = r.attendance == 'present' or r.attendance == 'Presente' %}
+  {% set is_absent = r.attendance == 'absent' or r.attendance == 'Ausente' %}
+  {% set is_invited = r.kind == 'invitado' or r.kind == 'Invitado' or r.kind == 'hijo_menor' %}
+  {% set no_board = has_charge and is_invited and not is_present %}
+  <div class="row reservationCard {% if is_invited %}invited{% endif %} {% if has_charge or no_board %}critical{% endif %} {% if r.cancelled_at %}disabled{% endif %}">
+    <div>
+      <b>{{r.person_name}}</b>
+      <small>DNI {{r.dni}} · {{r.kind}} · {{r.status}}</small>
+      <div class="badgeLine">
+        <span class="badge {% if is_invited %}invitado{% else %}socio{% endif %}">{% if is_invited %}Invitado{% else %}Socio{% endif %}</span>
+        <span class="badge {% if is_present %}present{% elif is_absent %}absent{% else %}pending{% endif %}">Físico: {{r.attendance}}</span>
+        <span class="badge {% if no_board %}noboard{% elif is_present %}boarded{% else %}pending{% endif %}">Reglamentario: {% if no_board %}No embarcado{% elif is_present %}Embarcado{% else %}Pendiente{% endif %}</span>
+        {% if has_charge %}<span class="badge charge">Penalización / cargo</span>{% endif %}
+        {% if r.status and ('48' in r.status|string or 'condicional' in r.status|string or 'Condicional' in r.status|string) %}<span class="badge lock">Condicional 48 h</span>{% endif %}
+      </div>
+      <div class="twoState">
+        <div><small>Estado físico</small><b>{% if is_present %}Presente{% elif is_absent %}Ausente{% else %}{{r.attendance}}{% endif %}</b></div>
+        <div><small>Condición reglamentaria</small><b>{% if no_board %}No embarcado / revisar socio responsable{% elif is_present %}Embarcado{% else %}Pendiente de definición{% endif %}</b></div>
+      </div>
+    </div>
+    <span class="pill {% if has_charge %}warn{% endif %}">{% if has_charge %}$ {{r.charge_amount|money}}{% else %}sin cargo{% endif %}</span>
+  </div>
+{% endfor %}{% if reservations|length == 0 %}<div class="empty">Esta salida todavía no tiene tripulantes anotados.</div>{% endif %}</section>
+<section class="card" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Resumen visible de cargos</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>
+<p class="muted">Detalle defendible para administración: quién genera cargo, importe y motivo operativo registrado.</p>
+<div class="chargeSummary">
+{% for r in charges %}
+  <div class="chargeItem">
+    <div><b>{{r.person_name}}</b><span class="why">{{r.kind}} · DNI {{r.dni}} · motivo: {{r.cancel_reason or r.attendance}}</span></div>
+    <b class="amount">$ {{r.charge_amount|money}}</b>
+  </div>
+{% endfor %}
+</div>
+{% if charges|length == 0 %}<div class="empty">Sin cargos generados para esta salida.</div>{% endif %}</section>
 {% endif %}
 
 <section class="card" id="usuarios">
@@ -186,5 +276,5 @@
   </form>
 </section>
 
-<section class="card" id="logs"><div class="cardTitle"><div><span class="eyebrow">Trazabilidad</span><h2>Auditoría</h2></div></div>{% for l in logs %}<div class="row compact"><div><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div></div>{% endfor %}</section>
+<section class="card" id="logs"><div class="cardTitle"><div><span class="eyebrow">Trazabilidad</span><h2>Auditoría</h2></div></div>{% for l in logs %}<div class="row compact logHighlight {% if 'reabr' in l.action|lower or 'reopen' in l.action|lower or 'reabr' in l.detail|lower or 'reopen' in l.detail|lower %}reopen{% endif %}"><div><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div></div>{% endfor %}</section>
 </main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#usuarios">Usuarios</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav></div></body></html>
