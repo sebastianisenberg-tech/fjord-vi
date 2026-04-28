@@ -488,10 +488,16 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 def health():
     return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
+@app.head("/")
+def head_index():
+    return Response(status_code=200)
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
     if not user:
-        return templates.TemplateResponse(request, "login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
+        resp = templates.TemplateResponse(request, "login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
     if user.role == "captain":
         return RedirectResponse("/captain", status_code=303)
     if user.role == "admin":
@@ -511,7 +517,8 @@ def login(dni: str = Form(...), password: str = Form(...), db: Session = Depends
 @app.get("/logout")
 def logout():
     resp = RedirectResponse("/", status_code=303)
-    resp.delete_cookie("fjord_uid")
+    resp.delete_cookie("fjord_uid", path="/")
+    resp.headers["Cache-Control"] = "no-store"
     return resp
 
 @app.get("/socio", response_class=HTMLResponse)
@@ -580,11 +587,13 @@ async def add_guest(
 
     ensure_outing_editable(outing)
 
-    # Compatibilidad total de formulario:
-    # socio.html nuevo envía "name"; versiones anteriores podían enviar "nombre".
     person_name = (name or nombre or "").strip()
     dni_clean = norm_dni(dni or "")
     kind = canonical_kind(kind)
+
+    # Si no quedan lugares, se responde con mensaje claro antes de intentar crear/reactivar.
+    if len(active) >= outing.max_crew:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
 
     if kind not in ("invitado", "hijo_menor") or not person_name or not dni_clean:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
@@ -608,9 +617,6 @@ async def add_guest(
 
     if existing and reservation_is_active(existing):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
-
-    if len(active) >= outing.max_crew:
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_completo", status_code=303)
 
     if existing:
         existing.person_name = person_name
@@ -702,6 +708,10 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
 @app.post("/captain/outing_status")
 def outing_status(outing_id: Optional[int] = Form(None), status: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing = selected_outing(db, outing_id)
+    if not outing:
+        raise HTTPException(400, "Salida inexistente")
+    if outing.status == "Embarque cerrado":
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
     if status not in ["En reservas", "En embarque", "Demorada", "Cancelada por capitán", "Programada"]:
         raise HTTPException(400)
     outing.status = status
@@ -790,22 +800,31 @@ def new_outing(title: str = Form(...), destination: str = Form(...), departure_a
     log(db, user.name, "nueva salida", f"{title.strip()} / salida vacía")
     return RedirectResponse(f"/admin?outing_id={o.id}&msg=salida_creada", status_code=303)
 
+def csv_response_excel(output: io.StringIO, filename: str):
+    # Excel en español/Android abre mejor con BOM UTF-8 y separador punto y coma.
+    payload = "\ufeff" + output.getvalue()
+    return Response(
+        payload,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 @app.get("/admin/manifest.csv")
 def manifest_csv(outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
     outing, reservations, *_ = outing_context(db, outing_id)
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, delimiter=';')
     writer.writerow(["salida_id", "salida", "fecha", "nombre", "dni", "tipo", "estado_reserva", "asistencia", "cargo", "responsable_id", "cancelado_en"])
     for r in reservations:
         writer.writerow([outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, r.kind, r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
     filename = f"manifest_fjord_vi_salida_{outing.id}.csv"
-    return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
+    return csv_response_excel(output, filename)
 
 @app.get("/admin/charges.csv")
 def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     outing = selected_outing(db, outing_id)
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, delimiter=';')
     writer.writerow(["salida_id", "salida", "fecha_liquidacion", "nombre", "dni", "tipo", "importe", "motivo"])
     q = db.query(Reservation).filter(Reservation.charge_amount > 0)
     if outing:
@@ -813,7 +832,7 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
     for r in q.all():
         writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, r.kind, float(r.charge_amount), r.cancel_reason or r.attendance])
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
-    return Response(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
+    return csv_response_excel(output, filename)
 
 
 @app.get("/admin/backup")
