@@ -754,61 +754,60 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     outing.status = "Embarque cerrado"
 
 @app.post("/captain/outing_status")
-def outing_status(outing_id: Optional[int] = Form(None), status: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def outing_status(
+    outing_id: Optional[int] = Form(None),
+    status: str = Form(...),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("captain", "admin"))
+):
     outing = selected_outing(db, outing_id)
     if not outing:
         raise HTTPException(400, "Salida inexistente")
 
-    allowed_statuses = [
-        "En reservas",
-        "En embarque",
-        "Demorada",
-        "Reprogramada",
-        "Cancelada por capitán",
-        "Cerrar embarque y liquidar",
-        "Embarque cerrado",
-        "Realizada",
-    ]
-    if status not in allowed_statuses:
-        raise HTTPException(400)
-
     old_status = outing.status
 
-    # Acción del capitán: cerrar embarque y liquidar.
-    # No es un simple cambio de estado: valida mínimo, calcula cargos y congela la lista.
-    if status == "Cerrar embarque y liquidar":
-        if old_status in ("Cancelada por capitán", "Realizada"):
-            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
-        if old_status == "Embarque cerrado":
+    # ===== CANCELAR =====
+    if status == "Cancelada":
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+
+        for r in reservations:
+            r.charge_amount = 0
+            if r.attendance == "Por confirmar":
+                r.attendance = "Ausente"
+
+        outing.status = "Cancelada por capitán"
+
+        db.commit()
+        log(db, user.name, "cancelación", f"{outing.title} / desde {old_status}")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+
+    # ===== CERRAR =====
+    if status == "Cerrar":
+        if old_status == "Cancelada por capitán":
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
-        reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
         active = active_reservations(reservations)
         present = sum(1 for r in active if r.attendance == "Presente")
 
         if present < outing.min_crew:
             raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
-        if present > outing.max_crew:
-            raise HTTPException(400, f"Se supera el máximo de {outing.max_crew}")
 
         liquidate_and_close_boarding(db, outing, reservations, active)
+
         db.commit()
-        log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present} / desde selector capitán")
+        log(db, user.name, "cierre", f"{outing.title} / presentes {present}")
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
 
-    # Acción del capitán: cancelar salida.
-    # Si la salida ya estaba cerrada o parcialmente liquidada, se anulan todos los cargos.
-    if status == "Cancelada por capitán":
-        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
-        for r in reservations:
-            r.charge_amount = 0
-            r.cancel_reason = "Cancelada por capitán"
-            if r.attendance == "Por confirmar":
-                r.attendance = "Ausente"
-        outing.status = "Cancelada por capitán"
+    # ===== REABRIR =====
+    if status == "Reservas abiertas":
+        outing.status = "En reservas"
         db.commit()
-        log(db, user.name, "salida cancelada por capitán", f"{outing.title} / estado anterior: {old_status} / cargos anulados")
+        log(db, user.name, "reapertura", f"{outing.title} / desde {old_status}")
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+
+    return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
+
 
     # Reapertura controlada: permite corregir una salida cerrada por error
     # o volver a embarque si la operación sigue viva.
