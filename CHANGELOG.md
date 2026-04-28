@@ -15,3 +15,11 @@ Mejoras principales sobre V16:
 - Base SQLite separada: `fjord_v18_pilot.db`.
 
 Sigue siendo piloto. No reemplaza todavía validación institucional, padrón real, autenticación del Club, backups ni operación productiva.
+
+## V24 operativo auditable
+- Centraliza la lectura de reservas en `reservation_view()` dentro de `main.py`.
+- Distingue visualmente estado físico y condición reglamentaria en Capitán, Admin y Socio.
+- Agrega resumen de cargos por categoría: socios, invitados y menores no socios.
+- Corrige la detección visual de salida cerrada usando `Embarque cerrado` como estado real.
+- Mantiene la reapertura por capitán, con trazabilidad por auditoría.
+- No cambia estructura de base de datos ni requiere migración.

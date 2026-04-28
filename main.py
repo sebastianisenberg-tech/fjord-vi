@@ -40,7 +40,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v19-multi-salida"
+VERSION = "v24-operativo-auditable"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -415,6 +415,115 @@ def human_money(value) -> str:
 
 templates.env.filters["money"] = human_money
 
+
+def is_closed_outing(outing: Outing) -> bool:
+    return bool(outing and outing.status == "Embarque cerrado")
+
+
+def reservation_view(outing: Outing, r: Reservation) -> dict:
+    k = canonical_kind(r.kind)
+    raw_attendance = r.attendance or "Por confirmar"
+    cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
+    charge = float(r.charge_amount or 0)
+    closed = is_closed_outing(outing)
+
+    if cancelled:
+        estado_fisico = "Cancelado"
+        estado_reglamentario = "No embarcado"
+        level = "bad"
+        alert = "Reserva cancelada"
+    elif raw_attendance == "No embarcable":
+        estado_fisico = "Presente informado"
+        estado_reglamentario = "No embarcado"
+        level = "bad"
+        alert = "No embarcable: socio responsable ausente"
+    elif raw_attendance == "Ausente":
+        estado_fisico = "Ausente"
+        estado_reglamentario = "No embarcado"
+        level = "bad" if charge else "warn"
+        alert = "Ausente"
+    elif raw_attendance == "Presente":
+        estado_fisico = "Presente"
+        estado_reglamentario = "Embarcado" if closed else "A confirmar al cierre"
+        level = "ok"
+        alert = ""
+    else:
+        estado_fisico = "Por confirmar"
+        estado_reglamentario = "Pendiente"
+        level = "warn"
+        alert = "Pendiente de embarque"
+
+    motivo = r.cancel_reason or ""
+    if charge > 0:
+        if k == "invitado" and raw_attendance == "Presente" and not cancelled:
+            motivo = motivo or "Tarifa de invitado embarcado"
+        elif raw_attendance == "No embarcable":
+            motivo = motivo or "No embarcado: socio responsable ausente"
+        elif cancelled:
+            motivo = motivo or "Cancelación con cargo"
+        elif raw_attendance == "Ausente":
+            motivo = motivo or "Ausencia / plaza no utilizada"
+        else:
+            motivo = motivo or "Cargo reglamentario"
+    elif raw_attendance == "Presente":
+        if k == "socio":
+            motivo = "Socio embarcado sin cargo"
+        elif k == "hijo_menor":
+            motivo = "Hijo menor de socio no socio embarcado sin cargo"
+    elif not motivo and raw_attendance == "Por confirmar":
+        motivo = "Pendiente de confirmación por capitán"
+
+    return {
+        "tipo": k,
+        "tipo_label": display_kind(r.kind),
+        "tipo_class": k,
+        "estado_fisico": estado_fisico,
+        "estado_reglamentario": estado_reglamentario,
+        "raw_attendance": raw_attendance,
+        "level": level,
+        "alert": alert,
+        "motivo": motivo,
+        "charge": charge,
+        "critical": bool(charge > 0 or raw_attendance in ("No embarcable", "Ausente") or cancelled),
+        "closed": closed,
+        "cancelled": cancelled,
+        "active": reservation_is_active(r),
+        "charge_label": human_money(charge),
+    }
+
+
+def reservation_views(outing: Outing, rows) -> dict:
+    return {r.id: reservation_view(outing, r) for r in rows}
+
+
+def charge_summary(rows) -> dict:
+    socio_items = []
+    guest_items = []
+    minor_items = []
+    total = 0.0
+    for r in rows:
+        charge = float(r.charge_amount or 0)
+        if charge <= 0:
+            continue
+        total += charge
+        item = {"name": r.person_name, "amount": charge, "amount_label": human_money(charge), "reason": r.cancel_reason or r.attendance or "Cargo reglamentario"}
+        k = canonical_kind(r.kind)
+        if k == "socio":
+            socio_items.append(item)
+        elif k == "hijo_menor":
+            minor_items.append(item)
+        else:
+            guest_items.append(item)
+    return {"socios": socio_items, "invitados": guest_items, "menores": minor_items, "total": total, "total_label": human_money(total)}
+
+
+def final_status_summary(outing: Outing, reservations, active_count: int, present: int, pending: int) -> dict:
+    if not outing:
+        return {"closed": False, "label": "Sin salida", "detail": "No hay salida seleccionada", "liquidacion": "Sin datos"}
+    if is_closed_outing(outing):
+        return {"closed": True, "label": "Estado final: Confirmado", "detail": f"Tripulación final: {present} / {outing.max_crew}", "liquidacion": "Liquidación completa"}
+    return {"closed": False, "label": "Estado operativo: Abierto", "detail": f"Activos: {active_count} / {outing.max_crew} · pendientes: {pending}", "liquidacion": "Liquidación preliminar hasta cierre del capitán"}
+
 def seed():
     db = SessionLocal()
     try:
@@ -562,6 +671,8 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     has_self = any(r.dni == user.dni and reservation_is_active(r) for r in mine)
     self_reservation = next((r for r in mine if r.dni == user.dni), None)
     ready = readiness_state(outing, len(active))
+    views = reservation_views(outing, reservations)
+    final_summary = final_status_summary(outing, reservations, len(active), present, pending)
     return templates.TemplateResponse(request, "socio.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "mine": mine, "has_self": has_self, "self_reservation": self_reservation,
@@ -569,7 +680,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
         "cutoff_at": cutoff_at(outing), "cancel_deadline": cancellation_deadline(outing),
         "fee": float(outing.guest_fee), "msg": request.query_params.get("msg"),
-        "closed": outing.status == "Embarque cerrado"
+        "closed": is_closed_outing(outing), "reservation_views": views, "final_summary": final_summary
     })
 
 @app.post("/socio/add_self")
@@ -729,11 +840,16 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     outings = visible_outings(db)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     ready = readiness_state(outing, len(active), present)
+    views = reservation_views(outing, reservations) if outing else {}
+    final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
+    summary = charge_summary(reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0"}
     return templates.TemplateResponse(request, "captain.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
         "pending": pending, "socios_presentes": socios_presentes, "readiness": ready,
-        "cutoff": cutoff_passed(outing), "cutoff_at": cutoff_at(outing), "msg": request.query_params.get("msg")
+        "cutoff": cutoff_passed(outing), "cutoff_at": cutoff_at(outing), "msg": request.query_params.get("msg"),
+        "reservation_views": views, "final_summary": final_summary, "charge_summary": summary,
+        "closed": is_closed_outing(outing)
     })
 
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
@@ -759,20 +875,26 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
 
         if r.attendance == "Por confirmar":
             r.attendance = "Ausente"
+            r.cancel_reason = r.cancel_reason or "No confirmado al cierre de embarque"
 
         # Invitados e hijos menores no socios solo pueden embarcar si embarca su socio responsable.
         if k in ("invitado", "hijo_menor") and r.attendance == "Presente":
             responsible = users.get(r.responsible_user_id)
             if responsible and responsible.dni not in present_dnis:
                 r.attendance = "No embarcable"
+                r.cancel_reason = "No embarcado: socio responsable ausente"
 
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
+            if not r.cancel_reason:
+                r.cancel_reason = "Ausencia / plaza no utilizada"
         elif r.attendance == "Presente":
             if k == "invitado":
                 r.charge_amount = guest_fee
+                r.cancel_reason = "Tarifa de invitado embarcado"
             else:
                 r.charge_amount = 0
+                r.cancel_reason = ""
 
     outing.status = "Embarque cerrado"
 
@@ -849,6 +971,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.attendance = value
     elif value == "Ausente":
         r.attendance = "Ausente"
+        r.cancel_reason = "Ausente marcado por capitán"
         r.charge_amount = reservation_charge(outing, r)
 
     db.commit()
@@ -882,13 +1005,18 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     ready = readiness_state(outing, len(active), present)
     counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
     active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
+    views = reservation_views(outing, reservations) if outing else {}
+    final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
+    summary = charge_summary(reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0"}
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
         "total_charges": total_charges, "logs": logs, "readiness": ready,
         "users": db.query(User).order_by(User.name.asc()).all(),
-        "msg": request.query_params.get("msg")
+        "msg": request.query_params.get("msg"), "reservation_views": views,
+        "final_summary": final_summary, "charge_summary": summary,
+        "closed": is_closed_outing(outing) if outing else False
     })
 
 
