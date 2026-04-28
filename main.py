@@ -336,21 +336,9 @@ def reservation_is_active(r: Reservation) -> bool:
         and r.attendance not in ("Ausente", "No embarcable")
     )
 
-def outing_is_closed(outing: Optional[Outing]) -> bool:
-    return bool(outing and outing.status == "Embarque cerrado")
-
-def outing_is_past(outing: Optional[Outing]) -> bool:
-    # Para acciones del socio, una salida con fecha/hora pasada deja de ser operable.
-    # Puede quedar visible como historial, pero no admite altas, bajas ni reactivaciones.
-    return bool(outing and outing.departure_at < datetime.utcnow())
-
-def ensure_outing_editable(outing: Optional[Outing]):
-    if not outing:
-        raise HTTPException(status_code=400, detail="Salida inexistente")
-    if outing_is_closed(outing):
+def ensure_outing_editable(outing: Outing):
+    if outing and outing.status == "Embarque cerrado":
         raise HTTPException(status_code=400, detail="La salida ya fue cerrada")
-    if outing_is_past(outing):
-        raise HTTPException(status_code=400, detail="La salida ya pasó")
 
 def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
     r.cancelled_at = None
@@ -465,15 +453,7 @@ def selected_outing(db: Session, outing_id: Optional[int] = None):
     if outing_id:
         outing = db.get(Outing, outing_id)
     else:
-        now = datetime.utcnow()
-        # Por defecto se abre la próxima salida futura no cerrada.
-        # Si no existe, se muestra la salida más reciente como historial.
-        outing = (
-            db.query(Outing)
-            .filter(Outing.status != "Embarque cerrado", Outing.departure_at >= now)
-            .order_by(Outing.departure_at.asc())
-            .first()
-        )
+        outing = db.query(Outing).filter(Outing.status != "Embarque cerrado").order_by(Outing.departure_at.asc()).first()
         outing = outing or db.query(Outing).order_by(Outing.departure_at.desc()).first()
     if not outing:
         return None
@@ -486,8 +466,16 @@ def visible_outings(db: Session):
 def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict:
     if not outing:
         return {"label": "Sin salida", "level": "bad", "detail": "No hay una salida activa."}
+    if outing.status == "Cancelada por capitán":
+        return {"label": "Cancelada", "level": "bad", "detail": "La salida fue cancelada por capitán. No se generan cargos."}
     if outing.status == "Embarque cerrado":
         return {"label": "Cerrada", "level": "ok", "detail": "La salida ya fue cerrada por capitán."}
+    if outing.status == "Realizada":
+        return {"label": "Realizada", "level": "ok", "detail": "La salida fue marcada como realizada."}
+    if outing.status == "Demorada":
+        return {"label": "Demorada", "level": "warn", "detail": "La salida está demorada por decisión operativa."}
+    if outing.status == "Reprogramada":
+        return {"label": "Reprogramada", "level": "warn", "detail": "La salida fue reprogramada. Revisar nueva comunicación."}
     if active_count < outing.min_crew:
         return {"label": "Falta mínimo", "level": "bad", "detail": f"Se requieren al menos {outing.min_crew} tripulantes activos."}
     if active_count >= outing.max_crew:
@@ -506,7 +494,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "operability_guard": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
+    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.head("/")
 def head_index():
@@ -558,9 +546,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
         "cutoff_at": cutoff_at(outing), "cancel_deadline": cancellation_deadline(outing),
         "fee": float(outing.guest_fee), "msg": request.query_params.get("msg"),
-        "closed": outing.status == "Embarque cerrado",
-        "past": outing_is_past(outing),
-        "operable": (not outing_is_closed(outing) and not outing_is_past(outing))
+        "closed": outing.status == "Embarque cerrado"
     })
 
 @app.post("/socio/add_self")
@@ -732,13 +718,58 @@ def outing_status(outing_id: Optional[int] = Form(None), status: str = Form(...)
     outing = selected_outing(db, outing_id)
     if not outing:
         raise HTTPException(400, "Salida inexistente")
-    if outing.status == "Embarque cerrado":
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
-    if status not in ["En reservas", "En embarque", "Demorada", "Cancelada por capitán", "Programada"]:
+
+    allowed_statuses = [
+        "En reservas",
+        "En embarque",
+        "Demorada",
+        "Reprogramada",
+        "Cancelada por capitán",
+        "Embarque cerrado",
+        "Realizada",
+    ]
+    if status not in allowed_statuses:
         raise HTTPException(400)
+
+    old_status = outing.status
+
+    # Caso operativo real: la salida puede estar cerrada y aun así cancelarse
+    # por decisión del capitán antes de zarpar o por fuerza mayor.
+    # En ese caso no se cobra nada a nadie, pero se conserva la lista como registro.
+    if status == "Cancelada por capitán":
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        for r in reservations:
+            r.charge_amount = 0
+            r.cancel_reason = "Cancelada por capitán"
+            if r.attendance == "Por confirmar":
+                r.attendance = "Ausente"
+        outing.status = "Cancelada por capitán"
+        db.commit()
+        log(db, user.name, "salida cancelada por capitán", f"{outing.title} / estado anterior: {old_status} / cargos anulados")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+
+    # Reapertura controlada: permite corregir una salida cerrada por error
+    # o volver a embarque si la operación sigue viva.
+    if old_status == "Embarque cerrado" and status in ("En embarque", "Demorada", "Reprogramada", "En reservas"):
+        outing.status = status
+        db.commit()
+        log(db, user.name, "reabre/cambia salida cerrada", f"{outing.title}: {old_status} -> {status}")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+
+    # Cualquier salida cancelada puede reabrirse solo por capitán/admin.
+    if old_status == "Cancelada por capitán" and status in ("En embarque", "Demorada", "Reprogramada", "En reservas"):
+        outing.status = status
+        db.commit()
+        log(db, user.name, "reabre salida cancelada", f"{outing.title}: {old_status} -> {status}")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+
+    # Realizada es final administrativo, salvo que se cancele por capitán/admin.
+    if old_status == "Realizada" and status not in ("Cancelada por capitán",):
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
+
     outing.status = status
     db.commit()
-    log(db, user.name, "estado salida", f"{outing.title}: {status}")
+    log(db, user.name, "estado salida", f"{outing.title}: {old_status} -> {status}")
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/captain/attendance/{rid}/{value}")
@@ -768,27 +799,49 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
 @app.post("/captain/close")
 def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing, reservations, active, present, *_ = outing_context(db, outing_id)
+    if not outing:
+        raise HTTPException(400, "Salida inexistente")
+    if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
     if present < outing.min_crew:
         raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
     if present > outing.max_crew:
         raise HTTPException(400, f"Se supera el máximo de {outing.max_crew}")
+
     users = {u.id: u for u in db.query(User).all()}
     present_dnis = {r.dni for r in active if canonical_kind(r.kind) == "socio" and r.attendance == "Presente"}
+    guest_fee = float(outing.guest_fee or 0)
+
     for r in reservations:
+        k = canonical_kind(r.kind)
+
         if r.cancelled_at is not None:
             if r.charge_amount is None:
                 r.charge_amount = 0
             continue
+
         if r.attendance == "Por confirmar":
             r.attendance = "Ausente"
-        if canonical_kind(r.kind) in ("invitado", "hijo_menor") and r.attendance == "Presente":
+
+        # Invitados e hijos menores no socios solo pueden embarcar si embarca su socio responsable.
+        if k in ("invitado", "hijo_menor") and r.attendance == "Presente":
             responsible = users.get(r.responsible_user_id)
             if responsible and responsible.dni not in present_dnis:
                 r.attendance = "No embarcable"
+
+        # Liquidación final:
+        # - Socio presente: sin cargo.
+        # - Invitado presente: paga tarifa completa de invitado.
+        # - Hijo menor de socio no socio presente: sin cargo.
+        # - Ausente/no embarcable: aplica cargo reglamentario por plaza perdida.
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
         elif r.attendance == "Presente":
-            r.charge_amount = 0
+            if k == "invitado":
+                r.charge_amount = guest_fee
+            else:
+                r.charge_amount = 0
+
     outing.status = "Embarque cerrado"
     db.commit()
     log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present}")
@@ -838,7 +891,7 @@ def manifest_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessi
     writer = csv.writer(output, delimiter=';')
     writer.writerow(["salida_id", "salida", "fecha", "nombre", "dni", "tipo", "estado_reserva", "asistencia", "cargo", "responsable_id", "cancelado_en"])
     for r in reservations:
-        writer.writerow([outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, r.kind, r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
+        writer.writerow([outing.id, outing.title, outing.departure_at.isoformat(), r.person_name, r.dni, canonical_kind(r.kind), r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id or "", r.cancelled_at.isoformat() if r.cancelled_at else ""])
     filename = f"manifest_fjord_vi_salida_{outing.id}.csv"
     return csv_response_excel(output, filename)
 
@@ -852,7 +905,7 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
     if outing:
         q = q.filter(Reservation.outing_id == outing.id)
     for r in q.all():
-        writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, r.kind, float(r.charge_amount), r.cancel_reason or r.attendance])
+        writer.writerow([r.outing_id, outing.title if outing else "", datetime.utcnow().date(), r.person_name, r.dni, canonical_kind(r.kind), float(r.charge_amount), r.cancel_reason or r.attendance])
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
     return csv_response_excel(output, filename)
 
