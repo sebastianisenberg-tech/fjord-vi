@@ -129,3 +129,8 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Refuerzo de cupo: el backend baja excedentes no presentes a lista de espera para impedir activos > 9.
 - Administración más clara: salida seleccionada, activos embarcables, pendientes activos, registros totales y lista de espera.
 - Cierre de capitán devuelve mensajes de pantalla, no errores técnicos, si falta mínimo o se supera máximo.
+
+## v27.0.0 - Administración de oficina
+- Rediseño del panel de administración como pantalla de oficina: selector de salida, resumen operativo, liquidación, tabla administrativa y agenda.
+- Separación visual entre planificación mensual, revisión posterior a la navegación, liquidación y herramientas del sistema.
+- Métricas más explícitas: reservas totales, activos embarcables, embarcados, no embarcados, lista de espera y cargos firmes.
