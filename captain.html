@@ -25,7 +25,7 @@
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="heroCard greenHero">
   <div><span class="eyebrow">Salida seleccionada</span><h1>{{outing.title}}</h1><p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p></div>
-  <span class="pill {{readiness.level}}">{{outing.status}}</span>
+  <span class="pill {% if outing_cancelled %}neutral{% else %}{{readiness.level}}{% endif %}">{{outing.status}}</span>
 </section>
 
 <section class="statusPanel {% if outing.status == 'Cancelada por capitán' %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
@@ -100,6 +100,6 @@
 {% endif %}
 </main>
 <nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#estado">Estado</a><a href="#tripulacion">Lista</a><a href="#cargos-capitan">Cargos</a></nav>
-<footer class="appFooter">{{club_name}} · {{app_name}} · {{app_model}} · {{version}}</footer>
+<footer class="appFooter">{{club_name}} · {{app_name}} · {{app_model}} · {{version}} | build: {{app_build}}</footer>
 
 </div></body></html>

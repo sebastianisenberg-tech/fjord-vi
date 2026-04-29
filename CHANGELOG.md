@@ -1,12 +1,18 @@
 # Changelog
 
-## v26.6.1 UX premium YCA revisada
+## v26.7.1 revisión fina de producción
+- Actualiza versión visible a v26.7.1.
+- Corrige README que todavía mostraba v26.6.
+- Actualiza nombre del servicio Render a v26.7.1.
+- Mantiene lógica contable y estructura de base sin cambios.
+
+## v26.7 UX premium YCA revisada
 - Corrige configuración de tarifa invitado en render.yaml, docker-compose y README a 45000.
-- Actualiza nombre del servicio Render a v26.6.1.
+- Actualiza nombre del servicio Render a v26.7.
 - Unifica versión visible y título interno.
 - Mantiene la base de datos existente sin cambiar el nombre del archivo SQLite para no perder datos.
 
-# v26.6-ux-premium-yca
+# v26.6 legacy previo
 
 - Bloquea acciones de socio e invitados cuando la salida está cancelada por capitán.
 - Oculta formularios operativos en salida cancelada hasta reapertura.
@@ -39,7 +45,7 @@
 
 # Changelog
 
-## V18 Deploy Ready
+## Legacy deploy ready
 
 Mejoras principales sobre V16:
 
@@ -50,7 +56,7 @@ Mejoras principales sobre V16:
 - Barra de progreso de ocupación y presentes.
 - Panel admin con herramientas demo y tarjetas de control.
 - Reinicio de datos demo desde administración.
-- CSV renombrados a V18.
+- CSV de versiones previas.
 - Base SQLite separada: `fjord_v18_pilot.db`.
 
 Sigue siendo piloto. No reemplaza todavía validación institucional, padrón real, autenticación del Club, backups ni operación productiva.

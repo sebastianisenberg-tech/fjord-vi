@@ -18,7 +18,7 @@
 {% else %}Operación registrada.
 {% endif %}</div>{% endif %}
 
-<section class="heroCard purpleHero"><div><span class="eyebrow">{{club_name}} · {{app_name}} · {{version}}</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
+<section class="heroCard purpleHero adminHero"><div><span class="eyebrow">{{club_name}} · {{app_name}} · {{version}} | {{app_build}}</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
 <section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
 {% set outing_cancelled = outing and outing.status == 'Cancelada por capitán' %}
 {% if outing %}<section class="statusPanel {% if outing.status == 'Cancelada por capitán' %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing.status == 'Cancelada por capitán' %}<b>Salida cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>{{readiness.label}}</b><span>{{readiness.detail}}</span>{% endif %}</section>{% endif %}
@@ -29,14 +29,14 @@
 </section>
 
 {% if outing %}
-<section class="card auditBox" id="estado-final">
+<section class="card auditBox adminBlock adminOperacion" id="estado-final">
   <div class="cardTitle"><div><span class="eyebrow">Acta de salida</span><h2>{{final_summary.label}}</h2></div><span class="pill {% if final_summary.closed %}ok{% else %}warn{% endif %}">{{final_summary.liquidacion}}</span></div>
   <p>{{final_summary.detail}}</p>
   <div class="actaCounters"><div><span>Embarcados</span><b>{{acta.embarked_count}}</b></div><div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div><div><span>Pendientes</span><b>{{acta.pending_count}}</b></div><div><span>Cargos</span><b>$ {{acta.total_label}}</b></div></div>
   {% if not final_summary.closed and charge_summary.total > 0 %}<div class="alert warn">Hay cargos preliminares por asistencia/cancelaciones. La liquidación definitiva se consolida al cierre del capitán.</div>{% endif %}
 </section>
 
-<section class="card actaBox" id="acta-detalle">
+<section class="card actaBox adminBlock adminOperacion" id="acta-detalle">
   <div class="cardTitle"><div><span class="eyebrow">Resumen final</span><h2>Acta operativa</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV completo</a></div>
   <div class="actaSection ok"><h3>Embarcados</h3>{% if acta.embarked %}{% for i in acta.embarked %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}{% if i.charge > 0 %} · Cargo firme $ {{i.charge_label}}{% elif i.charge_is_preliminary %} · Preliquidación estimada $ {{i.charge_preview_label}} (solo se confirma si la salida se realiza y se cierra embarque){% endif %}</small></div>{% endfor %}{% else %}<div class="empty">Sin embarcados confirmados.</div>{% endif %}</div>
   <div class="actaSection bad"><h3>No embarcados</h3>{% if acta.not_embarked %}{% for i in acta.not_embarked %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}{% if i.charge > 0 %} · Cargo firme $ {{i.charge_label}}{% elif i.charge_is_preliminary %} · Preliquidación estimada $ {{i.charge_preview_label}} (solo se confirma si la salida se realiza y se cierra embarque){% else %} · Sin cargo{% endif %}</small></div>{% endfor %}{% else %}<div class="empty">Sin no embarcados.</div>{% endif %}</div>
@@ -44,11 +44,11 @@
 </section>
 {% endif %}
 
-<section class="card" id="crear"><div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Nueva salida</h2></div></div><form class="gridForm adminForm" method="post" action="/admin/new_outing"><input class="input" name="title" placeholder="Título"><input class="input" name="destination" placeholder="Destino"><input class="input" type="datetime-local" name="departure_at"><input class="input" type="number" name="guest_fee" value="45000"><button class="btn purple">Crear salida vacía</button></form></section>
-<section class="card" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Control</span><h2>Salidas publicadas</h2></div></div>{% for o in outings %}<a class="row compact {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}" style="text-decoration:none;color:inherit"><div><b>{{o.departure_at.strftime('%d/%m %H:%M')}}</b><small>{{o.title}} · {{o.destination}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</small></div><span class="pill">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span></a>{% endfor %}</section>
+<section class="card adminBlock adminGestion" id="crear"><div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Nueva salida</h2></div></div><form class="gridForm adminForm" method="post" action="/admin/new_outing"><input class="input" name="title" placeholder="Título"><input class="input" name="destination" placeholder="Destino"><input class="input" type="datetime-local" name="departure_at"><input class="input" type="number" name="guest_fee" value="45000"><button class="btn purple">Crear salida vacía</button></form></section>
+<section class="card adminBlock adminGestion" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Control</span><h2>Salidas publicadas</h2></div></div>{% for o in outings %}<a class="row compact {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}" style="text-decoration:none;color:inherit"><div><b>{{o.departure_at.strftime('%d/%m %H:%M')}}</b><small>{{o.title}} · {{o.destination}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</small></div><span class="pill">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span></a>{% endfor %}</section>
 
 {% if outing %}
-<section class="card" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>
+<section class="card adminBlock adminOperacion" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>
   {% for r in reservations %}
   {% set v = reservation_views.get(r.id) %}
   <div class="row manifestCard {{v.tipo_class}} {% if v.cancelled %}disabled{% endif %} {% if v.critical %}critical{% endif %} {% if outing_cancelled %}cancelledNeutral{% endif %}">
@@ -60,7 +60,7 @@
   </div>
   {% endfor %}{% if reservations|length == 0 %}<div class="empty">Esta salida todavía no tiene tripulantes anotados.</div>{% endif %}</section>
 
-<section class="card" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Resumen de cargos</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>
+<section class="card adminBlock adminOperacion" id="liquidacion"><div class="cardTitle"><div><span class="eyebrow">Administración</span><h2>Resumen de cargos</h2></div><a class="mini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV</a></div>
   <div class="chargeTotal"><span>Total de la salida</span><b>$ {{charge_summary.total_label}}</b></div>
   {% if charge_summary.total == 0 %}<div class="empty">Sin cargos generados para esta salida.</div>{% endif %}
   {% if charge_summary.invitados %}<h3>Invitados</h3>{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% endif %}
@@ -69,7 +69,7 @@
 </section>
 {% endif %}
 
-<section class="card" id="usuarios">
+<section class="card adminBlock adminGestion" id="usuarios">
   <div class="cardTitle"><div><span class="eyebrow">Accesos</span><h2>Usuarios del sistema</h2></div><span class="pill">clave inicial demo1234</span></div>
   <form class="gridForm adminForm" method="post" action="/admin/create_user">
     <input class="input" name="name" placeholder="Nombre y apellido" required><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento" required><input class="input" name="member_no" placeholder="Nº de socio"><input class="input" type="email" name="email" placeholder="Email"><input class="input" name="phone" placeholder="Celular / WhatsApp"><select class="input" name="role"><option value="socio">Socio</option><option value="captain">Capitán</option><option value="admin">Administrador</option></select><button class="btn purple">Crear usuario</button>
@@ -80,10 +80,10 @@
   {% endfor %}{% else %}<div class="empty">Todavía no hay usuarios cargados o el backend no envió la lista.</div>{% endif %}
 </section>
 
-<section class="card" id="herramientas"><div class="cardTitle"><div><span class="eyebrow">Demo</span><h2>Herramientas del piloto</h2></div></div><p>Reinicia salidas, reservas y logs demo sin borrar usuarios.</p><form method="post" action="/admin/demo_reset"><button class="btn light">Reiniciar datos demo</button></form></section>
+<section class="card adminBlock adminSistema" id="herramientas"><div class="cardTitle"><div><span class="eyebrow">Demo</span><h2>Herramientas del piloto</h2></div></div><p>Reinicia salidas, reservas y logs demo sin borrar usuarios.</p><form method="post" action="/admin/demo_reset"><button class="btn light">Reiniciar datos demo</button></form></section>
 <section class="card" id="sistema-limpio"><div class="eyebrow">OPERACIÓN REAL</div><h2>Sistema limpio</h2><p class="muted">Borra salidas, reservas, cargos y auditoría demo. Conserva los usuarios. Usar para empezar una operación real desde cero.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('Esto borra TODAS las salidas, reservas, cargos y auditoría. Conserva usuarios. ¿Seguro?');"><button class="mini dangerBtn" type="submit">Sistema limpio sin demo</button></form></section>
 <section class="card" id="backup-json"><div class="eyebrow">RESGUARDO</div><h2>Backup JSON</h2><p class="muted">Descarga o restaura el estado completo del piloto: salidas, reservas, cargos y auditoría.</p><div class="actions"><a class="mini okBtn" href="/admin/backup">Descargar backup JSON</a></div><form method="post" action="/admin/restore" enctype="multipart/form-data" style="margin-top:12px;"><input type="file" name="file" required><button class="mini" type="submit">Restaurar JSON</button></form></section>
 <section class="card" id="logs"><div class="cardTitle"><div><span class="eyebrow">Trazabilidad</span><h2>Auditoría</h2></div></div>{% for l in logs %}<div class="row compact"><div><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div></div>{% endfor %}</section>
 </main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#usuarios">Usuarios</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav>
-<footer class="appFooter">{{club_name}} · {{app_name}} · {{app_model}} · {{version}}</footer>
+<footer class="appFooter">{{club_name}} · {{app_name}} · {{app_model}} · {{version}} | build: {{app_build}}</footer>
 </div></body></html>

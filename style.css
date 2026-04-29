@@ -485,7 +485,7 @@ header.top a:active,
   .crewRow .actions { min-width: 250px; }
 }
 
-/* v26.6: limpieza visual premium */
+/* v26.6: limpieza visual premium histórica */
 .lockBox {
   background: #f8fafc;
   border: 1px solid #d7dee8;
@@ -508,4 +508,54 @@ header.top a:active,
 }
 .crewRow.cancelledNeutral.disabled {
   opacity: 1;
+}
+
+/* v26.7: foco socio premium, estados subordinados y administración desktop */
+.socioPremium {
+  border-color: rgba(15,118,110,.10);
+  box-shadow: 0 10px 26px rgba(15, 38, 64, .055);
+}
+.socioPremium .cardTitle h2 { letter-spacing: -.02em; }
+.statusPanel.cancelled { background: #f3f6fa; border-color: #d7dee8; color: #344054; }
+.crewRow.cancelledNeutral,
+.manifestCard.cancelledNeutral,
+.crewRow.cancelledNeutral.disabled,
+.manifestCard.cancelledNeutral.disabled {
+  opacity: 1 !important;
+  border-color: #d7dee8 !important;
+  background: linear-gradient(180deg,#fbfcfe,#f7f9fc) !important;
+  color: #344054 !important;
+}
+.crewRow.cancelledNeutral .statusText,
+.manifestCard.cancelledNeutral .statusText,
+.crewRow.cancelledNeutral .badgeAlert,
+.manifestCard.cancelledNeutral .badgeAlert {
+  color: #475569 !important;
+}
+.crewRow.cancelledNeutral .pill,
+.manifestCard.cancelledNeutral .pill {
+  background: #eef2f7 !important;
+  color: #475569 !important;
+  border-color: #d7dee8 !important;
+}
+.pill.neutral { background: #eef2f7 !important; color: #475569 !important; border: 1px solid #d7dee8 !important; }
+.pill.ok { background: #e6f7ec; color: #08785f; }
+.pill.warn { background: #fff3cd; color: #9a6700; }
+.pill.bad { background: #fde8e7; color: #a3312d; }
+.appFooter { line-height: 1.35; }
+@media (min-width: 900px) {
+  .app.wide .wrap { max-width: 1180px; }
+  .app.wide main.wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .app.wide .heroCard, .app.wide .stats, .app.wide .statusPanel, .app.wide #dashboard { grid-column: 1 / -1; }
+  .adminOperacion { grid-column: span 1; }
+  .adminGestion { grid-column: span 1; }
+  .adminSistema { grid-column: span 1; }
+  .app.wide #usuarios, .app.wide #auditoria { grid-column: 1 / -1; }
+  .app.wide .bottom { display: none; }
+}
+@media (min-width: 1180px) {
+  .app.wide main.wrap { grid-template-columns: 1.15fr .85fr; }
+  .app.wide #manifest, .app.wide #liquidacion { grid-column: 1 / 2; }
+  .app.wide #crear, .app.wide #salidas, .app.wide #usuarios, .app.wide #herramientas, .app.wide #sistema, .app.wide #backup, .app.wide #auditoria { grid-column: 2 / 3; }
+  .app.wide #usuarios, .app.wide #auditoria { grid-column: 1 / -1; }
 }

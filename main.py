@@ -40,7 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.6.1-ux-premium-yca"
+VERSION = "v26.7.1"
+APP_BUILD = "socio-premium-admin-desktop-yca"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -135,6 +136,7 @@ app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
 templates = Jinja2Templates(directory=str(APP_DIR))
 templates.env.globals.update({
     "version": VERSION,
+    "app_build": APP_BUILD,
     "club_name": CLUB_NAME,
     "app_name": APP_NAME,
     "app_model": APP_MODEL,
@@ -233,6 +235,7 @@ def str_to_dt(v):
 def export_state(db: Session) -> dict:
     return {
         "version": VERSION,
+        "build": APP_BUILD,
         "exported_at": datetime.utcnow().isoformat(),
         "users": [
             {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no,
@@ -569,7 +572,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         cancelled = True
         estado_fisico = "Salida cancelada por capitán"
         estado_reglamentario = "No embarcado"
-        level = "bad"
+        level = "neutral"
         alert = "Salida cancelada"
     elif captain_cancelled:
         charge = 0.0
@@ -886,7 +889,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
+    return {"ok": True, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.head("/")
 def head_index():

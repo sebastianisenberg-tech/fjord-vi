@@ -7,5 +7,5 @@
   {% if error %}<div class="alert bad">DNI o clave incorrectos</div>{% endif %}
   <form method="post" action="/login"><label>DNI</label><input name="dni" required><label>Clave</label><input type="password" name="password" required><button>Ingresar al sistema</button></form>
   <div class="demoBox"><b>Accesos demo</b><br>Socio: 20123456 / demo1234<br>Capitán: 30999111 / demo1234<br>Admin: 27999111 / demo1234</div>
-  <small class="version">{{club_name}} · {{app_name}} · {{app_model}} · {{version}}</small>
+  <small class="version">{{club_name}} · {{app_name}} · {{app_model}} · {{version}} | build: {{app_build}}</small>
 </div></div></body></html>
