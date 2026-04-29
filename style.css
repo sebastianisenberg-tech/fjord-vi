@@ -484,3 +484,28 @@ header.top a:active,
   .crewRow { grid-template-columns: 1fr auto; }
   .crewRow .actions { min-width: 250px; }
 }
+
+/* v26.6: limpieza visual premium */
+.lockBox {
+  background: #f8fafc;
+  border: 1px solid #d7dee8;
+  color: #475569;
+}
+.crewRow.cancelledNeutral,
+.manifestCard.cancelledNeutral {
+  border-color: #d7dee8 !important;
+  background: #f8fafc !important;
+  box-shadow: none;
+}
+.crewRow.cancelledNeutral .statusText,
+.manifestCard.cancelledNeutral .badgeAlert,
+.crewRow.cancelledNeutral .badgeAlert {
+  color: #475569 !important;
+}
+.crewRow.cancelledNeutral .badgeAlert,
+.manifestCard.cancelledNeutral .badgeAlert {
+  background: #eef2f7 !important;
+}
+.crewRow.cancelledNeutral.disabled {
+  opacity: 1;
+}

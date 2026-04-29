@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v18-deploy-ready
+    name: fjord-vi-v26-6-1-ux-premium-yca
     env: docker
     plan: free
     autoDeploy: true
@@ -18,6 +18,6 @@ services:
       - key: MIN_CREW
         value: 2
       - key: INVITED_FEE
-        value: 4500
+        value: 45000
       - key: SECRET_KEY
         generateValue: true

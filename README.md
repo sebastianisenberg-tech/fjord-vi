@@ -1,4 +1,4 @@
-# YCA · Fjord VI · Operativo de Embarque · v26.5.1
+# YCA · Fjord VI · Operativo de Embarque · v26.6
 
 Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 
@@ -46,7 +46,7 @@ http://localhost:8000
 
 ```bash
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Deploy Render
@@ -60,7 +60,7 @@ SECRET_KEY=poner-una-clave-larga
 DATA_DIR=/data
 MAX_CREW=9
 MIN_CREW=2
-INVITED_FEE=4500
+INVITED_FEE=45000
 LATE_SOCIO_RATE=0.70
 ```
 

@@ -1,6 +1,22 @@
-## v26.5.1 UX profesional YCA
+# Changelog
 
-- Unificación de versión visible en app: YCA · Fjord VI · Operativo de Embarque · v26.5.1.
+## v26.6.1 UX premium YCA revisada
+- Corrige configuración de tarifa invitado en render.yaml, docker-compose y README a 45000.
+- Actualiza nombre del servicio Render a v26.6.1.
+- Unifica versión visible y título interno.
+- Mantiene la base de datos existente sin cambiar el nombre del archivo SQLite para no perder datos.
+
+# v26.6-ux-premium-yca
+
+- Bloquea acciones de socio e invitados cuando la salida está cancelada por capitán.
+- Oculta formularios operativos en salida cancelada hasta reapertura.
+- Limpia textos repetidos en tripulación durante cancelación por capitán.
+- Cambia tarjetas canceladas a tratamiento visual neutro/premium.
+- Mantiene lógica contable validada: cancelación capitán $0, reapertura recalculada, cierre con cargos firmes.
+
+## v26.6 UX profesional YCA
+
+- Unificación de versión visible en app: YCA · Fjord VI · Operativo de Embarque · v26.6.
 - Título interno FastAPI actualizado.
 - Bloqueo de edición por socio en salidas canceladas por capitán hasta reapertura operativa.
 - Mensajes de cancelación homogeneizados: sin cargos ni preliquidaciones vigentes.

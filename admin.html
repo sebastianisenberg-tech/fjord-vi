@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Admin · Fjord VI</title>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Admin · {{app_name}}</title>
 <style>.dangerBtn{background:#991b1b!important;color:#fff!important;border:0!important}</style>
 </head>
 <body><div class="app wide">
@@ -20,11 +20,12 @@
 
 <section class="heroCard purpleHero"><div><span class="eyebrow">{{club_name}} · {{app_name}} · {{version}}</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
 <section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
+{% set outing_cancelled = outing and outing.status == 'Cancelada por capitán' %}
 {% if outing %}<section class="statusPanel {% if outing.status == 'Cancelada por capitán' %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing.status == 'Cancelada por capitán' %}<b>Salida cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>{{readiness.label}}</b><span>{{readiness.detail}}</span>{% endif %}</section>{% endif %}
 
 <section class="split" id="dashboard">
   <div class="miniPanel"><span>Presentes marcados</span><b>{{present}}</b></div>
-  <div class="miniPanel"><span>{% if closed %}Confirmación final{% else %}Pendientes de embarque{% endif %}</span><b>{% if closed %}Completa{% else %}{{pending}}{% endif %}</b></div>
+  <div class="miniPanel"><span>{% if closed %}Confirmación final{% elif outing_cancelled %}No embarcados{% else %}Pendientes de embarque{% endif %}</span><b>{% if closed %}Completa{% elif outing_cancelled %}{{acta.not_embarked_count}}{% else %}{{pending}}{% endif %}</b></div>
 </section>
 
 {% if outing %}
@@ -39,7 +40,7 @@
   <div class="cardTitle"><div><span class="eyebrow">Resumen final</span><h2>Acta operativa</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV completo</a></div>
   <div class="actaSection ok"><h3>Embarcados</h3>{% if acta.embarked %}{% for i in acta.embarked %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}{% if i.charge > 0 %} · Cargo firme $ {{i.charge_label}}{% elif i.charge_is_preliminary %} · Preliquidación estimada $ {{i.charge_preview_label}} (solo se confirma si la salida se realiza y se cierra embarque){% endif %}</small></div>{% endfor %}{% else %}<div class="empty">Sin embarcados confirmados.</div>{% endif %}</div>
   <div class="actaSection bad"><h3>No embarcados</h3>{% if acta.not_embarked %}{% for i in acta.not_embarked %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}{% if i.charge > 0 %} · Cargo firme $ {{i.charge_label}}{% elif i.charge_is_preliminary %} · Preliquidación estimada $ {{i.charge_preview_label}} (solo se confirma si la salida se realiza y se cierra embarque){% else %} · Sin cargo{% endif %}</small></div>{% endfor %}{% else %}<div class="empty">Sin no embarcados.</div>{% endif %}</div>
-  {% if acta.pending %}<div class="actaSection warn"><h3>Pendientes</h3>{% for i in acta.pending %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}</small></div>{% endfor %}</div>{% endif %}
+  {% if acta.pending and not outing_cancelled %}<div class="actaSection warn"><h3>Pendientes</h3>{% for i in acta.pending %}<div class="actaItem"><b>{{i.name}}</b><span class="badgeTipo {{i.tipo_class}}">{{i.tipo}}</span><small>{{i.estado_fisico}} · {{i.motivo}}</small></div>{% endfor %}</div>{% endif %}
 </section>
 {% endif %}
 
@@ -50,10 +51,10 @@
 <section class="card" id="manifest"><div class="cardTitle"><div><span class="eyebrow">Manifest</span><h2>Reservas de la salida seleccionada</h2></div><a class="mini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV</a></div>
   {% for r in reservations %}
   {% set v = reservation_views.get(r.id) %}
-  <div class="row manifestCard {{v.tipo_class}} {% if v.cancelled %}disabled{% endif %} {% if v.critical %}critical{% endif %}">
+  <div class="row manifestCard {{v.tipo_class}} {% if v.cancelled %}disabled{% endif %} {% if v.critical %}critical{% endif %} {% if outing_cancelled %}cancelledNeutral{% endif %}">
     <div>
       <div class="manifestHead"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% if v.alert %}<span class="badgeAlert {{v.level}}">{{v.alert}}</span>{% endif %}</div>
-      <small class="metaText">DNI {{r.dni}} · {{v.alert}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
+      <small class="metaText">DNI {{r.dni}} · {{v.alert}}{% if not outing_cancelled and v.motivo %} · {{v.motivo}}{% endif %}</small>
     </div>
     <span class="pill {% if v.charge > 0 or v.charge_is_preliminary %}warn{% else %}ok{% endif %}">{% if v.charge > 0 %}$ {{v.charge_label}}{% elif v.charge_is_preliminary %}preliq. $ {{v.charge_preview_label}}{% else %}sin cargo{% endif %}</span>
   </div>
