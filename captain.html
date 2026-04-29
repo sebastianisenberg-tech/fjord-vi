@@ -1,28 +1,59 @@
-<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Capitán · {{app_name}}</title>
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+  <h2>Control de embarque</h2>
+  <h3>{{ salida.nombre }}</h3>
+
+  <div class="status ok">
+    Salida operativa
+  </div>
+
+  <div class="grid-3">
+    <div><strong>Presentes</strong><br>{{ presentes }}</div>
+    <div><strong>Activos</strong><br>{{ activos }}/9</div>
+    <div><strong>Lista espera</strong><br>{{ espera }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Tripulación embarcable</h3>
+
+  {% for p in activos_list %}
+  <div class="crew">
+    <div>
+      <strong>{{ p.nombre }}</strong>
+      <span class="badge {{ p.tipo }}">{{ p.tipo }}</span>
+      <div class="sub">{{ p.estado }}</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn ok" onclick="presente({{ p.id }})">Presente</button>
+      <button class="btn warn" onclick="noembarca({{ p.id }})">No embarca</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h3>Lista de espera</h3>
+
+  {% for p in espera_list %}
+  <div class="crew wait">
+    <strong>{{ p.nombre }}</strong>
+    <div class="sub">En espera</div>
+  </div>
+  {% endfor %}
+</div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('form').forEach(function(form){
-    form.addEventListener('submit', function(e){
-      const close = form.classList.contains('closeBoardingForm') || (form.querySelector('select[name="status"]') && form.querySelector('select[name="status"]').value === 'Cerrar');
-      const cancel = form.querySelector('select[name="status"]') && form.querySelector('select[name="status"]').value === 'Cancelada';
-      if (close && !confirm('Confirmar cierre de embarque y liquidación? Los pendientes pasarán a ausentes con cargo.')) { e.preventDefault(); return; }
-      if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
-      form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
-    });
-  });
-});
-</script></head>
-<body><div class="app">
-<header class="top topGreen premiumTop"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
-<main class="wrap">
-{% if msg %}<div class="toast compactToast">{% if msg=='cierre_ok' %}Salida cerrada y liquidada.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='reapertura_ok' or msg=='estado_actualizado' %}Estado actualizado. Preliquidaciones recalculadas.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
-<section class="card premiumCard" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>{% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}{% for o in outings %}<a class="selectRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.status}}</small></div><span class="pill">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span></a>{% endfor %}</section>
-{% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-<section class="premiumHero"><div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</small></div><span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span></section>
-<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>Salida operativa</b><span>Marcá presentes. Al cerrar, los pendientes quedan ausentes con cargo.</span>{% endif %}</section>
-<section class="kpiStrip"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div><div><small>Lista espera</small><b>{{waitlist_count|default(0)}}</b></div><div><small>Cargos</small><b>$ {{charge_summary.total_label}}</b></div></section>
-<section class="card premiumCard" id="decision"><div class="cardTitle"><div><span class="eyebrow">Decisión</span><h2>Modo de la salida</h2></div></div><form class="gridForm captainStatus" method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><select class="input" name="status"><option value="Reservas abiertas" {% if outing.status != 'Cancelada por capitán' and outing.status != 'Embarque cerrado' %}selected{% endif %}>Operativa</option><option value="Cancelada" {% if outing_cancelled %}selected{% endif %}>Cancelada por capitán</option><option value="Cerrar">Cerrar embarque</option></select><button class="btn green">Aplicar decisión</button></form>{% if not closed and not outing_cancelled %}<form class="closeBoardingForm" method="post" action="/captain/close" style="margin-top:10px;"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn navy secondaryClose">Cerrar embarque y liquidar</button></form>{% endif %}</section>
-<section class="card premiumCard" id="tripulacion"><div class="cardTitle"><div><span class="eyebrow">Embarque</span><h2>Tripulación</h2></div></div>{% for r in reservations %}{% set v = reservation_views.get(r.id) %}<div class="premiumPerson captainPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %}"><div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span><div class="personState">{% if v.waitlisted %}Lista de espera{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a cierre</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div></div><div class="captainActions">{% if closed or outing_cancelled %}<span class="pill neutral">{% if closed %}Cerrado{% else %}Bloqueado{% endif %}</span>{% elif v.waitlisted %}<span class="pill neutral">En espera</span>{% else %}<form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form><form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini neutralBtn">No embarca</button></form>{% if v.not_embarked or v.cancelled %}<form method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="mini">Reactivar</button></form>{% endif %}{% endif %}</div></div>{% endfor %}{% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}</section>
-<section class="card premiumCard" id="cargos"><div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div></div><div class="chargeTotal"><span>Total firme</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total == 0 %}<div class="empty">Sin cargos.</div>{% endif %}{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</section>
-{% endif %}</main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#cargos">Cargos</a></nav><footer class="appFooter"><b>{{club_name}} · {{app_name}}</b><span>{{app_model}}</span><small>{{version}} · build: {{app_build}}</small></footer></div></body></html>
+function presente(id){
+  fetch(`/presente/${id}`, {method:"POST"}).then(()=>location.reload());
+}
+function noembarca(id){
+  fetch(`/noembarca/${id}`, {method:"POST"}).then(()=>location.reload());
+}
+</script>
+
+{% endblock %}
