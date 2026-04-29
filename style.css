@@ -582,3 +582,89 @@ header.top a:active,
 .kpiStrip { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
 .captainActions .mini { min-height: 34px; }
 @media (max-width: 520px) { .bottom { bottom: 10px; } .wrap { padding-bottom: 112px; } }
+
+/* v26.9.3 - Puerta institucional YCA / Fjord VI */
+.institutionalLogin {
+  background:
+    radial-gradient(circle at top, rgba(15,118,110,.10), transparent 30%),
+    linear-gradient(180deg, #edf6f3 0%, #f7fafc 54%, #e9eef6 100%);
+}
+.loginShell {
+  align-items: center;
+  padding: 24px 18px;
+}
+.premiumLoginCard {
+  width: 100%;
+  max-width: 430px;
+  padding: 26px 24px 24px;
+  border-radius: 22px;
+}
+.loginBrandBlock {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.ycaLogo {
+  width: 92px;
+  max-width: 30%;
+  height: auto;
+  display: block;
+  margin: 0 auto 12px;
+  object-fit: contain;
+}
+.clubFullName {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 850;
+  letter-spacing: .1px;
+  line-height: 1.15;
+}
+.boatName {
+  margin-top: 6px;
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+.systemName {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 650;
+}
+.loginForm label {
+  display: block;
+  margin: 13px 0 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+}
+.loginForm input {
+  min-height: 48px;
+  border-radius: 15px;
+  font-size: 16px;
+}
+.loginForm button {
+  min-height: 50px;
+  margin-top: 18px;
+  border-radius: 15px;
+  font-size: 16px;
+}
+.loginContact {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.loginContact strong { color: var(--text); }
+.loginContact a {
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 800;
+}
+.loginVersion {
+  text-align: center;
+  line-height: 1.35;
+}

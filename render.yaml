@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v26-9-2-lista-espera-blindada-yca
+    name: fjord-vi-v26.9.3-puerta-institucional-yca
     env: docker
     plan: free
     autoDeploy: true

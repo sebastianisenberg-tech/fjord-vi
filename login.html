@@ -1,11 +1,35 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>{{app_name}}</title></head>
-<body class="loginBody"><div class="container"><div class="card loginCard">
-  <div class="mark">{{club_name}} · {{app_name}}</div>
-  <h1>Paseos de fin de semana</h1>
-  <p class="muted">{{app_model}}</p>
-  {% if error %}<div class="alert bad">DNI o clave incorrectos</div>{% endif %}
-  <form method="post" action="/login"><label>DNI</label><input name="dni" required><label>Clave</label><input type="password" name="password" required><button>Ingresar al sistema</button></form>
-  <div class="demoBox"><b>Accesos demo</b><br>Socio: 20123456 / demo1234<br>Capitán: 30999111 / demo1234<br>Admin: 27999111 / demo1234</div>
-  <small class="version">{{club_name}} · {{app_name}} · {{app_model}} · {{version}} | build: {{app_build}}</small>
-</div></div></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <title>Yacht Club Argentino · Fjord VI · Sistema de Reservas</title>
+</head>
+<body class="loginBody institutionalLogin">
+  <div class="container loginShell">
+    <div class="card loginCard premiumLoginCard">
+      <div class="loginBrandBlock">
+        <img src="/static/logo_yca.jpg" alt="Yacht Club Argentino" class="ycaLogo">
+        <div class="clubFullName">Yacht Club Argentino</div>
+        <div class="boatName">FJORD VI</div>
+        <div class="systemName">Sistema de Reservas</div>
+      </div>
+      {% if error %}<div class="alert bad">Documento o clave incorrectos</div>{% endif %}
+      <form method="post" action="/login" class="loginForm">
+        <label>Documento</label>
+        <input name="dni" autocomplete="username" inputmode="text" required>
+        <label>Clave</label>
+        <input type="password" name="password" autocomplete="current-password" required>
+        <button>Ingresar</button>
+      </form>
+      <div class="loginContact">
+        <strong>Oficina de Vela</strong><br>
+        Dársena Norte<br>
+        <a href="tel:+541143140505">+54 11 4314-0505</a>
+      </div>
+      <small class="version loginVersion">{{club_name}} · {{app_name}} · Sistema de Reservas · {{version}} | build: {{app_build}}</small>
+    </div>
+  </div>
+</body>
+</html>
