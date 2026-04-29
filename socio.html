@@ -1,70 +1,99 @@
-{% extends "base.html" %}
-
-{% block content %}
-
-<div class="card">
-  <h2>Reserva</h2>
-  <h3>{{ salida.nombre }}</h3>
-
-  <div class="status ok">
-    {{ estado }}
-  </div>
-
-  <div class="grid-3">
-    <div><strong>Ocupación</strong><br>{{ activos }}/9</div>
-    <div><strong>Libres</strong><br>{{ libres }}</div>
-    <div><strong>Mínimo</strong><br>2</div>
-  </div>
-</div>
-
-<div class="card">
-  <h3>Tu lugar</h3>
-
-  {% if es_titular %}
-    <div class="badge ok">Activo</div>
-    <button class="btn danger" onclick="baja()">Quitarme</button>
-  {% else %}
-    <button class="btn ok" onclick="alta()">Anotarme</button>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h3>Invitados</h3>
-
-  {% for i in invitados %}
-  <div class="crew">
-    <strong>{{ i.nombre }}</strong>
-    <span class="badge invitado">Invitado</span>
-    <button class="btn danger" onclick="quitar({{ i.id }})">Quitar</button>
-  </div>
-  {% endfor %}
-
-  <input id="nombre" placeholder="Nombre y apellido">
-  <input id="dni" placeholder="DNI">
-
-  <button class="btn ok" onclick="agregar()">Agregar invitado</button>
-</div>
-
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+<title>Socios · {{app_name}}</title>
 <script>
-function alta(){
-  fetch("/alta", {method:"POST"}).then(()=>location.reload());
-}
-function baja(){
-  fetch("/baja", {method:"POST"}).then(()=>location.reload());
-}
-function agregar(){
-  fetch("/invitar", {
-    method:"POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      nombre: document.getElementById("nombre").value,
-      dni: document.getElementById("dni").value
-    })
-  }).then(()=>location.reload());
-}
-function quitar(id){
-  fetch(`/quitar/${id}`, {method:"POST"}).then(()=>location.reload());
-}
-</script>
+function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
+document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
+document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){form.querySelectorAll('button').forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});});});});
 
-{% endblock %}
+</script>
+</head>
+<body><div class="app socioApp">
+<header class="top topGreen premiumTop">
+  <div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}}</small></div>
+  <a href="/logout" class="logoutBtn">Salir</a>
+</header>
+<main class="wrap socioWrap">
+{% if msg %}<div class="toast compactToast">{% if msg=='cupo_completo' %}Cupo completo.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable.{% elif msg=='duplicado' %}Ese documento ya tiene una reserva activa.{% elif msg=='datos_invalidos' %}Revisá nombre, documento y tipo.{% elif msg=='cancelado' %}Reserva actualizada.{% elif msg=='reserva_ok' %}Reserva registrada.{% elif msg=='invitado_ok' %}Invitado agregado.{% elif msg=='reactivado' %}Reserva reincorporada.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa.{% elif msg=='lista_espera_ok' %}Te anotamos en lista de espera.{% elif msg=='socio_prioridad_ok' %}Reserva registrada por prioridad de socio.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+
+<section class="card premiumCard" id="salidas">
+  <div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Elegí una salida</h2></div></div>
+  {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
+  <div class="selectorList">
+  {% for o in outings %}
+    <a class="selectRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
+      <div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}}</small></div>
+      <span class="pill {% if o.status == 'Cancelada por capitán' %}neutral{% elif o.status == 'Embarque cerrado' %}ok{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
+    </a>
+  {% endfor %}
+  </div>
+</section>
+
+{% if outing %}
+{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
+<section class="premiumHero" id="estado">
+  <div class="memberIdentity">
+    <span class="eyebrow">Socio</span>
+    <h1>{{user.name}}</h1>
+    <small>{% if user.member_no %}Socio Nº {{user.member_no}} · {% endif %}Documento {{user.dni}}</small>
+  </div>
+  <div class="outingIdentity">
+    <h2>{{outing.title}}</h2>
+    <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
+    <span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada por capitán{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span>
+  </div>
+</section>
+
+<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>
+  {% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>
+  {% else %}<b>Salida operativa</b><span>{{active_count}} / {{outing.max_crew}} activos · {{remaining}} lugares libres{% if waitlist_count|default(0) > 0 %} · {{waitlist_count}} en espera{% endif %}.</span>{% endif %}
+</section>
+
+<section class="kpiStrip">
+  <div><small>Ocupación</small><b>{{active_count}} / {{outing.max_crew}}</b></div>
+  <div><small>Libres</small><b>{{remaining}}</b></div>
+  <div><small>Mínimo</small><b>{{outing.min_crew}}</b></div>
+</section>
+
+<section class="card premiumCard focusCard" id="reserva">
+  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if outing_cancelled %}<span class="pill neutral">Pausada</span>{% elif self_view and self_view.waitlisted %}<span class="pill neutral">Lista de espera</span>{% elif has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
+  {% if self_reservation %}
+    {% set v = reservation_views.get(self_reservation.id) %}
+    <div class="premiumPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %}">
+      <div class="personMain"><b>{{self_reservation.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
+        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
+      </div>
+      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini neutralBtn">Salir de lista de espera</button></form>{% elif has_self %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Quitarme de la salida</button></form>{% else %}<form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporarme</button></form>{% endif %}</div>
+    </div>
+  {% elif outing_cancelled %}<div class="empty lockBox"><b>Anotación deshabilitada.</b><br>Pendiente de reapertura por capitán.</div>
+  {% elif not closed %}<form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn green">{% if remaining == 0 %}Anotarme en lista de espera{% else %}Anotarme en esta salida{% endif %}</button></form>{% endif %}
+</section>
+
+<section class="card premiumCard" id="invitados">
+  <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados y menores</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
+  {% set ns = namespace(count=0) %}
+  {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}{% set v = reservation_views.get(r.id) %}
+    <div class="premiumPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %}">
+      <div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
+        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
+      </div>
+      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini neutralBtn">Salir de lista de espera</button></form>{% elif v.active %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Quitar de la salida</button></form>{% else %}<form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporar a la salida</button></form>{% endif %}</div>
+    </div>
+  {% endif %}{% endfor %}
+  {% if ns.count == 0 %}<div class="empty">Todavía no agregaste invitados ni menores para esta salida.</div>{% endif %}
+  {% if outing_cancelled %}<div class="empty lockBox">Alta de invitados deshabilitada.<br>Pendiente de reapertura por capitán.</div>
+  {% elif not closed and has_self %}
+  <form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">{% if remaining == 0 %}Agregar a lista de espera{% else %}Agregar invitado{% endif %}</button></form>
+  {% elif not closed and not has_self %}<div class="empty">Para agregar invitados, primero anotate como socio titular.</div>{% endif %}
+</section>
+
+<details class="card rulesToggle premiumCard" id="reglas"><summary>Ver reglas de cargos</summary><p>Antes del corte de 48h, los socios tienen prioridad sobre invitados. Después del corte, la tripulación queda congelada y la lista de espera entra solo si se libera una vacante. La lista de espera no genera cargo mientras no entre al cupo. Si entra al cupo y luego no embarca o cancela tarde, aplica el cargo reglamentario: socio 70% de tarifa invitado; invitado o menor no socio 100%. Si el capitán cancela la salida, no hay cargos.</p></details>
+{% endif %}
+</main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#reserva">Reserva</a><a href="#invitados">Invitados</a><a href="#reglas">Reglas</a></nav>
+<footer class="appFooter"><b>{{club_name}} · {{app_name}}</b><span>{{app_model}}</span><small>{{version}} · build: {{app_build}}</small></footer>
+</div></body></html>
