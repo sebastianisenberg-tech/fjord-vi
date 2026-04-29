@@ -13,6 +13,8 @@
   --danger-soft: #fdebea;
   --warn: #a15c07;
   --warn-soft: #fff4d6;
+  --neutral: #334155;
+  --neutral-soft: #f1f5f9;
   --shadow: 0 10px 28px rgba(16, 32, 51, 0.07);
 }
 
@@ -124,6 +126,7 @@ button.mini, .mini {
 }
 button.okBtn, .mini.okBtn { background: linear-gradient(135deg, #0e7a72, #07966d); color: #fff; }
 button.danger, .mini.danger { background: #fae7e6; color: var(--danger); border: 1px solid #f1c5c2; }
+button.neutralBtn, .mini.neutralBtn { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
 
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
@@ -133,6 +136,7 @@ button.danger, .mini.danger { background: #fae7e6; color: var(--danger); border:
 .pill.ok { background: var(--green-soft); color: var(--green); }
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
 .pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.neutral { background: var(--neutral-soft); color: var(--neutral); }
 .pill.ready { background: rgba(255,255,255,.22); color: #fff; }
 
 .alert { padding: 11px 12px; border-radius: 13px; margin: 10px 0; font-weight: 700; font-size: 13px; }
@@ -247,6 +251,7 @@ header.top a:active,
 }
 .badgeAlert.bad { background: var(--danger-soft); color: var(--danger); }
 .badgeAlert.warn { background: var(--warn-soft); color: var(--warn); }
+.badgeAlert.neutral { background: var(--neutral-soft); color: var(--neutral); }
 .badgeAlert.ok { background: var(--green-soft); color: var(--green); }
 .stateGrid {
   display: grid;
@@ -269,6 +274,7 @@ header.top a:active,
   font-weight: 900;
   font-size: 12px;
 }
+.chargeLine.firm{background:var(--green-soft);color:var(--green);border:1px solid #b7e4d0;}
 .auditBox {
   background: linear-gradient(180deg, #ffffff, #f8fafc);
 }
@@ -393,6 +399,7 @@ header.top a:active,
 .badgeAlert.ok { background: var(--green-soft); color: var(--green); }
 .badgeAlert.bad { background: var(--danger-soft); color: var(--danger); }
 .badgeAlert.warn { background: var(--warn-soft); color: var(--warn); }
+.badgeAlert.neutral { background: var(--neutral-soft); color: var(--neutral); }
 @media (min-width: 640px) {
   .actaCounters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

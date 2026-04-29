@@ -1,3 +1,9 @@
+## v26.4.2 UX semántica
+- Cambia la etiqueta visible de “Cancelado por capitán” a “No embarcado por capitán” para evitar confundirlo con baja del socio.
+- Distingue visualmente “No embarca por capitán” en gris/neutral y “Ausente” en rojo con cargo.
+- Refuerza “Salida cerrada y liquidada” en los mensajes de estado.
+- Cargo firme se muestra en verde; preliquidación estimada conserva color naranja.
+
 # V26.1 - Contabilidad cerrada revisada
 
 - Separa cargo firme de preliquidación/proyección.

@@ -40,7 +40,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.4.1-no-embarca-capitan-ux-revisada"
+VERSION = "v26.4.2-ux-semantica"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -564,18 +564,18 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         charge = 0.0
         charge_preview = 0.0
         preliminary = False
-        estado_fisico = "Cancelado por capitán"
+        estado_fisico = "No embarcado por capitán"
         estado_reglamentario = "No embarcado"
-        level = "bad"
-        alert = "Cancelado por capitán"
+        level = "neutral"
+        alert = "No embarca por capitán"
     elif no_board_by_captain:
         charge = 0.0
         charge_preview = 0.0
         preliminary = False
         estado_fisico = "No embarcado por capitán"
         estado_reglamentario = "No embarcado"
-        level = "bad"
-        alert = "No embarca"
+        level = "neutral"
+        alert = "No embarca por capitán"
     elif cancelled:
         estado_fisico = "Cancelado"
         estado_reglamentario = "No embarcado"
@@ -606,7 +606,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     if outing_cancelled:
         motivo = "Salida cancelada por capitán, sin cargo ni preliquidación vigente"
     elif captain_cancelled:
-        motivo = "Cancelado por capitán, sin cargo"
+        motivo = "No embarcado por decisión del capitán, sin cargo"
     elif no_board_by_captain:
         motivo = "No embarcado por decisión del capitán, sin cargo"
     elif charge > 0:
@@ -770,7 +770,7 @@ def final_status_summary(outing: Outing, reservations, active_count: int, presen
     if is_outing_cancelled_by_captain(outing):
         return {"closed": True, "label": "Estado final: Cancelada", "detail": "Salida cancelada por capitán. No se generan cargos firmes ni preliquidaciones vigentes.", "liquidacion": "Sin cargos"}
     if is_closed_outing(outing):
-        return {"closed": True, "label": "Estado final: Confirmado", "detail": f"Tripulación final: {present} / {outing.max_crew}", "liquidacion": "Liquidación completa"}
+        return {"closed": True, "label": "Estado final: Confirmado", "detail": f"Salida cerrada y liquidada. Tripulación final: {present} / {outing.max_crew}", "liquidacion": "Liquidación completa"}
     return {"closed": False, "label": "Estado operativo: Abierto", "detail": f"Activos: {active_count} / {outing.max_crew} · pendientes: {pending}", "liquidacion": "Preliquidación no firme hasta cierre del capitán"}
 
 def seed():
@@ -850,7 +850,7 @@ def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict
     if outing.status == "Cancelada por capitán":
         return {"label": "Cancelada", "level": "bad", "detail": "La salida fue cancelada por capitán. No se generan cargos firmes ni preliquidaciones vigentes."}
     if outing.status == "Embarque cerrado":
-        return {"label": "Cerrada", "level": "ok", "detail": "La salida ya fue cerrada por capitán."}
+        return {"label": "Salida cerrada y liquidada", "level": "ok", "detail": "La salida ya fue cerrada y liquidada por capitán."}
     if outing.status == "Realizada":
         return {"label": "Realizada", "level": "ok", "detail": "La salida fue marcada como realizada."}
     if outing.status == "Demorada":
