@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.8.3"
-APP_BUILD = "socio-premium-admin-desktop-yca"
+VERSION = "v26.9.2"
+APP_BUILD = "lista-espera-blindada-yca"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -394,12 +394,64 @@ def is_waitlisted(r: Reservation) -> bool:
     return (getattr(r, "status", "") == "Lista de espera" or getattr(r, "attendance", "") == "Lista de espera")
 
 
-def put_on_waitlist(r: Reservation):
+def put_on_waitlist(r: Reservation, reason: str = "En lista de espera"):
+    # La lista de espera no ocupa cupo y nunca genera cargo mientras no sea promovida.
     r.status = "Lista de espera"
     r.attendance = "Lista de espera"
     r.charge_amount = 0
-    r.cancel_reason = "En lista de espera"
+    r.cancel_reason = reason
     r.cancelled_at = None
+
+
+def displaceable_guest_for_socios(db: Session, outing: Outing) -> Optional[Reservation]:
+    """Devuelve un invitado/menor activo desplazable por prioridad de socio.
+
+    Regla operacional:
+    - Antes del corte de 48h, los socios conservan prioridad.
+    - Si el cupo está lleno y entra un socio, puede desplazar a un invitado/menor activo.
+    - Después del corte de 48h, la tripulación activa queda congelada: ya no hay desplazamiento
+      por prioridad, solo promoción por vacante real desde lista de espera.
+    """
+    if not outing or cutoff_passed(outing):
+        return None
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    candidates = [
+        r for r in active_reservations(rows)
+        if canonical_kind(r.kind) in ("invitado", "hijo_menor")
+        and (r.attendance or "Por confirmar") != "Presente"
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda r: (r.created_at or datetime.min, r.id or 0), reverse=True)
+    return candidates[0]
+
+
+def place_socio_with_priority(db: Session, outing: Outing, r: Reservation) -> tuple[str, Optional[str]]:
+    """Ubica una reserva de socio respetando prioridad y congelamiento 48h.
+
+    Retorna:
+    - active: entró al cupo sin desplazar.
+    - active_displaced: entró al cupo y desplazó un invitado/menor a espera.
+    - waitlist: quedó en lista de espera.
+    """
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    # Para decidir cupo, se excluye la propia reserva objetivo: una reserva nueva
+    # recién creada o una reserva en espera no debe contarse como ocupante antes
+    # de decidir si entra o queda en espera.
+    rows_without_target = [x for x in rows if x is not r and (not getattr(r, "id", None) or x.id != r.id)]
+
+    if len(active_reservations(rows_without_target)) < outing.max_crew:
+        reactivate_reservation(db, outing, r)
+        return "active", None
+
+    displaced = displaceable_guest_for_socios(db, outing)
+    if displaced:
+        put_on_waitlist(displaced, "Desplazado a lista de espera por prioridad de socio antes del corte de 48h")
+        reactivate_reservation(db, outing, r)
+        return "active_displaced", displaced.person_name
+
+    put_on_waitlist(r, "En lista de espera. Se activa si se libera una vacante.")
+    return "waitlist", None
 
 
 def promote_waitlist(db: Session, outing: Outing) -> list:
@@ -414,7 +466,12 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
         waiting = [r for r in rows if is_waitlisted(r)]
         if not waiting:
             break
-        waiting.sort(key=lambda r: (0 if canonical_kind(r.kind) == "socio" else 1, r.created_at or datetime.utcnow(), r.id or 0))
+        # Antes del corte, socios primero. Después del corte, no hay desplazamiento por
+        # prioridad: se respeta el orden cronológico de lista de espera ante una vacante real.
+        if cutoff_passed(outing):
+            waiting.sort(key=lambda r: (r.created_at or datetime.utcnow(), r.id or 0))
+        else:
+            waiting.sort(key=lambda r: (0 if canonical_kind(r.kind) == "socio" else 1, r.created_at or datetime.utcnow(), r.id or 0))
         chosen = None
         for r in waiting:
             k = canonical_kind(r.kind)
@@ -1006,6 +1063,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     self_reservation = next((r for r in mine if r.dni == user.dni), None)
     ready = readiness_state(outing, len(active))
     views = reservation_views(outing, reservations)
+    self_view = views.get(self_reservation.id) if self_reservation else None
     final_summary = final_status_summary(outing, reservations, len(active), present, pending)
     return templates.TemplateResponse(request, "socio.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
@@ -1014,7 +1072,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
         "cutoff_at": cutoff_at(outing), "cancel_deadline": cancellation_deadline(outing),
         "fee": float(outing.guest_fee), "msg": request.query_params.get("msg"),
-        "closed": is_closed_outing(outing), "reservation_views": views, "final_summary": final_summary,
+        "closed": is_closed_outing(outing), "reservation_views": views, "self_view": self_view, "final_summary": final_summary,
         "waitlist_count": sum(1 for rr in reservations if is_waitlisted(rr))
     })
 
@@ -1025,27 +1083,26 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if existing and reservation_is_active(existing):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
-    if len(active) >= outing.max_crew:
-        if existing:
-            existing.kind = "socio"
-            existing.person_name = user.name
-            existing.responsible_user_id = user.id
-            put_on_waitlist(existing)
-        else:
-            new_wait = Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id)
-            put_on_waitlist(new_wait)
-            db.add(new_wait)
-        db.commit()
+    if existing:
+        target = existing
+        target.kind = "socio"
+        target.person_name = user.name
+        target.responsible_user_id = user.id
+    else:
+        target = Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id)
+        db.add(target)
+        db.flush()
+
+    result, displaced_name = place_socio_with_priority(db, outing, target)
+    db.commit()
+
+    if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
-    if existing:
-        existing.kind = "socio"
-        existing.person_name = user.name
-        existing.responsible_user_id = user.id
-        reactivate_reservation(db, outing, existing)
-    else:
-        db.add(Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id))
-    db.commit()
+    if result == "active_displaced":
+        log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
+
     log(db, user.name, "reserva socio", outing.title)
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
@@ -1110,7 +1167,7 @@ async def add_guest(
         existing.birth_date = birth_date
         existing.responsible_user_id = user.id
         if full_capacity:
-            put_on_waitlist(existing)
+            put_on_waitlist(existing, "En lista de espera. Se activa si se libera una vacante.")
         else:
             reactivate_reservation(db, outing, existing)
     else:
@@ -1125,7 +1182,7 @@ async def add_guest(
             birth_date=birth_date
         )
         if full_capacity:
-            put_on_waitlist(new_guest)
+            put_on_waitlist(new_guest, "En lista de espera. Se activa si se libera una vacante.")
         db.add(new_guest)
 
     db.commit()
@@ -1142,11 +1199,12 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
         raise HTTPException(403)
 
     now = datetime.utcnow()
+    was_waitlisted = is_waitlisted(r)
     r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
-    r.cancel_reason = "Cancelado por socio"
-    r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
+    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Cancelado por socio"
+    r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
     if r.dni == user.dni:
         dependientes = db.query(Reservation).filter(
@@ -1156,11 +1214,12 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
             Reservation.cancelled_at.is_(None)
         ).all()
         for dep in dependientes:
+            dep_was_waitlisted = is_waitlisted(dep)
             dep.cancelled_at = now
             dep.status = "Cancelado"
             dep.attendance = "Ausente"
-            dep.cancel_reason = "Cancelado por baja del socio responsable"
-            dep.charge_amount = reservation_charge(outing, dep) if late_window_passed(outing) else 0
+            dep.cancel_reason = "Baja desde lista de espera por baja del socio responsable" if dep_was_waitlisted else "Cancelado por baja del socio responsable"
+            dep.charge_amount = 0 if dep_was_waitlisted else (reservation_charge(outing, dep) if late_window_passed(outing) else 0)
 
     promoted = promote_waitlist(db, outing)
     db.commit()
@@ -1176,8 +1235,20 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
         raise HTTPException(403)
     if reservation_is_active(r):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
+    if canonical_kind(r.kind) == "socio":
+        result, displaced_name = place_socio_with_priority(db, outing, r)
+        db.commit()
+        if result == "waitlist":
+            log(db, user.name, "lista de espera reactiva", f"{r.person_name} / {outing.title}")
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
+        if result == "active_displaced":
+            log(db, user.name, "reactiva socio con prioridad", f"{r.person_name} / {outing.title} / desplazado: {displaced_name}")
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
+        log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
+
     if len(active) >= outing.max_crew:
-        put_on_waitlist(r)
+        put_on_waitlist(r, "En lista de espera. Se activa si se libera una vacante.")
         db.commit()
         log(db, user.name, "lista de espera reactiva", f"{r.person_name} / {outing.title}")
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
@@ -1391,6 +1462,9 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     outing = db.get(Outing, r.outing_id)
     if outing and outing.status == "Embarque cerrado":
         raise HTTPException(400, "El embarque ya fue cerrado")
+
+    if is_waitlisted(r):
+        raise HTTPException(400, "La reserva está en lista de espera. Solo puede operar cuando sea promovida al cupo.")
 
     if value in ("Presente", "Por confirmar"):
         r.cancelled_at = None

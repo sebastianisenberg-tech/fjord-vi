@@ -1,8 +1,11 @@
-# v26.8.3 RC revisión integral
+# v26.9.2 Lista de espera con prioridad de socios
 
-- Revisión integral de compatibilidad: sintaxis Python, templates Jinja, rutas de formularios y variables globales.
-- Actualiza nombre de servicio Render y versión visible.
-- Sin cambios de lógica contable ni de lista de espera.
+- Socios desplazan invitados/menores activos antes del corte de 48h si el cupo está completo.
+- Después del corte de 48h, la tripulación activa queda congelada; ante una vacante real se promueve la lista de espera por orden cronológico.
+- Las personas en lista de espera no generan cargos mientras no entren al cupo.
+- Si una persona promovida desde lista de espera luego cancela tarde o no embarca, aplica el cargo reglamentario según categoría.
+- Se permite salir de lista de espera sin cargo.
+- Refuerza mensajes y reglas visibles para socios.
 
 ## v26.8.2 release candidate revisada
 - Versión visible: v26.8.2.
@@ -17,7 +20,7 @@
 - Reestructura Administración para uso desktop con panel lateral, KPIs, tabla de tripulación y bloques de operación/sistema.
 - Mantiene intacta la lógica contable validada: preliquidación, cancelación por capitán, reapertura y cierre firme.
 - Unifica branding: YCA · Fjord VI · Operativo de Embarque.
-- Versión visible: v26.8.0 · build socio-premium-admin-desktop-yca.
+- Versión visible: v26.8.0 · build lista-espera-blindada-yca.
 
 ## v26.8.0 revisión fina de producción
 - Actualiza versión visible a v26.8.0.

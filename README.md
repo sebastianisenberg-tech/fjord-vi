@@ -1,4 +1,4 @@
-# YCA · Fjord VI · Operativo de Embarque · v26.8.3
+# YCA · Fjord VI · Operativo de Embarque · v26.9.2
 
 Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 
@@ -8,6 +8,9 @@ Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 - Reserva de socio titular.
 - Alta de invitados y menores asociados a socio responsable.
 - Corte de 48h para invitados condicionales.
+- Lista de espera con prioridad: antes del corte de 48h, un socio puede desplazar a un invitado/menor activo si el cupo está completo.
+- Después del corte de 48h, la tripulación queda congelada; ante vacantes se promueve la lista de espera por orden de inscripción.
+- La lista de espera no genera cargos mientras la persona no entre al cupo.
 - Control de embarque por capitán.
 - Cierre de salida con cálculo de cargos.
 - Exportación CSV de manifest y liquidaciones.
@@ -69,7 +72,7 @@ LATE_SOCIO_RATE=0.70
 No es producción real. Falta integrar padrón oficial, autenticación institucional, backups automáticos, HTTPS bajo dominio del Club, auditoría formal, pruebas con usuarios reales y revisión reglamentaria final.
 
 
-## v26.8.3
+## v26.9.2
 - Ajuste de producción: Procfile/start.sh apuntan a `main:app`.
 - La selección automática prioriza salidas operables sobre salidas canceladas.
 - Mensajes de cancelación homogeneizados: sin cargos ni preliquidaciones vigentes.

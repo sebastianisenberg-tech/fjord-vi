@@ -573,7 +573,7 @@ header.top a:active,
 @media(min-width:640px){.premiumHero{grid-template-columns:.85fr 1.15fr}.outingIdentity{border-top:0;border-left:1px solid var(--line);padding-top:0;padding-left:14px}.premiumPerson{grid-template-columns:1fr auto}.personAction{min-width:180px}.adminKpis{grid-template-columns:repeat(4,1fr)}.adminGrid2{grid-template-columns:1fr 1fr}.captainActions{min-width:245px}}
 @media(min-width:980px){.adminShell{grid-template-columns:230px 1fr;padding:18px}.adminSidebar{display:flex;flex-direction:column;gap:6px;position:sticky;top:72px;align-self:start;background:linear-gradient(180deg,#0f766e,#064e3b);border-radius:22px;padding:14px;box-shadow:0 16px 38px rgba(6,78,59,.20)}.adminSidebar a{color:#dff7ef;text-decoration:none;padding:10px 11px;border-radius:12px;font-weight:850;font-size:13px}.adminSidebar a.on,.adminSidebar a:hover{background:rgba(255,255,255,.15);color:#fff}.adminMain{min-width:0}.bottom{display:none!important}.adminTable{font-size:13px}}
 
-/* v26.8.3 - refinamientos de release */
+/* v26.9.2 - refinamientos de release */
 .app, .wrap { padding-bottom: 96px; }
 .disabledBtn, button:disabled { opacity: .58; cursor: not-allowed; filter: saturate(.65); }
 .secondaryClose { box-shadow: none; }

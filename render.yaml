@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v26-8-3-rc-lista-espera-yca
+    name: fjord-vi-v26-9-2-lista-espera-blindada-yca
     env: docker
     plan: free
     autoDeploy: true
