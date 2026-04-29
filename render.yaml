@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v26-8-1-socio-premium-admin-desktop-yca
+    name: fjord-vi-v26-8-3-rc-lista-espera-yca
     env: docker
     plan: free
     autoDeploy: true

@@ -8,6 +8,8 @@
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
 document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
+document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){form.querySelectorAll('button').forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});});});});
+
 </script>
 </head>
 <body><div class="app socioApp">
@@ -16,7 +18,7 @@ document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
   <a href="/logout" class="logoutBtn">Salir</a>
 </header>
 <main class="wrap socioWrap">
-{% if msg %}<div class="toast compactToast">{% if msg=='cupo_completo' %}Cupo completo.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable.{% elif msg=='duplicado' %}Ese documento ya tiene una reserva activa.{% elif msg=='datos_invalidos' %}Revisá nombre, documento y tipo.{% elif msg=='cancelado' %}Reserva actualizada.{% elif msg=='reserva_ok' %}Reserva registrada.{% elif msg=='invitado_ok' %}Invitado agregado.{% elif msg=='reactivado' %}Reserva reincorporada.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+{% if msg %}<div class="toast compactToast">{% if msg=='cupo_completo' %}Cupo completo.{% elif msg=='socio_requerido' %}Primero debe estar anotado el socio responsable.{% elif msg=='duplicado' %}Ese documento ya tiene una reserva activa.{% elif msg=='datos_invalidos' %}Revisá nombre, documento y tipo.{% elif msg=='cancelado' %}Reserva actualizada.{% elif msg=='reserva_ok' %}Reserva registrada.{% elif msg=='invitado_ok' %}Invitado agregado.{% elif msg=='reactivado' %}Reserva reincorporada.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa.{% elif msg=='lista_espera_ok' %}Te anotamos en lista de espera.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 
 <section class="card premiumCard" id="salidas">
   <div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Elegí una salida</h2></div></div>
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
   {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>
   {% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>
-  {% else %}<b>Salida operativa</b><span>{{active_count}} / {{outing.max_crew}} activos · {{remaining}} lugares libres.</span>{% endif %}
+  {% else %}<b>Salida operativa</b><span>{{active_count}} / {{outing.max_crew}} activos · {{remaining}} lugares libres{% if waitlist_count|default(0) > 0 %} · {{waitlist_count}} en espera{% endif %}.</span>{% endif %}
 </section>
 
 <section class="kpiStrip">
@@ -64,12 +66,12 @@ document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
     {% set v = reservation_views.get(self_reservation.id) %}
     <div class="premiumPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %}">
       <div class="personMain"><b>{{self_reservation.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        <div class="personState">{% if v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
+        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
       </div>
-      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif has_self %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Quitarme de la salida</button></form>{% else %}<form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporarme</button></form>{% endif %}</div>
+      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<span class="pill neutral">En lista de espera</span>{% elif has_self %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Quitarme de la salida</button></form>{% else %}<form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporarme</button></form>{% endif %}</div>
     </div>
   {% elif outing_cancelled %}<div class="empty lockBox"><b>Anotación deshabilitada.</b><br>Pendiente de reapertura por capitán.</div>
-  {% elif not closed %}<form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn green">Anotarme en esta salida</button></form>{% endif %}
+  {% elif not closed %}<form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn green">{% if remaining == 0 %}Anotarme en lista de espera{% else %}Anotarme en esta salida{% endif %}</button></form>{% endif %}
 </section>
 
 <section class="card premiumCard" id="invitados">
@@ -78,15 +80,15 @@ document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
   {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}{% set v = reservation_views.get(r.id) %}
     <div class="premiumPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %}">
       <div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        <div class="personState">{% if v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
+        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
       </div>
-      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.active %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Quitar de la salida</button></form>{% else %}<form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporar a la salida</button></form>{% endif %}</div>
+      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<span class="pill neutral">En lista de espera</span>{% elif v.active %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Quitar de la salida</button></form>{% else %}<form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporar a la salida</button></form>{% endif %}</div>
     </div>
   {% endif %}{% endfor %}
   {% if ns.count == 0 %}<div class="empty">Todavía no agregaste invitados ni menores para esta salida.</div>{% endif %}
   {% if outing_cancelled %}<div class="empty lockBox">Alta de invitados deshabilitada.<br>Pendiente de reapertura por capitán.</div>
   {% elif not closed and has_self %}
-  <form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">Agregar invitado</button></form>
+  <form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">{% if remaining == 0 %}Agregar a lista de espera{% else %}Agregar invitado{% endif %}</button></form>
   {% elif not closed and not has_self %}<div class="empty">Para agregar invitados, primero anotate como socio titular.</div>{% endif %}
 </section>
 

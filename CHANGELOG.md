@@ -1,12 +1,18 @@
-## v26.8.1 release candidate revisada
-- Versión visible: v26.8.1.
+# v26.8.3 RC revisión integral
+
+- Revisión integral de compatibilidad: sintaxis Python, templates Jinja, rutas de formularios y variables globales.
+- Actualiza nombre de servicio Render y versión visible.
+- Sin cambios de lógica contable ni de lista de espera.
+
+## v26.8.2 release candidate revisada
+- Versión visible: v26.8.2.
 - Procfile y start.sh corregidos para apuntar a `main:app`.
 - La salida seleccionada por defecto prioriza salidas operables y no canceladas.
 - Mensajes de cancelación homogeneizados: sin cargos ni preliquidaciones vigentes.
 
 # Changelog
 
-## v26.8.1 socio premium + admin desktop
+## v26.8.2 socio premium + admin desktop
 - Rediseña la pantalla de socios con jerarquía premium, menor ruido visual y acciones más claras.
 - Reestructura Administración para uso desktop con panel lateral, KPIs, tabla de tripulación y bloques de operación/sistema.
 - Mantiene intacta la lógica contable validada: preliquidación, cancelación por capitán, reapertura y cierre firme.
@@ -99,3 +105,10 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Limpia pantallas de capitán y socio para reducir repetición y mejorar lectura operativa.
 - Reemplaza banners rojos invasivos por estados globales profesionales.
 - Mantiene lógica contable validada: preliquidación, cargo firme, cancelación capitán y reapertura.
+
+## v26.8.2 release candidate con lista de espera y cierre seguro
+- Botón Reactivar visible solo cuando corresponde.
+- Confirmación antes de cerrar embarque/liquidar y antes de cancelar por capitán.
+- Protección anti doble click en formularios de capitán.
+- Padding inferior reforzado para que la barra inferior no tape contenido.
+- Lista de espera automática: cuando no hay cupo, socios/invitados quedan en espera; al liberarse una vacante se promueve automáticamente según prioridad auditable.
