@@ -400,3 +400,20 @@ header.top a:active,
 /* V26.1: preliquidación visible, no cargo firme */
 .chargeLine.preliminary{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;}
 .chargeLine.preliminary span{font-weight:700;margin-left:4px;}
+
+/* V26.4: claridad operativa */
+.cancelBanner{
+  background:#991b1b;
+  color:#fff;
+  border-radius:18px;
+  padding:14px 16px;
+  box-shadow:0 12px 30px rgba(153,27,27,.22);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin:12px 0;
+}
+.cancelBanner b{font-size:16px;letter-spacing:.04em;}
+.cancelBanner span{font-size:13px;font-weight:700;opacity:.95;}
+.smallHelp{font-size:12px;line-height:1.35;margin-top:8px;}
+.chargeLine.preliminary span{display:block;margin-left:0;margin-top:3px;}

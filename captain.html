@@ -3,7 +3,8 @@
 <body><div class="app">
 <header class="top topGreen"><div><b>CAPITÁN</b><small>Control de embarque</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
-{% if msg %}<div class="toast">{% if msg=='cierre_ok' %}Embarque cerrado y cargos recalculados para esta salida.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='estado_actualizado' %}Estado operativo actualizado.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+{% if msg %}<div class="toast">{% if msg=='cierre_ok' %}Embarque cerrado y cargos recalculados para esta salida.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='reapertura_ok' %}Salida reabierta. Las preliquidaciones fueron recalculadas.
+{% elif msg=='estado_actualizado' %}Estado operativo actualizado.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 
 <section class="card" id="salidas">
   <div class="cardTitle"><div><span class="eyebrow">Seleccionar salida</span><h2>Salida a controlar</h2></div></div>
@@ -23,6 +24,7 @@
 
 <section class="stats"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Pendientes</small><b>{{pending}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div></section>
 <section class="notice {{readiness.level}}"><b>{{readiness.label}}</b><span>{{readiness.detail}}</span></section>
+{% if outing.status == 'Cancelada por capitán' %}<section class="cancelBanner"><b>SALIDA CANCELADA POR CAPITÁN</b><span>No se generan cargos firmes ni preliquidaciones vigentes.</span></section>{% endif %}
 
 <section class="card auditBox" id="estado-final">
   <div class="cardTitle"><div><span class="eyebrow">Acta operativa</span><h2>{{final_summary.label}}</h2></div><span class="pill {% if final_summary.closed %}ok{% else %}warn{% endif %}">{{final_summary.liquidacion}}</span></div>
@@ -42,6 +44,7 @@
     </select>
     <button class="btn green">Actualizar estado</button>
   </form>
+  <p class="muted smallHelp"><b>Presente</b>: embarca. <b>Por confirmar al cierre</b>: se transforma automáticamente en ausente con cargo. <b>No embarca</b>: decisión operativa del capitán, sin cargo.</p>
   {% if closed %}<p class="muted">Solo el capitán puede reabrir si cambia la tripulación a último momento. La reapertura queda registrada en auditoría.</p>{% endif %}
 </section>
 
@@ -58,7 +61,7 @@
         <span><b>Condición reglamentaria:</b> {{v.estado_reglamentario}}</span>
       </div>
       <small class="metaText">DNI {{r.dni}} · {{r.status}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
-      {% if v.charge > 0 %}<div class="chargeLine">Cargo firme: $ {{v.charge_label}}</div>{% elif v.charge_is_preliminary %}<div class="chargeLine preliminary">Preliquidación: $ {{v.charge_preview_label}} <span>No firme hasta cierre</span></div>{% endif %}
+      {% if v.charge > 0 %}<div class="chargeLine">Cargo firme: $ {{v.charge_label}}</div>{% elif v.charge_is_preliminary %}<div class="chargeLine preliminary">Preliquidación estimada: $ {{v.charge_preview_label}} <span>Solo se confirma si la salida se realiza y el capitán cierra embarque.</span></div>{% endif %}
     </div>
 
     <div class="actions attendanceActions">
@@ -70,15 +73,15 @@
         <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>
       {% elif r.attendance == 'Presente' %}
         <span class="pill ok">Presente</span>
-        <form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger">Ausente</button></form>
-      {% elif r.attendance in ['Ausente','No embarcable'] %}
+        <form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini danger">No embarca</button></form>
+      {% elif r.attendance in ['Ausente','No embarcable','No embarca'] %}
         <span class="pill bad">{{r.attendance}}</span>
         <form method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="mini">Reactivar</button></form>
         <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>
       {% else %}
         <span class="pill warn">Por confirmar</span>
         <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>
-        <form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger">Ausente</button></form>
+        <form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini danger">No embarca</button></form>
       {% endif %}
     </div>
   </div>

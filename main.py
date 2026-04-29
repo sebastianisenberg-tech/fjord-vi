@@ -40,7 +40,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.3-ux-contable-sin-tarifa-colgada"
+VERSION = "v26.4.1-no-embarca-capitan-ux-revisada"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -349,14 +349,18 @@ def active_reservations(rows):
         r for r in rows
         if r.cancelled_at is None
         and r.status != "Cancelado"
-        and r.attendance not in ("Ausente", "No embarcable")
+        and not is_captain_cancelled(r)
+        and not is_no_board_by_captain(r)
+        and r.attendance not in ("Ausente", "No embarcable", "No embarca")
     ]
 
 def reservation_is_active(r: Reservation) -> bool:
     return (
         r.cancelled_at is None
         and r.status != "Cancelado"
-        and r.attendance not in ("Ausente", "No embarcable")
+        and not is_captain_cancelled(r)
+        and not is_no_board_by_captain(r)
+        and r.attendance not in ("Ausente", "No embarcable", "No embarca")
     )
 
 def ensure_outing_editable(outing: Outing):
@@ -436,6 +440,24 @@ def is_captain_cancelled(r: Reservation) -> bool:
     )
 
 
+def is_no_board_by_captain(r: Reservation) -> bool:
+    """Caso operativo: la persona llegó o estaba anotada,
+    pero el capitán decide no embarcarla. No es no-show: no genera cargo.
+    Incluye compatibilidad con el texto viejo 'Ausente marcado por capitán'.
+    """
+    attendance = (getattr(r, "attendance", "") or "").strip().lower()
+    reason = (getattr(r, "cancel_reason", "") or "").strip().lower()
+    text = f"{attendance} {reason}"
+    return (
+        attendance == "no embarca"
+        or "no embarca" in text
+        or "no embarcado por decisión del capitán" in text
+        or "no embarcado por decision del capitan" in text
+        or "ausente marcado por capitán" in text
+        or "ausente marcado por capitan" in text
+    )
+
+
 def actual_charge(outing: Outing, r: Reservation) -> float:
     """Cargo contable FIRME.
 
@@ -447,7 +469,7 @@ def actual_charge(outing: Outing, r: Reservation) -> float:
     """
     if not outing or not r:
         return 0.0
-    if is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r):
+    if is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r) or is_no_board_by_captain(r):
         return 0.0
     if not is_closed_outing(outing):
         return 0.0
@@ -481,7 +503,7 @@ def projected_charge(outing: Outing, r: Reservation) -> float:
     """
     if not outing or not r:
         return 0.0
-    if is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r):
+    if is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r) or is_no_board_by_captain(r):
         return 0.0
     if is_closed_outing(outing):
         return actual_charge(outing, r)
@@ -506,7 +528,7 @@ def projected_charge(outing: Outing, r: Reservation) -> float:
 
 def effective_charge(r: Reservation) -> float:
     """Compatibilidad histórica: si no se conoce la salida, solo se elimina cargo de capitán."""
-    if is_captain_cancelled(r):
+    if is_captain_cancelled(r) or is_no_board_by_captain(r):
         return 0.0
     return float(getattr(r, "charge_amount", 0) or 0)
 
@@ -521,6 +543,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     k = canonical_kind(r.kind)
     raw_attendance = r.attendance or "Por confirmar"
     captain_cancelled = is_captain_cancelled(r)
+    no_board_by_captain = is_no_board_by_captain(r)
     cancelled = bool(r.cancelled_at) or r.status == "Cancelado" or captain_cancelled
     charge = actual_charge(outing, r)
     charge_preview = projected_charge(outing, r)
@@ -545,6 +568,14 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         estado_reglamentario = "No embarcado"
         level = "bad"
         alert = "Cancelado por capitán"
+    elif no_board_by_captain:
+        charge = 0.0
+        charge_preview = 0.0
+        preliminary = False
+        estado_fisico = "No embarcado por capitán"
+        estado_reglamentario = "No embarcado"
+        level = "bad"
+        alert = "No embarca"
     elif cancelled:
         estado_fisico = "Cancelado"
         estado_reglamentario = "No embarcado"
@@ -576,6 +607,8 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         motivo = "Salida cancelada por capitán, sin cargo ni preliquidación vigente"
     elif captain_cancelled:
         motivo = "Cancelado por capitán, sin cargo"
+    elif no_board_by_captain:
+        motivo = "No embarcado por decisión del capitán, sin cargo"
     elif charge > 0:
         if k == "invitado" and raw_attendance == "Presente" and not cancelled:
             motivo = motivo or "Tarifa de invitado embarcado"
@@ -835,7 +868,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all() if outing else []
     active = active_reservations(reservations)
     present = sum(1 for r in active if r.attendance == "Presente")
-    absent = sum(1 for r in reservations if r.attendance in ("Ausente", "No embarcable"))
+    absent = sum(1 for r in reservations if r.attendance in ("Ausente", "No embarcable", "No embarca"))
     pending = sum(1 for r in active if r.attendance == "Por confirmar")
     socios_presentes = sum(1 for r in active if canonical_kind(r.kind) == "socio" and r.attendance == "Presente")
     return outing, reservations, active, present, absent, pending, socios_presentes
@@ -1091,6 +1124,12 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
             continue
 
+        if is_no_board_by_captain(r):
+            r.charge_amount = 0
+            r.attendance = "No embarca"
+            r.cancel_reason = "No embarcado por decisión del capitán"
+            continue
+
         if r.cancelled_at is not None:
             if r.charge_amount is None:
                 r.charge_amount = 0
@@ -1139,6 +1178,12 @@ def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reserva
             r.charge_amount = 0
             r.attendance = "Ausente"
             r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
+            continue
+
+        if is_no_board_by_captain(r):
+            r.charge_amount = 0
+            r.attendance = "No embarca"
+            r.cancel_reason = "No embarcado por decisión del capitán"
             continue
 
         cancelled = bool(r.cancelled_at) or r.status == "Cancelado"
@@ -1221,14 +1266,14 @@ def outing_status(
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         db.commit()
         log(db, user.name, "reapertura", f"{outing.title} / desde {old_status} / preliquidaciones recalculadas")
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reapertura_ok", status_code=303)
 
     return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
 
 @app.post("/captain/attendance/{rid}/{value}")
 def attendance(rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     r = db.get(Reservation, rid)
-    if not r or value not in ["Presente", "Ausente", "Por confirmar"]:
+    if not r or value not in ["Presente", "Ausente", "Por confirmar", "No embarca"]:
         raise HTTPException(400)
 
     outing = db.get(Outing, r.outing_id)
@@ -1242,9 +1287,18 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.charge_amount = 0
         r.attendance = value
     elif value == "Ausente":
+        # Ausente verdadero: no vino y queda como plaza perdida con cargo reglamentario.
+        # Normalmente se genera automáticamente al cerrar embarque si quedó Por confirmar.
         r.attendance = "Ausente"
-        r.cancel_reason = "Ausente marcado por capitán"
-        r.charge_amount = reservation_charge(outing, r)
+        r.cancel_reason = "Ausente / no se presentó"
+        r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
+    elif value == "No embarca":
+        # Decisión operativa del capitán: no es no-show y no genera cargo.
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.attendance = "No embarca"
+        r.cancel_reason = "No embarcado por decisión del capitán"
+        r.charge_amount = 0
 
     db.commit()
     log(db, user.name, "asistencia", f"{r.person_name}: {value} / {outing.title}")
