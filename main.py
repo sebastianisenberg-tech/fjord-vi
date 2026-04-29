@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.9.7"
-APP_BUILD = "identidad-lista-espera-cupo-yca"
+VERSION = "v26.9.9"
+APP_BUILD = "admin-historico-selector-yca"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -394,18 +394,6 @@ def is_waitlisted(r: Reservation) -> bool:
     return (getattr(r, "status", "") == "Lista de espera" or getattr(r, "attendance", "") == "Lista de espera")
 
 
-def registered_active_member_by_dni(db: Session, dni_clean: str) -> Optional[User]:
-    """Devuelve un socio activo registrado por documento.
-
-    El documento es la identidad fuerte del sistema. Un socio registrado no
-    puede ser cargado como invitado por otro socio: debe operar con su propio
-    usuario/reserva de socio para conservar prioridad y trazabilidad.
-    """
-    if not dni_clean:
-        return None
-    return db.query(User).filter_by(dni=dni_clean, role="socio", active=True).first()
-
-
 def put_on_waitlist(r: Reservation, reason: str = "En lista de espera"):
     # La lista de espera no ocupa cupo y nunca genera cargo mientras no sea promovida.
     r.status = "Lista de espera"
@@ -506,6 +494,42 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
         promoted.append(chosen.person_name)
     return promoted
 
+
+
+
+def enforce_capacity(db: Session, outing: Outing) -> list:
+    """Garantiza que nunca haya más reservas activas que cupo.
+
+    Si por datos heredados o por una combinación de altas/reaperturas quedaron
+    más activos que el máximo, baja primero invitados/menores no presentes a
+    lista de espera. No toca a personas ya marcadas Presente por el capitán.
+    """
+    if not outing or is_closed_outing(outing) or is_outing_cancelled_by_captain(outing):
+        return []
+
+    displaced = []
+    while True:
+        rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        active = active_reservations(rows)
+        if len(active) <= outing.max_crew:
+            break
+
+        candidates = [
+            r for r in active
+            if (r.attendance or "Por confirmar") != "Presente"
+            and canonical_kind(r.kind) in ("invitado", "hijo_menor")
+        ]
+        if not candidates:
+            candidates = [r for r in active if (r.attendance or "Por confirmar") != "Presente"]
+        if not candidates:
+            break
+
+        candidates.sort(key=lambda r: (r.created_at or datetime.min, r.id or 0), reverse=True)
+        chosen = candidates[0]
+        put_on_waitlist(chosen, "Pasado a lista de espera para respetar cupo máximo de 9")
+        displaced.append(chosen.person_name)
+
+    return displaced
 
 def default_reservation_status(outing: Outing, r: Reservation) -> str:
     k = canonical_kind(r.kind)
@@ -993,6 +1017,10 @@ def selected_outing(db: Session, outing_id: Optional[int] = None):
     if not outing:
         return None
     refresh_reservation_states(db, outing)
+    displaced = enforce_capacity(db, outing)
+    if displaced:
+        db.commit()
+        persist_json(db)
     return outing
 
 def visible_outings(db: Session):
@@ -1106,6 +1134,7 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
         db.flush()
 
     result, displaced_name = place_socio_with_priority(db, outing, target)
+    enforce_capacity(db, outing)
     db.commit()
 
     if result == "waitlist":
@@ -1148,11 +1177,6 @@ async def add_guest(
     dni_clean = norm_dni(dni or "")
     kind = canonical_kind(kind)
 
-    # Identidad fuerte: no se puede cargar como invitado a un socio registrado.
-    # Tampoco se permite usar el documento del propio socio como invitado/menor.
-    if dni_clean == user.dni or registered_active_member_by_dni(db, dni_clean):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_registrado", status_code=303)
-
     full_capacity = len(active) >= outing.max_crew
 
     if kind not in ("invitado", "hijo_menor") or not person_name or not dni_clean:
@@ -1166,6 +1190,11 @@ async def add_guest(
     else:
         birth_date = None
 
+    # Identidad documental fuerte: un socio registrado no puede ser cargado como invitado.
+    registered_user = db.query(User).filter_by(dni=dni_clean, active=True).first()
+    if registered_user and registered_user.role == "socio":
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_documento", status_code=303)
+
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
     if not self_row or not reservation_is_active(self_row):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
@@ -1173,10 +1202,10 @@ async def add_guest(
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
 
     if existing and existing.responsible_user_id != user.id:
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=persona_ya_registrada", status_code=303)
 
     if existing and reservation_is_active(existing):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=duplicado", status_code=303)
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=dni_duplicado", status_code=303)
 
     if existing:
         existing.person_name = person_name
@@ -1202,6 +1231,7 @@ async def add_guest(
             put_on_waitlist(new_guest, "En lista de espera. Se activa si se libera una vacante.")
         db.add(new_guest)
 
+    enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not full_capacity else "lista de espera invitado", f"{person_name} / {outing.title}")
 
@@ -1279,6 +1309,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     outings = visible_outings(db)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     ready = readiness_state(outing, len(active), present)
+    waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
@@ -1290,7 +1321,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "cutoff": cutoff_passed(outing) if outing else False, "cutoff_at": cutoff_at(outing) if outing else None, "msg": request.query_params.get("msg"),
         "reservation_views": views, "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
-        "waitlist_count": sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
+        "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0
     })
 
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
@@ -1450,10 +1481,7 @@ def outing_status(
         present = sum(1 for r in active if r.attendance == "Presente")
 
         if present < outing.min_crew:
-            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumplido", status_code=303)
-
-        if present > outing.max_crew:
-            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
+            raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
 
         liquidate_and_close_boarding(db, outing, reservations, active)
 
@@ -1507,6 +1535,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.charge_amount = 0
 
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
+    enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "asistencia", f"{r.person_name}: {value} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}")
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
@@ -1518,8 +1547,14 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
         raise HTTPException(400, "Salida inexistente")
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
+
+    enforce_capacity(db, outing)
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all()
+    active = active_reservations(reservations)
+    present = sum(1 for r in active if r.attendance == "Presente")
+
     if present < outing.min_crew:
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumplido", status_code=303)
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumple", status_code=303)
     if present > outing.max_crew:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
@@ -1538,6 +1573,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     ready = readiness_state(outing, len(active), present)
     counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
     active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
+    waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
@@ -1551,7 +1587,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "msg": request.query_params.get("msg"), "reservation_views": views,
         "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
-        "waitlist_count": sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
+        "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0
     })
 
 

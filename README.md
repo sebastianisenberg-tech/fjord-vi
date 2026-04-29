@@ -1,4 +1,4 @@
-# YCA · Fjord VI · Operativo de Embarque · v26.9.7
+# YCA · Fjord VI · Operativo de Embarque · v26.9.3
 
 Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 
@@ -72,7 +72,11 @@ LATE_SOCIO_RATE=0.70
 No es producción real. Falta integrar padrón oficial, autenticación institucional, backups automáticos, HTTPS bajo dominio del Club, auditoría formal, pruebas con usuarios reales y revisión reglamentaria final.
 
 
-## v26.9.7
+## v26.9.3
 - Ajuste de producción: Procfile/start.sh apuntan a `main:app`.
 - La selección automática prioriza salidas operables sobre salidas canceladas.
 - Mensajes de cancelación homogeneizados: sin cargos ni preliquidaciones vigentes.
+
+
+### v26.9.8
+Versión de ajuste fino: feedback documental, refuerzo de cupo y administración más clara.

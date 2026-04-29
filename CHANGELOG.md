@@ -1,11 +1,11 @@
-# v26.9.7 Puerta institucional YCA/Fjord VI
+# v26.9.3 Puerta institucional YCA/Fjord VI
 
 - Login institucional con Yacht Club Argentino, FJORD VI y Sistema de Reservas.
 - Eliminados accesos demo visibles y credenciales de prueba de la pantalla pública.
 - Logo YCA incorporado al mismo nivel del ZIP como logo_yca.jpg.
 - Contacto Oficina de Vela: +54 11 4314-0505.
 
-# v26.9.7 Lista de espera con prioridad de socios
+# v26.9.3 Lista de espera con prioridad de socios
 
 - Socios desplazan invitados/menores activos antes del corte de 48h si el cupo está completo.
 - Después del corte de 48h, la tripulación activa queda congelada; ante una vacante real se promueve la lista de espera por orden cronológico.
@@ -122,3 +122,10 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Protección anti doble click en formularios de capitán.
 - Padding inferior reforzado para que la barra inferior no tape contenido.
 - Lista de espera automática: cuando no hay cupo, socios/invitados quedan en espera; al liberarse una vacante se promueve automáticamente según prioridad auditable.
+
+
+## v26.9.8
+- Feedback visible cuando se bloquea un DNI duplicado o un socio cargado como invitado.
+- Refuerzo de cupo: el backend baja excedentes no presentes a lista de espera para impedir activos > 9.
+- Administración más clara: salida seleccionada, activos embarcables, pendientes activos, registros totales y lista de espera.
+- Cierre de capitán devuelve mensajes de pantalla, no errores técnicos, si falta mínimo o se supera máximo.
