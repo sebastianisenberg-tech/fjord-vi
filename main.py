@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.9.3"
-APP_BUILD = "puerta-institucional-yca"
+VERSION = "v26.9.7"
+APP_BUILD = "identidad-lista-espera-cupo-yca"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -392,6 +392,18 @@ def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
 
 def is_waitlisted(r: Reservation) -> bool:
     return (getattr(r, "status", "") == "Lista de espera" or getattr(r, "attendance", "") == "Lista de espera")
+
+
+def registered_active_member_by_dni(db: Session, dni_clean: str) -> Optional[User]:
+    """Devuelve un socio activo registrado por documento.
+
+    El documento es la identidad fuerte del sistema. Un socio registrado no
+    puede ser cargado como invitado por otro socio: debe operar con su propio
+    usuario/reserva de socio para conservar prioridad y trazabilidad.
+    """
+    if not dni_clean:
+        return None
+    return db.query(User).filter_by(dni=dni_clean, role="socio", active=True).first()
 
 
 def put_on_waitlist(r: Reservation, reason: str = "En lista de espera"):
@@ -1136,6 +1148,11 @@ async def add_guest(
     dni_clean = norm_dni(dni or "")
     kind = canonical_kind(kind)
 
+    # Identidad fuerte: no se puede cargar como invitado a un socio registrado.
+    # Tampoco se permite usar el documento del propio socio como invitado/menor.
+    if dni_clean == user.dni or registered_active_member_by_dni(db, dni_clean):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_registrado", status_code=303)
+
     full_capacity = len(active) >= outing.max_crew
 
     if kind not in ("invitado", "hijo_menor") or not person_name or not dni_clean:
@@ -1433,7 +1450,10 @@ def outing_status(
         present = sum(1 for r in active if r.attendance == "Presente")
 
         if present < outing.min_crew:
-            raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumplido", status_code=303)
+
+        if present > outing.max_crew:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
         liquidate_and_close_boarding(db, outing, reservations, active)
 
@@ -1499,9 +1519,9 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
     if present < outing.min_crew:
-        raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumplido", status_code=303)
     if present > outing.max_crew:
-        raise HTTPException(400, f"Se supera el máximo de {outing.max_crew}")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
     liquidate_and_close_boarding(db, outing, reservations, active)
     db.commit()
