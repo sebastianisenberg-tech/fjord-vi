@@ -1,14 +1,27 @@
+## v26.8.1 release candidate revisada
+- Versión visible: v26.8.1.
+- Procfile y start.sh corregidos para apuntar a `main:app`.
+- La salida seleccionada por defecto prioriza salidas operables y no canceladas.
+- Mensajes de cancelación homogeneizados: sin cargos ni preliquidaciones vigentes.
+
 # Changelog
 
-## v26.7.1 revisión fina de producción
-- Actualiza versión visible a v26.7.1.
+## v26.8.1 socio premium + admin desktop
+- Rediseña la pantalla de socios con jerarquía premium, menor ruido visual y acciones más claras.
+- Reestructura Administración para uso desktop con panel lateral, KPIs, tabla de tripulación y bloques de operación/sistema.
+- Mantiene intacta la lógica contable validada: preliquidación, cancelación por capitán, reapertura y cierre firme.
+- Unifica branding: YCA · Fjord VI · Operativo de Embarque.
+- Versión visible: v26.8.0 · build socio-premium-admin-desktop-yca.
+
+## v26.8.0 revisión fina de producción
+- Actualiza versión visible a v26.8.0.
 - Corrige README que todavía mostraba v26.6.
-- Actualiza nombre del servicio Render a v26.7.1.
+- Actualiza nombre del servicio Render a v26.8.0.
 - Mantiene lógica contable y estructura de base sin cambios.
 
-## v26.7 UX premium YCA revisada
+## v26.8.0 UX premium YCA revisada
 - Corrige configuración de tarifa invitado en render.yaml, docker-compose y README a 45000.
-- Actualiza nombre del servicio Render a v26.7.
+- Actualiza nombre del servicio Render a v26.8.0.
 - Unifica versión visible y título interno.
 - Mantiene la base de datos existente sin cambiar el nombre del archivo SQLite para no perder datos.
 

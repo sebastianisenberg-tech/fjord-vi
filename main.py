@@ -40,7 +40,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.7.1"
+VERSION = "v26.8.1"
 APP_BUILD = "socio-premium-admin-desktop-yca"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -848,7 +848,16 @@ def selected_outing(db: Session, outing_id: Optional[int] = None):
     if outing_id:
         outing = db.get(Outing, outing_id)
     else:
-        outing = db.query(Outing).filter(Outing.status != "Embarque cerrado").order_by(Outing.departure_at.asc()).first()
+        # Primero prioriza salidas realmente operables. Una salida cancelada
+        # debe seguir visible en el listado, pero no conviene que sea la
+        # seleccionada por defecto si existe otra salida abierta.
+        outing = (
+            db.query(Outing)
+            .filter(Outing.status.notin_(["Embarque cerrado", "Cancelada por capitán"]))
+            .order_by(Outing.departure_at.asc())
+            .first()
+        )
+        # Si no hay operables, permite ver canceladas/cerradas como histórico.
         outing = outing or db.query(Outing).order_by(Outing.departure_at.desc()).first()
     if not outing:
         return None
