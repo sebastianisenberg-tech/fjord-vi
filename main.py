@@ -40,7 +40,10 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v26.4.2-ux-semantica"
+VERSION = "v26.5.1-ux-profesional-yca"
+CLUB_NAME = "YCA"
+APP_NAME = "Fjord VI"
+APP_MODEL = "Operativo de Embarque"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -126,10 +129,16 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
 
 ensure_schema()
-app = FastAPI(title="Fjord VI V19 Multi Salida")
+app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
 templates = Jinja2Templates(directory=str(APP_DIR))
+templates.env.globals.update({
+    "version": VERSION,
+    "club_name": CLUB_NAME,
+    "app_name": APP_NAME,
+    "app_model": APP_MODEL,
+})
 
 def db_session():
     db = SessionLocal()
@@ -366,6 +375,8 @@ def reservation_is_active(r: Reservation) -> bool:
 def ensure_outing_editable(outing: Outing):
     if outing and outing.status == "Embarque cerrado":
         raise HTTPException(status_code=400, detail="La salida ya fue cerrada")
+    if outing and outing.status == "Cancelada por capitán":
+        raise HTTPException(status_code=400, detail="La salida fue cancelada por capitán. Debe reabrirse desde Capitán para volver a operar.")
 
 def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
     r.cancelled_at = None
@@ -810,7 +821,7 @@ def seed():
                 Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
             ])
             db.commit()
-            log(db, "sistema", "seed", "Datos demo V18 creados")
+            log(db, "sistema", "seed", "Datos demo creados")
     finally:
         db.close()
 
@@ -875,7 +886,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
+    return {"ok": True, "version": VERSION, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists()}
 
 @app.head("/")
 def head_index():
@@ -1614,7 +1625,7 @@ def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_r
         Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
     ])
     db.commit()
-    log(db, user.name, "demo reset", "Datos demo V18 reiniciados")
+    log(db, user.name, "demo reset", "Datos demo reiniciados")
     return RedirectResponse("/admin?msg=demo_reset", status_code=303)
 
 

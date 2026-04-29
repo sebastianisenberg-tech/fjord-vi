@@ -1,4 +1,4 @@
-# Fjord VI · V18 Deploy Ready
+# YCA · Fjord VI · Operativo de Embarque · v26.5.1
 
 Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 

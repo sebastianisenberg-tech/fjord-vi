@@ -1,52 +1,11 @@
 <!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css">
-<title>Fjord VI</title>
-</head>
-
-<body class="loginBody">
-
-<div class="container">
-  <div class="card">
-
-    <div class="mark">FJORD VI</div>
-
-    <h1>Paseos de fin de semana</h1>
-
-    <p class="muted">
-      Piloto V18 con reservas, invitados y control de embarque.
-    </p>
-
-    {% if error %}
-      <div class="alert bad">DNI o clave incorrectos</div>
-    {% endif %}
-
-    <form method="post" action="/login">
-
-      <label>DNI</label>
-      <input name="dni" required>
-
-      <label>Clave</label>
-      <input type="password" name="password" required>
-
-      <button>Ingresar al sistema</button>
-
-    </form>
-
-    <div class="demoBox">
-      <b>Accesos demo</b><br>
-      Socio: 20123456 / demo1234<br>
-      Capitán: 30999111 / demo1234<br>
-      Admin: 27999111 / demo1234
-    </div>
-
-    <small class="version">v18-final</small>
-
-  </div>
-</div>
-
-</body>
-</html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>{{app_name}}</title></head>
+<body class="loginBody"><div class="container"><div class="card loginCard">
+  <div class="mark">{{club_name}} · {{app_name}}</div>
+  <h1>Paseos de fin de semana</h1>
+  <p class="muted">{{app_model}}</p>
+  {% if error %}<div class="alert bad">DNI o clave incorrectos</div>{% endif %}
+  <form method="post" action="/login"><label>DNI</label><input name="dni" required><label>Clave</label><input type="password" name="password" required><button>Ingresar al sistema</button></form>
+  <div class="demoBox"><b>Accesos demo</b><br>Socio: 20123456 / demo1234<br>Capitán: 30999111 / demo1234<br>Admin: 27999111 / demo1234</div>
+  <small class="version">{{club_name}} · {{app_name}} · {{app_model}} · {{version}}</small>
+</div></div></body></html>

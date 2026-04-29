@@ -1,13 +1,18 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Capitán · Fjord VI</title></head>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+<title>Capitán · {{app_name}}</title>
+</head>
 <body><div class="app">
-<header class="top topGreen"><div><b>CAPITÁN</b><small>Control de embarque</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
+<header class="top topGreen"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
-{% if msg %}<div class="toast">{% if msg=='cierre_ok' %}Embarque cerrado y cargos recalculados para esta salida.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='reapertura_ok' %}Salida reabierta. Las preliquidaciones fueron recalculadas.
-{% elif msg=='estado_actualizado' %}Estado operativo actualizado.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+{% if msg %}<div class="toast">{% if msg=='cierre_ok' %}Salida cerrada y liquidada.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='reapertura_ok' or msg=='estado_actualizado' %}Estado actualizado. Si hubo reapertura, las preliquidaciones fueron recalculadas.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 
 <section class="card" id="salidas">
-  <div class="cardTitle"><div><span class="eyebrow">Seleccionar salida</span><h2>Salida a controlar</h2></div></div>
+  <div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>
+  {% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}
   {% for o in outings %}
     <a class="row compact {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}" style="text-decoration:none;color:inherit">
       <div><b>{{o.departure_at.strftime('%d/%m %H:%M')}}</b><small>{{o.title}} · {{o.destination}} · {{o.status}}</small></div>
@@ -22,30 +27,30 @@
   <span class="pill {{readiness.level}}">{{outing.status}}</span>
 </section>
 
-<section class="stats"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Pendientes</small><b>{{pending}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div></section>
-<section class="notice {{readiness.level}}"><b>{{readiness.label}}</b><span>{{readiness.detail}}</span></section>
-{% if outing.status == 'Cancelada por capitán' %}<section class="cancelBanner"><b>SALIDA CANCELADA POR CAPITÁN</b><span>No se generan cargos firmes ni preliquidaciones vigentes.</span></section>{% endif %}
-
-<section class="card auditBox" id="estado-final">
-  <div class="cardTitle"><div><span class="eyebrow">Acta operativa</span><h2>{{final_summary.label}}</h2></div><span class="pill {% if final_summary.closed %}ok{% else %}warn{% endif %}">{{final_summary.liquidacion}}</span></div>
-  <p>{{final_summary.detail}}</p>
-  <div class="actaCounters"><div><span>Embarcados</span><b>{{acta.embarked_count}}</b></div><div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div><div><span>Pendientes</span><b>{{acta.pending_count}}</b></div><div><span>Cargos</span><b>$ {{acta.total_label}}</b></div></div>
-  {% if not final_summary.closed and charge_summary.total > 0 %}<div class="alert warn">Hay cargos preliminares por cambios de asistencia. Se consolidan al cerrar embarque.</div>{% endif %}
+<section class="statusPanel {% if outing.status == 'Cancelada por capitán' %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
+  {% if outing.status == 'Cancelada por capitán' %}
+    <b>Salida cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>
+  {% elif closed %}
+    <b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>
+  {% else %}
+    <b>Salida operativa</b><span>{{active_count}} / {{outing.max_crew}} activos · {{pending}} pendientes.</span>
+  {% endif %}
 </section>
 
+<section class="stats"><div><small>Presentes</small><b>{{present}}</b></div><div><small>{% if closed %}No embarcados{% else %}Pendientes{% endif %}</small><b>{% if closed %}{{acta.not_embarked_count}}{% else %}{{pending}}{% endif %}</b></div><div><small>Cargos</small><b>$ {{acta.total_label}}</b></div></section>
+
 <section class="card" id="estado">
-  <div class="cardTitle"><div><span class="eyebrow">Estado operativo</span><h2>Decisión del capitán</h2></div></div>
+  <div class="cardTitle"><div><span class="eyebrow">Modo de salida</span><h2>Decisión del capitán</h2></div></div>
   <form class="gridForm captainStatus" method="post" action="/captain/outing_status">
     <input type="hidden" name="outing_id" value="{{outing.id}}">
     <select class="input" name="status">
       <option value="Reservas abiertas" {% if outing.status == 'En reservas' %}selected{% endif %}>Operativa / Reabrir</option>
-      <option value="Cerrar">Cerrar lista y liquidar</option>
-      <option value="Cancelada" {% if outing.status == 'Cancelada por capitán' %}selected{% endif %}>Cancelar salida</option>
+      <option value="Cerrar">Cerrar embarque y liquidar</option>
+      <option value="Cancelada" {% if outing.status == 'Cancelada por capitán' %}selected{% endif %}>Cancelar salida por capitán</option>
     </select>
     <button class="btn green">Actualizar estado</button>
   </form>
-  <p class="muted smallHelp"><b>Presente</b>: embarca. <b>Por confirmar al cierre</b>: se transforma automáticamente en ausente con cargo. <b>No embarca</b>: decisión operativa del capitán; no genera cargo.</p>
-  {% if closed %}<p class="muted">Solo el capitán puede reabrir si cambia la tripulación a último momento. La reapertura queda registrada en auditoría.</p>{% endif %}
+  <details class="rulesToggle"><summary>Ver reglas operativas</summary><p><b>Presente</b>: embarca. <b>No marcado al cierre</b>: ausente con cargo. <b>No embarca</b>: decisión del capitán, sin cargo. La cancelación total del capitán anula cargos y preliquidaciones vigentes.</p></details>
 </section>
 
 <section class="card" id="tripulacion">
@@ -53,33 +58,29 @@
   {% if reservations|length == 0 %}<div class="empty">Esta salida todavía no tiene tripulantes anotados.</div>{% endif %}
   {% for r in reservations %}
   {% set v = reservation_views.get(r.id) %}
-  <div class="row manifestCard {{v.tipo_class}} {% if v.cancelled %}disabled{% endif %} {% if v.critical %}critical{% endif %}">
-    <div>
-      <div class="manifestHead"><b>{{loop.index}}. {{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% if v.alert %}<span class="badgeAlert {{v.level}}">{{v.alert}}</span>{% endif %}</div>
-      <div class="stateGrid">
-        <span><b>Estado físico:</b> {{v.estado_fisico}}</span>
-        <span><b>Condición reglamentaria:</b> {{v.estado_reglamentario}}</span>
-      </div>
-      <small class="metaText">DNI {{r.dni}} · {{r.status}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
-      {% if v.charge > 0 %}<div class="chargeLine firm">Cargo firme: $ {{v.charge_label}}</div>{% elif v.charge_is_preliminary %}<div class="chargeLine preliminary">Preliquidación estimada: $ {{v.charge_preview_label}} <span>Solo se confirma si la salida se realiza y el capitán cierra embarque.</span></div>{% endif %}
+  <div class="crewRow {{v.level}} {{v.tipo_class}} {% if v.cancelled %}disabled{% endif %}">
+    <div class="crewMain">
+      <b>{{loop.index}}. {{r.person_name}}</b>
+      <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
+      <span class="statusText">{% if v.charge > 0 %}{{v.alert}} · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Preliquidación estimada · $ {{v.charge_preview_label}}{% else %}{{v.alert}}{% endif %}</span>
+      <small>DNI {{r.dni}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
     </div>
-
     <div class="actions attendanceActions">
       {% if outing.status in ['Embarque cerrado','Cancelada por capitán','Realizada'] %}
-        <span class="pill {{v.level}}">{{v.estado_reglamentario}}</span>
+        <span class="pill {{v.level}}">{% if v.charge > 0 %}$ {{v.charge_label}}{% else %}Sin cargo{% endif %}</span>
       {% elif v.cancelled %}
-        <span class="pill bad">Cancelado</span>
+        <span class="pill neutral">No activo</span>
         <form method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="mini">Reactivar</button></form>
         <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>
       {% elif r.attendance == 'Presente' %}
         <span class="pill ok">Presente</span>
         <form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini neutralBtn">No embarca</button></form>
       {% elif r.attendance in ['Ausente','No embarcable','No embarca'] %}
-        <span class="pill bad">{{r.attendance}}</span>
+        <span class="pill {% if r.attendance == 'No embarca' %}neutral{% else %}bad{% endif %}">{{r.attendance}}</span>
         <form method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="mini">Reactivar</button></form>
         <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>
       {% else %}
-        <span class="pill warn">Por confirmar</span>
+        <span class="pill warn">Pendiente</span>
         <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form>
         <form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini neutralBtn">No embarca</button></form>
       {% endif %}
@@ -90,7 +91,7 @@
 
 <section class="card" id="cargos-capitan">
   <div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div><span class="pill {% if charge_summary.total > 0 %}warn{% else %}ok{% endif %}">Total $ {{charge_summary.total_label}}</span></div>
-  {% if charge_summary.total == 0 %}<div class="empty">Sin cargos generados hasta ahora.</div>{% endif %}
+  {% if charge_summary.total == 0 %}<div class="empty">Sin cargos generados.</div>{% endif %}
   {% if charge_summary.invitados %}<h3>Invitados</h3>{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% endif %}
   {% if charge_summary.socios %}<h3>Socios</h3>{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% endif %}
   {% if charge_summary.menores %}<h3>Menores no socios</h3>{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% endif %}
@@ -98,4 +99,6 @@
 {% endif %}
 </main>
 <nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#estado">Estado</a><a href="#tripulacion">Lista</a><a href="#cargos-capitan">Cargos</a></nav>
+<footer class="appFooter">{{club_name}} · {{app_name}} · {{app_model}} · {{version}}</footer>
+
 </div></body></html>

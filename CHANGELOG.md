@@ -1,3 +1,11 @@
+## v26.5.1 UX profesional YCA
+
+- Unificación de versión visible en app: YCA · Fjord VI · Operativo de Embarque · v26.5.1.
+- Título interno FastAPI actualizado.
+- Bloqueo de edición por socio en salidas canceladas por capitán hasta reapertura operativa.
+- Mensajes de cancelación homogeneizados: sin cargos ni preliquidaciones vigentes.
+- Revisión de compatibilidad de templates y rutas.
+
 ## v26.4.2 UX semántica
 - Cambia la etiqueta visible de “Cancelado por capitán” a “No embarcado por capitán” para evitar confundirlo con baja del socio.
 - Distingue visualmente “No embarca por capitán” en gris/neutral y “Ausente” en rojo con cargo.
@@ -48,3 +56,11 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Agranda y mejora el botón `Salir` en todas las pantallas.
 - Agrega estilos visuales para acta, contadores, badges y lectura mobile.
 - No cambia base de datos ni requiere migraciones.
+
+
+## v26.5 - UX profesional + branding YCA
+- Unifica versionado con `VERSION`, `CLUB_NAME`, `APP_NAME` y `APP_MODEL`.
+- Agrega footer discreto con YCA, Fjord VI, modelo operativo y versión.
+- Limpia pantallas de capitán y socio para reducir repetición y mejorar lectura operativa.
+- Reemplaza banners rojos invasivos por estados globales profesionales.
+- Mantiene lógica contable validada: preliquidación, cargo firme, cancelación capitán y reapertura.

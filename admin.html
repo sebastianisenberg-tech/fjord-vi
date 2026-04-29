@@ -3,7 +3,7 @@
 <style>.dangerBtn{background:#991b1b!important;color:#fff!important;border:0!important}</style>
 </head>
 <body><div class="app wide">
-<header class="top topPurple"><div><b>ADMINISTRACIÓN</b><small>Salidas, reservas y liquidación</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
+<header class="top topPurple"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Administración</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
 {% if msg %}<div class="toast">
 {% if msg=='salida_creada' %}Salida creada correctamente, sin tripulantes precargados.
@@ -18,9 +18,9 @@
 {% else %}Operación registrada.
 {% endif %}</div>{% endif %}
 
-<section class="heroCard purpleHero"><div><span class="eyebrow">V25 consolidación operativa</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
+<section class="heroCard purpleHero"><div><span class="eyebrow">{{club_name}} · {{app_name}} · {{version}}</span><h1>Panel administrativo</h1><p>{% if outing %}{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}{% else %}Sin salidas publicadas{% endif %}</p></div>{% if outing %}<span class="pill {{readiness.level}}">{{readiness.label}}</span>{% endif %}</section>
 <section class="stats"><div><small>Salidas</small><b>{{outings|length}}</b></div><div><small>Activos</small><b>{% if outing %}{{active_count}} / {{outing.max_crew}}{% else %}-{% endif %}</b></div><div><small>Cargos salida</small><b>$ {{total_charges|money}}</b></div></section>
-{% if outing %}<section class="notice {{readiness.level}}"><b>{{readiness.detail}}</b><span>Los datos visibles pertenecen solo a la salida seleccionada.</span></section>{% if outing.status == 'Cancelada por capitán' %}<section class="cancelBanner"><b>SALIDA CANCELADA POR CAPITÁN</b><span>No se generan cargos firmes ni preliquidaciones vigentes.</span></section>{% endif %}{% endif %}
+{% if outing %}<section class="statusPanel {% if outing.status == 'Cancelada por capitán' %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing.status == 'Cancelada por capitán' %}<b>Salida cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>{{readiness.label}}</b><span>{{readiness.detail}}</span>{% endif %}</section>{% endif %}
 
 <section class="split" id="dashboard">
   <div class="miniPanel"><span>Presentes marcados</span><b>{{present}}</b></div>
@@ -53,8 +53,7 @@
   <div class="row manifestCard {{v.tipo_class}} {% if v.cancelled %}disabled{% endif %} {% if v.critical %}critical{% endif %}">
     <div>
       <div class="manifestHead"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% if v.alert %}<span class="badgeAlert {{v.level}}">{{v.alert}}</span>{% endif %}</div>
-      <div class="stateGrid"><span><b>Estado físico:</b> {{v.estado_fisico}}</span><span><b>Condición reglamentaria:</b> {{v.estado_reglamentario}}</span></div>
-      <small class="metaText">DNI {{r.dni}} · {{r.status}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
+      <small class="metaText">DNI {{r.dni}} · {{v.alert}}{% if v.motivo %} · {{v.motivo}}{% endif %}</small>
     </div>
     <span class="pill {% if v.charge > 0 or v.charge_is_preliminary %}warn{% else %}ok{% endif %}">{% if v.charge > 0 %}$ {{v.charge_label}}{% elif v.charge_is_preliminary %}preliq. $ {{v.charge_preview_label}}{% else %}sin cargo{% endif %}</span>
   </div>
@@ -84,4 +83,6 @@
 <section class="card" id="sistema-limpio"><div class="eyebrow">OPERACIÓN REAL</div><h2>Sistema limpio</h2><p class="muted">Borra salidas, reservas, cargos y auditoría demo. Conserva los usuarios. Usar para empezar una operación real desde cero.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('Esto borra TODAS las salidas, reservas, cargos y auditoría. Conserva usuarios. ¿Seguro?');"><button class="mini dangerBtn" type="submit">Sistema limpio sin demo</button></form></section>
 <section class="card" id="backup-json"><div class="eyebrow">RESGUARDO</div><h2>Backup JSON</h2><p class="muted">Descarga o restaura el estado completo del piloto: salidas, reservas, cargos y auditoría.</p><div class="actions"><a class="mini okBtn" href="/admin/backup">Descargar backup JSON</a></div><form method="post" action="/admin/restore" enctype="multipart/form-data" style="margin-top:12px;"><input type="file" name="file" required><button class="mini" type="submit">Restaurar JSON</button></form></section>
 <section class="card" id="logs"><div class="cardTitle"><div><span class="eyebrow">Trazabilidad</span><h2>Auditoría</h2></div></div>{% for l in logs %}<div class="row compact"><div><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div></div>{% endfor %}</section>
-</main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#usuarios">Usuarios</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav></div></body></html>
+</main><nav class="bottom"><a class="on" href="#dashboard">Panel</a><a href="#salidas">Salidas</a><a href="#usuarios">Usuarios</a><a href="#manifest">Manifest</a><a href="#liquidacion">Cargos</a></nav>
+<footer class="appFooter">{{club_name}} · {{app_name}} · {{app_model}} · {{version}}</footer>
+</div></body></html>
