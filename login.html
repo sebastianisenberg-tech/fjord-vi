@@ -2,51 +2,34 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/style.css">
-  <title>Yacht Club Argentino · Fjord VI · Sistema de Reservas</title>
+  <title>Yacht Club Argentino · Fjord VI · Operativa de Navegación</title>
 </head>
-<body class="loginBody premiumHeroLogin">
-  <main class="premiumLoginPage">
-    <section class="premiumLoginHero" aria-label="Fjord VI">
-      <div class="premiumHeroOverlay"></div>
-      <div class="premiumHeroBrand">
-        <img src="/static/logo_yca.jpg" alt="Yacht Club Argentino" class="premiumHeroLogo">
-        <h1>Yacht Club<br>Argentino</h1>
-        <div class="premiumHeroBoat">FJORD VI</div>
-        <div class="premiumHeroLine"></div>
-        <div class="premiumHeroSystem">Sistema de Reservas</div>
+<body class="loginBody institutionalLogin">
+  <div class="container loginShell">
+    <div class="card loginCard premiumLoginCard">
+      <div class="loginBrandBlock">
+        <img src="/static/logo_yca.jpg" alt="Yacht Club Argentino" class="ycaLogo">
+        <div class="clubFullName">Yacht Club Argentino</div>
+        <div class="boatName">FJORD VI</div>
+        <div class="systemName">Operativa de Navegación</div>
       </div>
-    </section>
-
-    <section class="premiumLoginPanel" aria-label="Ingreso al sistema">
-      <div class="premiumPanelHandle"></div>
-      {% if error %}<div class="alert bad premiumLoginError">Documento o clave incorrectos</div>{% endif %}
-      <form method="post" action="/login" class="premiumLoginForm">
-        <label for="dni">Documento</label>
-        <div class="premiumInputWrap">
-          <span class="premiumInputIcon">☉</span>
-          <input id="dni" name="dni" autocomplete="username" inputmode="text" placeholder="Ingresá tu número de documento" required>
-        </div>
-
-        <label for="password">Clave</label>
-        <div class="premiumInputWrap">
-          <span class="premiumInputIcon">▣</span>
-          <input id="password" type="password" name="password" autocomplete="current-password" placeholder="Ingresá tu contraseña" required>
-        </div>
-
-        <button class="premiumLoginButton">Ingresar</button>
+      {% if error %}<div class="alert bad">Documento o clave incorrectos</div>{% endif %}
+      <form method="post" action="/login" class="loginForm">
+        <label>Documento</label>
+        <input name="dni" autocomplete="username" inputmode="text" required>
+        <label>Clave</label>
+        <input type="password" name="password" autocomplete="current-password" required>
+        <button>Ingresar</button>
       </form>
-
-      <div class="premiumLoginDivider"><span>⚓</span></div>
-
-      <div class="premiumLoginContact">
-        <strong>Oficina de Vela · Dársena Norte</strong>
+      <div class="loginContact">
+        <strong>Oficina de Vela</strong><br>
+        Dársena Norte<br>
         <a href="tel:+541143140505">+54 11 4314-0505</a>
       </div>
-
-      <small class="version premiumLoginVersion">{{club_name}} · {{app_name}} · Sistema de Reservas<br>{{version}} | build: {{app_build}}</small>
-    </section>
-  </main>
+      <small class="version loginVersion">{{club_name}} · {{app_name}} · Operativa de Navegación · {{version}} | build: {{app_build}}</small>
+    </div>
+  </div>
 </body>
 </html>

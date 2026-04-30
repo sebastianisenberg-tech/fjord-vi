@@ -1,10 +1,3 @@
-# v28.5.0 - Premium Minimal UI Skin
-
-- Rediseño premium mobile-first del login con foto hero del Fjord VI.
-- Mantiene gallardete/logo existente del sistema.
-- Ajuste global de paleta, sombras, bordes y botones para un lenguaje visual más sobrio.
-- No modifica lógica de reservas, QR, cierre, cargos ni dependencia socio-invitado.
-
 # FJORD VI v28.4.0
 
 ## Fix crítico de negocio: dependencia socio -> invitado
