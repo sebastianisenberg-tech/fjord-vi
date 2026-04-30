@@ -208,7 +208,26 @@
         <div class="officeUserGrid">
         {% for u in users %}
           <div class="officeUser {% if not u.active %}disabled{% endif %}">
-            <div><b>{{u.name}}</b><small>Doc {{u.dni}}{% if u.member_no %} · Socio {{u.member_no}}{% endif %} · {{u.role}} · {% if u.active %}activo{% else %}inactivo{% endif %}</small></div>
+            <div class="officeUserSummary">
+              <b>{{u.name}}</b>
+              <small>Doc {{u.dni}}{% if u.member_no %} · Socio {{u.member_no}}{% endif %}{% if u.phone %} · Tel {{u.phone}}{% endif %}{% if u.email %} · {{u.email}}{% endif %} · {{u.role}} · {% if u.active %}activo{% else %}inactivo{% endif %}</small>
+              <details class="officeEditUser">
+                <summary>Editar datos</summary>
+                <form method="post" action="/admin/update_user/{{u.id}}" class="officeEditForm">
+                  <input name="name" value="{{u.name}}" placeholder="Nombre y apellido" required>
+                  <input name="dni" value="{{u.dni}}" placeholder="DNI / Pasaporte / Documento" required>
+                  <input name="member_no" value="{{u.member_no or ''}}" placeholder="Nº de socio">
+                  <input type="email" name="email" value="{{u.email or ''}}" placeholder="Email">
+                  <input name="phone" value="{{u.phone or ''}}" placeholder="Celular / WhatsApp">
+                  <select name="role">
+                    <option value="socio" {% if u.role == 'socio' %}selected{% endif %}>Socio</option>
+                    <option value="captain" {% if u.role == 'captain' %}selected{% endif %}>Capitán</option>
+                    <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Administrador</option>
+                  </select>
+                  <button type="submit">Guardar cambios</button>
+                </form>
+              </details>
+            </div>
             <div class="officeUserActions">
               <form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave de {{u.name}} a demo1234?');"><button type="submit">Reset clave</button></form>
               <form method="post" action="/admin/toggle_user/{{u.id}}" onsubmit="return confirm('Cambiar estado de {{u.name}}?');"><button type="submit">{% if u.active %}Desactivar{% else %}Activar{% endif %}</button></form>
