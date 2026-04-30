@@ -154,3 +154,9 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Cambia el bloque superior a fondo oscuro con texto blanco de alto contraste.
 - Convierte el estado de navegación en badge fuerte y legible.
 - No modifica lógica, reglas, datos, usuarios, reservas ni liquidación.
+
+## v27.4.0 ADMIN HEADER MOBILE FIX
+- Corrige el cartel de estado en Administración móvil.
+- Evita desborde horizontal del badge de estado.
+- Usa estado verde con texto blanco, consistente con Socio y Capitán.
+- No modifica lógica, reservas, cargos ni navegación.
