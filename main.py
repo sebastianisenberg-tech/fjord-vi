@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v29.1.0"
-APP_BUILD = "embarque-fjord-vi-ui-blindado"
+VERSION = "v29.2.0"
+APP_BUILD = "qr-admin-footer-minimal"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1719,13 +1719,15 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
 def admin_qr(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
     outings = visible_outings(db)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
+    return_url = f"/captain?outing_id={outing.id}" if outing and user.role == "captain" else (f"/admin?outing_id={outing.id}" if outing else ("/captain" if user.role == "captain" else "/admin"))
+    return_label = "Volver a Embarque" if user.role == "captain" else "Volver a Administración"
     if not outing:
-        return templates.TemplateResponse(request, "admin_qr.html", {"request": request, "user": user, "outing": None, "outings": outings, "checkin_url": "", "qr_url": ""})
+        return templates.TemplateResponse(request, "admin_qr.html", {"request": request, "user": user, "outing": None, "outings": outings, "checkin_url": "", "qr_url": "", "return_url": return_url, "return_label": return_label})
     token = sign_value(f"checkin:{outing.id}")
     base = str(request.base_url).rstrip("/")
     checkin_url = f"{base}/checkin?t={token}"
-    qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=" + checkin_url
-    return templates.TemplateResponse(request, "admin_qr.html", {"request": request, "user": user, "outing": outing, "outings": outings, "checkin_url": checkin_url, "qr_url": qr_url})
+    qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=520x520&data=" + checkin_url
+    return templates.TemplateResponse(request, "admin_qr.html", {"request": request, "user": user, "outing": outing, "outings": outings, "checkin_url": checkin_url, "qr_url": qr_url, "return_url": return_url, "return_label": return_label})
 
 @app.get("/checkin", response_class=HTMLResponse)
 def checkin_get(request: Request, t: str = "", db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):

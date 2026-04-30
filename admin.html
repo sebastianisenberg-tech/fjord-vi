@@ -11,7 +11,7 @@
   <header class="officeTop">
     <div>
       <b>{{club_name}} · {{app_name}} · Administración de oficina</b>
-      <small>{{app_model}} · {{version}} · build: {{app_build}}</small>
+      <small>Embarque Fjord VI {{version}}</small>
     </div>
     <a href="/logout" class="logoutBtn">Salir</a>
   </header>
@@ -85,6 +85,7 @@
             {% endfor %}
           </select>
           <button type="submit">Ver</button>
+          {% if outing %}<a class="officeMini officeQrPrint" href="/admin_qr?outing_id={{outing.id}}">QR / imprimir</a>{% endif %}
         </form>
       </section>
 
@@ -249,7 +250,7 @@
       </section>
     </section>
   </main>
-  <footer class="appFooter"><b>{{club_name}} · {{app_name}}</b><span>{{app_model}}</span><small>{{version}} · build: {{app_build}}</small></footer>
+  <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer>
 </div>
 </body>
 </html>

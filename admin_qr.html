@@ -4,23 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/style.css">
-  <title>QR Check-in · {{club_name}} · {{app_name}}</title>
+  <title>QR · Embarque Fjord VI</title>
   <style>
-    .qrPage{min-height:100vh;background:linear-gradient(180deg,#f3f7fb 0%,#ffffff 70%);padding:22px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a}
-    .qrCard{max-width:760px;margin:24px auto;background:#fff;border:1px solid rgba(15,23,42,.12);border-radius:28px;padding:28px;box-shadow:0 24px 60px rgba(15,23,42,.10)}
-    .qrTop{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}
-    .qrTop a{font-weight:800;color:#1f4e79;text-decoration:none}
-    .qrTitle small{display:block;text-transform:uppercase;letter-spacing:.16em;color:#64748b;font-weight:900}.qrTitle h1{margin:.25rem 0 0;font-size:34px}.qrTitle p{font-size:18px;color:#475569}
+    .qrPage{min-height:100vh;background:linear-gradient(180deg,#f3f7fb 0%,#ffffff 72%);padding:18px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a}
+    .qrCard{max-width:760px;margin:18px auto;background:#fff;border:1px solid rgba(15,23,42,.12);border-radius:26px;padding:24px;box-shadow:0 24px 60px rgba(15,23,42,.10)}
+    .qrTop{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
+    .qrTop b{font-size:18px}.qrTop a{font-weight:850;color:#1f4e79;text-decoration:none}
+    .outingSelect{display:flex;gap:10px;align-items:center;margin:18px 0}.outingSelect select{flex:1;border:1px solid #cbd5e1;border-radius:14px;padding:12px;font-size:16px}.outingSelect button{border:0;border-radius:14px;padding:12px 18px;background:#163a5a;color:#fff;font-weight:900}
+    .qrTitle small{display:block;text-transform:uppercase;letter-spacing:.15em;color:#64748b;font-weight:900}.qrTitle h1{margin:.25rem 0 0;font-size:34px;line-height:1.05}.qrTitle p{font-size:18px;color:#475569}
     .qrBox{text-align:center;background:#f8fafc;border-radius:24px;padding:26px;border:1px solid rgba(15,23,42,.10)}
-    .qrBox img{width:320px;max-width:100%;height:auto}.qrUrl{word-break:break-all;font-size:14px;color:#475569;margin-top:16px}.qrActions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;justify-content:center}.qrBtn{border:0;border-radius:18px;padding:14px 20px;font-weight:900;font-size:16px;background:#163a5a;color:white;text-decoration:none}.qrBtn.alt{background:#1f4e79}
-    .qrNote{margin-top:18px;padding:16px;border-radius:18px;background:#eef6ff;color:#1f4e79;font-weight:700}.outingSelect{display:flex;gap:10px;align-items:center;margin:18px 0}.outingSelect select{flex:1;border:1px solid #cbd5e1;border-radius:14px;padding:12px;font-size:16px}.outingSelect button{border:0;border-radius:14px;padding:12px 18px;background:#163a5a;color:#fff;font-weight:900}
-    @media print{.qrTop,.outingSelect,.qrActions{display:none}.qrPage{background:white}.qrCard{box-shadow:none;border:0}.qrBox{border:0}.qrBox img{width:420px}.qrTitle h1{font-size:38px}}
+    .qrBox img{width:360px;max-width:100%;height:auto}.qrUrl{word-break:break-all;font-size:13px;color:#475569;margin-top:14px}.qrActions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;justify-content:center}.qrBtn{border:0;border-radius:18px;padding:14px 20px;font-weight:900;font-size:16px;background:#163a5a;color:white;text-decoration:none}.qrBtn.alt{background:#1f4e79}
+    .qrNote{margin-top:18px;padding:16px;border-radius:18px;background:#eef6ff;color:#1f4e79;font-weight:700}.qrFooter{margin-top:18px;text-align:center;color:#94a3b8;font-size:13px}
+    @media print{body{margin:0}.qrPage{background:white;padding:0}.qrCard{box-shadow:none;border:0;border-radius:0;margin:0 auto;padding:24px}.qrTop,.outingSelect,.qrActions,.qrUrl{display:none}.qrBox{border:0;background:white}.qrBox img{width:460px}.qrTitle{text-align:center}.qrTitle h1{font-size:38px}.qrTitle p{font-size:20px}.qrNote{background:white;border:1px solid #cbd5e1;color:#0f172a}.qrFooter{display:block}}
   </style>
 </head>
 <body>
 <div class="qrPage">
   <div class="qrCard">
-    <div class="qrTop"><b>{{club_name}} · {{app_name}} · Check-in QR</b><a href="/admin{% if outing %}?outing_id={{outing.id}}{% endif %}">Volver a Admin</a></div>
+    <div class="qrTop"><b>Embarque Fjord VI · QR</b><a href="{{return_url}}">{{return_label}}</a></div>
     {% if outings %}
     <form class="outingSelect" method="get" action="/admin_qr">
       <select name="outing_id">
@@ -35,6 +36,7 @@
       <div class="qrUrl">{{checkin_url}}</div>
       <div class="qrActions"><button class="qrBtn" onclick="window.print()">Imprimir QR</button><a class="qrBtn alt" href="{{checkin_url}}" target="_blank">Abrir check-in</a></div>
       <div class="qrNote">Escaneá para registrar presencia. El QR no autoriza a navegar: la decisión final corresponde al capitán.</div>
+      <div class="qrFooter">Embarque Fjord VI {{version}}</div>
     </div>
     {% else %}
     <h1>Sin salida activa</h1><p>No hay salidas cargadas para generar QR.</p>
