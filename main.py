@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v35.1.0"
-APP_BUILD = "deploy-template-path-robusto-v35.1"
+VERSION = "v36.0.0"
+APP_BUILD = "plano-definitivo-sin-templates-v36"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -137,9 +137,9 @@ if not STATIC_DIR.exists():
     STATIC_DIR = APP_DIR
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-TEMPLATE_DIR = APP_DIR / "templates"
-# Robustez de deploy: busca templates tanto en /templates como en la raíz del proyecto.
-templates = Jinja2Templates(directory=[str(TEMPLATE_DIR), str(APP_DIR)])
+# Proyecto PLANO: los HTML viven en la raíz del proyecto.
+# No usar carpeta /templates para evitar mezclas y errores TemplateNotFound en deploy manual.
+templates = Jinja2Templates(directory=str(APP_DIR))
 templates.env.globals.update({
     "version": VERSION,
     "app_build": APP_BUILD,

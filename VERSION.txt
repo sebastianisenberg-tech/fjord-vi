@@ -1,4 +1,4 @@
 Fjord VI Embarque
-Version: v35.1.0
-Build: deploy-template-path-robusto
-Corrección: templates disponibles en raíz y /templates; Jinja busca ambos paths.
+Versión: v36.0.0
+Build: plano-definitivo-sin-templates-v36
+Estructura: PLANA, sin carpeta templates, sin duplicados HTML.
