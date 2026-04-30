@@ -1091,3 +1091,140 @@ body .officeTop .logoutBtn,
 .officeEditForm input,.officeEditForm select{border:1px solid #d6e0e4;border-radius:10px;padding:9px 10px;background:#fff;font-size:12px;min-width:0}
 .officeEditForm button{border:0;border-radius:10px;background:linear-gradient(135deg,#062b4b,#071f38);color:#fff;padding:10px 12px;font-weight:900;cursor:pointer;white-space:nowrap}
 @media (max-width:980px){.officeEditForm{grid-template-columns:1fr}.officeUserActions{grid-template-columns:1fr 1fr}.officeEditUser{width:100%}}
+
+
+/* ======================================================
+   v28.5.0 PREMIUM MINIMAL UI SKIN
+   Criterio: mobile-first, náutico premium, menos ruido,
+   más aire, tipografía fuerte, imagen controlada.
+   ====================================================== */
+:root{
+  --premium-bg:#f3f7f5;
+  --premium-ink:#0c1930;
+  --premium-muted:#7a8493;
+  --premium-border:#dfe5e8;
+  --premium-green:#006f5b;
+  --premium-green-2:#0b8d6f;
+  --premium-navy:#061f38;
+  --premium-gold:#b89555;
+  --premium-shadow:0 22px 54px rgba(6,31,56,.16);
+}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;letter-spacing:-.01em;}
+
+/* LOGIN premium mobile */
+.premiumHeroLogin{
+  min-height:100vh;
+  margin:0;
+  background:#eef4f3;
+  color:var(--premium-ink);
+  overflow-x:hidden;
+}
+.premiumLoginPage{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  background:
+    linear-gradient(180deg, rgba(3,23,36,.16), transparent 34%),
+    #eef4f3;
+}
+.premiumLoginHero{
+  position:relative;
+  min-height:46vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:calc(env(safe-area-inset-top) + 42px) 28px 92px;
+  background-image:url('/static/yca_fjord_hero.jpg');
+  background-size:cover;
+  background-position:center 46%;
+  overflow:hidden;
+}
+.premiumHeroOverlay{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 65% 34%, rgba(255,192,103,.08), transparent 30%),
+    linear-gradient(180deg, rgba(2,12,24,.40) 0%, rgba(2,12,24,.26) 45%, rgba(2,12,24,.66) 100%);
+  backdrop-filter:saturate(.92);
+}
+.premiumHeroBrand{position:relative;z-index:2;text-align:center;color:#fff;text-shadow:0 2px 20px rgba(0,0,0,.32);}
+.premiumHeroLogo{width:122px;height:auto;display:block;margin:0 auto 20px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.28));}
+.premiumHeroBrand h1{margin:0;font-size:33px;line-height:1.05;letter-spacing:.09em;text-transform:uppercase;font-weight:850;}
+.premiumHeroBoat{margin-top:12px;color:#d0fff1;font-size:17px;font-weight:900;letter-spacing:.24em;text-transform:uppercase;}
+.premiumHeroLine{width:42px;height:2px;background:var(--premium-gold);border-radius:99px;margin:14px auto;}
+.premiumHeroSystem{font-size:14px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:rgba(255,255,255,.92);}
+.premiumLoginPanel{
+  position:relative;
+  z-index:3;
+  margin:-48px 18px 24px;
+  padding:28px 24px 24px;
+  background:rgba(255,255,255,.94);
+  border:1px solid rgba(255,255,255,.78);
+  border-radius:28px;
+  box-shadow:var(--premium-shadow);
+  backdrop-filter:blur(18px);
+}
+.premiumPanelHandle{width:42px;height:4px;border-radius:99px;background:#d9e1e3;margin:-8px auto 20px;}
+.premiumLoginError{margin:0 0 14px;border-radius:16px;}
+.premiumLoginForm{display:grid;gap:13px;}
+.premiumLoginForm label{margin:6px 0 -4px;color:var(--premium-ink);font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.08em;}
+.premiumInputWrap{position:relative;display:flex;align-items:center;}
+.premiumInputWrap input{
+  width:100%;min-height:58px;border-radius:18px;border:1px solid var(--premium-border);background:#fff;
+  padding:0 18px 0 54px;font-size:16px;color:var(--premium-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.75);
+}
+.premiumInputWrap input::placeholder{color:#9aa3ad;}
+.premiumInputWrap input:focus{outline:none;border-color:rgba(0,111,91,.46);box-shadow:0 0 0 4px rgba(0,111,91,.10);}
+.premiumInputIcon{position:absolute;left:18px;z-index:1;color:#8c96a3;font-size:20px;font-weight:800;}
+.premiumLoginButton{
+  min-height:60px;margin-top:12px;border-radius:18px;
+  background:linear-gradient(135deg,var(--premium-green),#004f45);
+  color:#fff;font-size:16px;font-weight:950;letter-spacing:.18em;text-transform:uppercase;
+  box-shadow:0 14px 28px rgba(0,111,91,.24);
+}
+.premiumLoginButton:active{transform:translateY(1px);filter:saturate(.96);}
+.premiumLoginDivider{display:flex;align-items:center;gap:14px;margin:22px 0 18px;color:var(--premium-gold);}
+.premiumLoginDivider:before,.premiumLoginDivider:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,#dcc8a3,transparent);}
+.premiumLoginDivider span{font-size:20px;}
+.premiumLoginContact{text-align:center;color:var(--premium-ink);font-size:15px;line-height:1.45;}
+.premiumLoginContact strong{display:block;font-weight:650;}
+.premiumLoginContact a{display:block;color:var(--premium-green);font-size:18px;font-weight:900;text-decoration:none;margin-top:4px;}
+.premiumLoginVersion{display:block;margin-top:18px;text-align:center;color:#8e98a5;line-height:1.38;font-size:12px;}
+
+/* Refinamiento global mínimo: más premium sin romper lógica */
+.app,.officeApp{background:linear-gradient(180deg,#eef7f3 0%,#f7fafc 52%,#e8eef4 100%);}
+.card,.premiumCard,.officeCard,.notice,.stats>div,.kpiStrip>div,.premiumHero,.officeKpi{
+  border-color:rgba(13,43,76,.08)!important;
+  box-shadow:0 14px 34px rgba(12,31,48,.065)!important;
+}
+.top,.officeTop{
+  background:linear-gradient(135deg,#06233f 0%,#006f5b 100%)!important;
+  box-shadow:0 10px 28px rgba(6,35,63,.18)!important;
+}
+button,.btn,.officeSelector button,.officeForm button,.officeRestore button,.officeUserActions button{
+  border-radius:15px;
+  background:linear-gradient(135deg,#06233f 0%,#006f5b 100%);
+}
+.btn.green,button.green{background:linear-gradient(135deg,#006f5b,#0b8d6f)!important;}
+.statusPill,.pill,.officePill{background:#e6f6f0!important;color:#006f5b!important;}
+.bottom{box-shadow:0 18px 50px rgba(6,31,56,.16)!important;}
+.selectRow,.premiumPerson{border-radius:18px!important;}
+
+/* Desktop login: split premium, pero sigue mobile-first */
+@media(min-width:900px){
+  .premiumLoginPage{display:grid;grid-template-columns:1.08fr .92fr;min-height:100vh;background:#0a1625;}
+  .premiumLoginHero{min-height:100vh;padding:64px;background-position:center center;}
+  .premiumLoginHero:after{content:"";position:absolute;inset:auto 0 0 0;height:34%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.45));}
+  .premiumHeroBrand{align-self:center;}
+  .premiumHeroLogo{width:142px;}
+  .premiumHeroBrand h1{font-size:35px;}
+  .premiumLoginPanel{align-self:center;justify-self:center;width:min(520px,86%);margin:0;padding:44px 40px;border-radius:30px;}
+  .premiumPanelHandle{display:none;}
+}
+
+@media(max-width:380px){
+  .premiumLoginHero{min-height:43vh;padding-left:20px;padding-right:20px;}
+  .premiumHeroLogo{width:104px;margin-bottom:14px;}
+  .premiumHeroBrand h1{font-size:28px;}
+  .premiumLoginPanel{margin-left:12px;margin-right:12px;padding:24px 18px 20px;border-radius:24px;}
+  .premiumInputWrap input{min-height:54px;}
+}
