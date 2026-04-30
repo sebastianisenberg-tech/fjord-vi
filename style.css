@@ -768,3 +768,176 @@ header.top a:active,
 .officeLog small { display:block; color:#667085; margin-top:2px; }
 @media (max-width: 980px) { .officeLayout { grid-template-columns:1fr; padding:12px; } .officeSidebar { display:none; } .officeKpiGrid { grid-template-columns: repeat(2, minmax(0,1fr)); } .officeTwoCols { grid-template-columns:1fr; } .officeHero { flex-direction:column; } .officeForm { grid-template-columns:1fr; } .officeUser { align-items:flex-start; flex-direction:column; } .officeUserActions { width:100%; display:grid; grid-template-columns:1fr 1fr; } }
 @media (max-width: 560px) { .officeTop { padding:12px 14px; } .officeHero h1 { font-size:23px; } .officeSelector { grid-template-columns:1fr; } .officeKpiGrid, .officeActaGrid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+
+/* v27.2.0 ADMIN PC PULIDO: solo densidad visual y usabilidad de oficina. No modifica lógica. */
+@media (min-width: 981px) {
+  .officeApp { background: #f3f6f5; }
+  .officeTop { padding: 10px 18px; min-height: 44px; box-shadow: 0 8px 20px rgba(11, 42, 67, .15); }
+  .officeTop b { font-size: 14px; }
+  .officeTop small { font-size: 11px; }
+  .officeLayout { grid-template-columns: 205px minmax(0, 1fr); gap: 14px; max-width: 1440px; padding: 12px 14px 72px; }
+  .officeSidebar { top: 64px; padding: 12px; border-radius: 18px; gap: 4px; }
+  .officeBrand { padding: 11px; border-radius: 14px; margin-bottom: 6px; }
+  .officeBrand b { font-size: 14px; }
+  .officeBrand span { font-size: 11px; }
+  .officeSidebar a { padding: 8px 10px; border-radius: 10px; font-size: 12.5px; }
+  .officeMain { gap: 10px; }
+  .officeCard { border-radius: 16px; padding: 12px 14px; box-shadow: 0 7px 18px rgba(16, 32, 51, .045); }
+  .officeHero { align-items: center; min-height: 0; }
+  .officeHero h1 { margin: 2px 0 3px; font-size: 24px; line-height: 1.05; }
+  .officeHero p { margin: 2px 0; font-size: 12.5px; }
+  .officeEyebrow { font-size: 9.5px; letter-spacing: .65px; color: #4b5968; }
+  .officeSectionHead { align-items: center; margin-bottom: 8px; }
+  .officeSectionHead h2 { font-size: 17px; margin-top: 1px; }
+  .officeStatusBox { min-width: 128px; padding: 9px 11px; border-radius: 14px; }
+  .officeStatusBox b { font-size: 15px; }
+  .officeSelector { grid-template-columns: 1fr 92px; gap: 8px; }
+  .officeSelector select, .officeSelector button, .officeForm input, .officeForm select, .officeForm button, .officeRestore button { min-height: 34px; font-size: 12.5px; border-radius: 10px; }
+  .officeKpiGrid { gap: 8px; }
+  .officeKpi { padding: 9px 10px; border-radius: 13px; }
+  .officeKpi span { font-size: 9.5px; color: #4b5968; }
+  .officeKpi b { font-size: 19px; margin-top: 3px; }
+  .officeKpi small { font-size: 10px; margin-top: 3px; line-height: 1.18; }
+  .officeStatusLine { padding: 9px 12px; border-radius: 13px; gap: 1px; }
+  .officeStatusLine span, .officeHelp, .officeEmpty { font-size: 12px; color: #4f5f70; }
+  .officeTwoCols { gap: 10px; }
+  .officeActaGrid { gap: 6px; }
+  .officeActaGrid > div { padding: 8px 9px; border-radius: 12px; }
+  .officeActaGrid span { font-size: 9.5px; color: #4b5968; }
+  .officeActaGrid b { font-size: 18px; margin-top: 2px; }
+  .officeMini { min-height: 28px; padding: 6px 10px; font-size: 11.5px; }
+  .officeTotal { padding: 8px 10px; border-radius: 12px; margin-bottom: 6px; }
+  .officeTotal span { font-size: 10.5px; color: #4b5968; }
+  .officeTotal b { font-size: 18px; }
+  .officeCharge { padding: 7px 0; font-size: 12.5px; }
+  .officeCharge small { color: #4f5f70; font-size: 11px; }
+  .officeTableWrap { border-radius: 12px; }
+  .officeTable { min-width: 980px; font-size: 12px; line-height: 1.18; }
+  .officeTable th { position: sticky; top: 0; z-index: 2; background: #e8eef3; color: #1f344a; font-size: 10px; padding: 8px 9px; border-bottom: 1px solid #cfd9e2; }
+  .officeTable td { padding: 7px 9px; vertical-align: middle; }
+  .officeTable td small { font-size: 10.5px; color: #4f5f70; margin-top: 1px; }
+  .officeTable th:nth-child(2), .officeTable td:nth-child(2) { width: 95px; }
+  .officeTable th:nth-child(3), .officeTable td:nth-child(3) { width: 92px; text-align: center; }
+  .officeTable th:nth-child(5), .officeTable td:nth-child(5) { width: 140px; text-align: center; }
+  .officeTable th:nth-child(6), .officeTable td:nth-child(6) { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+  .officeBadge { padding: 3px 8px; font-size: 10.5px; }
+  .officeForm { grid-template-columns: 1.1fr 1.1fr .9fr .7fr 170px; gap: 8px; align-items: center; }
+  #usuarios .officeForm { grid-template-columns: 1.2fr 1fr .65fr 1.1fr 1fr .8fr 150px; }
+  #usuarios .officeForm button, #crear .officeForm button { width: 100%; }
+  .officeList { gap: 5px; }
+  .officeOutingRow { padding: 8px 10px; border-radius: 11px; }
+  .officeOutingRow small, .officeOutingRow span { font-size: 11px; }
+  .officeUserGrid { display: block; width: 100%; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+  .officeUser { display: grid; grid-template-columns: minmax(240px, 1fr) auto; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 8px 10px; background: #fff; }
+  .officeUser:last-child { border-bottom: 0; }
+  .officeUser b { font-size: 13px; }
+  .officeUser small { font-size: 11px; color: #4f5f70; }
+  .officeUserActions { gap: 6px; }
+  .officeUserActions button { min-height: 28px; padding: 6px 9px; font-size: 11px; border-radius: 9px; }
+  .officeRestore { grid-template-columns: 1fr 160px; align-items: center; gap: 8px; }
+  .officeLog { padding: 7px 0; font-size: 12.5px; }
+  .officeLog small { font-size: 11px; color: #4f5f70; }
+  .officeApp .appFooter { margin-left: 220px; padding: 12px 0 18px; }
+}
+
+/* v27.3.0 HEADER CORREGIDO: salida seleccionada y estado legibles en ADMIN PC. Solo CSS, no modifica lógica. */
+.officeHero {
+  background: linear-gradient(135deg, #08243d 0%, #0b3b33 62%, #073225 100%);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.08);
+  border-top: 0 !important;
+  box-shadow: 0 18px 46px rgba(8,36,61,.22);
+}
+.officeHero .officeEyebrow {
+  color: rgba(255,255,255,.78) !important;
+  font-size: 12px;
+  letter-spacing: .12em;
+}
+.officeHero h1 {
+  color: #fff !important;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .015em;
+  text-shadow: 0 2px 10px rgba(0,0,0,.22);
+}
+.officeHero p {
+  color: rgba(255,255,255,.88) !important;
+}
+.officeHero p b {
+  color: #fff;
+}
+.officeStatusBox {
+  border: 1px solid rgba(255,255,255,.24) !important;
+  box-shadow: 0 12px 28px rgba(0,0,0,.20);
+}
+.officeStatusBox span {
+  color: rgba(255,255,255,.82) !important;
+  opacity: 1 !important;
+}
+.officeStatusBox b {
+  color: #fff !important;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.officeStatusBox.open {
+  background: #059669 !important;
+  color: #fff !important;
+}
+.officeStatusBox.closed {
+  background: #1d4ed8 !important;
+  color: #fff !important;
+}
+.officeStatusBox.danger {
+  background: #b42318 !important;
+  color: #fff !important;
+}
+@media (min-width: 981px) {
+  .officeHero {
+    padding: 20px 22px !important;
+    align-items: center !important;
+    min-height: 108px !important;
+    border-radius: 18px !important;
+  }
+  .officeHero h1 {
+    font-size: 36px !important;
+    line-height: 1 !important;
+    margin: 6px 0 8px !important;
+  }
+  .officeHero p {
+    font-size: 15px !important;
+    margin: 4px 0 !important;
+  }
+  .officeStatusBox {
+    min-width: 210px !important;
+    padding: 17px 20px !important;
+    border-radius: 18px !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .officeStatusBox span {
+    font-size: 11px !important;
+    letter-spacing: .12em !important;
+  }
+  .officeStatusBox b {
+    font-size: 26px !important;
+    line-height: 1.05 !important;
+    margin-top: 6px !important;
+  }
+}
+@media (max-width: 980px) {
+  .officeHero {
+    padding: 18px !important;
+  }
+  .officeHero h1 {
+    font-size: 31px !important;
+  }
+  .officeStatusBox {
+    width: 100%;
+    align-items: center !important;
+    text-align: center;
+    padding: 15px 18px !important;
+  }
+  .officeStatusBox b {
+    font-size: 24px !important;
+  }
+}

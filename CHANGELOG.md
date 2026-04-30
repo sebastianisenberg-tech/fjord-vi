@@ -141,3 +141,16 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Refinamiento de lectura móvil para Socio y Capitán.
 - Se conserva la lógica existente: máximo 9 tripulantes, mínimo 2, invitados condicionales hasta 48h, invitado dependiente del socio, cargos 70%/100% y cierre del capitán como liquidación firme.
 - No incorpora regatas, cruceros ni automatizaciones nuevas.
+
+## v27.2.0 ADMIN PC PULIDO
+- Ajuste visual exclusivo para Administración en PC.
+- Más densidad de información: menos padding, filas y tarjetas más compactas.
+- Tablas con encabezados más firmes, mejor contraste y alineación de importes.
+- Formularios de Programar y Usuarios optimizados en una línea cuando hay ancho de escritorio.
+- Sin cambios de lógica, reservas, penalizaciones, backup, socio ni capitán.
+
+## v27.3.0 HEADER CORREGIDO
+- Aumenta la jerarquía visual de la salida seleccionada en ADMIN.
+- Cambia el bloque superior a fondo oscuro con texto blanco de alto contraste.
+- Convierte el estado de navegación en badge fuerte y legible.
+- No modifica lógica, reglas, datos, usuarios, reservas ni liquidación.
