@@ -87,7 +87,7 @@
             </optgroup>
             {% for g in history_groups %}
             <optgroup label="Histórico · {{g.label}}">
-              {% for o in g.items %}
+              {% for o in g["items"] %}
               <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
               {% endfor %}
             </optgroup>
@@ -119,9 +119,6 @@
         {% endif %}
       </section>
 
-
-
-      {% if outing %}
       <section class="officeCard" id="control-admin">
         <div class="officeSectionHead">
           <div><span class="officeEyebrow">Control administrativo</span><h2>Edición posterior / correcciones</h2></div>
@@ -146,7 +143,6 @@
           <button>Aplicar estado</button>
         </form>
       </section>
-      {% endif %}
 
       <section class="officeTwoCols">
         <article class="officeCard">
