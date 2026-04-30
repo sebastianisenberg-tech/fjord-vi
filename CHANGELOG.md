@@ -134,3 +134,10 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Rediseño del panel de administración como pantalla de oficina: selector de salida, resumen operativo, liquidación, tabla administrativa y agenda.
 - Separación visual entre planificación mensual, revisión posterior a la navegación, liquidación y herramientas del sistema.
 - Métricas más explícitas: reservas totales, activos embarcables, embarcados, no embarcados, lista de espera y cargos firmes.
+
+## v27.1.0 - Estable fin de semana
+- Alcance cerrado a paseos de sábado y domingo.
+- Refinamiento visual de Administración para uso de oficina en PC.
+- Refinamiento de lectura móvil para Socio y Capitán.
+- Se conserva la lógica existente: máximo 9 tripulantes, mínimo 2, invitados condicionales hasta 48h, invitado dependiente del socio, cargos 70%/100% y cierre del capitán como liquidación firme.
+- No incorpora regatas, cruceros ni automatizaciones nuevas.

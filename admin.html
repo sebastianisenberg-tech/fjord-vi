@@ -150,7 +150,7 @@
               {% for r in reservations %}
               {% set v = reservation_views.get(r.id) %}
               <tr class="{% if v.waitlisted %}waitRow{% elif v.charge > 0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}">
-                <td><b>{{r.person_name}}</b>{% if r.responsible_user_id %}<small>Responsable ID {{r.responsible_user_id}}</small>{% endif %}</td>
+                <td><b>{{r.person_name}}</b>{% if r.responsible_user_id %}<small>Responsable: {{responsible_names.get(r.responsible_user_id, "ID " ~ r.responsible_user_id)}}</small>{% endif %}</td>
                 <td>{{r.dni}}</td>
                 <td><span class="officeBadge">{{v.tipo_label}}</span></td>
                 <td>

@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v27.0.0"
-APP_BUILD = "admin-oficina-liquidacion-yca"
+VERSION = "v27.1.0"
+APP_BUILD = "estable-fin-de-semana-admin-oficina"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -1573,6 +1573,10 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     ready = readiness_state(outing, len(active), present)
     counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
     active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
+    responsible_ids = sorted({r.responsible_user_id for r in reservations if getattr(r, "responsible_user_id", None)})
+    responsible_names = {}
+    if responsible_ids:
+        responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(responsible_ids)).all()}
     waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
@@ -1587,6 +1591,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "msg": request.query_params.get("msg"), "reservation_views": views,
         "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
+        "responsible_names": responsible_names,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0
     })
 
