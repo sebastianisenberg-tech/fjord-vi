@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v36.0.0"
-APP_BUILD = "plano-definitivo-sin-templates-v36"
+VERSION = "v37.0.0"
+APP_BUILD = "safe-render-plano-sin-jinja-template-response-v37"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -139,7 +139,69 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Proyecto PLANO: los HTML viven en la raíz del proyecto.
 # No usar carpeta /templates para evitar mezclas y errores TemplateNotFound en deploy manual.
-templates = Jinja2Templates(directory=str(APP_DIR))
+class SafeTemplates:
+    def __init__(self, directory):
+        self.directory = str(directory)
+        self.env = Environment(
+            loader=FileSystemLoader(self.directory),
+            autoescape=select_autoescape(["html", "xml"])
+        )
+
+    def TemplateResponse(self, *args, **kwargs):
+        # Compatible con ambos estilos:
+        # TemplateResponse(request, "archivo.html", context)
+        # TemplateResponse("archivo.html", context)
+        request = None
+        name = None
+        context = None
+
+        if len(args) >= 2 and hasattr(args[0], "url"):
+            request = args[0]
+            name = args[1]
+            context = args[2] if len(args) >= 3 else kwargs.get("context", {})
+        else:
+            name = args[0] if len(args) >= 1 else kwargs.get("name")
+            context = args[1] if len(args) >= 2 else kwargs.get("context", {})
+            request = context.get("request") if isinstance(context, dict) else None
+
+        if context is None:
+            context = {}
+        if not isinstance(context, dict):
+            context = dict(context)
+        if request is not None:
+            context.setdefault("request", request)
+
+        try:
+            html = self.env.get_template(name).render(**context)
+            return HTMLResponse(html)
+        except Exception as e:
+            detail = f"{type(e).__name__}: {e}"
+            html = f'''<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fjord VI · Error controlado</title>
+  <style>
+    body{{font-family:Arial,sans-serif;padding:24px;background:#eef5f9;color:#102033}}
+    .box{{max-width:760px;margin:auto;background:white;border-radius:18px;padding:22px;box-shadow:0 12px 30px rgba(0,0,0,.12)}}
+    code{{white-space:pre-wrap;color:#9b1c1c;display:block;margin-top:12px}}
+    a{{color:#1f5d8a;font-weight:700}}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Fjord VI</h1>
+    <h2>Error controlado de pantalla</h2>
+    <p>La aplicación está levantada, pero no pudo renderizar <b>{name}</b>.</p>
+    <code>{detail}</code>
+    <p><a href="/logout">Volver al login</a></p>
+  </div>
+</body>
+</html>'''
+            return HTMLResponse(html, status_code=200)
+
+templates = SafeTemplates(APP_DIR)
 templates.env.globals.update({
     "version": VERSION,
     "app_build": APP_BUILD,

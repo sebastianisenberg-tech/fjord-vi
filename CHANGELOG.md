@@ -1,8 +1,7 @@
-# Changelog
+# v37.0.0
 
-## v36.0.0 - Plano definitivo
-- Estructura 100% plana, como el proyecto original.
-- Eliminada la búsqueda en /templates.
-- `main.py` renderiza HTML desde la raíz del proyecto.
-- Sin HTML duplicados.
-- Mantiene v35/v34: UI premium, QR fijo, QR dinámico, ventana operativa, histórico, cierre 48h, auditoría y enclavamiento socio-invitado.
+- Versión plana definitiva.
+- Elimina dependencia de `Jinja2Templates.TemplateResponse`, que estaba generando errores 500 opacos en Render.
+- Agrega `SafeTemplates`, renderizador compatible con los HTML planos en raíz.
+- Si una pantalla falla, devuelve error controlado visible en vez de Internal Server Error ciego.
+- Mantiene estructura sin carpeta `templates` y sin HTML duplicados.
