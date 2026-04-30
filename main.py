@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v29.3.0"
-APP_BUILD = "checkin-publico-blindado"
+VERSION = "v29.5.0"
+APP_BUILD = "control-temporal-admin-auditoria"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -685,6 +685,52 @@ def human_money(value) -> str:
 
 templates.env.filters["money"] = human_money
 
+
+
+
+def captain_control_window(outing: Outing) -> dict:
+    """Ventana operativa del capitán.
+
+    Regla acordada:
+    - Puede operar asistencia/cancelación/reapertura hasta 48h desde la hora programada.
+    - El cierre/liquidación no puede ejecutarse antes de la hora programada.
+    - Pasadas 48h, solo Administración puede corregir.
+    """
+    if not outing:
+        return {"can_edit": False, "can_close": False, "before_departure": False, "expired": True, "label": "Sin salida", "detail": "No hay salida seleccionada."}
+    now = datetime.utcnow()
+    start = outing.departure_at
+    end = outing.departure_at + timedelta(hours=48)
+    before = now < start
+    expired = now > end
+    can_edit = not expired
+    can_close = (not before) and (not expired)
+    if before:
+        detail = f"El cierre estará disponible desde {start.strftime('%d/%m %H:%M')}."
+        label = "Antes de la salida"
+    elif expired:
+        detail = "Período de edición del capitán finalizado. Para cambios, contactar Administración."
+        label = "Edición finalizada"
+    else:
+        detail = f"Capitán puede cerrar o corregir hasta {end.strftime('%d/%m %H:%M')}."
+        label = "Ventana operativa activa"
+    return {"start": start, "end": end, "now": now, "can_edit": can_edit, "can_close": can_close, "before_departure": before, "expired": expired, "label": label, "detail": detail}
+
+
+def ensure_captain_window(user: User, outing: Outing, action: str = "edit"):
+    """Bloqueo temporal por rol.
+
+    Administración conserva control completo. Capitán queda limitado por la ventana temporal.
+    """
+    if not outing:
+        raise HTTPException(400, "Salida inexistente")
+    if user.role == "admin":
+        return
+    w = captain_control_window(outing)
+    if w["expired"]:
+        raise HTTPException(status_code=400, detail="Período de edición del capitán finalizado. Para cambios, contactar Administración.")
+    if action == "close" and w["before_departure"]:
+        raise HTTPException(status_code=400, detail="Aún no se puede cerrar: el cierre se habilita desde la hora programada de salida.")
 
 def is_closed_outing(outing: Outing) -> bool:
     return bool(outing and outing.status == "Embarque cerrado")
@@ -1440,6 +1486,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         base = str(request.base_url).rstrip("/")
         checkin_url = f"{base}/checkin?t={token}"
         qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=" + checkin_url
+    control_window = captain_control_window(outing) if outing else {}
     return templates.TemplateResponse(request, "captain.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
@@ -1448,7 +1495,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "reservation_views": views, "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
-        "checkin_url": checkin_url, "qr_url": qr_url
+        "checkin_url": checkin_url, "qr_url": qr_url, "control_window": control_window
     })
 
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
@@ -1586,6 +1633,12 @@ def outing_status(
 
     old_status = outing.status
 
+    # Control temporal: Administración puede siempre; Capitán solo dentro de su ventana.
+    if status == "Cerrar":
+        ensure_captain_window(user, outing, "close")
+    else:
+        ensure_captain_window(user, outing, "edit")
+
     # ===== CANCELAR =====
     if status == "Cancelada":
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
@@ -1640,8 +1693,9 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         raise HTTPException(400)
 
     outing = db.get(Outing, r.outing_id)
-    if outing and outing.status == "Embarque cerrado":
-        raise HTTPException(400, "El embarque ya fue cerrado")
+    ensure_captain_window(user, outing, "edit")
+    if outing and outing.status == "Embarque cerrado" and user.role != "admin":
+        raise HTTPException(400, "El embarque ya fue cerrado. Reabrí la salida dentro de la ventana operativa o contactá Administración.")
 
     if is_waitlisted(r):
         raise HTTPException(400, "La reserva está en lista de espera. Solo puede operar cuando sea promovida al cupo.")
@@ -1695,6 +1749,7 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     outing, reservations, active, present, *_ = outing_context(db, outing_id)
     if not outing:
         raise HTTPException(400, "Salida inexistente")
+    ensure_captain_window(user, outing, "close")
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
@@ -1782,6 +1837,8 @@ def checkin_post(request: Request, t: str = Form(...), dni: str = Form(""), db: 
         return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": None, "token": t, "user": None, "error": "QR inválido o vencido.", "msg": None})
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "Esta salida ya no acepta check-in.", "msg": None})
+    if captain_control_window(outing).get("expired"):
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "El período de check-in de esta salida ya finalizó.", "msg": None})
     dni_clean = norm_dni(dni)
     if not dni_clean:
         return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "Ingresá tu documento para confirmar.", "msg": None})
@@ -1835,6 +1892,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
+    control_window = captain_control_window(outing) if outing else {}
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
@@ -1845,7 +1903,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
         "responsible_names": responsible_names,
-        "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0
+        "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
+        "control_window": control_window
     })
 
 
@@ -1979,6 +2038,67 @@ def users_json(
         }
         for u in users
     ]
+
+
+@app.post("/admin/update_outing")
+def update_outing(
+    outing_id: int = Form(...),
+    title: str = Form(...),
+    destination: str = Form(...),
+    departure_at: str = Form(...),
+    guest_fee: float = Form(INVITED_FEE),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    outing = db.get(Outing, outing_id)
+    if not outing:
+        raise HTTPException(404, "Salida inexistente")
+    old = f"{outing.title} / {outing.destination} / {outing.departure_at.isoformat()} / tarifa {float(outing.guest_fee or 0)}"
+    outing.title = title.strip() or outing.title
+    outing.destination = destination.strip() or outing.destination
+    outing.departure_at = datetime.fromisoformat(departure_at)
+    outing.guest_fee = guest_fee
+    # Si la tarifa cambió y la salida está cerrada, recalcula cargos firmes sin tocar asistencia.
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    if is_closed_outing(outing):
+        liquidate_and_close_boarding(db, outing, reservations, active_reservations(reservations))
+    db.commit()
+    new = f"{outing.title} / {outing.destination} / {outing.departure_at.isoformat()} / tarifa {float(outing.guest_fee or 0)}"
+    log(db, user.name, "edición administrativa salida", f"{outing.id}: {old} -> {new}")
+    return RedirectResponse(f"/admin?outing_id={outing.id}&msg=salida_actualizada", status_code=303)
+
+
+@app.post("/admin/outing_status")
+def admin_outing_status(
+    outing_id: int = Form(...),
+    status: str = Form(...),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    outing = db.get(Outing, outing_id)
+    if not outing:
+        raise HTTPException(404, "Salida inexistente")
+    old_status = outing.status
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    if status == "Reservas abiertas":
+        outing.status = "En reservas"
+        recalculate_preliquidation_after_reopen(db, outing, reservations)
+        promoted = promote_waitlist(db, outing)
+        detail = f"{outing.title} / {old_status} -> {outing.status} / promovidos {', '.join(promoted) if promoted else '-'}"
+    elif status == "Cerrar":
+        active = active_reservations(reservations)
+        liquidate_and_close_boarding(db, outing, reservations, active)
+        detail = f"{outing.title} / {old_status} -> Embarque cerrado"
+    elif status == "Cancelada":
+        for r in reservations:
+            r.charge_amount = 0
+        outing.status = "Cancelada por capitán"
+        detail = f"{outing.title} / {old_status} -> Cancelada por administración"
+    else:
+        return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_invalido", status_code=303)
+    db.commit()
+    log(db, user.name, "control administrativo salida", detail)
+    return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/admin/new_outing")
 def new_outing(title: str = Form(...), destination: str = Form(...), departure_at: str = Form(...), guest_fee: float = Form(INVITED_FEE), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):

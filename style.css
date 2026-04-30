@@ -1235,3 +1235,11 @@ button.okBtn,.mini.okBtn{background:linear-gradient(135deg,var(--yca-blue),var(-
 .appFooter b,.appFooter span{display:none!important}
 .officeQrPrint{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#eef6ff;color:#1f4e79;border:1px solid rgba(31,78,121,.18);border-radius:14px;padding:12px 16px;font-weight:900;white-space:nowrap}
 @media(max-width:720px){.officeSelector{flex-wrap:wrap}.officeQrPrint{width:100%;}}
+
+/* v29.4 QR Capitán compacto: una acción principal + link secundario */
+.qrCompact{padding:18px 18px 16px!important;}
+.qrCompact .cardTitle,.qrCompactTitle{margin-bottom:12px!important;}
+.qrMainBtn,.qrCaptainBtn.qrMainBtn{min-height:46px!important;height:46px!important;border-radius:14px!important;font-size:17px!important;font-weight:850!important;letter-spacing:-.01em!important;margin:8px 0 4px!important;box-shadow:0 10px 20px rgba(31,78,121,.16)!important;}
+.qrSecondaryLink{display:block!important;width:fit-content!important;margin:9px auto 0!important;padding:4px 8px!important;color:var(--yca-blue)!important;background:transparent!important;border:0!important;box-shadow:none!important;font-size:14px!important;font-weight:800!important;text-decoration:none!important;}
+.qrMicrocopy{margin:10px 0 0!important;color:#667085!important;font-size:13px!important;line-height:1.35!important;text-align:center!important;}
+@media(max-width:520px){.qrCompact{padding:16px!important;}.qrMainBtn,.qrCaptainBtn.qrMainBtn{height:44px!important;min-height:44px!important;font-size:16px!important;}.qrMicrocopy{font-size:12px!important;}}

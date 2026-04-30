@@ -25,6 +25,8 @@
     {% elif msg=='usuario_actualizado' %}Usuario actualizado.
     {% elif msg=='clave_reseteada' %}Clave reseteada a demo1234.
     {% elif msg=='datos_usuario_invalidos' %}Revisá nombre y documento.
+    {% elif msg=='salida_actualizada' %}Salida actualizada por administración.
+    {% elif msg=='estado_actualizado' %}Estado de la salida actualizado por administración.
     {% elif msg=='rol_invalido' %}Rol inválido.
     {% else %}Operación registrada.
     {% endif %}
@@ -109,6 +111,35 @@
         <b>Salida abierta.</b><span>El capitán todavía puede marcar embarque. La liquidación no es definitiva.</span>
         {% endif %}
       </section>
+
+
+
+      {% if outing %}
+      <section class="officeCard" id="control-admin">
+        <div class="officeSectionHead">
+          <div><span class="officeEyebrow">Control administrativo</span><h2>Edición posterior / correcciones</h2></div>
+          <span class="officePill">Solo Administración</span>
+        </div>
+        <p class="officeHelp">El capitán opera hasta 48 horas desde la hora programada. Después, las correcciones quedan en Administración y se registran en auditoría.</p>
+        <form class="officeForm" method="post" action="/admin/update_outing">
+          <input type="hidden" name="outing_id" value="{{outing.id}}">
+          <input name="title" value="{{outing.title}}" placeholder="Título" required>
+          <input name="destination" value="{{outing.destination}}" placeholder="Destino" required>
+          <input type="datetime-local" name="departure_at" value="{{outing.departure_at.strftime('%Y-%m-%dT%H:%M')}}" required>
+          <input type="number" name="guest_fee" value="{{outing.guest_fee|int}}" placeholder="Tarifa invitado">
+          <button>Guardar cambios</button>
+        </form>
+        <form class="officeForm" method="post" action="/admin/outing_status" style="margin-top:10px;">
+          <input type="hidden" name="outing_id" value="{{outing.id}}">
+          <select name="status">
+            <option value="Reservas abiertas">Reabrir / dejar operativa</option>
+            <option value="Cerrar">Cerrar y recalcular liquidación</option>
+            <option value="Cancelada">Cancelar por administración</option>
+          </select>
+          <button>Aplicar estado</button>
+        </form>
+      </section>
+      {% endif %}
 
       <section class="officeTwoCols">
         <article class="officeCard">
