@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v28.2.0"
-APP_BUILD = "socio-titular-reincorporacion-fix"
+VERSION = "v28.3.0"
+APP_BUILD = "clasificacion-socio-por-padron-fix"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -182,6 +182,46 @@ def display_kind(kind: str) -> str:
     if k == "hijo_menor":
         return "hijo menor de socio no socio"
     return "invitado"
+
+
+def normalize_member_reservations(db: Session, reservations) -> bool:
+    """Corrige reservas mal clasificadas contra el padrón de usuarios.
+
+    Regla operativa: si el DNI de una reserva coincide con un usuario activo
+    con rol socio, esa persona debe liquidar y figurar como socio, no como
+    invitado de otro socio. La relación invitado/responsable no puede pisar
+    la condición de socio registrada en el padrón.
+    """
+    changed = False
+    dnis = sorted({norm_dni(getattr(r, "dni", "")) for r in reservations if norm_dni(getattr(r, "dni", ""))})
+    if not dnis:
+        return False
+
+    socios_by_dni = {
+        u.dni: u
+        for u in db.query(User).filter(User.dni.in_(dnis), User.active == True, User.role == "socio").all()
+    }
+
+    for r in reservations:
+        dni = norm_dni(getattr(r, "dni", ""))
+        socio = socios_by_dni.get(dni)
+        if not socio:
+            continue
+
+        if canonical_kind(r.kind) != "socio":
+            r.kind = "socio"
+            changed = True
+        if r.responsible_user_id != socio.id:
+            r.responsible_user_id = socio.id
+            changed = True
+        # Si fue cobrado como invitado por una clasificación vieja, limpiarlo.
+        if (r.attendance or "") == "Presente" and float(r.charge_amount or 0) > 0:
+            r.charge_amount = 0
+            changed = True
+        if (r.cancel_reason or "").strip() in ("Tarifa de invitado embarcado", "Invitado embarcado"):
+            r.cancel_reason = ""
+            changed = True
+    return changed
 
 def parse_birth_date(value: Optional[str]):
     if not value:
@@ -1048,6 +1088,9 @@ def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict
 def outing_context(db: Session, outing_id: Optional[int] = None):
     outing = selected_outing(db, outing_id)
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all() if outing else []
+    if outing and normalize_member_reservations(db, reservations):
+        db.commit()
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all()
     active = active_reservations(reservations)
     present = sum(1 for r in active if r.attendance == "Presente")
     absent = sum(1 for r in reservations if r.attendance in ("Ausente", "No embarcable", "No embarca"))
@@ -1347,6 +1390,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     - Hijo menor de socio no socio presente: sin cargo.
     - Ausente/no embarcable: cargo reglamentario por plaza perdida.
     """
+    normalize_member_reservations(db, reservations)
     users = {u.id: u for u in db.query(User).all()}
     present_dnis = {r.dni for r in active if canonical_kind(r.kind) == "socio" and r.attendance == "Presente"}
     guest_fee = float(outing.guest_fee or 0)

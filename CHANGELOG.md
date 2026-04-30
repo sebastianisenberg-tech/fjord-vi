@@ -1,10 +1,17 @@
-# v28.1.0 - QR integrado en Capitán
+# FJORD VI v28.3.0
 
-- Agrega en Capitán un botón “Mostrar QR para escanear”.
-- El QR se genera desde la salida seleccionada por el capitán.
-- Mantiene /admin_qr como respaldo para oficina o impresión.
-- No cambia reglas de reservas, cierre, cargos ni liquidación.
+## Fix aplicado
 
-## v28.2.0
-- Corrige la reincorporación del socio titular: ahora el bloque Tu lugar solo toma reservas tipo socio y muestra alta/reincorporación correctamente.
-- Evita que un invitado/dependiente ocupe visualmente el lugar del socio titular.
+- Corrige clasificación de reservas contra padrón de usuarios.
+- Si el DNI de una reserva coincide con un usuario activo con rol socio, el sistema lo trata como socio.
+- Evita que un socio cargado o arrastrado como invitado sea liquidado como invitado.
+- Normaliza responsable: socio responsable = él mismo cuando corresponde.
+- Limpia cargo y motivo viejo de "Tarifa de invitado embarcado" cuando la persona es socio activo.
+
+## No se tocó
+
+- QR del capitán.
+- Check-in.
+- Cierre de salida.
+- UI general.
+- Exportaciones.
