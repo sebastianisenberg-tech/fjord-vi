@@ -80,10 +80,17 @@
         </div>
         <form method="get" action="/admin" class="officeSelector">
           <select name="outing_id" onchange="this.form.submit()">
+            <optgroup label="Ventana operativa">
             {% for o in outings %}
-            <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>
-              {{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros
-            </option>
+            <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
+            {% endfor %}
+            </optgroup>
+            {% for g in history_groups %}
+            <optgroup label="Histórico · {{g.label}}">
+              {% for o in g.items %}
+              <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
+              {% endfor %}
+            </optgroup>
             {% endfor %}
           </select>
           <button type="submit">Ver</button>

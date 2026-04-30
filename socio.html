@@ -31,6 +31,19 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
     </a>
   {% endfor %}
   </div>
+  {% if history_groups and history_groups|length > 0 %}
+  <details class="historyFold">
+    <summary>Ver salidas anteriores</summary>
+    {% for g in history_groups %}
+      <div class="historyMonth">{{g.label}}</div>
+      {% for o in g.items %}
+      <a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
+        <span>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}}</span><small>{{o.status}}</small>
+      </a>
+      {% endfor %}
+    {% endfor %}
+  </details>
+  {% endif %}
 </section>
 
 {% if outing %}

@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v33.0.0"
-APP_BUILD = "estado-inteligente-qr-fijo"
+VERSION = "v34.2.0"
+APP_BUILD = "versionado-limpio-ventana-operativa-historico"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1179,8 +1179,47 @@ def selected_outing(db: Session, outing_id: Optional[int] = None):
         persist_json(db)
     return outing
 
-def visible_outings(db: Session):
-    return db.query(Outing).order_by(Outing.departure_at.asc()).all()
+def visible_outings(db: Session, selected_id: Optional[int] = None):
+    """Ventana operativa: evita listas infinitas.
+
+    Muestra salidas desde 12 horas atrás hacia adelante, con un máximo de
+    8 ítems. Si el usuario selecciona una salida histórica, la conserva visible
+    como seleccionada para no perder contexto.
+    """
+    now = datetime.now()
+    cutoff = now - timedelta(hours=12)
+    rows = db.query(Outing).order_by(Outing.departure_at.asc()).all()
+    visible = [o for o in rows if o.departure_at >= cutoff][:8]
+    if selected_id and all(o.id != selected_id for o in visible):
+        selected = db.get(Outing, selected_id)
+        if selected:
+            visible.append(selected)
+    return visible
+
+def historical_outings(db: Session, visible=None):
+    visible_ids = {o.id for o in (visible or [])}
+    q = db.query(Outing)
+    if visible_ids:
+        q = q.filter(~Outing.id.in_(visible_ids))
+    return q.order_by(Outing.departure_at.desc()).all()
+
+def historical_outing_groups(history):
+    groups = []
+    labels = {1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",7:"Julio",8:"Agosto",9:"Septiembre",10:"Octubre",11:"Noviembre",12:"Diciembre"}
+    current = None
+    bucket = []
+    for o in history:
+        label = f"{labels.get(o.departure_at.month, o.departure_at.strftime('%B'))} {o.departure_at.year}"
+        if current is None:
+            current = label
+        if label != current:
+            groups.append({"label": current, "items": bucket})
+            current = label
+            bucket = []
+        bucket.append(o)
+    if current is not None:
+        groups.append({"label": current, "items": bucket})
+    return groups
 
 def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict:
     if not outing:
@@ -1253,10 +1292,12 @@ def logout():
 
 @app.get("/socio", response_class=HTMLResponse)
 def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    outings = visible_outings(db)
+    outings = visible_outings(db, outing_id)
+    history_outings = historical_outings(db, outings)
+    history_groups = historical_outing_groups(history_outings)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     if not outing:
-        return templates.TemplateResponse(request, "socio.html", {"request": request, "user": user, "outing": None, "outings": outings, "msg": request.query_params.get("msg")})
+        return templates.TemplateResponse(request, "socio.html", {"request": request, "user": user, "outing": None, "outings": outings, "history_groups": history_groups, "msg": request.query_params.get("msg")})
     mine = [r for r in reservations if r.dni == user.dni or r.responsible_user_id == user.id]
     # El titular debe resolverse únicamente contra una reserva de tipo socio.
     # Antes cualquier registro con el DNI del usuario podía ocupar el bloque "Tu lugar"
@@ -1269,7 +1310,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     self_view = views.get(self_reservation.id) if self_reservation else None
     final_summary = final_status_summary(outing, reservations, len(active), present, pending)
     return templates.TemplateResponse(request, "socio.html", {
-        "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
+        "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "reservations": reservations,
         "active": active, "mine": mine, "has_self": has_self, "self_reservation": self_reservation,
         "active_count": len(active), "remaining": max(0, outing.max_crew - len(active)),
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
@@ -1471,7 +1512,9 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
 
 @app.get("/captain", response_class=HTMLResponse)
 def captain(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
-    outings = visible_outings(db)
+    outings = visible_outings(db, outing_id)
+    history_outings = historical_outings(db, outings)
+    history_groups = historical_outing_groups(history_outings)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     ready = readiness_state(outing, len(active), present)
     waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
@@ -1488,7 +1531,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=" + checkin_url
     control_window = captain_control_window(outing) if outing else {}
     return templates.TemplateResponse(request, "captain.html", {
-        "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
+        "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
         "pending": pending, "socios_presentes": socios_presentes, "readiness": ready,
         "cutoff": cutoff_passed(outing) if outing else False, "cutoff_at": cutoff_at(outing) if outing else None, "msg": request.query_params.get("msg"),
@@ -1797,7 +1840,9 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
 
 @app.get("/admin_qr", response_class=HTMLResponse)
 def admin_qr(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
-    outings = visible_outings(db)
+    outings = visible_outings(db, outing_id)
+    history_outings = historical_outings(db, outings)
+    history_groups = historical_outing_groups(history_outings)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     return_url = f"/captain?outing_id={outing.id}" if outing and user.role == "captain" else (f"/admin?outing_id={outing.id}" if outing else ("/captain" if user.role == "captain" else "/admin"))
     return_label = "Volver a Embarque" if user.role == "captain" else "Volver a Administración"
@@ -1977,14 +2022,17 @@ def admin_qr_html_alias():
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    outings = visible_outings(db)
+    outings = visible_outings(db, outing_id)
+    history_outings = historical_outings(db, outings)
+    history_groups = historical_outing_groups(history_outings)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     charges = [r for r in db.query(Reservation).filter(Reservation.outing_id == outing.id).all() if reservation_view(outing, r)["charge"] > 0] if outing else []
     logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(15).all()
     total_charges = sum(reservation_view(outing, r)["charge"] for r in charges) if outing else 0
     ready = readiness_state(outing, len(active), present)
-    counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in outings}
-    active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in outings}
+    all_outings_for_counts = outings + history_outings
+    counts = {o.id: db.query(Reservation).filter_by(outing_id=o.id).count() for o in all_outings_for_counts}
+    active_counts = {o.id: len(active_reservations(db.query(Reservation).filter_by(outing_id=o.id).all())) for o in all_outings_for_counts}
     responsible_ids = sorted({r.responsible_user_id for r in reservations if getattr(r, "responsible_user_id", None)})
     responsible_names = {}
     if responsible_ids:
@@ -1996,7 +2044,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     control_window = captain_control_window(outing) if outing else {}
     return templates.TemplateResponse(request, "admin.html", {
-        "request": request, "user": user, "outing": outing, "outings": outings, "counts": counts, "active_counts": active_counts,
+        "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
         "total_charges": total_charges, "logs": logs, "readiness": ready,

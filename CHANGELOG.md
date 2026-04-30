@@ -1,10 +1,14 @@
-# Fjord VI · Embarque
+# FJORD VI v34.2.0
 
-## v33.0.0
-- Agrega QR fijo del barco: `/embarque`.
-- El QR fijo pide DNI/documento y detecta automáticamente la salida activa del día.
-- Solo registra si el documento figura en la salida de hoy como socio, invitado, menor o lista de espera válida.
-- Si no figura, rechaza con mensaje claro.
-- La autorización final de embarque sigue siendo del capitán.
-- Agrega página imprimible `/qr_fijo` para QR metálico, cartelera, portería o guardia náutica.
-- Mantiene QR dinámico por salida, cierre inteligente, ventana de 48h, auditoría y enclavamiento socio-invitado.
+## Fix crítico de layout
+- Se corrigió el problema donde la pantalla de Administración podía quedar rígida o sin scroll real.
+- Se eliminan restricciones de altura/overflow en contenedores padres.
+- Header y barras superiores siguen sticky, pero el contenido fluye normalmente.
+- Se mejora comportamiento en celular y landscape.
+
+## Conservado
+- Ventana operativa + histórico agrupado.
+- QR fijo del barco y QR dinámico.
+- Cierre inteligente con ventana de 48h.
+- Auditoría administrativa.
+- Enclavamiento socio-invitado.

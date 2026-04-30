@@ -55,7 +55,8 @@ function copiarQRCapitan(){
     {% if o.status != 'Embarque cerrado' and o.status != 'Cancelada por capitán' %}<a class="pill qrQuick" href="/admin_qr?outing_id={{o.id}}">QR</a>{% endif %}
   </div>
 </div>
-{% endfor %}</section>
+{% endfor %}
+{% if history_groups and history_groups|length > 0 %}<details class="historyFold"><summary>Ver salidas anteriores</summary>{% for g in history_groups %}<div class="historyMonth">{{g.label}}</div>{% for o in g.items %}<div class="historyRowWrap"><a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><span>{{o.departure_at.strftime("%d/%m %H:%M")}} · {{o.title}}</span><small>{{o.status}}</small></a></div>{% endfor %}{% endfor %}</details>{% endif %}</section>
 {% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="premiumHero"><div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</small></div><span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span></section>
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>Salida operativa</b><span>Marcá presentes. Al cerrar, los pendientes quedan ausentes con cargo.</span>{% endif %}</section>
