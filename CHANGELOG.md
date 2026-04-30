@@ -165,3 +165,7 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Fuerza el cartel de Estado navegación en Administración con estilos inline para evitar que la vista de escritorio lo deje azul/chico.
 - Mantiene cartel verde con texto blanco en PC y celular.
 - No modifica lógica, reservas ni cargos.
+
+## v27.7.0 - Admin Salir visible fix
+- Corrección visual puntual en Administración: botón “Salir” del header en blanco, más grande y visible.
+- No modifica lógica, reservas, cargos ni reglas.

@@ -86,3 +86,7 @@ Versión con panel de administración orientado a oficina: planificación de sal
 
 ### v27.6.0 ESTABLE
 Versión ajustada para prueba operativa: solo paseos de fin de semana, módulo Socio y Capitán mobile-first, Administración de oficina pensada para PC y liquidación manual posterior.
+
+### v27.7.0
+- Corrección visual puntual en Administración: botón “Salir” del header en blanco, más grande y visible, consistente con Socio/Capitán.
+- Sin cambios de lógica, reservas, cargos ni reglas.

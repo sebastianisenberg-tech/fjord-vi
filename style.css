@@ -1037,3 +1037,47 @@ body .officeHero .officeStatusBox b {
 @media (max-width: 420px) {
   .officeHero .officeStatusBox b { font-size: 28px !important; }
 }
+
+/* v27.7.0 ADMIN TOP EXIT FIX: botón Salir visible en Administración, igual criterio que Socio/Capitán. Solo visual. */
+.officeTop .logoutBtn,
+.officeApp .officeTop .logoutBtn,
+body .officeTop .logoutBtn,
+.officeTop a.logoutBtn,
+.officeApp .officeTop a.logoutBtn {
+  color: #ffffff !important;
+  background: rgba(255,255,255,.18) !important;
+  border: 1px solid rgba(255,255,255,.34) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.20), 0 8px 22px rgba(0,0,0,.16) !important;
+  min-height: 46px !important;
+  padding: 0 22px !important;
+  border-radius: 999px !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  font-weight: 950 !important;
+  letter-spacing: .01em !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 6px rgba(0,0,0,.22) !important;
+}
+.officeTop .logoutBtn:visited,
+.officeTop .logoutBtn:hover,
+.officeTop .logoutBtn:focus,
+.officeTop .logoutBtn:active {
+  color: #ffffff !important;
+  background: rgba(255,255,255,.24) !important;
+}
+@media (max-width: 520px) {
+  .officeTop .logoutBtn,
+  .officeApp .officeTop .logoutBtn,
+  body .officeTop .logoutBtn,
+  .officeTop a.logoutBtn,
+  .officeApp .officeTop a.logoutBtn {
+    min-height: 44px !important;
+    padding: 0 18px !important;
+    font-size: 18px !important;
+  }
+}
