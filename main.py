@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v29.2.0"
-APP_BUILD = "qr-admin-footer-minimal"
+VERSION = "v29.3.0"
+APP_BUILD = "checkin-publico-blindado"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1730,7 +1730,13 @@ def admin_qr(request: Request, outing_id: Optional[int] = None, db: Session = De
     return templates.TemplateResponse(request, "admin_qr.html", {"request": request, "user": user, "outing": outing, "outings": outings, "checkin_url": checkin_url, "qr_url": qr_url, "return_url": return_url, "return_label": return_label})
 
 @app.get("/checkin", response_class=HTMLResponse)
-def checkin_get(request: Request, t: str = "", db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
+def checkin_get(request: Request, t: str = "", db: Session = Depends(db_session)):
+    """Check-in público y neutro.
+
+    Esta pantalla no usa sesión/cookie del navegador: aunque el teléfono tenga
+    abierta una sesión de capitán/admin/socio, el QR siempre pide documento y
+    valida contra la tripulación real de esa salida.
+    """
     value = unsign_value(t)
     outing = None
     error = None
@@ -1741,10 +1747,30 @@ def checkin_get(request: Request, t: str = "", db: Session = Depends(db_session)
             outing = None
     if not outing:
         error = "QR inválido o vencido."
-    return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": user, "error": error, "msg": request.query_params.get("msg")})
+    return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": error, "msg": request.query_params.get("msg")})
+
+
+def find_checkin_reservation(db: Session, outing: Outing, dni_value: str):
+    """Busca reserva por salida + documento normalizado, sin depender del login."""
+    dni_clean = norm_dni(dni_value)
+    if not dni_clean:
+        return None, "empty"
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    normalize_member_reservations(db, reservations)
+    matches = [r for r in reservations if norm_dni(r.dni) == dni_clean]
+    if not matches:
+        return None, "not_found"
+    active_matches = [r for r in matches if reservation_is_active(r) and not is_waitlisted(r)]
+    if len(active_matches) == 1:
+        return active_matches[0], "ok"
+    if len(active_matches) > 1:
+        return None, "duplicate"
+    return matches[0], "not_embarkable"
+
 
 @app.post("/checkin", response_class=HTMLResponse)
-def checkin_post(request: Request, t: str = Form(...), dni: str = Form(""), db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
+def checkin_post(request: Request, t: str = Form(...), dni: str = Form(""), db: Session = Depends(db_session)):
+    """Registra presencia por QR público, con validación estricta contra tripulación."""
     value = unsign_value(t)
     outing = None
     if value and value.startswith("checkin:"):
@@ -1753,18 +1779,26 @@ def checkin_post(request: Request, t: str = Form(...), dni: str = Form(""), db: 
         except Exception:
             outing = None
     if not outing:
-        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": None, "token": t, "user": user, "error": "QR inválido o vencido.", "msg": None})
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": None, "token": t, "user": None, "error": "QR inválido o vencido.", "msg": None})
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
-        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": user, "error": "Esta salida ya no acepta check-in.", "msg": None})
-    dni_clean = user.dni if user else norm_dni(dni)
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "Esta salida ya no acepta check-in.", "msg": None})
+    dni_clean = norm_dni(dni)
     if not dni_clean:
-        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": user, "error": "Ingresá tu documento para confirmar.", "msg": None})
-    r = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
-    if not r or not reservation_is_active(r) or is_waitlisted(r):
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "Ingresá tu documento para confirmar.", "msg": None})
+
+    r, state = find_checkin_reservation(db, outing, dni_clean)
+    if state == "duplicate":
+        log(db, "QR", "check-in rechazado", f"{outing.title} / doc {dni_clean} / documento duplicado")
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "Documento duplicado en esta salida. Consultá al capitán.", "msg": None})
+    if state == "not_found":
         log(db, "QR", "check-in rechazado", f"{outing.title} / doc {dni_clean} / no listado")
-        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": user, "error": "No figurás como embarcable en esta salida. Consultá al capitán.", "msg": None})
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "No figurás en la lista de esta salida. Consultá al capitán.", "msg": None})
+    if state == "not_embarkable" or not r:
+        log(db, "QR", "check-in rechazado", f"{outing.title} / doc {dni_clean} / no embarcable")
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": "Figurás en la salida, pero no como embarcable activo. Consultá al capitán.", "msg": None})
     if r.attendance == "Presente":
-        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": user, "error": None, "msg": "Ya estabas registrado para embarcar."})
+        return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": None, "msg": "Ya estabas registrado para embarcar."})
+
     r.attendance = "Presente"
     r.cancelled_at = None
     r.status = default_reservation_status(outing, r)
@@ -1772,7 +1806,7 @@ def checkin_post(request: Request, t: str = Form(...), dni: str = Form(""), db: 
     r.charge_amount = 0
     db.commit()
     log(db, r.person_name, "check-in QR", f"{outing.title} / {outing.departure_at.strftime('%d/%m/%Y %H:%M')}")
-    return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": user, "error": None, "msg": "Check-in registrado. La autorización final corresponde al capitán."})
+    return templates.TemplateResponse(request, "checkin.html", {"request": request, "outing": outing, "token": t, "user": None, "error": None, "msg": "Check-in registrado. La autorización final corresponde al capitán."})
 
 @app.get("/checkin.html", response_class=HTMLResponse)
 def checkin_html_alias(request: Request):

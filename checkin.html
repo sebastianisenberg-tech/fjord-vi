@@ -13,14 +13,12 @@
 <div class="wrap"><div class="card">
   {% if outing %}
   <div class="eyebrow">Salida</div><h1>{{outing.title}}</h1><div class="meta">{{outing.departure_at.strftime('%d/%m/%Y %H:%M')}} · {{outing.destination}}</div>
-  {% else %}<h1>Check-in Fjord VI</h1>{% endif %}
-  {% if user %}<div class="who">Identificado como {{user.name}}</div>{% endif %}
-  {% if error %}<div class="msg err">{{error}}</div>{% endif %}
+  {% else %}<h1>Check-in Fjord VI</h1>{% endif %}  {% if error %}<div class="msg err">{{error}}</div>{% endif %}
   {% if msg %}<div class="msg ok">{{msg}}</div>{% endif %}
   {% if outing and not msg %}
   <form method="post" action="/checkin">
     <input type="hidden" name="t" value="{{token}}">
-    {% if not user %}<label class="eyebrow">Documento / DNI</label><input class="input" name="dni" placeholder="Ingresá tu documento" inputmode="text" autocomplete="off" required>{% endif %}
+    <label class="eyebrow">Documento / DNI</label><input class="input" name="dni" placeholder="Ingresá tu documento" inputmode="text" autocomplete="off" required>
     <button class="btn" type="submit">Confirmar embarque</button>
   </form>
   {% endif %}
