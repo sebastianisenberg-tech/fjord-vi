@@ -1,9 +1,10 @@
-# FJORD VI · v31.0.0
+# Fjord VI · Embarque
 
-- Login sin escudo, restaurado con fondo editorial y sin tarjeta blanca pesada.
-- Header con escudo YCA en cápsula blanca pequeña.
-- Botones soft-depth solo en acciones principales.
-- Estados separados visualmente de acciones para reducir confusión.
-- Socio priorizado visualmente: reservar/agregar/reincorporar con acción premium.
-- Capitán con mejor contraste y botones de asistencia diferenciados.
-- Mantiene lógica estable: QR público, cierre inteligente, 48h, auditoría y enclavamiento socio-invitado.
+## v33.0.0
+- Agrega QR fijo del barco: `/embarque`.
+- El QR fijo pide DNI/documento y detecta automáticamente la salida activa del día.
+- Solo registra si el documento figura en la salida de hoy como socio, invitado, menor o lista de espera válida.
+- Si no figura, rechaza con mensaje claro.
+- La autorización final de embarque sigue siendo del capitán.
+- Agrega página imprimible `/qr_fijo` para QR metálico, cartelera, portería o guardia náutica.
+- Mantiene QR dinámico por salida, cierre inteligente, ventana de 48h, auditoría y enclavamiento socio-invitado.

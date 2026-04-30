@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v31.0.0"
-APP_BUILD = "club-premium-v30"
+VERSION = "v33.0.0"
+APP_BUILD = "estado-inteligente-qr-fijo"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1808,6 +1808,83 @@ def admin_qr(request: Request, outing_id: Optional[int] = None, db: Session = De
     checkin_url = f"{base}/checkin?t={token}"
     qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=520x520&data=" + checkin_url
     return templates.TemplateResponse(request, "admin_qr.html", {"request": request, "user": user, "outing": outing, "outings": outings, "checkin_url": checkin_url, "qr_url": qr_url, "return_url": return_url, "return_label": return_label})
+
+
+# =========================
+# QR FIJO DEL BARCO / EMBARQUE DEL DIA
+# =========================
+def public_today_outings(db: Session):
+    today = datetime.utcnow().date()
+    blocked = {"Embarque cerrado", "Cancelada por capitán", "Realizada"}
+    rows = [o for o in db.query(Outing).all() if o.departure_at.date() == today and o.status not in blocked]
+    rows.sort(key=lambda o: o.departure_at)
+    return rows
+
+def fixed_qr_url(request: Request) -> str:
+    return str(request.base_url).rstrip("/") + "/embarque"
+
+@app.get("/qr_fijo", response_class=HTMLResponse)
+def fixed_qr_page(request: Request):
+    url = fixed_qr_url(request)
+    qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=620x620&data=" + url
+    return templates.TemplateResponse(request, "fixed_qr.html", {"request": request, "fixed_url": url, "qr_url": qr_url})
+
+@app.get("/embarque", response_class=HTMLResponse)
+def fixed_embarque_get(request: Request, db: Session = Depends(db_session)):
+    outings = public_today_outings(db)
+    return templates.TemplateResponse(request, "embarque_fijo.html", {"request": request, "outings": outings, "outing": outings[0] if len(outings) == 1 else None, "error": None, "msg": None, "dni": ""})
+
+@app.post("/embarque", response_class=HTMLResponse)
+def fixed_embarque_post(request: Request, dni: str = Form(""), db: Session = Depends(db_session)):
+    outings = public_today_outings(db)
+    dni_clean = norm_dni(dni)
+    def render(error=None, msg=None, outing=None):
+        return templates.TemplateResponse(request, "embarque_fijo.html", {"request": request, "outings": outings, "outing": outing or (outings[0] if len(outings) == 1 else None), "error": error, "msg": msg, "dni": dni})
+    if not outings:
+        return render(error="No hay una salida activa para hoy.")
+    if not dni_clean:
+        return render(error="Ingresá tu documento para registrar tu llegada.")
+    duplicate_seen = False
+    not_embarkable_seen = None
+    waitlist_match = None
+    for outing in outings:
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        normalize_member_reservations(db, reservations)
+        matches = [r for r in reservations if norm_dni(r.dni) == dni_clean]
+        if len(matches) > 1:
+            duplicate_seen = True
+            continue
+        if not matches:
+            continue
+        r = matches[0]
+        if is_waitlisted(r):
+            waitlist_match = (outing, r)
+            continue
+        if not reservation_is_active(r):
+            not_embarkable_seen = (outing, r)
+            continue
+        if r.attendance == "Presente":
+            return render(msg="Ya estabas registrado para embarcar.", outing=outing)
+        r.attendance = "Presente"
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.cancel_reason = "Llegada registrada por QR fijo"
+        r.charge_amount = 0
+        db.commit()
+        log(db, r.person_name, "QR fijo barco", f"{outing.title} / llegada registrada / {outing.departure_at.strftime('%d/%m/%Y %H:%M')}")
+        return render(msg="Llegada registrada. La autorización final corresponde al capitán.", outing=outing)
+    if waitlist_match:
+        outing, r = waitlist_match
+        r.cancel_reason = "Llegada QR registrada en lista de espera"
+        db.commit()
+        log(db, r.person_name, "QR fijo barco", f"{outing.title} / llegada en lista de espera")
+        return render(msg="Figurás en lista de espera. Tu llegada quedó registrada; el embarque depende de que se libere una vacante y de la autorización del capitán.", outing=outing)
+    if duplicate_seen:
+        return render(error="Documento duplicado en la salida de hoy. Consultá al capitán.")
+    if not_embarkable_seen:
+        outing, r = not_embarkable_seen
+        return render(error="Figurás en la salida de hoy, pero no como embarcable activo. Consultá al capitán.", outing=outing)
+    return render(error="No figurás en la lista de la salida de hoy. Consultá con el capitán o la Oficina de Vela.")
 
 @app.get("/checkin", response_class=HTMLResponse)
 def checkin_get(request: Request, t: str = "", db: Session = Depends(db_session)):
