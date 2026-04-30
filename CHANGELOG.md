@@ -13,3 +13,8 @@
 - Clasificación por padrón: si el DNI corresponde a usuario activo con rol socio, liquida como socio.
 - QR de check-in desde Capitán.
 - Reincorporación del socio titular.
+
+## v29.7.0 - Cierre inteligente operativo
+- El cierre ahora valida el mínimo contra tripulantes activos, no solo contra presentes marcados manualmente.
+- Al cerrar, los activos pendientes se confirman automáticamente como presentes.
+- Mantiene ventana de capitán de 48h, QR público, QR admin, liquidación y dependencia socio-invitado.

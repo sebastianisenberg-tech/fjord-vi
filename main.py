@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v29.5.0"
-APP_BUILD = "control-temporal-admin-auditoria"
+VERSION = "v29.7.0"
+APP_BUILD = "cierre-inteligente-operativo"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1498,6 +1498,20 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "checkin_url": checkin_url, "qr_url": qr_url, "control_window": control_window
     })
 
+def auto_confirm_active_for_close(db: Session, outing: Outing, active):
+    """Cierre inteligente operativo: valida mínimo por cupo activo y confirma pendientes al cerrar."""
+    changed = []
+    for r in active:
+        current = (r.attendance or "Por confirmar").strip()
+        if current == "Por confirmar":
+            r.attendance = "Presente"
+            r.cancel_reason = ""
+            r.charge_amount = 0
+            changed.append(r.person_name)
+    if changed:
+        log(db, "Sistema", "auto-confirmación cierre", f"{outing.title}: {chr(44).join(changed)}")
+    return changed
+
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
     """Cierra embarque y liquida la salida.
 
@@ -1662,16 +1676,22 @@ def outing_status(
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        enforce_capacity(db, outing)
         active = active_reservations(reservations)
+        active_count = len(active)
         present = sum(1 for r in active if r.attendance == "Presente")
 
-        if present < outing.min_crew:
-            raise HTTPException(400, f"No se cumple el mínimo de {outing.min_crew}")
+        if active_count < outing.min_crew:
+            raise HTTPException(400, f"No se alcanza el mínimo de {outing.min_crew} tripulantes activos")
+        if active_count > outing.max_crew:
+            raise HTTPException(400, f"Se supera el cupo máximo de {outing.max_crew}")
 
+        auto_confirm_active_for_close(db, outing, active)
+        present = sum(1 for r in active if r.attendance == "Presente")
         liquidate_and_close_boarding(db, outing, reservations, active)
 
         db.commit()
-        log(db, user.name, "cierre", f"{outing.title} / presentes {present}")
+        log(db, user.name, "cierre", f"{outing.title} / presentes {present} / activos {active_count}")
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
 
     # ===== REABRIR =====
@@ -1756,16 +1776,21 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     enforce_capacity(db, outing)
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all()
     active = active_reservations(reservations)
+    active_count = len(active)
     present = sum(1 for r in active if r.attendance == "Presente")
 
-    if present < outing.min_crew:
+    # Cierre inteligente: el mínimo se valida por cupo activo. Al cerrar,
+    # los activos aún pendientes se confirman automáticamente como presentes.
+    if active_count < outing.min_crew:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumple", status_code=303)
-    if present > outing.max_crew:
+    if active_count > outing.max_crew:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
+    auto_confirm_active_for_close(db, outing, active)
+    present = sum(1 for r in active if r.attendance == "Presente")
     liquidate_and_close_boarding(db, outing, reservations, active)
     db.commit()
-    log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present}")
+    log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count}")
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
 
 
