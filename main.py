@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v28.3.0"
-APP_BUILD = "clasificacion-socio-por-padron-fix"
+VERSION = "v28.4.0"
+APP_BUILD = "dependencia-socio-invitado-blindada"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -417,6 +417,75 @@ def reservation_is_active(r: Reservation) -> bool:
         and r.attendance not in ("Ausente", "No embarcable", "No embarca")
     )
 
+
+def responsible_reservation_for(db: Session, outing_id: int, responsible_user_id: Optional[int]) -> Optional[Reservation]:
+    """Reserva titular del socio responsable dentro de una salida."""
+    if not responsible_user_id:
+        return None
+    responsible = db.get(User, responsible_user_id)
+    if not responsible:
+        return None
+    return db.query(Reservation).filter_by(outing_id=outing_id, dni=responsible.dni).first()
+
+
+def dependent_reservations_for(db: Session, outing_id: int, socio_reservation: Reservation) -> list:
+    """Invitados/menores vinculados a un socio titular en una salida."""
+    if not socio_reservation or not socio_reservation.responsible_user_id:
+        return []
+    return db.query(Reservation).filter(
+        Reservation.outing_id == outing_id,
+        Reservation.responsible_user_id == socio_reservation.responsible_user_id,
+        Reservation.dni != socio_reservation.dni,
+        Reservation.status != "Lista de espera"
+    ).all()
+
+
+def cascade_no_board_dependents(db: Session, outing: Outing, socio_reservation: Reservation, reason: str = "No embarcado: socio responsable no embarca") -> list:
+    """Baja operativamente a todos los invitados de un socio que no embarca.
+
+    Regla blindada: un invitado/menor no socio no puede quedar embarcado si
+    su socio responsable no embarca. Esta cascada no genera cargo por sí misma,
+    porque la persona queda impedida por dependencia reglamentaria del titular.
+    """
+    changed = []
+    if not outing or not socio_reservation or canonical_kind(socio_reservation.kind) != "socio":
+        return changed
+    for dep in dependent_reservations_for(db, outing.id, socio_reservation):
+        if is_waitlisted(dep):
+            continue
+        if dep.cancelled_at is not None or dep.status == "Cancelado":
+            continue
+        if dep.attendance != "No embarca" or (dep.cancel_reason or "") != reason:
+            dep.attendance = "No embarca"
+            dep.cancel_reason = reason
+            dep.charge_amount = 0
+            changed.append(dep.person_name)
+    return changed
+
+
+def enforce_responsible_dependency(db: Session, outing: Outing, reservations=None) -> list:
+    """Aplica la regla: invitado solo puede embarcar si embarca su socio responsable."""
+    changed = []
+    if not outing:
+        return changed
+    rows = list(reservations) if reservations is not None else db.query(Reservation).filter_by(outing_id=outing.id).all()
+    by_dni = {r.dni: r for r in rows}
+    users_by_id = {u.id: u for u in db.query(User).filter(User.id.in_([r.responsible_user_id for r in rows if r.responsible_user_id])).all()}
+    for r in rows:
+        if canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
+            continue
+        if is_waitlisted(r) or r.cancelled_at is not None or r.status == "Cancelado":
+            continue
+        responsible = users_by_id.get(r.responsible_user_id)
+        responsible_row = by_dni.get(responsible.dni) if responsible else None
+        responsible_present = bool(responsible_row and canonical_kind(responsible_row.kind) == "socio" and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
+        if not responsible_present and r.attendance == "Presente":
+            r.attendance = "No embarca"
+            r.cancel_reason = "No embarcado: socio responsable no embarca"
+            r.charge_amount = 0
+            changed.append(r.person_name)
+    return changed
+
 def ensure_outing_editable(outing: Outing):
     if outing and outing.status == "Embarque cerrado":
         raise HTTPException(status_code=400, detail="La salida ya fue cerrada")
@@ -652,6 +721,7 @@ def is_no_board_by_captain(r: Reservation) -> bool:
         or "no embarcado por decision del capitan" in text
         or "ausente marcado por capitán" in text
         or "ausente marcado por capitan" in text
+        or "socio responsable no embarca" in text
     )
 
 
@@ -1100,7 +1170,7 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True}
+    return {"ok": True, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True}
 
 @app.head("/")
 def head_index():
@@ -1391,8 +1461,11 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     - Ausente/no embarcable: cargo reglamentario por plaza perdida.
     """
     normalize_member_reservations(db, reservations)
+    # Blindaje previo al cierre: ningún invitado/menor puede quedar embarcado
+    # si su socio responsable no está presente.
+    enforce_responsible_dependency(db, outing, reservations)
     users = {u.id: u for u in db.query(User).all()}
-    present_dnis = {r.dni for r in active if canonical_kind(r.kind) == "socio" and r.attendance == "Presente"}
+    present_dnis = {r.dni for r in reservations if canonical_kind(r.kind) == "socio" and r.attendance == "Presente" and reservation_is_active(r)}
     guest_fee = float(outing.guest_fee or 0)
 
     for r in reservations:
@@ -1427,8 +1500,9 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
         if k in ("invitado", "hijo_menor") and r.attendance == "Presente":
             responsible = users.get(r.responsible_user_id)
             if responsible and responsible.dni not in present_dnis:
-                r.attendance = "No embarcable"
-                r.cancel_reason = "No embarcado: socio responsable ausente"
+                r.attendance = "No embarca"
+                r.cancel_reason = "No embarcado: socio responsable no embarca"
+                r.charge_amount = 0
 
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
@@ -1573,6 +1647,20 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         raise HTTPException(400, "La reserva está en lista de espera. Solo puede operar cuando sea promovida al cupo.")
 
     if value in ("Presente", "Por confirmar"):
+        # Blindaje: un invitado/menor no socio no puede ser marcado presente
+        # si su socio responsable no está presente y activo.
+        if value == "Presente" and canonical_kind(r.kind) in ("invitado", "hijo_menor"):
+            responsible_row = responsible_reservation_for(db, r.outing_id, r.responsible_user_id)
+            responsible_ok = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
+            if not responsible_ok:
+                r.cancelled_at = None
+                r.status = default_reservation_status(outing, r)
+                r.attendance = "No embarca"
+                r.cancel_reason = "No embarcado: socio responsable no embarca"
+                r.charge_amount = 0
+                db.commit()
+                log(db, user.name, "asistencia bloqueada", f"{r.person_name}: socio responsable no embarca / {outing.title}")
+                return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
         r.cancel_reason = ""
@@ -1591,7 +1679,11 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.attendance = "No embarca"
         r.cancel_reason = "No embarcado por decisión del capitán"
         r.charge_amount = 0
+        # Si el titular no embarca, sus invitados/menores no pueden quedar a bordo.
+        cascade_no_board_dependents(db, outing, r)
 
+    # Reaplica la dependencia antes de recalcular cupos/promociones.
+    enforce_responsible_dependency(db, outing)
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
     enforce_capacity(db, outing)
     db.commit()

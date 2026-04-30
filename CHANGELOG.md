@@ -1,17 +1,15 @@
-# FJORD VI v28.3.0
+# FJORD VI v28.4.0
 
-## Fix aplicado
+## Fix crítico de negocio: dependencia socio -> invitado
 
-- Corrige clasificación de reservas contra padrón de usuarios.
-- Si el DNI de una reserva coincide con un usuario activo con rol socio, el sistema lo trata como socio.
-- Evita que un socio cargado o arrastrado como invitado sea liquidado como invitado.
-- Normaliza responsable: socio responsable = él mismo cuando corresponde.
-- Limpia cargo y motivo viejo de "Tarifa de invitado embarcado" cuando la persona es socio activo.
+- Si el capitán marca a un socio titular como **No embarca**, todos sus invitados/menores vinculados pasan automáticamente a **No embarca**.
+- Un invitado/menor no socio ya no puede quedar como **Presente/Embarcado** si su socio responsable no está presente.
+- La cascada se aplica antes del cierre y antes de recalcular cargos.
+- Los invitados bloqueados por ausencia/no embarque del socio responsable quedan sin cargo por embarque.
+- Se mantiene la regla: el QR registra presencia, pero la autorización final corresponde al capitán.
 
-## No se tocó
+## Conservado de v28.3
 
-- QR del capitán.
-- Check-in.
-- Cierre de salida.
-- UI general.
-- Exportaciones.
+- Clasificación por padrón: si el DNI corresponde a usuario activo con rol socio, liquida como socio.
+- QR de check-in desde Capitán.
+- Reincorporación del socio titular.
