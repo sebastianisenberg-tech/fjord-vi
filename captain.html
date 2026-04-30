@@ -44,7 +44,7 @@ function copiarQRCapitan(){
 </style>
 </head>
 <body><div class="app">
-<header class="top topGreen premiumTop appHeaderPremium"><div class="headerBrand"><img src="/static/logo_yca_trans.png" class="headerLogo" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div></div><a href="/logout" class="logoutBtn">Salir</a></header>
+<header class="top topGreen premiumTop appHeaderPremium"><div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
 {% if msg %}<div class="toast compactToast">{% if msg=='cierre_ok' %}Salida cerrada y liquidada.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='minimo_no_cumple' %}No se puede cerrar: no se alcanza el mínimo de embarcados.{% elif msg=='maximo_superado' %}No se puede cerrar: se supera el máximo de tripulantes.{% elif msg=='reapertura_ok' or msg=='estado_actualizado' %}Estado actualizado. Preliquidaciones recalculadas.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 <section class="card premiumCard" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>{% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}{% for o in outings %}

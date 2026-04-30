@@ -1,8 +1,9 @@
-# v30.0.0 · Premium UI final
+# FJORD VI · v31.0.0
 
-- Login editorial premium con foto real del Fjord VI.
-- Paleta azul institucional YCA aplicada a login, capitán, socio y administración.
-- Header, botones, cards, badges y estados visuales unificados.
-- QR de capitán compacto y jerarquizado.
-- Footer minimalista: `Embarque Fjord VI v30.0.0`.
-- No modifica lógica: mantiene QR público blindado, cierre inteligente, ventana de 48h, administración con auditoría y enclavamiento socio-invitado.
+- Login sin escudo, restaurado con fondo editorial y sin tarjeta blanca pesada.
+- Header con escudo YCA en cápsula blanca pequeña.
+- Botones soft-depth solo en acciones principales.
+- Estados separados visualmente de acciones para reducir confusión.
+- Socio priorizado visualmente: reservar/agregar/reincorporar con acción premium.
+- Capitán con mejor contraste y botones de asistencia diferenciados.
+- Mantiene lógica estable: QR público, cierre inteligente, 48h, auditoría y enclavamiento socio-invitado.

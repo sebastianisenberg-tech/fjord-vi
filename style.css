@@ -1616,3 +1616,164 @@ button.neutralBtn,.mini.neutralBtn{background:#edf3f8!important;color:#425466!im
 
 /* v30 version label support */
 .loginVersion,.appFooter,.qrFooter{letter-spacing:.01em!important;}
+
+/* =========================================================
+   v31.0.0 — Club premium real: login sin escudo, header con escudo en cápsula,
+   botones soft-depth solo en acciones principales, estados como indicadores.
+   ========================================================= */
+:root{
+  --yca-blue:#1f5f91;
+  --yca-blue-dark:#0e3f66;
+  --yca-blue-ink:#123a5d;
+  --yca-sky:#eaf5ff;
+  --yca-border:#d8e4ee;
+  --soft-bg:#f3f8fc;
+  --success-bg:#e5f6ec;
+  --success-ink:#1f7a4d;
+  --danger-bg:#fdeaea;
+  --danger-ink:#a94442;
+  --pending-bg:#eef2f6;
+  --pending-ink:#657385;
+}
+
+/* Header institucional */
+.appHeaderPremium, header.top.appHeaderPremium, .officeTop.appHeaderPremium{
+  background:linear-gradient(135deg,#123a5d 0%,#1f5f91 100%)!important;
+  color:#fff!important;
+  box-shadow:0 10px 28px rgba(15,50,80,.20)!important;
+  border-bottom:1px solid rgba(255,255,255,.16)!important;
+}
+.headerBrand{display:flex!important;align-items:center!important;gap:12px!important;min-width:0!important;}
+.headerLogoCapsule{
+  height:27px!important;width:auto!important;max-width:50px!important;object-fit:contain!important;
+  background:rgba(255,255,255,.98)!important;border-radius:7px!important;padding:3px 5px!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.85)!important;
+  opacity:1!important;
+}
+.headerBrand b{font-weight:850!important;letter-spacing:.01em!important;color:#fff!important;}
+.headerBrand small{color:rgba(255,255,255,.86)!important;}
+.logoutBtn, header.top a.logoutBtn, .officeTop a.logoutBtn{
+  background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.34)!important;color:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 7px 18px rgba(0,0,0,.15)!important;
+}
+
+/* Login sin escudo: editorial, legible, sin tarjeta blanca */
+.loginBody.institutionalLogin{
+  background-image:url('/static/hero_fjord.jpg')!important;
+  background-size:cover!important;
+  background-position:64% center!important;
+  background-color:#071728!important;
+  min-height:100vh!important;
+}
+.loginBody.institutionalLogin:before{
+  content:""!important;position:fixed!important;inset:0!important;pointer-events:none!important;
+  background:
+    linear-gradient(90deg,rgba(4,17,32,.74) 0%,rgba(4,17,32,.52) 44%,rgba(4,17,32,.20) 100%),
+    linear-gradient(180deg,rgba(0,0,0,.16) 0%,rgba(0,0,0,.24) 100%)!important;
+}
+.loginShell{
+  position:relative!important;z-index:1!important;min-height:100vh!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  padding:34px 40px 28px!important;max-width:520px!important;margin:0!important;
+}
+.premiumLoginCard{
+  background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;border-radius:0!important;
+  padding:0!important;width:100%!important;max-width:430px!important;color:#fff!important;
+}
+.loginBrandBlock{margin:0 0 30px!important;text-align:left!important;}
+.loginBody .ycaLogo{display:none!important;}
+.clubFullName{
+  color:#fff!important;text-transform:uppercase!important;font-weight:800!important;letter-spacing:.18em!important;line-height:1.28!important;
+  font-size:30px!important;text-shadow:0 3px 18px rgba(0,0,0,.45)!important;margin:0 0 22px!important;
+}
+.boatName{color:#8ac9ff!important;font-weight:850!important;letter-spacing:.24em!important;font-size:18px!important;text-shadow:0 2px 12px rgba(0,0,0,.45)!important;}
+.systemName{color:#fff!important;font-size:15px!important;letter-spacing:.08em!important;font-weight:800!important;text-shadow:0 2px 12px rgba(0,0,0,.45)!important;margin-top:6px!important;}
+.loginForm{display:block!important;}
+.loginForm label{display:block!important;color:#fff!important;margin:20px 0 8px!important;font-size:12px!important;letter-spacing:.12em!important;text-transform:uppercase!important;font-weight:900!important;text-shadow:0 2px 10px rgba(0,0,0,.46)!important;}
+.loginForm input{
+  width:100%!important;min-height:50px!important;border-radius:15px!important;background:rgba(255,255,255,.10)!important;
+  border:1px solid rgba(255,255,255,.45)!important;color:#fff!important;font-size:17px!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 8px 22px rgba(0,0,0,.17)!important;backdrop-filter:blur(10px)!important;
+}
+.loginForm input:focus{outline:none!important;border-color:rgba(138,201,255,.95)!important;box-shadow:0 0 0 4px rgba(138,201,255,.14),0 8px 22px rgba(0,0,0,.17)!important;}
+.loginForm button,
+.btn.green,
+button.btn.green,
+.premiumForm button.btn.light,
+.personAction button.okBtn{
+  min-height:50px!important;border:0!important;border-radius:15px!important;
+  background:linear-gradient(135deg,#2f88c9 0%,#1f5f91 50%,#0e3f66 100%)!important;color:#fff!important;
+  font-weight:850!important;letter-spacing:.10em!important;text-transform:uppercase!important;
+  box-shadow:0 10px 22px rgba(10,45,75,.22), inset 0 1px 0 rgba(255,255,255,.24)!important;
+  transition:transform .08s ease, box-shadow .08s ease, filter .12s ease!important;
+}
+.loginForm button{letter-spacing:.26em!important;margin-top:22px!important;width:100%!important;}
+.loginForm button:active,.btn.green:active,.premiumForm button.btn.light:active,.personAction button.okBtn:active{transform:translateY(1px)!important;box-shadow:0 5px 11px rgba(10,45,75,.20), inset 0 1px 2px rgba(0,0,0,.18)!important;}
+.loginContact{margin-top:36px!important;padding-top:18px!important;border-top:1px solid rgba(255,255,255,.31)!important;color:rgba(255,255,255,.88)!important;text-align:left!important;text-shadow:0 2px 14px rgba(0,0,0,.45)!important;}
+.loginContact strong{color:#fff!important;font-weight:850!important;}
+.loginContact a{color:#8ac9ff!important;font-weight:850!important;text-decoration:none!important;}
+.loginVersion{display:block!important;margin-top:28px!important;color:rgba(255,255,255,.62)!important;text-align:left!important;font-size:12px!important;text-shadow:0 2px 12px rgba(0,0,0,.45)!important;}
+@media(max-width:560px){
+  .loginBody.institutionalLogin{background-position:62% center!important;}
+  .loginBody.institutionalLogin:before{background:linear-gradient(90deg,rgba(4,17,32,.70) 0%,rgba(4,17,32,.44) 58%,rgba(4,17,32,.16) 100%)!important;}
+  .loginShell{padding:28px 32px 24px!important;align-items:center!important;}
+  .clubFullName{font-size:28px!important;letter-spacing:.17em!important;}
+  .loginForm input{min-height:48px!important;}
+  .loginForm button{min-height:49px!important;}
+}
+@media(max-width:380px){.loginShell{padding-left:24px!important;padding-right:24px!important}.clubFullName{font-size:24px!important;}}
+
+/* Hero cards: legibles y más finos */
+.premiumHero{
+  background:linear-gradient(135deg,#1a4f78 0%,#236b9e 50%,#0e3f66 100%)!important;
+  color:#fff!important;border-radius:22px!important;padding:22px 26px!important;box-shadow:0 12px 28px rgba(13,54,86,.20)!important;
+}
+.premiumHero .eyebrow,.premiumHero span.eyebrow{color:rgba(255,255,255,.72)!important;letter-spacing:.18em!important;}
+.premiumHero h1,.premiumHero h2{color:#fff!important;text-shadow:0 2px 12px rgba(0,0,0,.18)!important;}
+.premiumHero small,.premiumHero p{color:rgba(255,255,255,.78)!important;}
+.premiumHero .statusPill,.statusPill.ok{
+  color:#fff!important;background:rgba(255,255,255,.15)!important;border:1px solid rgba(255,255,255,.22)!important;
+}
+
+/* Estados NO son botones. Indicadores con color semántico */
+.statusPill,.pill{border-radius:999px!important;font-weight:850!important;}
+.statusPill.presente,.pill.presente,.personState.presente{background:var(--success-bg)!important;color:var(--success-ink)!important;}
+.statusPill.pendiente,.pill.pendiente{background:var(--pending-bg)!important;color:var(--pending-ink)!important;}
+.statusPill.noembarca,.pill.noembarca{background:var(--danger-bg)!important;color:var(--danger-ink)!important;}
+
+/* Socio: acciones importantes con profundidad, acciones destructivas/menores claras */
+.socioApp .btn.green,.socioApp button.btn.green,.socioApp .personAction button.okBtn,.socioApp .premiumForm button.btn.light{
+  border-radius:14px!important;min-height:48px!important;text-transform:none!important;letter-spacing:.01em!important;
+  font-size:15px!important;
+}
+.socioApp .personAction button.secondaryDanger{
+  background:#fff!important;color:var(--danger-ink)!important;border:1px solid rgba(169,68,66,.34)!important;border-radius:12px!important;box-shadow:none!important;font-weight:800!important;
+}
+.socioApp .personAction button.neutralBtn{
+  background:#eef2f6!important;color:#516174!important;border:1px solid #dbe4ec!important;box-shadow:none!important;border-radius:12px!important;font-weight:800!important;
+}
+
+/* Capitán: botones de estado diferenciados. No confundir presente/no embarca/reactivar */
+.captainRoster button,.tripulacion button,.premiumPerson button{font-weight:850!important;}
+.captainRoster button[name="state"][value="present"],
+form[action*="/captain/attendance"] button:first-of-type,
+.premiumPerson .personAction button:first-of-type:not(.secondaryDanger):not(.neutralBtn){
+  background:linear-gradient(135deg,#1f5f91,#0e3f66)!important;color:#fff!important;border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:0 6px 14px rgba(15,63,102,.16)!important;
+}
+.captainRoster button[name="state"][value="no_show"],
+form[action*="/captain/attendance"] button:nth-of-type(2){
+  background:#f4f7fa!important;color:#27435a!important;border:1px solid #d7e2eb!important;box-shadow:none!important;
+}
+.captainRoster .reactivate,.premiumPerson .personAction button.reactivate,button.reactivate,
+form[action*="reactivate"] button{
+  background:#6b7f92!important;color:#fff!important;box-shadow:none!important;border-radius:12px!important;
+}
+
+/* Cards y selección: menos ruido */
+.premiumCard,.card{border:1px solid rgba(25,83,125,.12)!important;box-shadow:0 10px 26px rgba(20,50,80,.07)!important;}
+.selectRow.selected{background:#edf7ff!important;border-color:#8bc2e9!important;}
+.selectRow .pill,.outingQuickActions .pill{background:#f0f6fb!important;color:#1b5b84!important;}
+.outingQuickActions .qrQuick{background:#1f5f91!important;color:#fff!important;box-shadow:0 4px 10px rgba(31,95,145,.18)!important;}
+
+/* Footer minimal */
+.loginVersion,.appFooter,.qrFooter{letter-spacing:0!important;opacity:.78!important;}
