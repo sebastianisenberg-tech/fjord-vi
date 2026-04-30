@@ -1469,3 +1469,150 @@ button.neutralBtn,.mini.neutralBtn{background:#eef3f8!important;color:#425466!im
   .boatName{font-size:15px!important;margin-top:22px!important;}
   .loginForm input{min-height:48px!important;}.loginForm button{min-height:50px!important;}
 }
+
+/* v30.0.0 - Club Premium Design System refinement */
+:root{
+  --yca-navy:#0a2742;
+  --yca-navy-2:#123e63;
+  --yca-blue:#1f5b89;
+  --yca-blue-2:#2f7fbd;
+  --yca-air:#f2f7fb;
+  --yca-card:#ffffff;
+  --yca-text:#102033;
+  --yca-muted:#66758a;
+  --yca-line:#dbe7f0;
+  --yca-shadow:0 10px 28px rgba(11,43,74,.075);
+}
+
+/* Header institucional con escudo calado */
+.appHeaderPremium, header.top.appHeaderPremium, .officeTop.appHeaderPremium{
+  min-height:56px!important;
+  padding:10px 20px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  background:linear-gradient(135deg,var(--yca-navy),var(--yca-blue))!important;
+  box-shadow:0 10px 26px rgba(10,39,66,.20)!important;
+}
+.headerBrand{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important;}
+.headerLogo{
+  height:28px!important;width:auto!important;object-fit:contain!important;flex:0 0 auto!important;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.22));opacity:.96!important;
+}
+.headerBrand b{display:block!important;line-height:1.08!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#fff!important;}
+.headerBrand small{display:block!important;line-height:1.15!important;color:rgba(255,255,255,.82)!important;}
+.logoutBtn, header.top a.logoutBtn, .officeTop a.logoutBtn{
+  padding:9px 14px!important;border-radius:999px!important;background:rgba(255,255,255,.16)!important;
+  border:1px solid rgba(255,255,255,.35)!important;color:#fff!important;box-shadow:none!important;
+}
+@media(max-width:560px){.appHeaderPremium,.officeTop.appHeaderPremium{padding:9px 16px!important}.headerLogo{height:24px!important}.headerBrand b{font-size:13px!important}.headerBrand small{font-size:11px!important}.logoutBtn{padding:8px 13px!important}}
+
+/* Superficies más sobrias: menos pastilla pesada, más aire */
+.card,.premiumCard,.statusPanel,.kpiStrip>div,.stats>div,.officeCard,.officeKpi,.officeSidebar{
+  background:rgba(255,255,255,.97)!important;
+  border:1px solid rgba(31,91,137,.12)!important;
+  box-shadow:var(--yca-shadow)!important;
+  border-radius:20px!important;
+}
+body{background:linear-gradient(180deg,#eef5fa 0%,#f9fcfe 52%,#edf3f8 100%)!important;color:var(--yca-text)!important;}
+
+/* Héroes internos: admin/capitán legibles y compactos */
+.app:not(.socioApp) .premiumHero, .officeHero, .heroCard.greenHero{
+  background:linear-gradient(135deg,#123e63 0%,#1f5b89 68%,#0a2742 100%)!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  box-shadow:0 13px 32px rgba(10,39,66,.18)!important;
+  padding:18px 20px!important;
+  border-radius:20px!important;
+  color:#fff!important;
+}
+.app:not(.socioApp) .premiumHero .eyebrow,
+.app:not(.socioApp) .premiumHero span.eyebrow,
+.officeHero .officeEyebrow{
+  color:rgba(255,255,255,.72)!important;
+  opacity:1!important;
+  letter-spacing:.17em!important;
+}
+.app:not(.socioApp) .premiumHero h1,
+.app:not(.socioApp) .premiumHero h2,
+.officeHero h1{
+  color:#fff!important;
+  text-shadow:0 2px 12px rgba(0,0,0,.18)!important;
+}
+.app:not(.socioApp) .premiumHero small,
+.app:not(.socioApp) .premiumHero p,
+.officeHero p{
+  color:rgba(255,255,255,.78)!important;
+  opacity:1!important;
+}
+.app:not(.socioApp) .premiumHero .statusPill.ok,
+.statusPill.ok{
+  background:rgba(255,255,255,.16)!important;
+  border:1px solid rgba(255,255,255,.24)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+
+/* Socio: identidad en blanco premium, no bloque azul pesado */
+.socioApp .premiumHero{
+  background:rgba(255,255,255,.98)!important;
+  border:1px solid rgba(31,91,137,.11)!important;
+  box-shadow:0 9px 24px rgba(11,43,74,.065)!important;
+  padding:17px 19px!important;
+  border-radius:20px!important;
+}
+.socioApp .premiumHero h1,.socioApp .premiumHero h2{color:var(--yca-text)!important;}
+.socioApp .premiumHero small,.socioApp .premiumHero p{color:#637187!important;}
+
+/* Botones refinados y claros por estado */
+button,.btn,.officeSelector button,.officeForm button,.officeRestore button,.officeUserActions button,.qrMainBtn{
+  border-radius:13px!important;
+  background:linear-gradient(135deg,#225f8f,#123e63)!important;
+  box-shadow:0 9px 20px rgba(31,91,137,.16)!important;
+}
+button.okBtn,.mini.okBtn{background:linear-gradient(135deg,#225f8f,#123e63)!important;color:#fff!important;}
+button.danger,.mini.danger,.secondaryDanger{background:#fff1f0!important;color:#9f1d16!important;border:1px solid #efc1bd!important;box-shadow:none!important;}
+button.neutralBtn,.mini.neutralBtn{background:#edf3f8!important;color:#425466!important;border:1px solid #d7e3ec!important;box-shadow:none!important;}
+.qrSecondaryLink{color:#225f8f!important;font-size:13px!important;margin-top:10px!important;}
+.qrMicrocopy{font-size:12.5px!important;color:#6c7788!important;margin-top:12px!important;}
+
+/* Regla desplegable para socios: conservarla y hacerla más elegante */
+.rulesToggle{
+  background:rgba(255,255,255,.98)!important;
+  border:1px solid rgba(31,91,137,.12)!important;
+  box-shadow:0 8px 22px rgba(11,43,74,.055)!important;
+}
+.rulesToggle summary{
+  color:#1f5b89!important;
+  font-weight:900!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+}
+.rulesToggle summary:after{content:'+';font-size:18px;color:#1f5b89;line-height:1;}
+.rulesToggle[open] summary:after{content:'−';}
+.rulesToggle p{color:#536274!important;line-height:1.5!important;font-size:13px!important;}
+
+/* Login más editorial, menos oscuro que v29.8/29.9 */
+.loginBody.institutionalLogin{
+  background:
+    linear-gradient(180deg,rgba(7,20,34,.18) 0%,rgba(7,20,34,.38) 55%,rgba(7,20,34,.63) 100%),
+    radial-gradient(circle at 72% 30%,rgba(255,201,125,.18),transparent 34%),
+    url('/static/hero_fjord.jpg') 61% center / cover no-repeat!important;
+}
+.loginBody.institutionalLogin:before{
+  background:linear-gradient(90deg,rgba(5,18,34,.68) 0%,rgba(5,18,34,.32) 55%,rgba(5,18,34,.05) 100%)!important;
+}
+.clubFullName{font-size:24px!important;letter-spacing:.165em!important;font-weight:520!important;}
+.boatName{font-size:15px!important;letter-spacing:.28em!important;color:#93cbff!important;}
+.systemName{font-size:12.5px!important;letter-spacing:.095em!important;color:rgba(255,255,255,.86)!important;}
+.loginForm input{min-height:46px!important;border-radius:14px!important;background:rgba(255,255,255,.065)!important;border-color:rgba(255,255,255,.34)!important;}
+.loginForm button{min-height:48px!important;border-radius:14px!important;font-size:14px!important;letter-spacing:.25em!important;}
+.loginContact{margin-top:29px!important;padding-top:16px!important;}
+.loginVersion{margin-top:22px!important;font-size:12px!important;}
+
+/* Footer minimal */
+.appFooter,.qrFooter{color:rgba(102,117,138,.42)!important;font-size:12px!important;}
+
+/* v30 version label support */
+.loginVersion,.appFooter,.qrFooter{letter-spacing:.01em!important;}

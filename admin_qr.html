@@ -9,7 +9,7 @@
     .qrPage{min-height:100vh;background:linear-gradient(180deg,#f3f7fb 0%,#ffffff 72%);padding:18px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a}
     .qrCard{max-width:760px;margin:18px auto;background:#fff;border:1px solid rgba(15,23,42,.12);border-radius:26px;padding:24px;box-shadow:0 24px 60px rgba(15,23,42,.10)}
     .qrTop{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
-    .qrTop b{font-size:18px}.qrTop a{font-weight:850;color:#1f4e79;text-decoration:none}
+    .qrTop b{font-size:18px}.headerBrand{display:flex;align-items:center;gap:10px}.headerLogo{height:28px;width:auto;object-fit:contain}.qrTop a{font-weight:850;color:#1f4e79;text-decoration:none}
     .outingSelect{display:flex;gap:10px;align-items:center;margin:18px 0}.outingSelect select{flex:1;border:1px solid #cbd5e1;border-radius:14px;padding:12px;font-size:16px}.outingSelect button{border:0;border-radius:14px;padding:12px 18px;background:#163a5a;color:#fff;font-weight:900}
     .qrTitle small{display:block;text-transform:uppercase;letter-spacing:.15em;color:#64748b;font-weight:900}.qrTitle h1{margin:.25rem 0 0;font-size:34px;line-height:1.05}.qrTitle p{font-size:18px;color:#475569}
     .qrBox{text-align:center;background:#f8fafc;border-radius:24px;padding:26px;border:1px solid rgba(15,23,42,.10)}
@@ -21,7 +21,7 @@
 <body>
 <div class="qrPage">
   <div class="qrCard">
-    <div class="qrTop"><b>Embarque Fjord VI · QR</b><a href="{{return_url}}">{{return_label}}</a></div>
+    <div class="qrTop"><b class="headerBrand"><img src="/static/logo_yca_trans.png" class="headerLogo" alt="YCA"><span>Embarque Fjord VI · QR</span></b><a href="{{return_url}}">{{return_label}}</a></div>
     {% if outings %}
     <form class="outingSelect" method="get" action="/admin_qr">
       <select name="outing_id">
