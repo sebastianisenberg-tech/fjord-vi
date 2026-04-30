@@ -1,9 +1,4 @@
-FJORD VI - Embarque
-Version: v35.0.0
-Build: admin-contract-premium-v35
-Fecha: 2026-04-30
-
-Incluye:
-- Contrato único de datos para templates.
-- Corrección preventiva de render de Administración.
-- Mantiene v34.2: ventana operativa, histórico agrupado, QR fijo, QR dinámico, cierre 48h, auditoría y enclavamiento socio-invitado.
+Fjord VI Embarque
+Version: v35.1.0
+Build: deploy-template-path-robusto
+Corrección: templates disponibles en raíz y /templates; Jinja busca ambos paths.

@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v35.0.0"
-APP_BUILD = "admin-contract-premium-v35"
+VERSION = "v35.1.0"
+APP_BUILD = "deploy-template-path-robusto-v35.1"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -132,8 +132,14 @@ def ensure_schema():
 ensure_schema()
 app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
 
-app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
-templates = Jinja2Templates(directory=str(APP_DIR))
+STATIC_DIR = APP_DIR / "static"
+if not STATIC_DIR.exists():
+    STATIC_DIR = APP_DIR
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+TEMPLATE_DIR = APP_DIR / "templates"
+# Robustez de deploy: busca templates tanto en /templates como en la raíz del proyecto.
+templates = Jinja2Templates(directory=[str(TEMPLATE_DIR), str(APP_DIR)])
 templates.env.globals.update({
     "version": VERSION,
     "app_build": APP_BUILD,
