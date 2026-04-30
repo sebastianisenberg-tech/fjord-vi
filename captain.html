@@ -12,7 +12,37 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   });
 });
-</script></head>
+
+function mostrarQRCapitan(){
+  var el = document.getElementById('qrCapitanOverlay');
+  if(el){ el.classList.remove('hidden'); }
+}
+function cerrarQRCapitan(){
+  var el = document.getElementById('qrCapitanOverlay');
+  if(el){ el.classList.add('hidden'); }
+}
+function copiarQRCapitan(){
+  var link = document.getElementById('qrCapitanLink');
+  if(!link) return;
+  navigator.clipboard.writeText(link.value).then(function(){ alert('Link de check-in copiado'); }).catch(function(){ alert(link.value); });
+}
+</script>
+<style>
+.qrCaptainBtn{background:#0b7a3b;color:#fff;border:0;border-radius:14px;padding:12px 18px;font-weight:800;font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,.18);}
+.qrCapitanOverlay{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;}
+.qrCapitanOverlay.hidden{display:none;}
+.qrCapitanBox{background:#fff;color:#102018;border-radius:22px;width:min(94vw,430px);padding:22px;text-align:center;box-shadow:0 22px 80px rgba(0,0,0,.45);}
+.qrCapitanBox h2{margin:0 0 6px;font-size:30px;line-height:1.05;color:#0b3b2a;}
+.qrCapitanBox p{margin:5px 0 14px;color:#43544b;font-size:15px;}
+.qrCapitanQR{width:min(76vw,330px);height:auto;border:10px solid #fff;border-radius:14px;box-shadow:0 3px 16px rgba(0,0,0,.14);}
+.qrCapitanActions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap;}
+.qrCapitanActions button,.qrCapitanActions a{appearance:none;text-decoration:none;border:0;border-radius:12px;padding:12px 15px;font-weight:800;background:#0b7a3b;color:#fff;font-size:15px;}
+.qrCapitanActions .secondary{background:#20352d;}
+.qrCapitanNote{font-size:13px!important;line-height:1.35;color:#51635a!important;margin-top:14px!important;}
+.qrLinkInput{position:absolute;left:-9999px;width:1px;height:1px;}
+@media (max-width:520px){.qrCaptainBtn{width:100%;font-size:18px;padding:15px 18px}.qrCapitanBox{padding:18px}.qrCapitanBox h2{font-size:27px}.qrCapitanActions button,.qrCapitanActions a{width:100%;}}
+</style>
+</head>
 <body><div class="app">
 <header class="top topGreen premiumTop"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div><a href="/logout" class="logoutBtn">Salir</a></header>
 <main class="wrap">
@@ -21,8 +51,28 @@ document.addEventListener('DOMContentLoaded', function(){
 {% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="premiumHero"><div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</small></div><span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span></section>
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>Salida operativa</b><span>Marcá presentes. Al cerrar, los pendientes quedan ausentes con cargo.</span>{% endif %}</section>
+{% if not closed and not outing_cancelled %}
+<section class="card premiumCard" id="qrcheckin"><div class="cardTitle"><div><span class="eyebrow">Check-in QR</span><h2>Embarque rápido</h2></div></div><p class="muted">El QR registra presencia. La autorización final corresponde siempre al capitán.</p><button type="button" class="qrCaptainBtn" onclick="mostrarQRCapitan()">Mostrar QR para escanear</button><a class="btn navy" style="margin-left:8px;" href="/admin_qr?outing_id={{outing.id}}">Abrir QR en página completa</a></section>
+{% endif %}
 <section class="kpiStrip"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div><div><small>Lista espera</small><b>{{waitlist_count|default(0)}}</b></div><div><small>Cargos</small><b>$ {{charge_summary.total_label}}</b></div></section>
 <section class="card premiumCard" id="decision"><div class="cardTitle"><div><span class="eyebrow">Decisión</span><h2>Modo de la salida</h2></div></div><form class="gridForm captainStatus" method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><select class="input" name="status"><option value="Reservas abiertas" {% if outing.status != 'Cancelada por capitán' and outing.status != 'Embarque cerrado' %}selected{% endif %}>Operativa</option><option value="Cancelada" {% if outing_cancelled %}selected{% endif %}>Cancelada por capitán</option><option value="Cerrar">Cerrar embarque</option></select><button class="btn green">Aplicar decisión</button></form>{% if not closed and not outing_cancelled %}<form class="closeBoardingForm" method="post" action="/captain/close" style="margin-top:10px;"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn navy secondaryClose">Cerrar embarque y liquidar</button></form>{% endif %}</section>
 <section class="card premiumCard" id="tripulacion"><div class="cardTitle"><div><span class="eyebrow">Embarque</span><h2>Tripulación</h2></div></div>{% for r in reservations %}{% set v = reservation_views.get(r.id) %}<div class="premiumPerson captainPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %}"><div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span><div class="personState">{% if v.waitlisted %}Lista de espera{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a cierre</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div></div><div class="captainActions">{% if closed or outing_cancelled %}<span class="pill neutral">{% if closed %}Cerrado{% else %}Bloqueado{% endif %}</span>{% elif v.waitlisted %}<span class="pill neutral">En espera</span>{% else %}<form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form><form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini neutralBtn">No embarca</button></form>{% if v.not_embarked or v.cancelled %}<form method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="mini">Reactivar</button></form>{% endif %}{% endif %}</div></div>{% endfor %}{% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}</section>
 <section class="card premiumCard" id="cargos"><div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div></div><div class="chargeTotal"><span>Total firme</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total == 0 %}<div class="empty">Sin cargos.</div>{% endif %}{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</section>
-{% endif %}</main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#cargos">Cargos</a></nav><footer class="appFooter"><b>{{club_name}} · {{app_name}}</b><span>{{app_model}}</span><small>{{version}} · build: {{app_build}}</small></footer></div></body></html>
+{% endif %}</main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#cargos">Cargos</a></nav>
+{% if outing and qr_url %}
+<div id="qrCapitanOverlay" class="qrCapitanOverlay hidden" onclick="if(event.target===this) cerrarQRCapitan()">
+  <div class="qrCapitanBox">
+    <h2>Check-in Fjord VI</h2>
+    <p><b>{{outing.title}}</b><br>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
+    <img class="qrCapitanQR" src="{{qr_url}}" alt="QR check-in">
+    <input id="qrCapitanLink" class="qrLinkInput" value="{{checkin_url}}" readonly>
+    <p class="qrCapitanNote">Escaneá para registrar presencia. Si alguien no figura en la lista, no queda habilitado. El capitán puede corregir manualmente.</p>
+    <div class="qrCapitanActions">
+      <button type="button" onclick="copiarQRCapitan()">Copiar link</button>
+      <a href="{{checkin_url}}" target="_blank" rel="noopener">Probar</a>
+      <button type="button" class="secondary" onclick="cerrarQRCapitan()">Cerrar</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+<footer class="appFooter"><b>{{club_name}} · {{app_name}}</b><span>{{app_model}}</span><small>{{version}} · build: {{app_build}}</small></footer></div></body></html>

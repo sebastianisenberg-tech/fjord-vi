@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v28.0.0"
-APP_BUILD = "qr-render-integrado-simple"
+VERSION = "v28.1.0"
+APP_BUILD = "qr-capitan-integrado"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -1314,6 +1314,13 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
+    checkin_url = ""
+    qr_url = ""
+    if outing:
+        token = sign_value(f"checkin:{outing.id}")
+        base = str(request.base_url).rstrip("/")
+        checkin_url = f"{base}/checkin?t={token}"
+        qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=" + checkin_url
     return templates.TemplateResponse(request, "captain.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
@@ -1321,7 +1328,8 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "cutoff": cutoff_passed(outing) if outing else False, "cutoff_at": cutoff_at(outing) if outing else None, "msg": request.query_params.get("msg"),
         "reservation_views": views, "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
-        "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0
+        "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
+        "checkin_url": checkin_url, "qr_url": qr_url
     })
 
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
