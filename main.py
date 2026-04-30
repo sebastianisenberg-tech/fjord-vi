@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v28.1.0"
-APP_BUILD = "qr-capitan-integrado"
+VERSION = "v28.2.0"
+APP_BUILD = "socio-titular-reincorporacion-fix"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -1099,8 +1099,12 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     if not outing:
         return templates.TemplateResponse(request, "socio.html", {"request": request, "user": user, "outing": None, "outings": outings, "msg": request.query_params.get("msg")})
     mine = [r for r in reservations if r.dni == user.dni or r.responsible_user_id == user.id]
-    has_self = any(r.dni == user.dni and reservation_is_active(r) for r in mine)
-    self_reservation = next((r for r in mine if r.dni == user.dni), None)
+    # El titular debe resolverse únicamente contra una reserva de tipo socio.
+    # Antes cualquier registro con el DNI del usuario podía ocupar el bloque "Tu lugar"
+    # y dejar sin botón de alta/reincorporación al socio titular.
+    self_candidates = [r for r in reservations if r.dni == user.dni and canonical_kind(r.kind) == "socio"]
+    self_reservation = next((r for r in self_candidates if reservation_is_active(r)), None) or (self_candidates[0] if self_candidates else None)
+    has_self = bool(self_reservation and reservation_is_active(self_reservation))
     ready = readiness_state(outing, len(active))
     views = reservation_views(outing, reservations)
     self_view = views.get(self_reservation.id) if self_reservation else None
@@ -1121,9 +1125,11 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
-    if existing and reservation_is_active(existing):
+    if existing and reservation_is_active(existing) and canonical_kind(existing.kind) == "socio":
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if existing:
+        # Reincorporación unificada del titular: si existía un registro histórico
+        # del DNI del socio, se reutiliza y se normaliza como socio titular.
         target = existing
         target.kind = "socio"
         target.person_name = user.name
@@ -1196,7 +1202,7 @@ async def add_guest(
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_documento", status_code=303)
 
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
-    if not self_row or not reservation_is_active(self_row):
+    if not self_row or canonical_kind(self_row.kind) != "socio" or not reservation_is_active(self_row):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
 
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
