@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v27.8.0"
-APP_BUILD = "admin-user-edit"
+VERSION = "v27.9.1"
+APP_BUILD = "qr-checkin-render-url-integrado"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Operativo de Embarque"
@@ -1594,6 +1594,99 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "responsible_names": responsible_names,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0
     })
+
+
+@app.get("/admin_qr", response_class=HTMLResponse)
+def admin_qr(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Pantalla administrativa para mostrar/imprimir QR de check-in.
+
+    El QR apunta a una URL pública absoluta basada en la request. En Render será:
+    https://fjord-vi.onrender.com/checkin?outing_id=...&token=...
+    """
+    outing = selected_outing(db, outing_id)
+    if not outing:
+        return RedirectResponse("/admin?msg=sin_salida", status_code=303)
+    token = sign_value(f"checkin:{outing.id}")
+    checkin_url = str(request.url_for("checkin_page")) + f"?outing_id={outing.id}&token={token}"
+    qr_api_url = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" + checkin_url
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    return templates.TemplateResponse(request, "admin_qr.html", {
+        "request": request,
+        "user": user,
+        "outing": outing,
+        "checkin_url": checkin_url,
+        "qr_api_url": qr_api_url,
+        "active_count": len(active_reservations(reservations)),
+        "total_registros": len(reservations),
+    })
+
+
+def verify_checkin_token(raw: str, outing_id: int) -> bool:
+    try:
+        value, sig = raw.rsplit('.', 1)
+    except Exception:
+        return False
+    expected_value = f"checkin:{outing_id}"
+    if value != expected_value:
+        return False
+    expected_sig = hmac.new(SECRET_KEY.encode(), value.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(sig, expected_sig)
+
+
+@app.get("/checkin", response_class=HTMLResponse, name="checkin_page")
+def checkin_page(request: Request, outing_id: int, token: str, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
+    outing = db.get(Outing, outing_id)
+    valid_token = bool(outing and verify_checkin_token(token, outing_id))
+    return templates.TemplateResponse(request, "checkin.html", {
+        "request": request,
+        "outing": outing,
+        "valid_token": valid_token,
+        "token": token,
+        "user": user,
+        "msg": request.query_params.get("msg"),
+    })
+
+
+@app.post("/checkin")
+def checkin_submit(
+    outing_id: int = Form(...),
+    token: str = Form(...),
+    dni: str = Form(""),
+    db: Session = Depends(db_session),
+    user: Optional[User] = Depends(current_user),
+):
+    outing = db.get(Outing, outing_id)
+    if not outing or not verify_checkin_token(token, outing_id):
+        return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=qr_invalido", status_code=303)
+
+    if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
+        return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=salida_cerrada", status_code=303)
+
+    dni_clean = norm_dni(dni or (user.dni if user else ""))
+    if not dni_clean:
+        return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=falta_identificacion", status_code=303)
+
+    r = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
+    if not r:
+        log(db, "QR", "check-in rechazado", f"{outing.title} / documento no listado: {dni_clean}")
+        return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=no_listado", status_code=303)
+
+    if is_waitlisted(r) or not reservation_is_active(r):
+        log(db, r.person_name, "check-in rechazado", f"{outing.title} / reserva no embarcable")
+        return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=no_embarcable", status_code=303)
+
+    if r.attendance == "Presente":
+        return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=ya_registrado", status_code=303)
+
+    r.attendance = "Presente"
+    r.cancelled_at = None
+    r.status = default_reservation_status(outing, r)
+    r.charge_amount = 0
+    now_txt = datetime.utcnow().strftime("%d/%m %H:%M")
+    r.cancel_reason = f"Check-in QR registrado {now_txt}. Confirmación final sujeta al capitán."
+    db.commit()
+    log(db, r.person_name, "check-in QR", f"{outing.title} / {now_txt}")
+    return RedirectResponse(f"/checkin?outing_id={outing_id}&token={token}&msg=ok", status_code=303)
 
 
 @app.post("/admin/create_user")
