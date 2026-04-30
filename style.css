@@ -1093,7 +1093,7 @@ body .officeTop .logoutBtn,
 @media (max-width:980px){.officeEditForm{grid-template-columns:1fr}.officeUserActions{grid-template-columns:1fr 1fr}.officeEditUser{width:100%}}
 
 /* =========================================================
-   v29.0.0 · Azul institucional YCA + Operativa de Navegación
+   v29.1.0 · Azul institucional YCA + Embarque
    Sistema visual unificado: mobile-first, sobrio, premium.
    ========================================================= */
 :root{
@@ -1196,3 +1196,36 @@ button.okBtn,.mini.okBtn{background:linear-gradient(135deg,var(--yca-blue),var(-
   .premiumLoginCard{margin-top:26vh!important;}
   .loginShell{align-items:center!important;}
 }
+
+/* =========================================================
+   v29.1.0 · Embarque Fjord VI · UI blindada
+   Naming minimalista + login pro + accesos QR Capitán restaurados.
+   ========================================================= */
+.loginBody.institutionalLogin{
+  background:
+    radial-gradient(circle at 78% 38%, rgba(255,196,92,.10) 0%, rgba(255,196,92,0) 31%),
+    linear-gradient(90deg, rgba(5,18,35,.90) 0%, rgba(8,28,50,.78) 35%, rgba(7,23,39,.30) 68%, rgba(7,23,39,.44) 100%),
+    linear-gradient(180deg, rgba(7,20,35,.20), rgba(7,20,35,.72)),
+    url('/static/hero_fjord.jpg') center center / cover no-repeat !important;
+}
+.loginShell{align-items:center!important;justify-content:flex-start!important;padding:34px 28px 28px!important;}
+.premiumLoginCard{margin:0!important;width:min(78vw,430px)!important;max-width:430px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;color:#fff!important;}
+.loginBrandBlock{text-align:left!important;margin:0 0 28px!important;}
+.ycaLogo{width:88px!important;max-width:88px!important;margin:0 0 22px!important;mix-blend-mode:normal!important;filter:drop-shadow(0 10px 22px rgba(0,0,0,.28));}
+.clubFullName{color:#fff!important;font-size:28px!important;line-height:1.22!important;font-weight:520!important;letter-spacing:.22em!important;text-transform:uppercase!important;text-shadow:0 3px 18px rgba(0,0,0,.32);}
+.boatName{color:#77b8ff!important;font-size:18px!important;letter-spacing:.28em!important;font-weight:820!important;margin-top:20px!important;text-shadow:0 3px 18px rgba(0,0,0,.30);}
+.systemName{color:rgba(255,255,255,.88)!important;font-size:16px!important;font-weight:500!important;letter-spacing:.02em!important;text-shadow:0 3px 18px rgba(0,0,0,.35);}
+.loginForm{gap:14px!important;}
+.loginForm label{color:#fff!important;font-size:12px!important;letter-spacing:.06em!important;text-shadow:0 2px 8px rgba(0,0,0,.35);}
+.loginForm input{min-height:55px!important;border-radius:15px!important;background:rgba(255,255,255,.13)!important;border:1px solid rgba(255,255,255,.50)!important;color:#fff!important;font-size:17px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 26px rgba(0,0,0,.18)!important;backdrop-filter:blur(14px)!important;}
+.loginForm input:focus{outline:none!important;border-color:rgba(129,190,255,.95)!important;box-shadow:0 0 0 3px rgba(111,169,214,.20),0 12px 26px rgba(0,0,0,.18)!important;}
+.loginForm button{min-height:55px!important;border-radius:15px!important;margin-top:10px!important;background:linear-gradient(135deg,#2f80c2 0%,#1f4e79 52%,#143352 100%)!important;color:#fff!important;letter-spacing:.24em!important;font-weight:850!important;text-transform:uppercase!important;box-shadow:0 18px 34px rgba(7,24,42,.38), inset 0 1px 0 rgba(255,255,255,.18)!important;}
+.loginContact{margin-top:26px!important;text-align:left!important;color:rgba(255,255,255,.90)!important;text-shadow:0 2px 12px rgba(0,0,0,.45);}
+.loginContact strong{color:#fff!important;}
+.loginContact a{color:#77b8ff!important;font-weight:800!important;}
+.loginVersion{display:block!important;text-align:left!important;color:rgba(255,255,255,.62)!important;margin-top:28px!important;text-shadow:0 2px 12px rgba(0,0,0,.45);}
+.captainOutingRow{display:flex!important;align-items:center!important;gap:10px!important;text-decoration:none!important;}
+.captainOutingRow .outingMainLink{flex:1;min-width:0;text-decoration:none;color:inherit;}
+.captainOutingRow .outingQuickActions{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.captainOutingRow .qrQuick{background:linear-gradient(135deg,#2f80c2,#163a5a)!important;color:#fff!important;border-color:transparent!important;}
+@media(max-width:520px){.loginShell{padding:28px 24px 24px!important;align-items:flex-start!important;}.premiumLoginCard{width:100%!important;max-width:none!important;padding-top:22px!important;}.clubFullName{font-size:25px!important;letter-spacing:.18em!important;}.boatName{font-size:17px!important;}.loginContact,.loginVersion{text-align:left!important;}}

@@ -40,11 +40,11 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v29.0.0"
-APP_BUILD = "azul-institucional-yca"
+VERSION = "v29.1.0"
+APP_BUILD = "embarque-fjord-vi-ui-blindado"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
-APP_MODEL = "Operativa de Navegación"
+APP_MODEL = "Embarque"
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

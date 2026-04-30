@@ -1,4 +1,4 @@
-# YCA · Fjord VI · Operativo de Embarque · v26.9.3
+# YCA · Fjord VI · Embarque · v26.9.3
 
 Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 
