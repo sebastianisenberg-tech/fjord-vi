@@ -160,3 +160,8 @@ Sigue siendo piloto. No reemplaza todavía validación institucional, padrón re
 - Evita desborde horizontal del badge de estado.
 - Usa estado verde con texto blanco, consistente con Socio y Capitán.
 - No modifica lógica, reservas, cargos ni navegación.
+
+## v27.6.0 - Admin status force fix
+- Fuerza el cartel de Estado navegación en Administración con estilos inline para evitar que la vista de escritorio lo deje azul/chico.
+- Mantiene cartel verde con texto blanco en PC y celular.
+- No modifica lógica, reservas ni cargos.

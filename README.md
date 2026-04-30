@@ -81,8 +81,8 @@ No es producción real. Falta integrar padrón oficial, autenticación instituci
 ### v26.9.8
 Versión de ajuste fino: feedback documental, refuerzo de cupo y administración más clara.
 
-### v27.0.0
+### v27.6.0
 Versión con panel de administración orientado a oficina: planificación de salidas, revisión posterior al fin de semana, liquidación y exportación contable.
 
-### v27.1.0 ESTABLE
+### v27.6.0 ESTABLE
 Versión ajustada para prueba operativa: solo paseos de fin de semana, módulo Socio y Capitán mobile-first, Administración de oficina pensada para PC y liquidación manual posterior.
