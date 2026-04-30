@@ -39,11 +39,11 @@
       </div>
       <a href="#salidas">Salidas</a>
       <a href="#detalle">Detalle</a>
-      <a href="/admin_qr{% if outing %}?outing_id={{outing.id}}{% endif %}">QR Check-in</a>
       <a href="#liquidacion">Liquidación</a>
       <a href="#reservas">Reservas</a>
       <a href="#crear">Programar</a>
       <a href="#usuarios">Usuarios</a>
+      <a href="/admin_qr{% if outing %}?outing_id={{outing.id}}{% endif %}">QR Check-in</a>
       <a href="#sistema">Sistema</a>
     </aside>
 
@@ -76,7 +76,6 @@
           </div>
           {% if outing %}<span class="officePill">Actual: {{outing.departure_at.strftime('%d/%m %H:%M')}}</span>{% endif %}
         </div>
-        {% if outing %}<div style="margin:10px 0 14px;"><a class="officeMini" href="/admin_qr?outing_id={{outing.id}}" style="font-weight:900;">Abrir / imprimir QR de check-in</a></div>{% endif %}
         <form method="get" action="/admin" class="officeSelector">
           <select name="outing_id" onchange="this.form.submit()">
             {% for o in outings %}
