@@ -40,8 +40,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v34.2.0"
-APP_BUILD = "versionado-limpio-ventana-operativa-historico"
+VERSION = "v35.0.0"
+APP_BUILD = "admin-contract-premium-v35"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -141,6 +141,19 @@ templates.env.globals.update({
     "app_name": APP_NAME,
     "app_model": APP_MODEL,
 })
+
+def base_template_context(**extra):
+    """Contrato unico de datos para templates: marca, versionado y datos comunes."""
+    ctx = {
+        "version": VERSION,
+        "app_build": APP_BUILD,
+        "club_name": CLUB_NAME,
+        "app_name": APP_NAME,
+        "app_model": APP_MODEL,
+    }
+    ctx.update(extra)
+    return ctx
+
 
 def db_session():
     db = SessionLocal()
@@ -2043,7 +2056,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     control_window = captain_control_window(outing) if outing else {}
-    return templates.TemplateResponse(request, "admin.html", {
+    return templates.TemplateResponse(request, "admin.html", base_template_context(**{
         "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
@@ -2055,7 +2068,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "responsible_names": responsible_names,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
         "control_window": control_window
-    })
+    }))
 
 
 @app.post("/admin/create_user")

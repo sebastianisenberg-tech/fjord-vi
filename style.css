@@ -1778,7 +1778,7 @@ form[action*="reactivate"] button{
 /* Footer minimal */
 .loginVersion,.appFooter,.qrFooter{letter-spacing:0!important;opacity:.78!important;}
 
-/* v34.2 · Ventana operativa + histórico · fix scroll limpio */
+/* v35.0 · Ventana operativa + histórico + contrato admin limpio */
 .historyFold{margin-top:14px;border-top:1px solid rgba(31,78,121,.10);padding-top:10px;}
 .historyFold summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;font-weight:900;color:#1f5f91;background:#eef6fc;border:1px solid rgba(31,95,145,.12);border-radius:14px;padding:12px 14px;}
 .historyFold summary::-webkit-details-marker{display:none;}
@@ -1794,7 +1794,7 @@ form[action*="reactivate"] button{
 .officeSelector option{color:#102033;}
 @media (max-width:520px){.historyRow{align-items:flex-start;flex-direction:column}.historyRow small{white-space:normal}.historyFold summary{font-size:14px}}
 
-/* v34.2.0 - FIX SCROLL / LAYOUT FLUIDO
+/* v35.0.0 - ADMIN CONTRACT / PREMIUM STRUCTURAL
    Corrige el bloqueo de scroll detectado en Administración y evita cortes en móvil/landscape.
    Regla: header puede ser sticky, pero el contenido nunca debe quedar atrapado en un contenedor rígido. */
 html,

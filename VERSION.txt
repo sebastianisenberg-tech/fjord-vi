@@ -1,10 +1,9 @@
-FJORD VI · Sistema de Reservas / Embarque
-Version: v34.2.0
-Build: fix-scroll-layout-fluido
-Date: 2026-04-30
+FJORD VI - Embarque
+Version: v35.0.0
+Build: admin-contract-premium-v35
+Fecha: 2026-04-30
 
-Cambios:
-- Corrige bloqueo de scroll en Administración y vistas largas.
-- Mantiene header sticky sin atrapar el contenido.
-- Evita cortes en móvil y landscape.
-- Mantiene ventana operativa, histórico, QR fijo, QR dinámico, cierre 48h, auditoría y enclavamiento.
+Incluye:
+- Contrato único de datos para templates.
+- Corrección preventiva de render de Administración.
+- Mantiene v34.2: ventana operativa, histórico agrupado, QR fijo, QR dinámico, cierre 48h, auditoría y enclavamiento socio-invitado.

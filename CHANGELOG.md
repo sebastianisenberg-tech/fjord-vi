@@ -1,14 +1,15 @@
-# FJORD VI v34.2.0
+# FJORD VI v35.0.0
 
-## Fix crítico de layout
-- Se corrigió el problema donde la pantalla de Administración podía quedar rígida o sin scroll real.
-- Se eliminan restricciones de altura/overflow en contenedores padres.
-- Header y barras superiores siguen sticky, pero el contenido fluye normalmente.
-- Se mejora comportamiento en celular y landscape.
+## Corrección crítica
+- Se agregó `base_template_context()` para que los templates reciban siempre marca, versión y datos comunes.
+- Administración usa ahora un contrato explícito de datos, reduciendo riesgo de errores de render en producción.
 
-## Conservado
-- Ventana operativa + histórico agrupado.
-- QR fijo del barco y QR dinámico.
-- Cierre inteligente con ventana de 48h.
-- Auditoría administrativa.
-- Enclavamiento socio-invitado.
+## Conserva de v34.2
+- Scroll fluido y sin contenedores rígidos.
+- Ventana operativa para evitar listas infinitas.
+- Histórico agrupado por mes.
+- QR fijo del barco y QR dinámico por salida.
+- Cierre inteligente, ventana de 48 horas, auditoría y dependencia socio-invitado.
+
+## Nota
+- Esta versión prioriza estabilidad backend/frontend antes de seguir agregando complejidad visual.
