@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
 document.addEventListener("DOMContentLoaded",function(){const toast=document.querySelector(".toastSmart");if(toast){const close=toast.querySelector(".toastClose");if(close){close.addEventListener("click",function(){toast.classList.add("toastLeaving");});}setTimeout(function(){toast.classList.add("toastLeaving");},5200);}document.querySelectorAll("button,.btn,.miEmbCta,.selectRow,.bottom a").forEach(function(el){el.addEventListener("pointerdown",function(){el.classList.add("isPressed");});["pointerup","pointercancel","pointerleave"].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove("isPressed");});});});});
 </script>
 </head>
-<body><div class="app socioApp">
-<header class="top topGreen premiumTop appHeaderPremium">
+<body><div class="app socioApp socioProV464">
+<header class="top topGreen premiumTop appHeaderPremium socioProHeader">
   <div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}}</small></div></div>
   <a href="/logout" class="logoutBtn">Salir</a>
 </header>
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 {% set guest_ns = namespace(count=0) %}
 {% for r in mine %}{% if r.dni != user.dni %}{% set guest_ns.count = guest_ns.count + 1 %}{% endif %}{% endfor %}
-<section class="miEmbarqueCard" id="mi-embarque">
+<section class="miEmbarqueCard socioProBoarding" id="mi-embarque">
   <div class="miEmbTop">
     <div>
       <span class="eyebrow">Mi embarque</span>
@@ -45,11 +45,12 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
     {% elif self_reservation %}<span class="miEmbState stateBad">Cancelado</span>
     {% else %}<span class="miEmbState stateWarn">Sin reserva</span>{% endif %}
   </div>
-  <div class="miEmbGrid">
+  <div class="miEmbGrid socioProStats">
     <div><small>Tu lugar</small><b>{% if self_view and self_view.waitlisted %}Lista de espera{% elif has_self %}Confirmado{% elif self_reservation %}Cancelada{% else %}Sin reserva{% endif %}</b></div>
     <div><small>Invitados</small><b>{{guest_ns.count}}</b></div>
     <div><small>Cupo</small><b>{{active_count}} / {{outing.max_crew}}</b></div>
   </div>
+  <div class="socioProProgress" aria-label="Ocupación de cupo"><i style="width: {{ ((active_count / outing.max_crew) * 100)|round(0, 'floor') if outing.max_crew else 0 }}%"></i></div>
   <div class="miEmbTimeline" aria-label="Estado de la reserva">
     <span class="{% if self_reservation %}done{% endif %}">Reserva</span>
     <span class="{% if has_self %}done{% elif self_view and self_view.waitlisted %}active{% endif %}">Confirmación</span>
@@ -60,7 +61,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
 </section>
 {% endif %}
 
-<section class="card premiumCard" id="salidas">
+<section class="card premiumCard socioProCard socioProCalendar" id="salidas">
   <div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Elegí una salida</h2></div></div>
   {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
   <div class="selectorList">
@@ -88,7 +89,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
 
 {% if outing %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-<section class="premiumHero" id="estado">
+<section class="premiumHero socioProIdentity" id="estado">
   <div class="memberIdentity">
     <span class="eyebrow">Socio</span>
     <h1>{{user.name}}</h1>
@@ -101,7 +102,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   </div>
 </section>
 
-<section class="statusPanel premiumStatus socioStatusBlock {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
+<section class="statusPanel premiumStatus socioStatusBlock socioProStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
   {% if outing_cancelled %}
     <div class="socioStatusHeader">
       <b>Cancelada por capitán</b>
@@ -125,13 +126,13 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   {% endif %}
 </section>
 
-<section class="kpiStrip">
+<section class="kpiStrip socioProKpis">
   <div><small>Ocupación</small><b>{{active_count}} / {{outing.max_crew}}</b></div>
   <div><small>Libres</small><b>{{remaining}}</b></div>
   <div><small>Mínimo</small><b>{{outing.min_crew}}</b></div>
 </section>
 
-<section class="card premiumCard focusCard" id="reserva">
+<section class="card premiumCard focusCard socioProCard socioProReserva" id="reserva">
   <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if outing_cancelled %}<span class="pill bad">Pausada</span>{% elif self_view and self_view.waitlisted %}<span class="pill neutral">Lista de espera</span>{% elif has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
   {% if self_reservation %}
     {% set v = reservation_views.get(self_reservation.id) %}
@@ -145,7 +146,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   {% elif not closed %}<form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn green">{% if remaining == 0 %}Anotarme en lista de espera{% else %}Anotarme en esta salida{% endif %}</button></form>{% endif %}
 </section>
 
-<section class="card premiumCard" id="invitados">
+<section class="card premiumCard socioProCard socioProGuests" id="invitados">
   <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados y menores</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
   {% set ns = namespace(count=0) %}
   {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}{% set v = reservation_views.get(r.id) %}
@@ -163,7 +164,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   {% elif not closed and not has_self %}<div class="empty">Para agregar invitados, primero anotate como socio titular.</div>{% endif %}
 </section>
 
-<details class="card rulesToggle premiumCard rulesCardV41" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
+<details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
 {% endif %}
 </main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#reserva">Reserva</a><a href="#invitados">Invitados</a><a href="#reglas">Reglas</a></nav>
 <footer class="appFooter socioFooter"><span>Embarque Fjord VI</span><b>{{version}}</b></footer>
