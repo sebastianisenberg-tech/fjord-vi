@@ -1,0 +1,10 @@
+FJORD VI v46.5.1 CAPITAN PRO
+
+Corrección visual sin tocar motor lógico:
+- Selector de salidas más compacto: muestra la salida activa y permite cambiar desde un desplegable.
+- Botón Levantar/Reabrir salida solo aparece cuando la salida está cerrada o cancelada.
+- Botones de decisión más bajos y menos amontonados.
+- QR de embarque en modal compacto, no gigante, con máximo de alto y ancho.
+- Ajustes mobile para uso real en celular del capitán.
+
+Se conservan las lógicas de v46.5: QR, presente manual, ausente, no embarca, cierre, cancelación, reapertura, 48h, suplentes y cargos.
