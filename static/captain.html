@@ -59,7 +59,7 @@ function copiarQRCapitan(){
 {% if history_groups and history_groups|length > 0 %}<details class="historyFold"><summary>Ver salidas anteriores</summary>{% for g in history_groups %}<div class="historyMonth">{{g.label}}</div>{% for o in g["items"] %}<div class="historyRowWrap"><a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><span>{{o.departure_at.strftime("%d/%m %H:%M")}} · {{o.title}}</span><small>{{o.status}}</small></a></div>{% endfor %}{% endfor %}</details>{% endif %}</section>
 {% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="premiumHero"><div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</small></div><span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span></section>
-<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>Salida operativa</b><span>Marcá presentes. Al cerrar, los pendientes quedan ausentes con cargo.</span>{% endif %}</section>
+<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>Salida operativa</b><span>El QR marca presente. El capitán corrige ausentes y cierra la planilla.</span>{% endif %}</section>
 <section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
 
 {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_edit) %}
@@ -72,7 +72,7 @@ function copiarQRCapitan(){
   </div>
   <button type="button" class="qrCaptainBtn qrMainBtn" onclick="mostrarQRCapitan()">Mostrar QR</button>
   <a class="qrSecondaryLink" href="/admin_qr?outing_id={{outing.id}}&from=capitan">Abrir en pantalla completa</a>
-  <p class="qrMicrocopy">El QR registra presencia. La autorización final corresponde al capitán.</p>
+  <p class="qrMicrocopy">El QR registra presencia. Si alguien figura presente y no está, usá Quitar presente.</p>
 </section>
 {% endif %}
 <section class="kpiStrip"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div><div><small>Lista espera</small><b>{{waitlist_count|default(0)}}</b></div><div><small>Cargos</small><b>$ {{charge_summary.total_label}}</b></div></section>

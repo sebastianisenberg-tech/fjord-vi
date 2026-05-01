@@ -3830,3 +3830,59 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .officeApp .officeEyebrow,.officeApp small,.officeApp .officeMuted{color:#52687b!important;}
 .officeApp select,.officeApp input,.officeApp textarea{background:#ffffff!important;color:#102033!important;border-color:#cfddea!important;}
 @media (max-width:980px){.officeApp .officeLayout{padding-top:10px!important;}}
+
+/* =========================
+   v46.0 - UI final + admin desktop robusto
+   ========================= */
+:root{--v46-navy:#062b4b;--v46-blue:#0b5f8f;--v46-blue2:#197db3;--v46-bg:#eaf4fa;--v46-card:#fff;--v46-ink:#102033;--v46-muted:#52687b;--v46-line:#cfddea;}
+@supports selector(body:has(.officeApp)){@media (min-width:981px){body:has(.officeApp){overflow:hidden!important;background:var(--v46-bg)!important;}}}
+@media (min-width:981px){
+.officeApp{height:100dvh!important;min-height:0!important;overflow:hidden!important;background:linear-gradient(180deg,#e8f3fa 0%,#f5f9fc 100%)!important;}
+.officeApp .officeLayout{height:100dvh!important;min-height:0!important;overflow:hidden!important;padding:18px 22px 18px 268px!important;box-sizing:border-box!important;}
+.officeApp .officeMain{height:calc(100dvh - 36px)!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0 10px 42px 0!important;scroll-behavior:smooth!important;display:grid!important;gap:16px!important;}
+.officeApp .officeMain::-webkit-scrollbar,.officeSidebarV44::-webkit-scrollbar,.officeTableWrap::-webkit-scrollbar,.officeUserGrid::-webkit-scrollbar{width:10px;height:10px;}
+.officeApp .officeMain::-webkit-scrollbar-thumb,.officeSidebarV44::-webkit-scrollbar-thumb,.officeTableWrap::-webkit-scrollbar-thumb,.officeUserGrid::-webkit-scrollbar-thumb{background:#b8cfdf;border-radius:999px;border:2px solid #eef6fb;}
+.officeSidebarV44{top:18px!important;bottom:18px!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;}
+.officeApp section[id]{scroll-margin-top:18px!important;}
+}
+.officeApp .officeHero{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(230px,310px)!important;align-items:center!important;gap:20px!important;padding:22px!important;border-radius:22px!important;}
+.officeApp .officeHeroText h1{font-size:clamp(26px,2.2vw,38px)!important;letter-spacing:-.045em!important;line-height:1!important;margin:5px 0 8px!important;}
+.officeApp .officeHeroText p{font-size:14px!important;margin:5px 0!important;color:var(--v46-muted)!important;}
+.officeApp .officeStatusBox{min-height:96px!important;border-radius:20px!important;}
+.officeApp .officeStatusBox b{font-size:clamp(24px,2.4vw,36px)!important;}
+.officeApp .officeCard{border-radius:22px!important;border:1px solid var(--v46-line)!important;box-shadow:0 10px 28px rgba(12,35,54,.07)!important;padding:18px!important;}
+.officeApp .officeKpiGrid{grid-template-columns:repeat(6,minmax(120px,1fr))!important;gap:12px!important;}
+.officeApp .officeKpi{min-height:78px!important;padding:12px 13px!important;border-radius:18px!important;}
+.officeApp .officeKpi span{font-size:10px!important;color:#486073!important;}
+.officeApp .officeKpi b{font-size:clamp(20px,1.8vw,28px)!important;line-height:1.05!important;}
+.officeApp .officeKpi small{font-size:11px!important;line-height:1.2!important;color:var(--v46-muted)!important;}
+.officeApp .officeSelector{grid-template-columns:minmax(260px,1fr) auto auto!important;gap:10px!important;}
+.officeApp .officeStatusLine{border-radius:18px!important;padding:13px 15px!important;margin-top:0!important;}
+.officeApp .officeTwoCols{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(320px,.65fr)!important;gap:16px!important;align-items:start!important;}
+.officeApp .officeTableWrap{max-height:min(52dvh,620px)!important;border-radius:18px!important;}
+.officeApp .officeUserGrid{max-height:min(56dvh,660px)!important;}
+.officeSidebarV44 a.officeSideLinkV44.is-active,.officeSidebarV44 a.officeSideLinkV44:hover{background:rgba(255,255,255,.18)!important;border-color:rgba(255,255,255,.25)!important;}
+.officeSidebarV44 a.officeSideActionV44{margin-top:6px!important;}
+.officeSidebarV44 .officeLogoutV452{position:relative!important;margin-top:12px!important;}
+.officeSideFooterV44{position:sticky!important;bottom:0!important;backdrop-filter:blur(8px)!important;}
+@media (max-width:1180px) and (min-width:981px){.officeApp .officeKpiGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;}.officeApp .officeTwoCols{grid-template-columns:1fr!important;}}
+@media (max-width:980px){.officeApp{min-height:100dvh!important;}.officeApp .officeLayout{padding:10px!important;}.officeApp .officeMain{display:grid!important;gap:12px!important;}.officeApp .officeHero{grid-template-columns:1fr!important;padding:16px!important;}.officeApp .officeKpiGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.officeApp .officeTwoCols{grid-template-columns:1fr!important;}.officeApp .officeSelector{grid-template-columns:1fr!important;}}
+.captainApp .kpiStrip{gap:8px!important;padding:8px!important;top:58px!important;}
+.captainApp .kpiStrip div{min-height:48px!important;padding:8px!important;}
+.captainApp #tripulacion .premiumPerson{grid-template-columns:minmax(0,1fr) minmax(104px,132px)!important;padding:10px 11px!important;margin:7px 0!important;border-radius:17px!important;}
+.captainApp .personMain>b{font-size:14.5px!important;}
+.captainApp .personState{display:inline-flex!important;width:auto!important;max-width:100%!important;padding:4px 8px!important;border-radius:999px!important;background:#f4f8fb!important;border:1px solid #dfe8f0!important;font-weight:850!important;}
+.captainApp .captainActions{gap:5px!important;min-width:104px!important;}
+.captainApp .captainActions .mini{min-height:30px!important;border-radius:9px!important;font-size:10.5px!important;letter-spacing:-.02em!important;}
+.captainApp .captainActions .okBtn{background:#147a4b!important;color:#fff!important;}
+.captainApp .captainActions .absentBtn{background:#a9342e!important;color:#fff!important;}
+.captainApp .captainActions .neutralBtn{background:#e9eef4!important;color:#334155!important;}
+.captainApp .captainActions .reactivate{background:#b7791f!important;color:#fff!important;}
+.captainApp .captainFilterV43{position:sticky!important;top:116px!important;z-index:20!important;background:rgba(238,246,251,.92)!important;backdrop-filter:blur(10px)!important;border-radius:0 0 16px 16px!important;padding:7px 2px 9px!important;}
+.captainApp .captainFilterV43 button{min-height:32px!important;font-size:11.5px!important;}
+@media(max-width:480px){.captainApp #tripulacion .premiumPerson{grid-template-columns:1fr!important;}.captainApp .captainActions{grid-template-columns:1fr 1fr!important;min-width:0!important;}.captainApp .captainActions .mini{min-height:32px!important;}}
+.socioApp .reservationCard,.socioApp .boardingPass{box-shadow:0 10px 28px rgba(12,35,54,.075)!important;}
+.socioApp .sectionTitle h2,.socioApp .cardTitle h2{letter-spacing:-.035em!important;}
+.socioApp .personMain>b{font-size:15.8px!important;}
+.socioApp .personState{box-shadow:0 1px 0 rgba(255,255,255,.7) inset!important;}
+/* END v46.0 */
