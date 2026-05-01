@@ -1,3 +1,5 @@
-FJORD VI v46.4
-
-Base funcional v46.2 con pantalla de socio rediseñada en modo PRO.
+Fjord VI v46.6 Admin Agenda
+- Admin carga solo nombre, fecha y hora de salidas de paseo.
+- Fecha visible con dia de semana.
+- Hora sugerida 11:00.
+- Mantiene intacta la logica de Capitan, QR, asistencia, cierre, cargos y 48h.

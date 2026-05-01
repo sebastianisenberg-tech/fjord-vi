@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v46.5.5"
-APP_BUILD = "v46-5-5-captain-name"
+VERSION = "v46.6"
+APP_BUILD = "v46-6-admin-agenda"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -211,12 +211,36 @@ TEMPLATES_DIR = APP_DIR / "templates"
 if not TEMPLATES_DIR.exists():
     TEMPLATES_DIR = APP_DIR
 templates = SafeTemplates(TEMPLATES_DIR)
+
+WEEKDAY_ES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+def fmt_admin_datetime(dt: datetime) -> str:
+    if not dt:
+        return ""
+    return f"{WEEKDAY_ES[dt.weekday()]} {dt.strftime('%d/%m/%Y %H:%M')}"
+
+def fmt_admin_datetime_short(dt: datetime) -> str:
+    if not dt:
+        return ""
+    return f"{WEEKDAY_ES[dt.weekday()]} {dt.strftime('%d/%m %H:%M')}"
+
+def default_new_outing_datetime() -> datetime:
+    base = now_local().date()
+    # Próximo sábado como sugerencia inicial para paseos de fin de semana.
+    days_until_sat = (5 - base.weekday()) % 7
+    if days_until_sat == 0 and now_local().hour >= 11:
+        days_until_sat = 7
+    target = base + timedelta(days=days_until_sat)
+    return datetime(target.year, target.month, target.day, 11, 0)
+
 templates.env.globals.update({
     "version": VERSION,
     "app_build": APP_BUILD,
     "club_name": CLUB_NAME,
     "app_name": APP_NAME,
     "app_model": APP_MODEL,
+    "fmt_admin_datetime": fmt_admin_datetime,
+    "fmt_admin_datetime_short": fmt_admin_datetime_short,
 })
 
 def base_template_context(**extra):
@@ -2182,7 +2206,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "closed": is_closed_outing(outing) if outing else False,
         "responsible_names": responsible_names,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
-        "control_window": control_window
+        "control_window": control_window,
+        "default_new_outing_at": default_new_outing_datetime()
     }))
 
 
@@ -2322,7 +2347,7 @@ def users_json(
 def update_outing(
     outing_id: int = Form(...),
     title: str = Form(...),
-    destination: str = Form(...),
+    destination: str = Form("paseo"),
     departure_at: str = Form(...),
     guest_fee: float = Form(INVITED_FEE),
     db: Session = Depends(db_session),
@@ -2379,9 +2404,10 @@ def admin_outing_status(
     return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/admin/new_outing")
-def new_outing(title: str = Form(...), destination: str = Form(...), departure_at: str = Form(...), guest_fee: float = Form(INVITED_FEE), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+def new_outing(title: str = Form(...), departure_at: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     dep = datetime.fromisoformat(departure_at)
-    o = Outing(title=title.strip(), destination=destination.strip(), departure_at=dep, guest_fee=guest_fee, status="En reservas", max_crew=MAX_CREW, min_crew=MIN_CREW)
+    # Módulo actual limitado a paseos: destino/tipo y tarifa quedan fijos por sistema.
+    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=INVITED_FEE, status="En reservas", max_crew=MAX_CREW, min_crew=MIN_CREW)
     db.add(o)
     db.commit()
     db.refresh(o)
