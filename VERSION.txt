@@ -1,0 +1,4 @@
+Fjord VI · Embarque
+Versión: v38.1.0
+Build: plano-static-fix-limpio-sin-duplicados-v38.1
+Estructura: HTML plano en raíz; recursos solo en /static; sin templates; fix Jinja g["items"].
