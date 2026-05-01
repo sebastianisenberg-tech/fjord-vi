@@ -1,3 +1,11 @@
+# v38.8.0
+
+- Segunda verificación interna del paquete.
+- Corrige metadatos de versión inconsistentes.
+- Evita pantallas 400 feas en acciones críticas del capitán: cierre anticipado, ventana finalizada, reserva en espera y salida inexistente vuelven con aviso superior dentro de la app.
+- Caso invitado sin socio responsable presente: muestra aviso explícito y no cambia silenciosamente el estado a No embarca.
+- Mantiene backend estructural, rutas y lógica principal sin rediseño.
+
 # v38.3.0
 
 - Afinado de densidad visual premium.

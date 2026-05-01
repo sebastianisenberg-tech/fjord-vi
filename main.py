@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v38.3.0"
-APP_BUILD = "premium-ui-densidad-v38.3"
+VERSION = "v38.8.0"
+APP_BUILD = "premium-ux-toasts-audit-v38.8"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1773,15 +1773,17 @@ def outing_status(
 ):
     outing = selected_outing(db, outing_id)
     if not outing:
-        raise HTTPException(400, "Salida inexistente")
+        return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
 
     old_status = outing.status
 
     # Control temporal: Administración puede siempre; Capitán solo dentro de su ventana.
-    if status == "Cerrar":
-        ensure_captain_window(user, outing, "close")
-    else:
-        ensure_captain_window(user, outing, "edit")
+    if user.role != "admin":
+        w = captain_control_window(outing)
+        if w["expired"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
+        if status == "Cerrar" and w["before_departure"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_anticipado", status_code=303)
 
     # ===== CANCELAR =====
     if status == "Cancelada":
@@ -1812,9 +1814,9 @@ def outing_status(
         present = sum(1 for r in active if r.attendance == "Presente")
 
         if active_count < outing.min_crew:
-            raise HTTPException(400, f"No se alcanza el mínimo de {outing.min_crew} tripulantes activos")
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumple", status_code=303)
         if active_count > outing.max_crew:
-            raise HTTPException(400, f"Se supera el cupo máximo de {outing.max_crew}")
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
         auto_confirm_active_for_close(db, outing, active)
         present = sum(1 for r in active if r.attendance == "Presente")
@@ -1840,15 +1842,20 @@ def outing_status(
 def attendance(rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     r = db.get(Reservation, rid)
     if not r or value not in ["Presente", "Ausente", "Por confirmar", "No embarca"]:
-        raise HTTPException(400)
+        return RedirectResponse("/captain?msg=accion_invalida", status_code=303)
 
     outing = db.get(Outing, r.outing_id)
-    ensure_captain_window(user, outing, "edit")
+    if not outing:
+        return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
+    if user.role != "admin":
+        w = captain_control_window(outing)
+        if w["expired"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
     if outing and outing.status == "Embarque cerrado" and user.role != "admin":
-        raise HTTPException(400, "El embarque ya fue cerrado. Reabrí la salida dentro de la ventana operativa o contactá Administración.")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
     if is_waitlisted(r):
-        raise HTTPException(400, "La reserva está en lista de espera. Solo puede operar cuando sea promovida al cupo.")
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
 
     if value in ("Presente", "Por confirmar"):
         # Blindaje: un invitado/menor no socio no puede ser marcado presente
@@ -1857,14 +1864,8 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
             responsible_row = responsible_reservation_for(db, r.outing_id, r.responsible_user_id)
             responsible_ok = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             if not responsible_ok:
-                r.cancelled_at = None
-                r.status = default_reservation_status(outing, r)
-                r.attendance = "No embarca"
-                r.cancel_reason = "No embarcado: socio responsable no embarca"
-                r.charge_amount = 0
-                db.commit()
-                log(db, user.name, "asistencia bloqueada", f"{r.person_name}: socio responsable no embarca / {outing.title}")
-                return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
+                log(db, user.name, "asistencia bloqueada", f"{r.person_name}: socio responsable no está presente / {outing.title}")
+                return RedirectResponse(f"/captain?outing_id={outing.id}&msg=socio_responsable_no_presente", status_code=303)
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
         r.cancel_reason = ""
@@ -1898,8 +1899,13 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
 def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing, reservations, active, present, *_ = outing_context(db, outing_id)
     if not outing:
-        raise HTTPException(400, "Salida inexistente")
-    ensure_captain_window(user, outing, "close")
+        return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
+    if user.role != "admin":
+        w = captain_control_window(outing)
+        if w["expired"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
+        if w["before_departure"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_anticipado", status_code=303)
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 

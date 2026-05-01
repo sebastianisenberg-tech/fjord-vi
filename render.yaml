@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v38-1-plano-static-fix
+    name: fjord-vi-v38-8-premium-ux-toasts-audit
     env: docker
     plan: free
     autoDeploy: true
