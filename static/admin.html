@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <title>Administración · {{club_name}} · {{app_name}}</title>
+</head>
+<body>
+<div class="officeApp">
+  <main class="officeLayout">
+    <aside class="officeSidebar officeSidebarV44" aria-label="Navegación administrativa">
+      <div class="officeBrand officeBrandV44">
+        <b>{{club_name}} · {{app_name}}</b>
+        <span>Administración de oficina</span>
+      </div>
+
+      <div class="officeSideSectionV44">Vista</div>
+      <a class="officeSideLinkV44" href="#detalle" data-spy-section="detalle"><span>Resumen</span><small>Salida actual</small></a>
+      <a class="officeSideLinkV44" href="#salidas" data-spy-section="salidas"><span>Salidas</span><small>Seleccionar / historial</small></a>
+      <a class="officeSideLinkV44" href="#liquidacion" data-spy-section="liquidacion"><span>Liquidación</span><small>Cargos y cierre</small></a>
+      <a class="officeSideLinkV44" href="#reservas" data-spy-section="reservas"><span>Reservas</span><small>Tabla operativa</small></a>
+      <a class="officeSideLinkV44" href="#usuarios" data-spy-section="usuarios"><span>Socios</span><small>Padrón / claves</small></a>
+      <a class="officeSideLinkV44" href="#logs" data-spy-section="logs"><span>Auditoría</span><small>Registro de acciones</small></a>
+
+      <div class="officeSideSectionV44">Acciones rápidas</div>
+      {% if outing %}
+      <a class="officeSideActionV44" href="/admin_qr?outing_id={{outing.id}}">QR check-in</a>
+      <a class="officeSideActionV44" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a>
+      <a class="officeSideActionV44" href="/admin/charges.csv?outing_id={{outing.id}}">CSV cargos</a>
+      {% endif %}
+      <a class="officeSideActionV44" href="#crear">Programar salida</a>
+      <a class="officeSideActionV44" href="#sistema">Sistema</a>
+      <a class="officeSideActionV44 officeLogoutV452" href="/logout">Salir</a>
+
+      <div class="officeSideFooterV44">
+        <span>{{version}}</span>
+        <b>UI final</b>
+      </div>
+    </aside>
+
+    <section class="officeMain">
+      {% if msg %}
+      <div class="officeNotice officeNoticeInMain">
+        {% if msg=='salida_creada' %}Salida creada correctamente.
+        {% elif msg=='demo_reset' %}Datos demo reiniciados.
+        {% elif msg=='usuario_creado' %}Usuario creado. Clave inicial: demo1234.
+        {% elif msg=='usuario_existente' %}Ya existe un usuario con ese documento.
+        {% elif msg=='usuario_actualizado' %}Usuario actualizado.
+        {% elif msg=='clave_reseteada' %}Clave reseteada a demo1234.
+        {% elif msg=='datos_usuario_invalidos' %}Revisá nombre y documento.
+        {% elif msg=='salida_actualizada' %}Salida actualizada por administración.
+        {% elif msg=='estado_actualizado' %}Estado de la salida actualizado por administración.
+        {% elif msg=='rol_invalido' %}Rol inválido.
+        {% else %}Operación registrada.
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <section class="officeCard officeHero" id="detalle">
+        <div class="officeHeroText">
+          <span class="officeEyebrow">Salida seleccionada</span>
+          {% if outing %}
+          <h1>{{outing.title}}</h1>
+          <p><b>{{outing.departure_at.strftime('%d/%m/%Y %H:%M')}}</b> · {{outing.destination}}</p>
+          <p>Cupo: {{outing.max_crew}} · Mínimo: {{outing.min_crew}} · Tarifa invitado: $ {{outing.guest_fee|int}}</p>
+          {% else %}
+          <h1>Sin salida seleccionada</h1>
+          <p>No hay salidas cargadas.</p>
+          {% endif %}
+        </div>
+        {% if outing %}
+        <div class="officeStatusBox {% if outing.status == 'Cancelada por capitán' %}danger{% elif closed %}closed{% else %}open{% endif %}" style="background:linear-gradient(135deg,#2f80c2 0%,#1f4e79 52%,#163a5a 100%) !important;color:#ffffff !important;border:1px solid rgba(255,255,255,.30) !important;border-radius:20px !important;box-shadow:0 14px 34px rgba(0,0,0,.24) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;text-align:center !important;min-width:min(270px,100%) !important;min-height:112px !important;padding:22px 24px !important;box-sizing:border-box !important;overflow:hidden !important;">
+          <span style="color:#ffffff !important;font-size:13px !important;font-weight:950 !important;text-transform:uppercase !important;letter-spacing:.12em !important;opacity:1 !important;text-shadow:0 1px 8px rgba(0,0,0,.20) !important;">Estado navegación</span>
+          <b style="color:#ffffff !important;font-size:34px !important;line-height:1.02 !important;margin-top:8px !important;font-weight:950 !important;text-transform:uppercase !important;letter-spacing:.02em !important;opacity:1 !important;text-shadow:0 1px 8px rgba(0,0,0,.20) !important;white-space:normal !important;overflow-wrap:anywhere !important;">{% if outing.status == 'Cancelada por capitán' %}Cancelada{% elif closed %}Cerrada{% else %}{{outing.status}}{% endif %}</b>
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="officeCard" id="salidas">
+        <div class="officeSectionHead">
+          <div>
+            <span class="officeEyebrow">Historial / Programación</span>
+            <h2>Seleccionar salida</h2>
+          </div>
+          {% if outing %}<span class="officePill">Actual: {{outing.departure_at.strftime('%d/%m %H:%M')}}</span>{% endif %}
+        </div>
+        <form method="get" action="/admin" class="officeSelector">
+          <select name="outing_id" onchange="this.form.submit()">
+            <optgroup label="Ventana operativa">
+            {% for o in outings %}
+            <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
+            {% endfor %}
+            </optgroup>
+            {% for g in history_groups %}
+            <optgroup label="Histórico · {{g.label}}">
+              {% for o in g["items"] %}
+              <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+          <button type="submit">Ver</button>
+          {% if outing %}<a class="officeMini officeQrPrint" href="/admin_qr?outing_id={{outing.id}}">QR / imprimir</a>{% endif %}
+        </form>
+      </section>
+
+      {% if outing %}
+      {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
+      <section class="officeKpiGrid">
+        <div class="officeKpi"><span>Reservas totales</span><b>{{total_registros}}</b><small>Incluye activas, espera y bajas</small></div>
+        <div class="officeKpi"><span>Confirmados</span><b>{{active_count}} / {{outing.max_crew}}</b><small>Cupo vigente de la salida</small></div>
+        <div class="officeKpi"><span>Presentes</span><b>{{acta.embarked_count}} / {{active_count}}</b><small>Check-in QR o corrección del capitán</small></div>
+        <div class="officeKpi"><span>No embarcados</span><b>{{acta.not_embarked_count}}</b><small>Ausentes, bajas o no embarca</small></div>
+        <div class="officeKpi"><span>Lista de espera</span><b>{{waitlist_count}}</b><small>No integran cupo embarcable</small></div>
+        <div class="officeKpi money"><span>Cargos firmes</span><b>$ {{charge_summary.total_label}}</b><small>Para administración / contable</small></div>
+      </section>
+
+      <section class="officeStatusLine {% if outing_cancelled %}danger{% elif closed %}closed{% else %}open{% endif %}">
+        {% if outing_cancelled %}
+        <b>Salida cancelada por capitán.</b><span>No se generan cargos firmes ni preliquidaciones vigentes.</span>
+        {% elif closed %}
+        <b>Salida cerrada y liquidada.</b><span>{{final_summary.detail}}. Lista apta para revisión administrativa.</span>
+        {% else %}
+        <b>Salida abierta.</b><span>El capitán todavía puede marcar embarque. La liquidación no es definitiva.</span>
+        {% endif %}
+      </section>
+
+
+
+      {% if outing %}
+      <section class="officeCard" id="control-admin">
+        <div class="officeSectionHead">
+          <div><span class="officeEyebrow">Control administrativo</span><h2>Edición posterior / correcciones</h2></div>
+          <span class="officePill">Solo Administración</span>
+        </div>
+        <p class="officeHelp">El capitán opera hasta 48 horas desde la hora programada. Después, las correcciones quedan en Administración y se registran en auditoría.</p>
+        <form class="officeForm" method="post" action="/admin/update_outing">
+          <input type="hidden" name="outing_id" value="{{outing.id}}">
+          <input name="title" value="{{outing.title}}" placeholder="Título" required>
+          <input name="destination" value="{{outing.destination}}" placeholder="Destino" required>
+          <input type="datetime-local" name="departure_at" value="{{outing.departure_at.strftime('%Y-%m-%dT%H:%M')}}" required>
+          <input type="number" name="guest_fee" value="{{outing.guest_fee|int}}" placeholder="Tarifa invitado">
+          <button>Guardar cambios</button>
+        </form>
+        <form class="officeForm" method="post" action="/admin/outing_status" style="margin-top:10px;">
+          <input type="hidden" name="outing_id" value="{{outing.id}}">
+          <select name="status">
+            <option value="Reservas abiertas">Reabrir / dejar operativa</option>
+            <option value="Cerrar">Cerrar y recalcular liquidación</option>
+            <option value="Cancelada">Cancelar por administración</option>
+          </select>
+          <button>Aplicar estado</button>
+        </form>
+      </section>
+      {% endif %}
+
+      <section class="officeTwoCols">
+        <article class="officeCard">
+          <div class="officeSectionHead">
+            <div><span class="officeEyebrow">Resultado operativo</span><h2>Acta de navegación</h2></div>
+            <a class="officeMini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a>
+          </div>
+          <div class="officeActaGrid">
+            <div><span>Presentes</span><b>{{acta.embarked_count}}</b></div>
+            <div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div>
+            <div><span>Pendientes</span><b>{{acta.pending_count if not outing_cancelled and not closed else 0}}</b></div>
+            <div><span>Total cargos</span><b>$ {{acta.total_label}}</b></div>
+          </div>
+          <p class="officeHelp">Uso típico: revisión del lunes/martes posterior a la navegación.</p>
+        </article>
+
+        <article class="officeCard" id="liquidacion">
+          <div class="officeSectionHead">
+            <div><span class="officeEyebrow">Contabilidad</span><h2>Liquidación</h2></div>
+            <a class="officeMini" href="/admin/charges.csv?outing_id={{outing.id}}">CSV cargos</a>
+          </div>
+          <div class="officeTotal"><span>Total a cargar</span><b>$ {{charge_summary.total_label}}</b></div>
+          {% if charge_summary.total == 0 %}<p class="officeEmpty">Sin cargos firmes para esta salida.</p>{% endif %}
+          {% for c in charge_summary.invitados %}<div class="officeCharge"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}
+          {% for c in charge_summary.socios %}<div class="officeCharge"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}
+          {% for c in charge_summary.menores %}<div class="officeCharge"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}
+        </article>
+      </section>
+
+      <section class="officeCard" id="reservas">
+        <div class="officeSectionHead">
+          <div><span class="officeEyebrow">Detalle administrativo</span><h2>Tabla de reservas</h2></div>
+          <a class="officeMini" href="/admin/manifest.csv?outing_id={{outing.id}}">Exportar completo</a>
+        </div>
+        <div class="officeToolbarV43" id="reservasToolbarV43">
+          <input id="reservaSearchV43" type="search" placeholder="Buscar por nombre, DNI, estado o responsable">
+          <select id="reservaEstadoV43">
+            <option value="all">Todos los estados</option>
+            <option value="chargeRow">Con cargo</option>
+            <option value="waitRow">Lista de espera</option>
+            <option value="mutedRow">Bajas / cancelados</option>
+          </select>
+          <button type="button" data-clear-v43="reservas">Limpiar</button>
+        </div>
+        <div class="officeTableWrap">
+          <table class="officeTable" id="reservasTableV43">
+            <thead>
+              <tr><th>Nombre</th><th>DNI</th><th>Tipo</th><th>Estado administrativo</th><th>Situación física</th><th>Cargo</th></tr>
+            </thead>
+            <tbody>
+              {% for r in reservations %}
+              {% set v = reservation_views.get(r.id) %}
+              <tr class="{% if v.waitlisted %}waitRow{% elif v.charge > 0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}">
+                <td><b>{{r.person_name}}</b>{% if r.responsible_user_id %}<small>Responsable: {{responsible_names.get(r.responsible_user_id, "ID " ~ r.responsible_user_id)}}</small>{% endif %}</td>
+                <td>{{r.dni}}</td>
+                <td><span class="officeBadge">{{v.tipo_label}}</span></td>
+                <td>
+                  {% if v.waitlisted %}<b>Lista de espera</b>
+                  {% elif v.embarked %}<b>Embarcado</b>
+                  {% elif v.not_embarked %}<b>No embarcado</b>
+                  {% elif v.charge_is_preliminary %}<b>Preliquidación</b>
+                  {% else %}<b>{{v.alert}}</b>{% endif %}
+                  <small>{{v.motivo}}</small>
+                </td>
+                <td>{{v.estado_fisico}}</td>
+                <td>{% if v.charge > 0 %}<b>$ {{v.charge_label}}</b>{% elif v.charge_is_preliminary %}Est. $ {{v.charge_preview_label}}{% else %}$ 0{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="officeCard" id="crear">
+        <div class="officeSectionHead">
+          <div><span class="officeEyebrow">Planificación mensual</span><h2>Programar nueva salida</h2></div>
+        </div>
+        <form class="officeForm" method="post" action="/admin/new_outing">
+          <input name="title" placeholder="Título" required>
+          <input name="destination" placeholder="Destino" required>
+          <input type="datetime-local" name="departure_at" required>
+          <input type="number" name="guest_fee" value="45000" placeholder="Tarifa invitado">
+          <button>Crear salida</button>
+        </form>
+      </section>
+
+      <section class="officeCard officeList">
+        <div class="officeSectionHead"><div><span class="officeEyebrow">Todas las salidas</span><h2>Agenda publicada</h2></div></div>
+        {% for o in outings %}
+        <a class="officeOutingRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}">
+          <div><b>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}}</b><small>{{o.destination}} · {{o.status}}</small></div>
+          <span>{{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</span>
+        </a>
+        {% endfor %}
+      </section>
+
+      <section class="officeCard" id="usuarios">
+        <div class="officeSectionHead"><div><span class="officeEyebrow">Accesos</span><h2>Usuarios del sistema</h2></div><span class="officePill">clave inicial demo1234</span></div>
+        <form class="officeForm" method="post" action="/admin/create_user">
+          <input name="name" placeholder="Nombre y apellido" required>
+          <input name="dni" placeholder="DNI / Pasaporte / Documento" required>
+          <input name="member_no" placeholder="Nº de socio">
+          <input type="email" name="email" placeholder="Email">
+          <input name="phone" placeholder="Celular / WhatsApp">
+          <select name="role"><option value="socio">Socio</option><option value="captain">Capitán</option><option value="admin">Administrador</option></select>
+          <button>Crear usuario</button>
+        </form>
+        <div class="officeToolbarV43" id="usuariosToolbarV43">
+          <input id="usuarioSearchV43" type="search" placeholder="Buscar usuario por nombre, documento, socio, email o teléfono">
+          <select id="usuarioRolV43">
+            <option value="all">Todos los roles</option>
+            <option value="socio">Socios</option>
+            <option value="captain">Capitanes</option>
+            <option value="admin">Administradores</option>
+            <option value="inactivo">Inactivos</option>
+          </select>
+          <button type="button" data-clear-v43="usuarios">Limpiar</button>
+        </div>
+        <div class="officeUserGrid" id="usuariosGridV43">
+        {% for u in users %}
+          <div class="officeUser {% if not u.active %}disabled{% endif %}" data-role="{{u.role}}" data-active="{% if u.active %}activo{% else %}inactivo{% endif %}">
+            <div class="officeUserSummary">
+              <b>{{u.name}}</b>
+              <small>Doc {{u.dni}}{% if u.member_no %} · Socio {{u.member_no}}{% endif %}{% if u.phone %} · Tel {{u.phone}}{% endif %}{% if u.email %} · {{u.email}}{% endif %} · {{u.role}} · {% if u.active %}activo{% else %}inactivo{% endif %}</small>
+              <details class="officeEditUser">
+                <summary>Editar datos</summary>
+                <form method="post" action="/admin/update_user/{{u.id}}" class="officeEditForm">
+                  <input name="name" value="{{u.name}}" placeholder="Nombre y apellido" required>
+                  <input name="dni" value="{{u.dni}}" placeholder="DNI / Pasaporte / Documento" required>
+                  <input name="member_no" value="{{u.member_no or ''}}" placeholder="Nº de socio">
+                  <input type="email" name="email" value="{{u.email or ''}}" placeholder="Email">
+                  <input name="phone" value="{{u.phone or ''}}" placeholder="Celular / WhatsApp">
+                  <select name="role">
+                    <option value="socio" {% if u.role == 'socio' %}selected{% endif %}>Socio</option>
+                    <option value="captain" {% if u.role == 'captain' %}selected{% endif %}>Capitán</option>
+                    <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Administrador</option>
+                  </select>
+                  <button type="submit">Guardar cambios</button>
+                </form>
+              </details>
+            </div>
+            <div class="officeUserActions">
+              <form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave de {{u.name}} a demo1234?');"><button type="submit">Reset clave</button></form>
+              <form method="post" action="/admin/toggle_user/{{u.id}}" onsubmit="return confirm('Cambiar estado de {{u.name}}?');"><button type="submit">{% if u.active %}Desactivar{% else %}Activar{% endif %}</button></form>
+            </div>
+          </div>
+        {% endfor %}
+        </div>
+      </section>
+
+      <section class="officeTwoCols" id="sistema">
+        <article class="officeCard"><span class="officeEyebrow">Sistema</span><h2>Sistema limpio</h2><p class="officeHelp">Borra salidas, reservas, cargos y auditoría. Conserva usuarios.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('Esto borra salidas, reservas, cargos y auditoría. Conserva usuarios. ¿Seguro?');"><button class="dangerButton" type="submit">Sistema limpio</button></form></article>
+        <article class="officeCard"><span class="officeEyebrow">Resguardo</span><h2>Backup JSON</h2><p class="officeHelp">Descarga o restaura el estado completo.</p><a class="officeMini" href="/admin/backup">Descargar backup</a><form method="post" action="/admin/restore" enctype="multipart/form-data" class="officeRestore"><input type="file" name="file" required><button type="submit">Restaurar JSON</button></form></article>
+      </section>
+
+      <section class="officeCard" id="logs">
+        <div class="officeSectionHead"><div><span class="officeEyebrow">Trazabilidad</span><h2>Auditoría reciente</h2></div></div>
+        {% for l in logs %}<div class="officeLog"><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div>{% endfor %}
+      </section>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  function norm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+  const reservaSearch=document.getElementById('reservaSearchV43');
+  const reservaEstado=document.getElementById('reservaEstadoV43');
+  function filterReservas(){
+    const q=norm(reservaSearch && reservaSearch.value); const st=reservaEstado?reservaEstado.value:'all';
+    document.querySelectorAll('#reservasTableV43 tbody tr').forEach(tr=>{
+      const okText=!q || norm(tr.innerText).includes(q);
+      const okState=st==='all' || tr.classList.contains(st);
+      tr.classList.toggle('is-hidden-v43', !(okText && okState));
+    });
+  }
+  if(reservaSearch) reservaSearch.addEventListener('input',filterReservas);
+  if(reservaEstado) reservaEstado.addEventListener('change',filterReservas);
+  const usuarioSearch=document.getElementById('usuarioSearchV43');
+  const usuarioRol=document.getElementById('usuarioRolV43');
+  function filterUsuarios(){
+    const q=norm(usuarioSearch && usuarioSearch.value); const rol=usuarioRol?usuarioRol.value:'all';
+    document.querySelectorAll('#usuariosGridV43 .officeUser').forEach(card=>{
+      const okText=!q || norm(card.innerText).includes(q);
+      const okRol=rol==='all' || card.dataset.role===rol || card.dataset.active===rol;
+      card.classList.toggle('is-hidden-v43', !(okText && okRol));
+    });
+  }
+  if(usuarioSearch) usuarioSearch.addEventListener('input',filterUsuarios);
+  if(usuarioRol) usuarioRol.addEventListener('change',filterUsuarios);
+  document.querySelectorAll('[data-clear-v43]').forEach(btn=>btn.addEventListener('click',()=>{
+    if(btn.dataset.clearV43==='reservas'){ if(reservaSearch) reservaSearch.value=''; if(reservaEstado) reservaEstado.value='all'; filterReservas(); }
+    if(btn.dataset.clearV43==='usuarios'){ if(usuarioSearch) usuarioSearch.value=''; if(usuarioRol) usuarioRol.value='all'; filterUsuarios(); }
+  }));
+})();
+</script>
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll(".officeSideLinkV44[data-spy-section]"));
+  const sections = links.map(a => document.getElementById(a.dataset.spySection)).filter(Boolean);
+  function setActive(){
+    let current = sections[0] ? sections[0].id : null;
+    const fromTop = window.scrollY + 110;
+    for (const sec of sections){ if (sec.offsetTop <= fromTop) current = sec.id; }
+    links.forEach(a => a.classList.toggle("is-active", a.dataset.spySection === current));
+  }
+  window.addEventListener("scroll", setActive, {passive:true});
+  window.addEventListener("load", setActive);
+  setActive();
+})();
+</script>
+</body>
+</html>

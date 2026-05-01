@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/static/style.css"><title>Capitán · {{app_name}}</title>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('form').forEach(function(form){
+    form.addEventListener('submit', function(e){
+      const close = form.classList.contains('closeBoardingForm') || (form.querySelector('select[name="status"]') && form.querySelector('select[name="status"]').value === 'Cerrar');
+      const cancel = form.querySelector('select[name="status"]') && form.querySelector('select[name="status"]').value === 'Cancelada';
+      if (close && !confirm('Confirmar cierre de embarque y liquidación? Los pendientes pasarán a ausentes con cargo.')) { e.preventDefault(); return; }
+      if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
+      form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
+    });
+  });
+});
+
+function mostrarQRCapitan(){
+  var el = document.getElementById('qrCapitanOverlay');
+  if(el){ el.classList.remove('hidden'); }
+}
+function cerrarQRCapitan(){
+  var el = document.getElementById('qrCapitanOverlay');
+  if(el){ el.classList.add('hidden'); }
+}
+function copiarQRCapitan(){
+  var link = document.getElementById('qrCapitanLink');
+  if(!link) return;
+  navigator.clipboard.writeText(link.value).then(function(){ alert('Link de check-in copiado'); }).catch(function(){ alert(link.value); });
+}
+</script>
+<style>
+.qrCaptainBtn{background:#0b7a3b;color:#fff;border:0;border-radius:14px;padding:12px 18px;font-weight:800;font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,.18);}
+.qrCapitanOverlay{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;}
+.qrCapitanOverlay.hidden{display:none;}
+.qrCapitanBox{background:#fff;color:#102018;border-radius:22px;width:min(94vw,430px);padding:22px;text-align:center;box-shadow:0 22px 80px rgba(0,0,0,.45);}
+.qrCapitanBox h2{margin:0 0 6px;font-size:30px;line-height:1.05;color:#0b3b2a;}
+.qrCapitanBox p{margin:5px 0 14px;color:#43544b;font-size:15px;}
+.qrCapitanQR{width:min(76vw,330px);height:auto;border:10px solid #fff;border-radius:14px;box-shadow:0 3px 16px rgba(0,0,0,.14);}
+.qrCapitanActions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap;}
+.qrCapitanActions button,.qrCapitanActions a{appearance:none;text-decoration:none;border:0;border-radius:12px;padding:12px 15px;font-weight:800;background:#0b7a3b;color:#fff;font-size:15px;}
+.qrCapitanActions .secondary{background:#20352d;}
+.qrCapitanNote{font-size:13px!important;line-height:1.35;color:#51635a!important;margin-top:14px!important;}
+.qrLinkInput{position:absolute;left:-9999px;width:1px;height:1px;}
+@media (max-width:520px){.qrCaptainBtn{width:100%;font-size:18px;padding:15px 18px}.qrCapitanBox{padding:18px}.qrCapitanBox h2{font-size:27px}.qrCapitanActions button,.qrCapitanActions a{width:100%;}}
+</style>
+</head>
+<body><div class="app">
+<header class="top topGreen premiumTop appHeaderPremium"><div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div></div><a href="/logout" class="logoutBtn">Salir</a></header>
+<main class="wrap">
+{% if msg %}<div class="toast compactToast">{% if msg=='cierre_ok' %}Salida cerrada y liquidada.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='socio_responsable_no_presente' %}No se puede marcar presente a ese invitado: primero debe estar presente el socio responsable.{% elif msg=='cierre_anticipado' %}Aún no se puede cerrar: el cierre se habilita desde la hora programada de salida.{% elif msg=='ventana_finalizada' %}Período de edición del capitán finalizado. Para cambios, contactar Administración.{% elif msg=='reserva_en_espera' %}Esa reserva está en lista de espera. Solo se puede operar cuando sea promovida al cupo.{% elif msg=='salida_inexistente' %}Salida inexistente o no seleccionada.{% elif msg=='accion_invalida' %}Acción inválida. Volvé a intentar desde la pantalla de capitán.{% elif msg=='minimo_no_cumple' %}No se puede cerrar: no se alcanza el mínimo de embarcados.{% elif msg=='maximo_superado' %}No se puede cerrar: se supera el máximo de tripulantes.{% elif msg=='reapertura_ok' or msg=='estado_actualizado' %}Estado actualizado. Preliquidaciones recalculadas.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
+<section class="card premiumCard" id="salidas"><div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>{% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}{% for o in outings %}
+<div class="selectRow captainOutingRow {% if outing and o.id == outing.id %}selected{% endif %}">
+  <a class="outingMainLink" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.status}}</small></div></a>
+  <div class="outingQuickActions">
+    <a class="pill" href="/captain?outing_id={{o.id}}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</a>
+    {% if o.status != 'Embarque cerrado' and o.status != 'Cancelada por capitán' %}<a class="pill qrQuick" href="/admin_qr?outing_id={{o.id}}">QR</a>{% endif %}
+  </div>
+</div>
+{% endfor %}
+{% if history_groups and history_groups|length > 0 %}<details class="historyFold"><summary>Ver salidas anteriores</summary>{% for g in history_groups %}<div class="historyMonth">{{g.label}}</div>{% for o in g["items"] %}<div class="historyRowWrap"><a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><span>{{o.departure_at.strftime("%d/%m %H:%M")}} · {{o.title}}</span><small>{{o.status}}</small></a></div>{% endfor %}{% endfor %}</details>{% endif %}</section>
+{% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
+<section class="premiumHero"><div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</small></div><span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span></section>
+<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">{% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% else %}<b>Salida operativa</b><span>El QR marca presente. El capitán corrige ausentes y cierra la planilla.</span>{% endif %}</section>
+<section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
+
+{% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_edit) %}
+<section class="card premiumCard qrCompact" id="qrcheckin">
+  <div class="cardTitle qrCompactTitle">
+    <div>
+      <span class="eyebrow">Check-in QR</span>
+      <h2>Embarque rápido</h2>
+    </div>
+  </div>
+  <button type="button" class="qrCaptainBtn qrMainBtn" onclick="mostrarQRCapitan()">Mostrar QR</button>
+  <a class="qrSecondaryLink" href="/admin_qr?outing_id={{outing.id}}&from=capitan">Abrir en pantalla completa</a>
+  <p class="qrMicrocopy">El QR registra presencia. Si alguien figura presente y no está, usá Quitar presente.</p>
+</section>
+{% endif %}
+<section class="kpiStrip"><div><small>Presentes</small><b>{{present}}</b></div><div><small>Activos</small><b>{{active_count}} / {{outing.max_crew}}</b></div><div><small>Lista espera</small><b>{{waitlist_count|default(0)}}</b></div><div><small>Cargos</small><b>$ {{charge_summary.total_label}}</b></div></section>
+<section class="card premiumCard" id="decision"><div class="cardTitle"><div><span class="eyebrow">Decisión</span><h2>Modo de la salida</h2></div></div>{% if user.role == 'captain' and control_window.expired %}<div class="empty">Período de edición del capitán finalizado. Para cambios, contactar Administración.</div>{% else %}<form class="gridForm captainStatus" method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><select class="input" name="status"><option value="Reservas abiertas" {% if outing.status != 'Cancelada por capitán' and outing.status != 'Embarque cerrado' %}selected{% endif %}>Operativa / reabrir</option><option value="Cancelada" {% if outing_cancelled %}selected{% endif %}>Cancelada por capitán</option>{% if user.role == 'admin' or control_window.can_close %}<option value="Cerrar">Cerrar embarque</option>{% endif %}</select><button class="btn green">Aplicar decisión</button></form>{% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="closeBoardingForm" method="post" action="/captain/close" style="margin-top:10px;"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn navy secondaryClose">Cerrar embarque y liquidar</button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="empty">El cierre se habilita desde la hora programada de salida.</div>{% endif %}{% endif %}</section>
+<section class="card premiumCard" id="tripulacion"><div class="cardTitle"><div><span class="eyebrow">Embarque</span><h2>Tripulación</h2></div></div><div class="captainFilterV43" id="captainFilterV43"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Bajas / no embarca</button></div>{% for r in reservations %}{% set v = reservation_views.get(r.id) %}<div class="premiumPerson captainPerson {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %}"><div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span><div class="personState">{% if v.waitlisted %}Lista de espera{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a cierre</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div></div><div class="captainActions">{% if closed or outing_cancelled %}<span class="pill neutral">{% if closed %}Cerrado{% else %}Bloqueado{% endif %}</span>{% elif user.role == 'captain' and control_window.expired %}<span class="pill neutral">Bloqueado</span>{% elif v.waitlisted %}<span class="pill neutral">En espera</span>{% else %}{% if r.attendance == 'Presente' %}<form method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="mini danger absentBtn">Quitar presente</button></form><form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini neutralBtn">No embarca</button></form>{% else %}<form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="mini okBtn">Presente</button></form><form method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="mini neutralBtn">No embarca</button></form>{% endif %}{% if v.not_embarked or v.cancelled %}<form method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="mini reactivate">Reactivar</button></form>{% endif %}{% endif %}</div></div>{% endfor %}{% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}</section>
+<section class="card premiumCard" id="cargos"><div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div></div><div class="chargeTotal"><span>Total firme</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total == 0 %}<div class="empty">Sin cargos.</div>{% endif %}{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</section>
+{% endif %}</main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#cargos">Cargos</a></nav>
+{% if outing and qr_url %}
+<div id="qrCapitanOverlay" class="qrCapitanOverlay hidden" onclick="if(event.target===this) cerrarQRCapitan()">
+  <div class="qrCapitanBox">
+    <h2>Check-in Fjord VI</h2>
+    <p><b>{{outing.title}}</b><br>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
+    <img class="qrCapitanQR" src="{{qr_url}}" alt="QR check-in">
+    <input id="qrCapitanLink" class="qrLinkInput" value="{{checkin_url}}" readonly>
+    <p class="qrCapitanNote">Escaneá para registrar presencia. Si alguien no figura en la lista, no queda habilitado. El capitán puede corregir manualmente.</p>
+    <div class="qrCapitanActions">
+      <button type="button" onclick="copiarQRCapitan()">Copiar link</button>
+      <a href="{{checkin_url}}" target="_blank" rel="noopener">Probar</a>
+      <button type="button" class="secondary" onclick="cerrarQRCapitan()">Cerrar</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+<footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
+<script>
+(function(){
+  const wrap=document.getElementById('captainFilterV43'); if(!wrap) return;
+  const people=Array.from(document.querySelectorAll('#tripulacion .captainPerson'));
+  wrap.addEventListener('click',function(e){
+    const b=e.target.closest('button[data-filter]'); if(!b) return;
+    wrap.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    const f=b.dataset.filter;
+    people.forEach(p=>{ p.classList.toggle('is-hidden-v43', !(f==='all' || p.classList.contains(f))); });
+  });
+})();
+</script>
+</body></html>
