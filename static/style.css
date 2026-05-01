@@ -3899,3 +3899,64 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .officeMobileLogoutV462 a{color:#fff!important;text-decoration:none!important;font-weight:950!important;background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:12px!important;padding:8px 12px!important;}
   .officeMobileLogoutV462 span{font-size:12px!important;font-weight:800!important;opacity:.9!important;text-align:right!important;}
 }
+
+/* =========================================================
+   v46.4 SOCIO PRO - solo pantalla de socio
+   Base funcional preservada. Cambios visuales scopeados.
+   ========================================================= */
+.socioProV464{--sp-navy:#062b4b;--sp-blue:#0b5f8f;--sp-blue2:#197db3;--sp-ink:#102033;--sp-muted:#5b7083;--sp-card:#ffffff;--sp-bg:#eaf4fa;--sp-line:#d5e3ee;--sp-green:#116b43;--sp-red:#a12424;--sp-amber:#966515;background:radial-gradient(circle at top left,rgba(25,125,179,.18),transparent 34%),linear-gradient(180deg,#eef8fc 0%,#f7fbfd 62%,#eef5f9 100%)!important;color:var(--sp-ink)!important;min-height:100dvh;}
+.socioProV464 .socioWrap{max-width:760px!important;padding:16px 14px 92px!important;}
+.socioProV464 .socioProHeader{background:linear-gradient(135deg,#062b4b 0%,#0b5f8f 58%,#197db3 100%)!important;color:#fff!important;border:0!important;box-shadow:0 10px 28px rgba(6,43,75,.26)!important;}
+.socioProV464 .socioProHeader b,.socioProV464 .socioProHeader small{color:#fff!important;}
+.socioProV464 .logoutBtn{background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.34)!important;color:#fff!important;border-radius:999px!important;padding:8px 13px!important;}
+.socioProV464 .headerLogoCapsule{background:#fff!important;border-radius:14px!important;padding:4px!important;box-shadow:0 4px 14px rgba(0,0,0,.18)!important;}
+.socioProV464 .socioProBoarding{position:relative!important;overflow:hidden!important;border-radius:26px!important;padding:20px!important;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(255,255,255,.88)),radial-gradient(circle at 88% 10%,rgba(25,125,179,.20),transparent 34%)!important;border:1px solid rgba(11,95,143,.18)!important;box-shadow:0 18px 42px rgba(6,43,75,.14)!important;}
+.socioProV464 .socioProBoarding:before,.socioProV464 .socioProBoarding:after{content:"";position:absolute;top:112px;width:24px;height:24px;border-radius:50%;background:var(--sp-bg);z-index:2;}
+.socioProV464 .socioProBoarding:before{left:-12px}.socioProV464 .socioProBoarding:after{right:-12px}
+.socioProV464 .socioProBoarding .miEmbTop{padding-bottom:16px!important;border-bottom:1px dashed #b9cfdf!important;}
+.socioProV464 .socioProBoarding h2{font-size:24px!important;letter-spacing:-.02em!important;margin:4px 0 4px!important;color:var(--sp-navy)!important;}
+.socioProV464 .socioProBoarding p{color:var(--sp-muted)!important;font-size:14px!important;}
+.socioProV464 .miEmbState,.socioProV464 .pill,.socioProV464 .statusPill{border-radius:999px!important;font-weight:800!important;letter-spacing:.01em!important;}
+.socioProV464 .stateOk,.socioProV464 .pill.ok,.socioProV464 .statusPill.ok{background:#dcfce7!important;color:#166534!important;border:1px solid #a7f3d0!important;}
+.socioProV464 .stateWarn,.socioProV464 .pill.warn{background:#fef3c7!important;color:#92400e!important;border:1px solid #fde68a!important;}
+.socioProV464 .stateBad,.socioProV464 .pill.bad{background:#fee2e2!important;color:#991b1b!important;border:1px solid #fecaca!important;}
+.socioProV464 .stateWait,.socioProV464 .pill.neutral,.socioProV464 .statusPill.neutral{background:#e8eef4!important;color:#334155!important;border:1px solid #cbd5e1!important;}
+.socioProV464 .socioProStats{grid-template-columns:repeat(3,1fr)!important;gap:10px!important;margin-top:15px!important;}
+.socioProV464 .socioProStats>div{background:#f4f8fb!important;border:1px solid #dce8f1!important;border-radius:18px!important;padding:12px 10px!important;}
+.socioProV464 .socioProStats small{text-transform:uppercase!important;font-size:10px!important;color:#60798d!important;letter-spacing:.08em!important;}
+.socioProV464 .socioProStats b{font-size:17px!important;color:var(--sp-navy)!important;}
+.socioProV464 .socioProProgress{height:8px;background:#dbeaf3;border-radius:999px;overflow:hidden;margin:14px 0 4px;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}
+.socioProV464 .socioProProgress i{display:block;height:100%;background:linear-gradient(90deg,#0b5f8f,#29a3d5);border-radius:999px;min-width:4px;}
+.socioProV464 .miEmbTimeline{margin-top:16px!important;background:#f7fbfd!important;border:1px solid #deebf3!important;border-radius:18px!important;padding:10px!important;}
+.socioProV464 .miEmbCta,.socioProV464 .btn.green,.socioProV464 .btn.light{background:linear-gradient(180deg,#0b5f8f,#06456d)!important;color:#fff!important;border:0!important;border-radius:18px!important;box-shadow:0 10px 20px rgba(11,95,143,.22)!important;font-weight:900!important;letter-spacing:.01em!important;}
+.socioProV464 .socioProCard,.socioProV464 .socioProIdentity,.socioProV464 .socioProStatus,.socioProV464 .socioProKpis{border-radius:24px!important;border:1px solid var(--sp-line)!important;background:rgba(255,255,255,.94)!important;box-shadow:0 12px 30px rgba(6,43,75,.08)!important;}
+.socioProV464 .cardTitle h2{font-size:20px!important;color:var(--sp-navy)!important;letter-spacing:-.015em!important;}
+.socioProV464 .eyebrow{font-size:10px!important;letter-spacing:.12em!important;text-transform:uppercase!important;color:#2478a6!important;font-weight:900!important;}
+.socioProV464 .selectRow{border-radius:18px!important;border:1px solid #d7e5ef!important;background:#fbfdff!important;box-shadow:0 4px 12px rgba(6,43,75,.04)!important;}
+.socioProV464 .selectRow.selected{background:#edf7fc!important;border-color:#8dc8e5!important;box-shadow:0 10px 22px rgba(11,95,143,.12)!important;}
+.socioProV464 .socioProIdentity{padding:18px!important;display:grid!important;grid-template-columns:1fr!important;gap:12px!important;}
+.socioProV464 .memberIdentity h1{font-size:24px!important;color:var(--sp-navy)!important;letter-spacing:-.02em!important;}
+.socioProV464 .outingIdentity{background:#f4f9fc!important;border-radius:18px!important;padding:14px!important;border:1px solid #dce9f2!important;}
+.socioProV464 .socioStatusMetrics{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+.socioProV464 .socioStatusMetric{border-radius:18px!important;background:#f7fbfd!important;border:1px solid #dfeaf2!important;}
+.socioProV464 .socioProKpis{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:10px!important;padding:12px!important;}
+.socioProV464 .socioProKpis div{background:#f4f9fc!important;border-radius:16px!important;padding:12px!important;border:1px solid #dce9f2!important;}
+.socioProV464 .socioProKpis small{text-transform:uppercase!important;letter-spacing:.08em!important;font-size:10px!important;color:#60798d!important;}
+.socioProV464 .socioProKpis b{font-size:18px!important;color:#062b4b!important;}
+.socioProV464 .premiumPerson{border-radius:20px!important;background:#fff!important;border:1px solid #d8e6f0!important;box-shadow:0 8px 20px rgba(6,43,75,.06)!important;padding:14px!important;}
+.socioProV464 .premiumPerson.boardingPass{position:relative!important;border-left:5px solid #0b5f8f!important;}
+.socioProV464 .premiumPerson.boardingPass.bpActive{border-left-color:#16a34a!important;}
+.socioProV464 .premiumPerson.boardingPass.bpWait{border-left-color:#d97706!important;}
+.socioProV464 .premiumPerson.boardingPass.bpCancelled{border-left-color:#b91c1c!important;}
+.socioProV464 .personMain>b{font-size:16px!important;color:#102033!important;}
+.socioProV464 .personState{font-size:13px!important;color:#4b6174!important;line-height:1.35!important;}
+.socioProV464 .badgeTipo{border-radius:999px!important;padding:4px 9px!important;font-size:10px!important;font-weight:900!important;}
+.socioProV464 .mini{border-radius:999px!important;padding:8px 12px!important;font-weight:800!important;}
+.socioProV464 .emptyBoarding{border:1px dashed #b8ccda!important;background:#f7fbfd!important;border-radius:18px!important;display:grid!important;gap:4px!important;}
+.socioProV464 .premiumForm .input,.socioProV464 .guestForm .input{border-radius:16px!important;border:1px solid #cfe0ec!important;background:#fff!important;padding:12px!important;}
+.socioProV464 .socioProRules summary{font-weight:900!important;color:#062b4b!important;}
+.socioProV464 .bottom{left:12px!important;right:12px!important;bottom:12px!important;border-radius:24px!important;background:rgba(255,255,255,.92)!important;backdrop-filter:blur(14px)!important;border:1px solid rgba(11,95,143,.16)!important;box-shadow:0 18px 36px rgba(6,43,75,.16)!important;overflow:hidden!important;}
+.socioProV464 .bottom a{border-radius:16px!important;font-weight:800!important;color:#5b7083!important;}
+.socioProV464 .bottom a.on{background:linear-gradient(180deg,#0b5f8f,#06456d)!important;color:#fff!important;box-shadow:0 8px 18px rgba(11,95,143,.22)!important;}
+.socioProV464 .socioFooter{opacity:.85!important;padding-bottom:84px!important;}
+@media (max-width:420px){.socioProV464 .socioWrap{padding-left:10px!important;padding-right:10px!important;}.socioProV464 .socioProStats,.socioProV464 .socioProKpis{gap:7px!important;}.socioProV464 .socioProStats>div,.socioProV464 .socioProKpis div{padding:10px 7px!important;}.socioProV464 .socioProBoarding{padding:16px!important;border-radius:22px!important;}.socioProV464 .socioProBoarding h2{font-size:21px!important;}}
