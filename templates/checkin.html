@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Check-in · {{club_name}} · {{app_name}}</title>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#f3f7fb 0%,#fff 72%);color:#0f172a}.top{background:linear-gradient(90deg,#163a5a,#1f4e79);color:#fff;padding:14px 22px;font-weight:900}.headerBrand{display:flex;align-items:center;gap:10px}.headerLogo{height:26px;width:auto;object-fit:contain}.wrap{padding:22px}.card{background:white;border:1px solid rgba(15,23,42,.12);border-radius:28px;padding:26px;box-shadow:0 24px 60px rgba(15,23,42,.10);max-width:520px;margin:22px auto}.eyebrow{text-transform:uppercase;letter-spacing:.16em;color:#64748b;font-weight:900;font-size:13px}h1{font-size:34px;margin:6px 0 4px}.meta{font-size:18px;color:#475569}.input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:18px;padding:16px;font-size:22px;margin:16px 0}.btn{width:100%;border:0;border-radius:20px;padding:18px;font-size:22px;font-weight:950;color:white;background:#1f4e79}.msg{margin-top:18px;border-radius:20px;padding:18px;font-weight:900;font-size:18px}.ok{background:#eef6ff;color:#1f4e79}.err{background:#fee2e2;color:#991b1b}.note{margin-top:18px;color:#64748b;font-size:15px;line-height:1.4}.who{background:#f1f5f9;border-radius:16px;padding:14px;margin-top:14px;font-weight:800}.back{display:block;text-align:center;margin-top:18px;color:#1f4e79;font-weight:900;text-decoration:none}
+  </style>
+</head>
+<body>
+<div class="top checkinTop"><span class="headerBrand"><img src="/static/logo_yca_trans.png" class="headerLogo" alt="YCA"><span>{{club_name}} · {{app_name}} · Check-in</span></span></div>
+<div class="wrap"><div class="card">
+  {% if outing %}
+  <div class="eyebrow">Salida</div><h1>{{outing.title}}</h1><div class="meta">{{outing.departure_at.strftime('%d/%m/%Y %H:%M')}} · {{outing.destination}}</div>
+  {% else %}<h1>Check-in Fjord VI</h1>{% endif %}  {% if error %}<div class="msg err">{{error}}</div>{% endif %}
+  {% if msg %}<div class="msg ok">{{msg}}</div>{% endif %}
+  {% if outing and not msg %}
+  <form method="post" action="/checkin">
+    <input type="hidden" name="t" value="{{token}}">
+    <label class="eyebrow">Documento / DNI</label><input class="input" name="dni" placeholder="Ingresá tu documento" inputmode="text" autocomplete="off" required>
+    <button class="btn" type="submit">Confirmar embarque</button>
+  </form>
+  {% endif %}
+  <div class="note">Este registro informa presencia. La autorización final de embarque corresponde al capitán.</div>
+  <a class="back" href="/">Volver</a>
+</div></div>
+</body>
+</html>
