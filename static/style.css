@@ -4220,3 +4220,10 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .captainMiniSummary button span{font-size:8px;}
   .captainMiniSummary button b{font-size:16px;}
 }
+
+
+/* v46.5.5 - Nombre del capitán en barra superior */
+.captainTop .captainHeaderBrand{min-width:0!important;flex:1 1 auto!important;}
+.captainTop .captainHeaderBrand small{display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+.captainTop .captainHeaderName{display:inline-flex!important;align-items:center!important;max-width:140px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;padding:2px 8px!important;border-radius:999px!important;background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.24)!important;color:#fff!important;font-family:ui-serif, Georgia, "Times New Roman", serif!important;font-style:italic!important;font-weight:700!important;letter-spacing:.01em!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)!important;}
+@media(max-width:420px){.captainTop .captainHeaderName{max-width:118px!important;padding:1px 7px!important;font-size:10.8px!important;}.captainTop .headerBrand b{max-width:190px!important;}}
