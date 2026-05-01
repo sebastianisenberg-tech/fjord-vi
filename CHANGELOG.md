@@ -1,4 +1,12 @@
-# v38.2.0
+# v38.3.0
+
+- Afinado de densidad visual premium.
+- Barras horizontales más finas.
+- Botones más compactos con tacto soft/iOS.
+- Cards, KPIs, formularios y navegación inferior con menor peso visual.
+- Sin cambios de backend ni de lógica operativa.
+
+# v38.3.0
 
 - Ajuste premium de interfaz: botones más delicados, menos pesados y con estados semánticos.
 - Capitán: Presente verde, No embarca rojo, Reactivar ámbar.
