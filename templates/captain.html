@@ -64,15 +64,30 @@
   <div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>
   {% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}
   <div class="captainActiveOutings">
-  {% for o in outings %}
-    <div class="captainOutingCard {% if outing and o.id == outing.id %}selected{% endif %}">
-      <a class="outingMainLink" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.status}}</small></div></a>
+  {% if outing %}
+    <div class="captainOutingCard selected">
+      <a class="outingMainLink" href="/captain?outing_id={{outing.id}}"><div><b>{{outing.title}}</b><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}} · {{outing.status}}</small></div></a>
       <div class="outingQuickActions">
-        <a class="pill" href="/captain?outing_id={{o.id}}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</a>
-        {% if o.status != 'Embarque cerrado' and o.status != 'Cancelada por capitán' %}<a class="pill qrQuick" href="/admin_qr?outing_id={{o.id}}">QR</a>{% endif %}
+        <span class="pill selectedPill">Activa</span>
+        {% if outing.status != 'Embarque cerrado' and outing.status != 'Cancelada por capitán' %}<button type="button" class="pill qrQuick" onclick="mostrarQRCapitan()">QR</button>{% endif %}
       </div>
     </div>
-  {% endfor %}
+    <details class="historyFold captainSwitchFold">
+      <summary>Cambiar salida</summary>
+      <div class="captainHistoryScroll compact">
+        {% for o in outings %}{% if o.id != outing.id %}
+        <a class="historyRow" href="/captain?outing_id={{o.id}}"><span>{{o.title}} · {{o.departure_at.strftime('%d/%m %H:%M')}}</span><small>{{o.status}}</small></a>
+        {% endif %}{% endfor %}
+      </div>
+    </details>
+  {% else %}
+    {% for o in outings %}
+    <div class="captainOutingCard">
+      <a class="outingMainLink" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.status}}</small></div></a>
+      <div class="outingQuickActions"><a class="pill" href="/captain?outing_id={{o.id}}">Ver</a></div>
+    </div>
+    {% endfor %}
+  {% endif %}
   </div>
   {% if history_groups and history_groups|length > 0 %}
   <details class="historyFold captainHistoryFold">
@@ -111,7 +126,7 @@
     <div class="empty">Período de edición del capitán finalizado. Para cambios, contactar Administración.</div>
   {% else %}
     <div class="captainDecisionGrid">
-      <form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar salida</button></form>
+      {% if closed or outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar / reabrir salida</button></form>{% endif %}
       {% if not closed and not outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Cancelada"><button class="captainDecisionBtn cancelBtn">Cancelar por capitán</button></form>{% endif %}
       {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="closeBoardingForm" method="post" action="/captain/close"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar y liquidar</button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
     </div>
