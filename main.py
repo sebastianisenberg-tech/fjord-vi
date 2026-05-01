@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v46.5.3"
-APP_BUILD = "v46-5-3-captain-pro"
+VERSION = "v46.5"
+APP_BUILD = "v46-5-captain-pro"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1609,19 +1609,6 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     ready = readiness_state(outing, len(active), present)
     waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
-    if outing and views:
-        responsible_ids = sorted({r.responsible_user_id for r in reservations if r.responsible_user_id})
-        responsible_users = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids)).all()} if responsible_ids else {}
-        for r in reservations:
-            v = views.get(r.id)
-            if not v:
-                continue
-            responsible = responsible_users.get(r.responsible_user_id) if r.responsible_user_id else None
-            own_reservation = bool(responsible and r.dni == responsible.dni)
-            v["responsible_name"] = responsible.name if responsible else ""
-            v["responsible_dni"] = responsible.dni if responsible else ""
-            v["own_reservation"] = own_reservation
-            v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
@@ -1871,8 +1858,6 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         w = captain_control_window(outing)
         if w["expired"]:
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
-    if outing and outing.status == "Cancelada por capitán" and user.role != "admin":
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cancelada", status_code=303)
     if outing and outing.status == "Embarque cerrado" and user.role != "admin":
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
@@ -2154,19 +2139,6 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(responsible_ids)).all()}
     waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
-    if outing and views:
-        responsible_ids = sorted({r.responsible_user_id for r in reservations if r.responsible_user_id})
-        responsible_users = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids)).all()} if responsible_ids else {}
-        for r in reservations:
-            v = views.get(r.id)
-            if not v:
-                continue
-            responsible = responsible_users.get(r.responsible_user_id) if r.responsible_user_id else None
-            own_reservation = bool(responsible and r.dni == responsible.dni)
-            v["responsible_name"] = responsible.name if responsible else ""
-            v["responsible_dni"] = responsible.dni if responsible else ""
-            v["own_reservation"] = own_reservation
-            v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
