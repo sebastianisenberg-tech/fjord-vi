@@ -1905,3 +1905,118 @@ body::after {
   display: block;
   height: env(safe-area-inset-bottom, 0px);
 }
+
+/* v38.2.0 · PREMIUM UI SAFE OVERRIDES
+   Capa visual únicamente. No modifica estructura ni flujos. */
+:root{
+  --premium-blue:#164f7a;
+  --premium-blue-2:#0a3557;
+  --premium-blue-3:#072744;
+  --premium-green:#24745a;
+  --premium-green-2:#165d47;
+  --premium-red:#a63a35;
+  --premium-red-2:#7f2825;
+  --premium-amber:#b8892e;
+  --premium-amber-2:#8b6721;
+  --premium-line:rgba(19,48,73,.13);
+  --premium-shadow:0 10px 22px rgba(8,31,52,.13), inset 0 1px 0 rgba(255,255,255,.18);
+  --premium-shadow-soft:0 8px 18px rgba(8,31,52,.09);
+}
+
+button,.btn,.qrBtn,.qrMainBtn,
+.officeSelector button,.officeForm button,.officeRestore button,.officeUserActions button{
+  border-radius:14px!important;
+  min-height:42px!important;
+  padding:10px 16px!important;
+  font-weight:850!important;
+  letter-spacing:.01em!important;
+  background:linear-gradient(180deg,var(--premium-blue),var(--premium-blue-2))!important;
+  box-shadow:var(--premium-shadow)!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  transition:transform .12s ease, box-shadow .12s ease, filter .12s ease!important;
+}
+button:active,.btn:active,.qrBtn:active,.qrMainBtn:active,
+.officeSelector button:active,.officeForm button:active,.officeRestore button:active,.officeUserActions button:active{
+  transform:translateY(1px) scale(.992)!important;
+  box-shadow:0 4px 10px rgba(8,31,52,.16), inset 0 2px 5px rgba(0,0,0,.13)!important;
+}
+
+/* Capitán: estados semánticos sin perder identidad del club */
+.captainActions .mini,
+.premiumPerson button.mini{
+  min-height:38px!important;
+  border-radius:13px!important;
+  padding:9px 12px!important;
+  font-size:14px!important;
+  box-shadow:0 7px 14px rgba(8,31,52,.12), inset 0 1px 0 rgba(255,255,255,.20)!important;
+}
+button.okBtn,.mini.okBtn,
+.captainActions .okBtn{
+  background:linear-gradient(180deg,var(--premium-green),var(--premium-green-2))!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.16)!important;
+}
+button.danger,.mini.danger,.secondaryDanger,
+.captainActions .danger{
+  background:linear-gradient(180deg,var(--premium-red),var(--premium-red-2))!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.14)!important;
+  box-shadow:0 7px 14px rgba(126,40,37,.13), inset 0 1px 0 rgba(255,255,255,.18)!important;
+}
+button.reactivate,.mini.reactivate,
+.captainActions .reactivate{
+  background:linear-gradient(180deg,var(--premium-amber),var(--premium-amber-2))!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.14)!important;
+  box-shadow:0 7px 14px rgba(139,103,33,.14), inset 0 1px 0 rgba(255,255,255,.18)!important;
+}
+button.neutralBtn,.mini.neutralBtn,.btn.light,.pill.neutral{
+  background:#eef4f8!important;
+  color:#244760!important;
+  border:1px solid #d7e3ec!important;
+  box-shadow:none!important;
+}
+
+/* Cards más finas, menos “pesadas”, más premium */
+.card,.premiumCard,.premiumHero,.statusPanel,.kpiStrip>div,.officeCard,.officeKpi,.officeSidebar,.qrCard,.toast,.notice{
+  border:1px solid var(--premium-line)!important;
+  box-shadow:var(--premium-shadow-soft)!important;
+}
+.premiumPerson{
+  border-radius:17px!important;
+  padding:13px 14px!important;
+  border-color:rgba(19,48,73,.14)!important;
+  box-shadow:0 5px 12px rgba(8,31,52,.055)!important;
+}
+.premiumPerson.ok{border-left-color:var(--premium-green)!important;}
+.premiumPerson.warn{border-left-color:var(--premium-amber)!important;}
+.premiumPerson.bad{border-left-color:var(--premium-red)!important;background:linear-gradient(180deg,#fff,#fff8f7)!important;}
+.premiumPerson.neutralState{border-left-color:#9aa8b5!important;background:#f8fafc!important;}
+.personState{font-weight:800!important;color:#465668!important;}
+.premiumPerson.bad .personState{color:#87302d!important;}
+
+/* Barras y cabeceras: azul institucional más silencioso */
+.top,.officeTop,.appTop,.premiumHero,.selectedOutingHero{
+  background:linear-gradient(135deg,var(--premium-blue),var(--premium-blue-3))!important;
+}
+.statusPanel,.statusBox,.officeStatusBox.closed{
+  border-radius:18px!important;
+}
+
+/* Administración en PC: layout más ejecutivo y cómodo */
+@media (min-width:981px){
+  .officeLayout{max-width:1280px!important;margin:0 auto!important;gap:18px!important;}
+  .officeCard{border-radius:22px!important;padding:20px!important;margin-bottom:16px!important;}
+  .officeKpi{border-radius:17px!important;padding:14px!important;}
+  .officeKpi b{font-size:24px!important;}
+  .officeTable th{font-size:11px!important;padding:11px 12px!important;}
+  .officeTable td{padding:11px 12px!important;}
+}
+
+/* Mobile: evita botones enormes, conserva usabilidad a bordo */
+@media (max-width:560px){
+  button,.btn,.qrBtn,.qrMainBtn{min-height:41px!important;border-radius:13px!important;}
+  .captainActions{gap:8px!important;}
+  .captainActions .mini,.premiumPerson button.mini{min-height:38px!important;font-size:13.5px!important;}
+  .premiumPerson{padding:12px!important;margin:8px 0!important;}
+}
