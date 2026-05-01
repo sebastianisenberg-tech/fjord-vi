@@ -2020,3 +2020,155 @@ button.neutralBtn,.mini.neutralBtn,.btn.light,.pill.neutral{
   .captainActions .mini,.premiumPerson button.mini{min-height:38px!important;font-size:13.5px!important;}
   .premiumPerson{padding:12px!important;margin:8px 0!important;}
 }
+
+/* v38.3.0 · DENSIDAD PREMIUM
+   Ajuste visual únicamente: barras más finas, menor peso vertical y más elegancia.
+   No modifica rutas, backend ni lógica operativa. */
+:root{
+  --premium-shadow-thin:0 6px 14px rgba(8,31,52,.075);
+  --premium-shadow-tap:0 3px 8px rgba(8,31,52,.14), inset 0 2px 5px rgba(0,0,0,.10);
+}
+
+/* Regla general: menos relleno interno, mismo aire externo */
+.wrap{padding-top:10px!important;}
+.card,.premiumCard,.officeCard,.desktopCard,.adminHeaderPanel{
+  padding:12px 14px!important;
+  margin-top:9px!important;
+  margin-bottom:9px!important;
+  border-radius:17px!important;
+  box-shadow:var(--premium-shadow-thin)!important;
+}
+.cardTitle{margin-bottom:8px!important;}
+.cardTitle h2,.card h2{font-size:17px!important;line-height:1.15!important;}
+.card p{font-size:13px!important;line-height:1.35!important;}
+
+/* Barras superiores: institucionales, más delgadas */
+.top,.officeTop,.premiumTop{
+  min-height:52px!important;
+  padding:8px 14px!important;
+  box-shadow:0 6px 16px rgba(8,31,52,.13)!important;
+}
+.top b,.officeTop b,.premiumTop b{font-size:13px!important;line-height:1.15!important;}
+.top small,.officeTop small,.premiumTop small{font-size:11px!important;line-height:1.15!important;}
+.logoutBtn,.top a,.officeTop a{
+  min-height:32px!important;
+  padding:6px 13px!important;
+  border-radius:999px!important;
+}
+
+/* Botones: mantienen tactilidad, pero más finos */
+button,.btn,.qrBtn,.qrMainBtn,
+.officeSelector button,.officeForm button,.officeRestore button,.officeUserActions button{
+  min-height:39px!important;
+  padding:8px 14px!important;
+  border-radius:13px!important;
+  font-size:13.5px!important;
+  box-shadow:0 6px 13px rgba(8,31,52,.12), inset 0 1px 0 rgba(255,255,255,.16)!important;
+}
+button:active,.btn:active,.qrBtn:active,.qrMainBtn:active,
+.officeSelector button:active,.officeForm button:active,.officeRestore button:active,.officeUserActions button:active{
+  transform:translateY(1px) scale(.99)!important;
+  box-shadow:var(--premium-shadow-tap)!important;
+}
+button.mini,.mini,.captainActions .mini,.premiumPerson button.mini{
+  min-height:34px!important;
+  padding:7px 10px!important;
+  border-radius:12px!important;
+  font-size:13px!important;
+}
+
+/* Paneles de estado y barras horizontales: menor altura, mayor precisión */
+.statusPanel,.notice,.toast,.alert,.officeStatusLine,.cancelBanner{
+  padding:9px 12px!important;
+  margin-top:8px!important;
+  margin-bottom:8px!important;
+  border-radius:14px!important;
+  gap:2px!important;
+}
+.statusPanel b,.officeStatusLine b{font-size:14px!important;line-height:1.2!important;}
+.statusPanel span,.officeStatusLine span,.notice span{font-size:12px!important;line-height:1.25!important;}
+.statusPill,.pill,.officePill,.officeMini{
+  min-height:23px!important;
+  padding:4px 8px!important;
+  font-size:11px!important;
+}
+
+/* KPIs: más ejecutivos y menos bloqueados */
+.stats,.kpiStrip,.adminKpis,.officeKpiGrid,.actaCounters{
+  gap:7px!important;
+  margin-top:8px!important;
+  margin-bottom:8px!important;
+}
+.stats>div,.kpiStrip>div,.adminKpis>div,.officeKpi,.actaCounters>div,.miniPanel{
+  padding:8px 10px!important;
+  border-radius:14px!important;
+  box-shadow:var(--premium-shadow-thin)!important;
+}
+.stats small,.kpiStrip small,.adminKpis small,.officeKpi span,.actaCounters span{
+  font-size:9.8px!important;
+  line-height:1.15!important;
+  letter-spacing:.42px!important;
+}
+.stats b,.kpiStrip b,.adminKpis b,.officeKpi b,.actaCounters b,.miniPanel b{
+  font-size:20px!important;
+  line-height:1.05!important;
+  margin-top:3px!important;
+}
+
+/* Listas y personas: tarjetas más finas, sin perder toque táctil */
+.premiumPerson,.crewRow,#tripulacion .row,.manifestCard,.selectRow,.officeList .officeOutingRow,.officeUser{
+  padding:10px 12px!important;
+  margin:6px 0!important;
+  border-radius:15px!important;
+  box-shadow:0 4px 10px rgba(8,31,52,.045)!important;
+}
+.personMain b,.crewMain b,#tripulacion .row b,.selectRow b{font-size:14px!important;line-height:1.15!important;}
+.personState,.statusText{font-size:12px!important;margin-top:4px!important;}
+.personState small,.crewMain small,#tripulacion .row small,.selectRow small{font-size:11px!important;line-height:1.2!important;}
+.captainActions,.actions{gap:6px!important;}
+
+/* Formularios: más compactos, estilo app premium */
+input,.input,select,.officeForm input,.officeForm select,.officeSelector select{
+  min-height:39px!important;
+  padding:8px 11px!important;
+  border-radius:12px!important;
+  font-size:13.5px!important;
+}
+.gridForm,.premiumForm,.officeForm{gap:8px!important;}
+.premiumForm{margin-top:9px!important;padding-top:9px!important;}
+
+/* Admin PC: menos grosor, más lectura de oficina */
+.officeLayout{gap:14px!important;padding:14px!important;}
+.officeSidebar{padding:11px!important;border-radius:18px!important;}
+.officeSidebar a{padding:8px 10px!important;border-radius:11px!important;font-size:12.5px!important;}
+.officeBrand,.brandBlock{padding:10px!important;border-radius:13px!important;margin-bottom:7px!important;}
+.officeHero{gap:16px!important;border-top-width:3px!important;}
+.officeHero h1{font-size:29px!important;margin:5px 0 7px!important;}
+.officeSectionHead{margin-bottom:10px!important;gap:10px!important;}
+.officeSectionHead h2{font-size:21px!important;}
+.officeStatusBox{padding:11px!important;border-radius:14px!important;min-height:74px!important;}
+.officeStatusBox b{font-size:19px!important;}
+.officeTable th{padding:9px 10px!important;font-size:10.5px!important;}
+.officeTable td{padding:9px 10px!important;font-size:13px!important;}
+
+/* Navegación inferior: más fina, iOS-like */
+.bottom{
+  left:7px!important;right:7px!important;bottom:7px!important;
+  padding:5px!important;
+  border-radius:15px!important;
+  box-shadow:0 8px 22px rgba(8,31,52,.13)!important;
+}
+.bottom a{padding:7px 4px!important;border-radius:10px!important;font-size:10.5px!important;}
+
+/* Mobile: conservar legibilidad pero quitar volumen visual */
+@media (max-width:560px){
+  .wrap{padding:9px 8px 22px!important;}
+  .card,.premiumCard,.premiumHero,.statusPanel{border-radius:16px!important;}
+  .premiumHero{padding:13px!important;margin:9px 0!important;gap:9px!important;}
+  .premiumHero h1{font-size:22px!important;}
+  .premiumHero h2{font-size:18px!important;}
+  .kpiStrip>div,.stats>div{padding:8px!important;}
+  button,.btn,.qrBtn,.qrMainBtn{min-height:38px!important;}
+  .captainActions .mini,.premiumPerson button.mini{min-height:34px!important;font-size:12.8px!important;}
+  .appFooter{padding-top:12px!important;}
+}
