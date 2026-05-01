@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v46.0"
-APP_BUILD = "ui-final-v46"
+VERSION = "v46.2"
+APP_BUILD = "v46-2-funcional-templates"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -143,8 +143,8 @@ if not STATIC_DIR.exists():
     STATIC_DIR = APP_DIR
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Proyecto PLANO: los HTML viven en la raíz del proyecto.
-# No usar carpeta /templates para evitar mezclas y errores TemplateNotFound en deploy manual.
+# Estructura estándar: HTML en /templates y estáticos en /static.
+# Fallback defensivo a raíz para compatibilidad con versiones planas anteriores.
 class SafeTemplates:
     def __init__(self, directory):
         self.directory = str(directory)
@@ -207,7 +207,10 @@ class SafeTemplates:
 </html>'''
             return HTMLResponse(html, status_code=200)
 
-templates = SafeTemplates(APP_DIR)
+TEMPLATES_DIR = APP_DIR / "templates"
+if not TEMPLATES_DIR.exists():
+    TEMPLATES_DIR = APP_DIR
+templates = SafeTemplates(TEMPLATES_DIR)
 templates.env.globals.update({
     "version": VERSION,
     "app_build": APP_BUILD,
