@@ -102,8 +102,8 @@
       {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
       <section class="officeKpiGrid">
         <div class="officeKpi"><span>Reservas totales</span><b>{{total_registros}}</b><small>Incluye activas, espera y bajas</small></div>
-        <div class="officeKpi"><span>Activos embarcables</span><b>{{active_count}} / {{outing.max_crew}}</b><small>Cupo vigente de la salida</small></div>
-        <div class="officeKpi"><span>Embarcados</span><b>{{acta.embarked_count}}</b><small>Marcados presentes / cierre</small></div>
+        <div class="officeKpi"><span>Confirmados</span><b>{{active_count}} / {{outing.max_crew}}</b><small>Cupo vigente de la salida</small></div>
+        <div class="officeKpi"><span>Check-in a bordo</span><b>{{acta.embarked_count}} / {{active_count}}</b><small>Marcados presentes por capitán</small></div>
         <div class="officeKpi"><span>No embarcados</span><b>{{acta.not_embarked_count}}</b><small>Ausentes, bajas o no embarca</small></div>
         <div class="officeKpi"><span>Lista de espera</span><b>{{waitlist_count}}</b><small>No integran cupo embarcable</small></div>
         <div class="officeKpi money"><span>Cargos firmes</span><b>$ {{charge_summary.total_label}}</b><small>Para administración / contable</small></div>
@@ -155,7 +155,7 @@
             <a class="officeMini" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a>
           </div>
           <div class="officeActaGrid">
-            <div><span>Embarcados</span><b>{{acta.embarked_count}}</b></div>
+            <div><span>Check-in a bordo</span><b>{{acta.embarked_count}}</b></div>
             <div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div>
             <div><span>Pendientes</span><b>{{acta.pending_count if not outing_cancelled and not closed else 0}}</b></div>
             <div><span>Total cargos</span><b>$ {{acta.total_label}}</b></div>

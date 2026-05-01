@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, date
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import csv
 import hashlib
@@ -40,11 +41,16 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v38.1.0"
-APP_BUILD = "plano-static-fix-limpio-sin-duplicados-v38.1"
+VERSION = "v38.2.0"
+APP_BUILD = "premium-ui-hora-local-v38.2"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
+
+APP_TZ = ZoneInfo(os.getenv("APP_TZ", "America/Argentina/Buenos_Aires"))
+
+def now_local() -> datetime:
+    return datetime.now(APP_TZ).replace(tzinfo=None)
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -73,7 +79,7 @@ class Outing(Base):
     min_crew = Column(Integer, default=MIN_CREW)
     guest_fee = Column(Numeric(12,2), default=INVITED_FEE)
     notes = Column(Text, default="")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_local)
 
 class Reservation(Base):
     __tablename__ = "reservations"
@@ -88,14 +94,14 @@ class Reservation(Base):
     charge_amount = Column(Numeric(12,2), default=0)
     cancel_reason = Column(String, default="")
     birth_date = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_local)
     cancelled_at = Column(DateTime, nullable=True)
     __table_args__ = (UniqueConstraint("outing_id", "dni", name="uq_outing_dni"),)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_local)
     actor = Column(String, nullable=False)
     action = Column(String, nullable=False)
     detail = Column(Text, default="")
@@ -357,7 +363,7 @@ def export_state(db: Session) -> dict:
     return {
         "version": VERSION,
         "build": APP_BUILD,
-        "exported_at": datetime.utcnow().isoformat(),
+        "exported_at": now_local().isoformat(),
         "users": [
             {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no,
              "email": u.email or "", "phone": u.phone or "", "role": u.role,
@@ -406,10 +412,10 @@ def import_state(db: Session, data: dict):
     db.commit()
     for o in data.get("outings", []):
         db.add(Outing(id=o.get("id"), title=o.get("title") or "Salida", destination=o.get("destination") or "",
-                      departure_at=str_to_dt(o.get("departure_at")) or datetime.utcnow(), status=o.get("status") or "En reservas",
+                      departure_at=str_to_dt(o.get("departure_at")) or now_local(), status=o.get("status") or "En reservas",
                       max_crew=int(o.get("max_crew") or MAX_CREW), min_crew=int(o.get("min_crew") or MIN_CREW),
                       guest_fee=float(o.get("guest_fee") or INVITED_FEE), notes=o.get("notes") or "",
-                      created_at=str_to_dt(o.get("created_at")) or datetime.utcnow()))
+                      created_at=str_to_dt(o.get("created_at")) or now_local()))
     db.commit()
     for r in data.get("reservations", []):
         db.add(Reservation(id=r.get("id"), outing_id=r.get("outing_id"), person_name=r.get("person_name") or "",
@@ -417,11 +423,11 @@ def import_state(db: Session, data: dict):
                            responsible_user_id=r.get("responsible_user_id"), status=r.get("status") or "Confirmado",
                            attendance=r.get("attendance") or "Por confirmar", charge_amount=float(r.get("charge_amount") or 0),
                            cancel_reason=r.get("cancel_reason") or "", birth_date=r.get("birth_date") or None,
-                           created_at=str_to_dt(r.get("created_at")) or datetime.utcnow(),
+                           created_at=str_to_dt(r.get("created_at")) or now_local(),
                            cancelled_at=str_to_dt(r.get("cancelled_at"))))
     db.commit()
     for l in data.get("audit_logs", []):
-        db.add(AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or datetime.utcnow(),
+        db.add(AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or now_local(),
                         actor=l.get("actor") or "sistema", action=l.get("action") or "import", detail=l.get("detail") or ""))
     db.commit()
     persist_json(db)
@@ -659,9 +665,9 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
         # Antes del corte, socios primero. Después del corte, no hay desplazamiento por
         # prioridad: se respeta el orden cronológico de lista de espera ante una vacante real.
         if cutoff_passed(outing):
-            waiting.sort(key=lambda r: (r.created_at or datetime.utcnow(), r.id or 0))
+            waiting.sort(key=lambda r: (r.created_at or now_local(), r.id or 0))
         else:
-            waiting.sort(key=lambda r: (0 if canonical_kind(r.kind) == "socio" else 1, r.created_at or datetime.utcnow(), r.id or 0))
+            waiting.sort(key=lambda r: (0 if canonical_kind(r.kind) == "socio" else 1, r.created_at or now_local(), r.id or 0))
         chosen = None
         for r in waiting:
             k = canonical_kind(r.kind)
@@ -737,10 +743,10 @@ def cancellation_deadline(outing: Outing) -> datetime:
     return cutoff_at(outing)
 
 def cutoff_passed(outing: Outing) -> bool:
-    return datetime.utcnow() >= cutoff_at(outing)
+    return now_local() >= cutoff_at(outing)
 
 def late_window_passed(outing: Outing) -> bool:
-    return datetime.utcnow() >= cancellation_deadline(outing)
+    return now_local() >= cancellation_deadline(outing)
 
 def reservation_charge(outing: Outing, r: Reservation) -> float:
     """Cargo reglamentario por plaza perdida.
@@ -779,7 +785,7 @@ def captain_control_window(outing: Outing) -> dict:
     """
     if not outing:
         return {"can_edit": False, "can_close": False, "before_departure": False, "expired": True, "label": "Sin salida", "detail": "No hay salida seleccionada."}
-    now = datetime.utcnow()
+    now = now_local()
     start = outing.departure_at
     end = outing.departure_at + timedelta(hours=48)
     before = now < start
@@ -1191,7 +1197,7 @@ def seed():
             db.commit()
 
         if db.query(Outing).count() == 0:
-            dep = datetime.utcnow().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
+            dep = now_local().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
             o = Outing(
                 title="Paseo de domingo",
                 destination="Dársena Norte / Río de la Plata",
@@ -1532,7 +1538,7 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
 
-    now = datetime.utcnow()
+    now = now_local()
     was_waitlisted = is_waitlisted(r)
     r.cancelled_at = now
     r.status = "Cancelado"
@@ -1940,7 +1946,7 @@ def admin_qr(request: Request, outing_id: Optional[int] = None, db: Session = De
 # QR FIJO DEL BARCO / EMBARQUE DEL DIA
 # =========================
 def public_today_outings(db: Session):
-    today = datetime.utcnow().date()
+    today = now_local().date()
     blocked = {"Embarque cerrado", "Cancelada por capitán", "Realizada"}
     rows = [o for o in db.query(Outing).all() if o.departure_at.date() == today and o.status not in blocked]
     rows.sort(key=lambda o: o.departure_at)
@@ -2393,7 +2399,7 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
         if v["charge"] <= 0:
             continue
         writer.writerow([
-            r.outing_id, row_outing.title, datetime.utcnow().date(), r.person_name, r.dni,
+            r.outing_id, row_outing.title, now_local().date(), r.person_name, r.dni,
             v["tipo_label"], v["estado_fisico"], v["estado_reglamentario"], v["charge"], v["motivo"]
         ])
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
@@ -2444,7 +2450,7 @@ def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_r
     db.query(Outing).delete()
     db.commit()
 
-    dep = datetime.utcnow().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
+    dep = now_local().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
     o = Outing(
         title="Paseo de domingo",
         destination="Dársena Norte / Río de la Plata",

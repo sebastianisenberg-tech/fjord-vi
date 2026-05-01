@@ -1,3 +1,11 @@
+# v38.2.0
+
+- Ajuste premium de interfaz: botones más delicados, menos pesados y con estados semánticos.
+- Capitán: Presente verde, No embarca rojo, Reactivar ámbar.
+- Administración: etiquetas más claras: Confirmados y Check-in a bordo.
+- Hora operativa local fija para Argentina/Uruguay mediante APP_TZ, por defecto America/Argentina/Buenos_Aires.
+- No se modificó la arquitectura ni la lógica principal de reservas/lista de espera.
+
 # v38.1.0
 
 - Limpieza de ZIP: elimina copias duplicadas de CSS e imágenes en raíz.
