@@ -1,5 +1,10 @@
-Fjord VI v46.6 Admin Agenda
-- Admin carga solo nombre, fecha y hora de salidas de paseo.
-- Fecha visible con dia de semana.
-- Hora sugerida 11:00.
-- Mantiene intacta la logica de Capitan, QR, asistencia, cierre, cargos y 48h.
+# FJORD VI v46.7 ADMIN DESKTOP BACKOFFICE
+
+Backoffice de Administración orientado a PC/escritorio. Conserva motor lógico, Capitán, QR, cierre, cargos y reglas existentes.
+
+Cambios principales:
+- título Administración restaurado;
+- estructura visual de escritorio;
+- agenda y usuarios como entradas principales;
+- estado operativo protegido: Admin no cierra ni cancela desde UI;
+- mejor organización para lectura, liquidación, reservas, auditoría y exportación.
