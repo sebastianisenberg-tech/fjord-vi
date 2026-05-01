@@ -27,3 +27,8 @@
 - Corrige `admin.html` con `g["items"]`.
 - Agrega recursos estáticos en `/static`.
 - Mantiene proyecto plano.
+
+## v38.6.0 - Header fijo de app
+- Recupera la barra superior fija en socio, capitán y administración.
+- El contenido vuelve a deslizar por debajo del header, manteniendo identidad y salida siempre visibles.
+- No modifica backend, rutas ni lógica de reservas.
