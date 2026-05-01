@@ -1,4 +1,4 @@
-# YCA · Fjord VI · Embarque · v41.0
+# YCA · Fjord VI · Embarque · v42.0
 
 Versión de pulido visual sobre v40.1.
 

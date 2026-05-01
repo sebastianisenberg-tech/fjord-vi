@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
       <h2>{{outing.title}}</h2>
       <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
     </div>
-    {% if outing_cancelled %}<span class="miEmbState stateNeutral">Cancelada</span>
+    {% if outing_cancelled %}<span class="miEmbState stateBad">Cancelada</span>
     {% elif self_view and self_view.waitlisted %}<span class="miEmbState stateWait">En espera</span>
     {% elif has_self %}<span class="miEmbState stateOk">Activo</span>
     {% elif self_reservation %}<span class="miEmbState stateBad">Cancelado</span>
@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   {% for o in outings %}
     <a class="selectRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
       <div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}}</small></div>
-      <span class="pill {% if o.status == 'Cancelada por capitán' %}neutral{% elif o.status == 'Embarque cerrado' %}ok{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
+      <span class="pill {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
     </a>
   {% endfor %}
   </div>
@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   <div class="outingIdentity">
     <h2>{{outing.title}}</h2>
     <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
-    <span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}ok{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada por capitán{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span>
+    <span class="statusPill {% if outing_cancelled %}bad{% elif closed %}neutral{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada por capitán{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span>
   </div>
 </section>
 
@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
 </section>
 
 <section class="card premiumCard focusCard" id="reserva">
-  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if outing_cancelled %}<span class="pill neutral">Pausada</span>{% elif self_view and self_view.waitlisted %}<span class="pill neutral">Lista de espera</span>{% elif has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
+  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar</h2></div>{% if outing_cancelled %}<span class="pill bad">Pausada</span>{% elif self_view and self_view.waitlisted %}<span class="pill neutral">Lista de espera</span>{% elif has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
   {% if self_reservation %}
     {% set v = reservation_views.get(self_reservation.id) %}
     <div class="premiumPerson reservationCard {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %}">

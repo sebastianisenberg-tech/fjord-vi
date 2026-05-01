@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v41-0-socios-ui-polish
+    name: fjord-vi-v42-0-socios-final-polish
     env: docker
     plan: free
     autoDeploy: true
