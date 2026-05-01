@@ -3706,3 +3706,106 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .socioApp .rulesCardV41{border-radius:21px!important;margin-top:10px!important;}.socioApp .rulesCardV41 summary{min-height:48px!important;font-size:15px!important;color:var(--v42-blue)!important;background:#f5fafd!important;}.socioApp .rulesGridV41{gap:9px!important;padding:12px 13px 14px!important;background:#fff!important;}.socioApp .rulesGridV41>div{border-radius:15px!important;background:#f8fbfd!important;border-color:#dfeaf2!important;padding:10px 11px!important;}.socioApp .rulesGridV41 b{font-size:12.8px!important;color:var(--v42-ink)!important;}.socioApp .rulesGridV41 span{font-size:12.4px!important;color:#526477!important;}
 .socioApp .bottom{height:54px!important;left:10px!important;right:10px!important;bottom:10px!important;padding:5px!important;border-radius:22px!important;background:rgba(255,255,255,.92)!important;border:1px solid rgba(11,79,120,.12)!important;box-shadow:0 8px 24px rgba(12,35,54,.12)!important;}.socioApp .bottom a{height:42px!important;border-radius:17px!important;font-size:11.2px!important;color:#607184!important;}.socioApp .bottom a.on{background:#dff0fb!important;color:var(--v42-blue)!important;box-shadow:inset 0 0 0 1px rgba(11,79,120,.07)!important;}.socioApp .appFooter.socioFooter{margin-bottom:74px!important;}
 @media(max-width:560px){.socioApp .socioWrap{padding-left:9px!important;padding-right:9px!important;padding-bottom:82px!important;}.socioApp .miEmbarqueCard,.socioApp .card,.socioApp .premiumCard,.socioApp .premiumHero,.socioApp .statusPanel{border-radius:20px!important;}.socioApp .miEmbTop h2{font-size:21px!important;}.socioApp .miEmbGrid{gap:7px!important;}.socioApp .miEmbGrid>div{padding:9px 8px!important;}.socioApp .miEmbGrid b{font-size:14.2px!important;}.socioApp .premiumPerson{grid-template-columns:1fr!important;}.socioApp .personAction{justify-self:start!important;}.socioApp .rulesGridV41 b{font-size:12.4px!important;}.socioApp .rulesGridV41 span{font-size:12.2px!important;}}
+
+
+/* =========================
+   v43.0 - Admin profesional + capitán escalable
+   Objetivo: escritorio para oficina, listas controlables, filtros,
+   menor scroll infinito y zonas compactas sin tocar lógica backend.
+========================= */
+:root{--v43-navy:#073b5c;--v43-blue:#0b5f8f;--v43-blue2:#1684bd;--v43-ink:#102033;--v43-muted:#5d7082;--v43-line:#dce8f1;--v43-bg:#eef6fb;--v43-card:#ffffff;--v43-green:#147a4b;--v43-red:#a9342e;--v43-amber:#8a5b13;}
+
+/* ADMIN DESKTOP */
+.officeApp{background:linear-gradient(180deg,#eaf4fa 0%,#f4f8fb 100%)!important;min-height:100vh!important;color:var(--v43-ink)!important;}
+.officeTop{position:sticky!important;top:0!important;z-index:50!important;height:64px!important;padding:10px 22px!important;background:linear-gradient(135deg,#073b5c 0%,#0b5f8f 100%)!important;box-shadow:0 6px 20px rgba(7,59,92,.22)!important;}
+.officeTop .headerBrand b{font-size:17px!important;letter-spacing:-.02em!important;color:white!important;}.officeTop .headerBrand small{font-size:12px!important;color:rgba(255,255,255,.76)!important;}.officeTop .logoutBtn{background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.28)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)!important;}
+.officeLayout{display:grid!important;grid-template-columns:220px minmax(0,1fr)!important;gap:18px!important;max-width:1480px!important;margin:0 auto!important;padding:18px!important;align-items:start!important;}
+.officeSidebar{position:sticky!important;top:82px!important;align-self:start!important;background:rgba(255,255,255,.86)!important;border:1px solid var(--v43-line)!important;border-radius:20px!important;padding:12px!important;box-shadow:0 10px 26px rgba(12,35,54,.08)!important;max-height:calc(100vh - 100px)!important;overflow:auto!important;}
+.officeSidebar a{display:block!important;padding:10px 11px!important;border-radius:13px!important;color:#27536d!important;text-decoration:none!important;font-weight:800!important;font-size:13px!important;}.officeSidebar a:hover{background:#e7f4fc!important;color:var(--v43-blue)!important;}
+.officeBrand{padding:6px 8px 12px!important;margin-bottom:6px!important;border-bottom:1px solid var(--v43-line)!important;}.officeBrand b{display:block!important;color:var(--v43-ink)!important;}.officeBrand span{display:block!important;color:var(--v43-muted)!important;font-size:12px!important;}
+.officeMain{min-width:0!important;display:grid!important;gap:14px!important;}
+.officeCard{border:1px solid var(--v43-line)!important;border-radius:20px!important;background:rgba(255,255,255,.94)!important;box-shadow:0 9px 24px rgba(12,35,54,.065)!important;padding:16px!important;overflow:hidden!important;}
+.officeHero{display:grid!important;grid-template-columns:minmax(0,1fr) 300px!important;align-items:center!important;gap:16px!important;min-height:0!important;padding:18px!important;background:linear-gradient(180deg,#ffffff 0%,#f7fbfe 100%)!important;}
+.officeHeroText h1{font-size:28px!important;line-height:1.05!important;margin:4px 0!important;letter-spacing:-.04em!important;color:var(--v43-ink)!important;}.officeHeroText p{margin:4px 0!important;color:var(--v43-muted)!important;}
+.officeStatusBox{min-height:92px!important;padding:18px!important;border-radius:18px!important;}
+.officeStatusBox b{font-size:26px!important;}
+.officeKpiGrid{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important;}.officeKpi{background:#fff!important;border:1px solid var(--v43-line)!important;border-radius:16px!important;padding:12px!important;min-height:84px!important;box-shadow:0 5px 14px rgba(12,35,54,.045)!important;}.officeKpi span{display:block!important;text-transform:uppercase!important;font-size:10.5px!important;letter-spacing:.12em!important;color:#6e8293!important;font-weight:950!important;}.officeKpi b{display:block!important;font-size:24px!important;color:var(--v43-ink)!important;margin-top:4px!important;}.officeKpi small{font-size:11.5px!important;color:var(--v43-muted)!important;}
+.officeTwoCols{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important;}
+.officeSectionHead{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-bottom:12px!important;}.officeSectionHead h2{font-size:20px!important;line-height:1.1!important;margin:2px 0 0!important;letter-spacing:-.035em!important;color:var(--v43-ink)!important;}.officeEyebrow{font-size:11px!important;letter-spacing:.14em!important;text-transform:uppercase!important;color:#7890a2!important;font-weight:950!important;}
+.officeSelector,.officeForm{display:grid!important;grid-template-columns:1fr auto auto!important;gap:9px!important;align-items:center!important;}.officeSelector select,.officeForm input,.officeForm select,.officeRestore input{min-height:42px!important;border-radius:13px!important;border:1px solid var(--v43-line)!important;background:#fff!important;color:var(--v43-ink)!important;padding:0 12px!important;}.officeSelector button,.officeForm button,.officeRestore button,.officeMini{min-height:40px!important;border-radius:13px!important;background:linear-gradient(180deg,#197db3 0%,#0b5c88 100%)!important;color:#fff!important;border:0!important;padding:0 14px!important;font-weight:900!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+.officeControlBarV43,.officeToolbarV43{display:flex!important;flex-wrap:wrap!important;gap:8px!important;align-items:center!important;background:#f3f8fc!important;border:1px solid var(--v43-line)!important;border-radius:16px!important;padding:9px!important;margin-bottom:12px!important;}.officeControlBarV43 a,.officeToolbarV43 button{border:1px solid var(--v43-line)!important;background:#fff!important;color:#27536d!important;border-radius:999px!important;min-height:34px!important;padding:0 12px!important;font-weight:900!important;text-decoration:none!important;}.officeToolbarV43 input,.officeToolbarV43 select{min-height:36px!important;border-radius:999px!important;border:1px solid var(--v43-line)!important;padding:0 12px!important;background:#fff!important;min-width:220px!important;color:var(--v43-ink)!important;}
+.officeTableWrap{max-height:520px!important;overflow:auto!important;border:1px solid var(--v43-line)!important;border-radius:16px!important;background:#fff!important;}.officeTable{width:100%!important;border-collapse:separate!important;border-spacing:0!important;font-size:13px!important;}.officeTable thead th{position:sticky!important;top:0!important;z-index:3!important;background:#eaf4fa!important;color:#36576b!important;text-align:left!important;padding:10px!important;border-bottom:1px solid var(--v43-line)!important;white-space:nowrap!important;}.officeTable td{padding:10px!important;border-bottom:1px solid #eef3f7!important;vertical-align:top!important;}.officeTable tr:hover td{background:#f7fbfe!important;}.officeTable td small{display:block!important;color:var(--v43-muted)!important;margin-top:2px!important;}.officeTable .chargeRow td{background:#fff8f7!important;}.officeTable .waitRow td{background:#fffaf0!important;}.officeTable .mutedRow td{color:#758797!important;background:#f8fafc!important;}
+.officeList{max-height:430px!important;overflow:auto!important;}.officeOutingRow{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:center!important;border:1px solid var(--v43-line)!important;border-radius:14px!important;background:#fff!important;padding:10px 12px!important;margin:7px 0!important;text-decoration:none!important;color:var(--v43-ink)!important;}.officeOutingRow.selected{border-left:4px solid var(--v43-blue)!important;background:#f2f9fd!important;}.officeOutingRow small{display:block!important;color:var(--v43-muted)!important;}
+.officeUserGrid{display:grid!important;gap:8px!important;max-height:540px!important;overflow:auto!important;border:1px solid var(--v43-line)!important;border-radius:16px!important;padding:8px!important;background:#f8fbfd!important;}.officeUser{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:start!important;background:#fff!important;border:1px solid var(--v43-line)!important;border-radius:14px!important;padding:10px!important;}.officeUser.disabled{opacity:.62!important;}.officeUserSummary b{font-size:14px!important;color:var(--v43-ink)!important;}.officeUserSummary small{display:block!important;color:var(--v43-muted)!important;font-size:12px!important;}.officeUserActions{display:flex!important;gap:6px!important;}.officeUserActions button,.officeEditForm button{border:0!important;border-radius:11px!important;min-height:34px!important;padding:0 10px!important;background:#e7f4fc!important;color:var(--v43-blue)!important;font-weight:900!important;}.officeEditUser summary{margin-top:7px!important;cursor:pointer!important;color:var(--v43-blue)!important;font-weight:900!important;}.officeEditForm{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr)) auto!important;gap:7px!important;margin-top:8px!important;}.officeEditForm input,.officeEditForm select{min-height:36px!important;border-radius:11px!important;border:1px solid var(--v43-line)!important;padding:0 10px!important;}
+.officeLog{border:1px solid var(--v43-line)!important;background:#fff!important;border-radius:12px!important;padding:8px 10px!important;margin:6px 0!important;}.officeLog small{display:block!important;color:var(--v43-muted)!important;}
+.adminDesktopHintV43{font-size:12px!important;color:var(--v43-muted)!important;margin:-4px 0 8px!important;}.is-hidden-v43{display:none!important;}
+
+/* CAPITAN ESCALABLE */
+.captainApp .kpiStrip{position:sticky!important;top:66px!important;z-index:25!important;background:rgba(238,246,251,.92)!important;backdrop-filter:blur(10px)!important;padding:8px 10px!important;margin-left:-4px!important;margin-right:-4px!important;border-radius:0 0 18px 18px!important;box-shadow:0 6px 16px rgba(12,35,54,.08)!important;}.captainApp .kpiStrip div{min-height:54px!important;border-radius:15px!important;}.captainApp .kpiStrip small{font-size:10px!important;letter-spacing:.08em!important;}.captainApp .kpiStrip b{font-size:18px!important;}
+.captainFilterV43{display:flex!important;gap:7px!important;overflow:auto!important;padding:3px 0 10px!important;margin-top:-2px!important;}.captainFilterV43 button{flex:0 0 auto!important;border:1px solid var(--v43-line)!important;background:#fff!important;color:#31586e!important;border-radius:999px!important;min-height:34px!important;padding:0 12px!important;font-weight:950!important;box-shadow:0 4px 10px rgba(12,35,54,.04)!important;}.captainFilterV43 button.on{background:#dff0fb!important;color:var(--v43-blue)!important;border-color:#c7e4f5!important;}
+.captainApp #tripulacion .premiumPerson{border-radius:16px!important;padding:11px!important;margin:8px 0!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;}.captainApp #tripulacion .premiumPerson.socio{border-left:4px solid var(--v43-green)!important;}.captainApp #tripulacion .premiumPerson.invitado{border-left:4px solid var(--v43-blue)!important;}.captainApp #tripulacion .premiumPerson.waitlisted{border-left:4px solid #d79622!important;}.captainApp #tripulacion .premiumPerson.inactive,.captainApp #tripulacion .premiumPerson.bad{border-left:4px solid var(--v43-red)!important;}.captainApp .personMain>b{font-size:14px!important;letter-spacing:-.02em!important;}.captainApp .personState{font-size:12px!important;line-height:1.15!important;margin-top:6px!important;}.captainApp .captainActions{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;min-width:112px!important;}.captainApp .captainActions form{margin:0!important;}.captainApp .captainActions .mini{width:100%!important;min-height:32px!important;border-radius:10px!important;font-size:11px!important;padding:0 8px!important;}.captainApp .premiumCard{border-radius:19px!important;}.captainApp .premiumHero{border-radius:19px!important;}.captainApp .bottom{height:54px!important;}
+
+@media (max-width: 900px){
+  .officeLayout{grid-template-columns:1fr!important;padding:10px!important;}.officeSidebar{position:relative!important;top:auto!important;display:flex!important;gap:6px!important;overflow:auto!important;max-height:none!important;border-radius:16px!important;}.officeBrand{display:none!important;}.officeSidebar a{flex:0 0 auto!important;}.officeHero{grid-template-columns:1fr!important;}.officeKpiGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.officeTwoCols{grid-template-columns:1fr!important;}.officeSelector,.officeForm{grid-template-columns:1fr!important;}.officeEditForm{grid-template-columns:1fr!important;}.officeUser{grid-template-columns:1fr!important;}.officeTop{height:58px!important;padding:8px 10px!important;}.officeTop .headerBrand b{font-size:13px!important;}.officeToolbarV43 input,.officeToolbarV43 select{min-width:100%!important;}.officeTableWrap{max-height:430px!important;}
+}
+@media (max-width: 480px){.captainApp .captainActions{min-width:98px!important;}.captainApp #tripulacion .premiumPerson{grid-template-columns:minmax(0,1fr)!important;}.captainApp .captainActions{grid-template-columns:1fr 1fr!important;}.captainApp .captainActions form:nth-child(3){grid-column:1/-1!important;}}
+
+/* =========================
+   v44.0 - Admin con sidebar fijo / navigation rail
+   ========================= */
+.officeApp{
+  --v44-navy:#073b5c;
+  --v44-blue:#0b5f8f;
+  --v44-blue2:#197db3;
+  --v44-ink:#102033;
+  --v44-muted:#5d7082;
+  --v44-line:#dce8f1;
+  --v44-card:#ffffff;
+}
+.officeApp .officeTop{position:sticky!important;top:0!important;z-index:80!important;}
+@media (min-width:981px){
+  .officeApp .officeLayout{max-width:none!important;width:100%!important;margin:0!important;padding:14px 18px 80px 258px!important;display:block!important;box-sizing:border-box!important;}
+  .officeApp .officeMain{max-width:1280px!important;margin:0 auto!important;display:grid!important;gap:12px!important;}
+  .officeSidebarV44{position:fixed!important;left:16px!important;top:76px!important;bottom:18px!important;width:220px!important;max-height:none!important;overflow:auto!important;z-index:60!important;padding:13px!important;border-radius:22px!important;background:linear-gradient(180deg,#073b5c 0%,#0b5f8f 58%,#062b4b 100%)!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 18px 42px rgba(7,59,92,.28)!important;color:#fff!important;}
+  .officeBrandV44{padding:8px 9px 13px!important;margin:0 0 10px!important;border-bottom:1px solid rgba(255,255,255,.16)!important;}
+  .officeBrandV44 b{color:#fff!important;font-size:14px!important;line-height:1.15!important;}
+  .officeBrandV44 span{color:rgba(255,255,255,.74)!important;font-size:12px!important;}
+  .officeSideSectionV44{margin:13px 8px 6px!important;color:rgba(255,255,255,.56)!important;text-transform:uppercase!important;letter-spacing:.13em!important;font-weight:950!important;font-size:10px!important;}
+  .officeSidebarV44 a.officeSideLinkV44,.officeSidebarV44 a.officeSideActionV44{display:block!important;text-decoration:none!important;border-radius:14px!important;margin:4px 0!important;border:1px solid transparent!important;transition:background .16s ease,border-color .16s ease,transform .16s ease!important;}
+  .officeSidebarV44 a.officeSideLinkV44{padding:9px 10px!important;color:#eaf6ff!important;}
+  .officeSidebarV44 a.officeSideLinkV44 span{display:block!important;font-weight:950!important;font-size:13px!important;line-height:1.1!important;color:#fff!important;}
+  .officeSidebarV44 a.officeSideLinkV44 small{display:block!important;margin-top:3px!important;font-size:11px!important;line-height:1.1!important;color:rgba(255,255,255,.66)!important;}
+  .officeSidebarV44 a.officeSideLinkV44:hover,.officeSidebarV44 a.officeSideLinkV44.is-active{background:rgba(255,255,255,.14)!important;border-color:rgba(255,255,255,.20)!important;transform:translateX(2px)!important;}
+  .officeSidebarV44 a.officeSideLinkV44.is-active{box-shadow:inset 3px 0 0 #9bd8ff!important;}
+  .officeSidebarV44 a.officeSideActionV44{padding:8px 10px!important;min-height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:12px!important;font-weight:950!important;color:#073b5c!important;background:#ffffff!important;box-shadow:0 7px 18px rgba(0,0,0,.12)!important;}
+  .officeSidebarV44 a.officeSideActionV44:hover{background:#dff0fb!important;transform:translateY(-1px)!important;}
+  .officeSideFooterV44{margin-top:14px!important;padding:10px!important;border-radius:15px!important;background:rgba(255,255,255,.10)!important;color:rgba(255,255,255,.72)!important;font-size:11px!important;}
+  .officeSideFooterV44 span{display:block!important;font-weight:950!important;color:#fff!important;}
+  .officeSideFooterV44 b{display:block!important;margin-top:2px!important;color:rgba(255,255,255,.74)!important;}
+  .officeControlBarV43{position:sticky!important;top:66px!important;z-index:50!important;box-shadow:0 8px 22px rgba(12,35,54,.06)!important;}
+  html{scroll-behavior:smooth;}
+  .officeApp section[id]{scroll-margin-top:118px!important;}
+}
+@media (max-width:980px){.officeSidebarV44{display:none!important;}}
+
+/* =========================
+   v45.1 - auditoria preinstalacion
+   - Quitar presente separado de No embarca
+   - No embarca queda como decision operativa sin cargo
+   - Ausente/no-show queda separado para liquidacion
+========================= */
+.captainActions .absentBtn{
+  background:#b91c1c!important;
+  color:#fff!important;
+  border:1px solid rgba(127,29,29,.22)!important;
+}
+.captainActions .neutralBtn{
+  background:#eef2f7!important;
+  color:#334155!important;
+  border:1px solid #cbd5e1!important;
+}
+.captainActions .neutralBtn:hover,
+.captainActions .absentBtn:hover{filter:brightness(.98)}
+@media print{
+  img{break-inside:avoid;page-break-inside:avoid;}
+}

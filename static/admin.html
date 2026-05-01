@@ -34,22 +34,45 @@
   {% endif %}
 
   <main class="officeLayout">
-    <aside class="officeSidebar">
-      <div class="officeBrand">
+    <aside class="officeSidebar officeSidebarV44" aria-label="Navegación administrativa">
+      <div class="officeBrand officeBrandV44">
         <b>{{club_name}} · {{app_name}}</b>
-        <span>Panel administrativo</span>
+        <span>Administración de oficina</span>
       </div>
-      <a href="#salidas">Salidas</a>
-      <a href="#detalle">Detalle</a>
-      <a href="#liquidacion">Liquidación</a>
-      <a href="#reservas">Reservas</a>
-      <a href="#crear">Programar</a>
-      <a href="#usuarios">Usuarios</a>
-      <a href="/admin_qr{% if outing %}?outing_id={{outing.id}}{% endif %}">QR Check-in</a>
-      <a href="#sistema">Sistema</a>
+
+      <div class="officeSideSectionV44">Vista</div>
+      <a class="officeSideLinkV44" href="#detalle" data-spy-section="detalle"><span>Resumen</span><small>Salida actual</small></a>
+      <a class="officeSideLinkV44" href="#salidas" data-spy-section="salidas"><span>Salidas</span><small>Seleccionar / historial</small></a>
+      <a class="officeSideLinkV44" href="#liquidacion" data-spy-section="liquidacion"><span>Liquidación</span><small>Cargos y cierre</small></a>
+      <a class="officeSideLinkV44" href="#reservas" data-spy-section="reservas"><span>Reservas</span><small>Tabla operativa</small></a>
+      <a class="officeSideLinkV44" href="#usuarios" data-spy-section="usuarios"><span>Socios</span><small>Padrón / claves</small></a>
+      <a class="officeSideLinkV44" href="#logs" data-spy-section="logs"><span>Auditoría</span><small>Registro de acciones</small></a>
+
+      <div class="officeSideSectionV44">Acciones rápidas</div>
+      {% if outing %}
+      <a class="officeSideActionV44" href="/admin_qr?outing_id={{outing.id}}">QR check-in</a>
+      <a class="officeSideActionV44" href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a>
+      <a class="officeSideActionV44" href="/admin/charges.csv?outing_id={{outing.id}}">CSV cargos</a>
+      {% endif %}
+      <a class="officeSideActionV44" href="#crear">Programar salida</a>
+      <a class="officeSideActionV44" href="#sistema">Sistema</a>
+
+      <div class="officeSideFooterV44">
+        <span>v44.0</span>
+        <b>Sidebar fijo</b>
+      </div>
     </aside>
 
     <section class="officeMain">
+      <div class="officeControlBarV43">
+        <a href="#salidas">Salidas</a>
+        <a href="#reservas">Reservas</a>
+        <a href="#liquidacion">Liquidación</a>
+        <a href="#usuarios">Usuarios</a>
+        <a href="#logs">Auditoría</a>
+        {% if outing %}<a href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a><a href="/admin/charges.csv?outing_id={{outing.id}}">CSV cargos</a>{% endif %}
+      </div>
+      <p class="adminDesktopHintV43">Vista v44 optimizada para oficina: sidebar fijo, navegación por módulos, filtros y tablas con scroll interno para evitar pantallas interminables.</p>
       <section class="officeCard officeHero" id="detalle">
         <div class="officeHeroText">
           <span class="officeEyebrow">Salida seleccionada</span>
@@ -181,8 +204,18 @@
           <div><span class="officeEyebrow">Detalle administrativo</span><h2>Tabla de reservas</h2></div>
           <a class="officeMini" href="/admin/manifest.csv?outing_id={{outing.id}}">Exportar completo</a>
         </div>
+        <div class="officeToolbarV43" id="reservasToolbarV43">
+          <input id="reservaSearchV43" type="search" placeholder="Buscar por nombre, DNI, estado o responsable">
+          <select id="reservaEstadoV43">
+            <option value="all">Todos los estados</option>
+            <option value="chargeRow">Con cargo</option>
+            <option value="waitRow">Lista de espera</option>
+            <option value="mutedRow">Bajas / cancelados</option>
+          </select>
+          <button type="button" data-clear-v43="reservas">Limpiar</button>
+        </div>
         <div class="officeTableWrap">
-          <table class="officeTable">
+          <table class="officeTable" id="reservasTableV43">
             <thead>
               <tr><th>Nombre</th><th>DNI</th><th>Tipo</th><th>Estado administrativo</th><th>Situación física</th><th>Cargo</th></tr>
             </thead>
@@ -245,9 +278,20 @@
           <select name="role"><option value="socio">Socio</option><option value="captain">Capitán</option><option value="admin">Administrador</option></select>
           <button>Crear usuario</button>
         </form>
-        <div class="officeUserGrid">
+        <div class="officeToolbarV43" id="usuariosToolbarV43">
+          <input id="usuarioSearchV43" type="search" placeholder="Buscar usuario por nombre, documento, socio, email o teléfono">
+          <select id="usuarioRolV43">
+            <option value="all">Todos los roles</option>
+            <option value="socio">Socios</option>
+            <option value="captain">Capitanes</option>
+            <option value="admin">Administradores</option>
+            <option value="inactivo">Inactivos</option>
+          </select>
+          <button type="button" data-clear-v43="usuarios">Limpiar</button>
+        </div>
+        <div class="officeUserGrid" id="usuariosGridV43">
         {% for u in users %}
-          <div class="officeUser {% if not u.active %}disabled{% endif %}">
+          <div class="officeUser {% if not u.active %}disabled{% endif %}" data-role="{{u.role}}" data-active="{% if u.active %}activo{% else %}inactivo{% endif %}">
             <div class="officeUserSummary">
               <b>{{u.name}}</b>
               <small>Doc {{u.dni}}{% if u.member_no %} · Socio {{u.member_no}}{% endif %}{% if u.phone %} · Tel {{u.phone}}{% endif %}{% if u.email %} · {{u.email}}{% endif %} · {{u.role}} · {% if u.active %}activo{% else %}inactivo{% endif %}</small>
@@ -290,5 +334,54 @@
   </main>
   <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer>
 </div>
+
+<script>
+(function(){
+  function norm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+  const reservaSearch=document.getElementById('reservaSearchV43');
+  const reservaEstado=document.getElementById('reservaEstadoV43');
+  function filterReservas(){
+    const q=norm(reservaSearch && reservaSearch.value); const st=reservaEstado?reservaEstado.value:'all';
+    document.querySelectorAll('#reservasTableV43 tbody tr').forEach(tr=>{
+      const okText=!q || norm(tr.innerText).includes(q);
+      const okState=st==='all' || tr.classList.contains(st);
+      tr.classList.toggle('is-hidden-v43', !(okText && okState));
+    });
+  }
+  if(reservaSearch) reservaSearch.addEventListener('input',filterReservas);
+  if(reservaEstado) reservaEstado.addEventListener('change',filterReservas);
+  const usuarioSearch=document.getElementById('usuarioSearchV43');
+  const usuarioRol=document.getElementById('usuarioRolV43');
+  function filterUsuarios(){
+    const q=norm(usuarioSearch && usuarioSearch.value); const rol=usuarioRol?usuarioRol.value:'all';
+    document.querySelectorAll('#usuariosGridV43 .officeUser').forEach(card=>{
+      const okText=!q || norm(card.innerText).includes(q);
+      const okRol=rol==='all' || card.dataset.role===rol || card.dataset.active===rol;
+      card.classList.toggle('is-hidden-v43', !(okText && okRol));
+    });
+  }
+  if(usuarioSearch) usuarioSearch.addEventListener('input',filterUsuarios);
+  if(usuarioRol) usuarioRol.addEventListener('change',filterUsuarios);
+  document.querySelectorAll('[data-clear-v43]').forEach(btn=>btn.addEventListener('click',()=>{
+    if(btn.dataset.clearV43==='reservas'){ if(reservaSearch) reservaSearch.value=''; if(reservaEstado) reservaEstado.value='all'; filterReservas(); }
+    if(btn.dataset.clearV43==='usuarios'){ if(usuarioSearch) usuarioSearch.value=''; if(usuarioRol) usuarioRol.value='all'; filterUsuarios(); }
+  }));
+})();
+</script>
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll(".officeSideLinkV44[data-spy-section]"));
+  const sections = links.map(a => document.getElementById(a.dataset.spySection)).filter(Boolean);
+  function setActive(){
+    let current = sections[0] ? sections[0].id : null;
+    const fromTop = window.scrollY + 110;
+    for (const sec of sections){ if (sec.offsetTop <= fromTop) current = sec.id; }
+    links.forEach(a => a.classList.toggle("is-active", a.dataset.spySection === current));
+  }
+  window.addEventListener("scroll", setActive, {passive:true});
+  window.addEventListener("load", setActive);
+  setActive();
+})();
+</script>
 </body>
 </html>

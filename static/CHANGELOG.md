@@ -1,9 +1,9 @@
-# v42.0
+# Fjord VI v45.1
 
-Pulido final de estados, invitados, navegación inferior y legibilidad móvil.
+Auditoria preinstalacion sobre v45.0.
 
----
-
-# v41.0
-
-Pulido visual socios: header compacto, estados consistentes, boarding pass, reglas de cargos legibles.
+- Corrige cierre: los pendientes pasan a Ausente/no-show, no a Presente.
+- Agrega accion visual de capitan: Quitar presente.
+- Separa No embarca como decision operativa sin cargo.
+- Corrige impresion de QR fijo/general para evitar logo/escudo recortado.
+- Reafirma contraste de botones de asistencia en capitan.
