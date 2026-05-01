@@ -1,128 +1,17 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css">
-  <title>Administración · {{club_name}} · {{app_name}} · {{version}}</title>
+    <meta charset="UTF-8">
+    <title>Administración - Fjord VI</title>
+
+    <!-- FIX CLAVE -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
-<body class="adminV47Body">
-{% set selected_q = '&outing_id=' ~ outing.id if outing else '' %}
-<div class="adminV47">
-  <aside class="adminV47Side">
-    <div class="adminV47Brand">
-      <b>YCA · Fjord VI</b>
-      <span>Administración</span>
-      <small>{{version}}</small>
-    </div>
-    <nav class="adminV47Nav" aria-label="Administración">
-      <a class="{% if admin_page=='dashboard' %}active{% endif %}" href="/admin?page=dashboard{{selected_q}}"><b>Dashboard</b><span>Visión general</span></a>
-      <a class="{% if admin_page=='navegaciones' %}active{% endif %}" href="/admin?page=navegaciones{{selected_q}}"><b>Navegaciones</b><span>Agenda y edición</span></a>
-      <a class="{% if admin_page=='reservas' %}active{% endif %}" href="/admin?page=reservas{{selected_q}}"><b>Reservas</b><span>Tabla operativa</span></a>
-      <a class="{% if admin_page=='liquidacion' %}active{% endif %}" href="/admin?page=liquidacion{{selected_q}}"><b>Liquidación</b><span>Cargos y exportación</span></a>
-      <a class="{% if admin_page=='socios' %}active{% endif %}" href="/admin?page=socios{{selected_q}}"><b>Socios / usuarios</b><span>Altas y claves</span></a>
-      <a class="{% if admin_page=='auditoria' %}active{% endif %}" href="/admin?page=auditoria{{selected_q}}"><b>Auditoría</b><span>Registro de acciones</span></a>
-      <a class="{% if admin_page=='estadisticas' %}active{% endif %}" href="/admin?page=estadisticas{{selected_q}}"><b>Estadísticas</b><span>Previsto</span></a>
-      <a class="{% if admin_page=='exportar' %}active{% endif %}" href="/admin?page=exportar{{selected_q}}"><b>Exportar</b><span>Archivos contables</span></a>
-    </nav>
-    <div class="adminV47SideFoot">
-      <a class="config {% if admin_page=='sistema' %}active{% endif %}" href="/admin?page=sistema{{selected_q}}">Configuración avanzada</a>
-      <a class="logout" href="/logout">Salir</a>
-    </div>
-  </aside>
+<body>
 
-  <main class="adminV47Main">
-    <header class="adminV47Top">
-      <div>
-        <span>YCA · FJORD VI</span>
-        <h1>Administración</h1>
-        <p>Backoffice de escritorio. Carga de navegaciones y socios, lectura, auditoría y exportación.</p>
-      </div>
-      <div class="adminV47TopActions">
-        <a href="/admin?page=navegaciones{{selected_q}}">Programar navegación</a>
-        <a href="/admin?page=socios{{selected_q}}">Alta socio / usuario</a>
-      </div>
-    </header>
+<h1>Administración</h1>
+<p>Backoffice de escritorio</p>
 
-    {% if msg %}<div class="adminV47Notice">{{msg}}</div>{% endif %}
-
-    {% if admin_page == 'dashboard' %}
-    <section class="adminV47Screen">
-      <div class="adminV47ScreenHead"><div><span>Panel principal</span><h2>Dashboard</h2></div>{% if outing %}<a href="/admin_qr?outing_id={{outing.id}}">QR check-in</a>{% endif %}</div>
-      <div class="adminV47Grid6">
-        <article class="adminV47Card wide"><span>Salida seleccionada</span>{% if outing %}<h3>{{outing.title}}</h3><p>{{fmt_admin_datetime(outing.departure_at)}} · {{outing.status}}</p><small>Cupo {{outing.max_crew}} · {{total_registros}} registros</small>{% else %}<h3>Sin salida seleccionada</h3><p>Creá o seleccioná una navegación.</p>{% endif %}</article>
-        <article class="adminV47Card"><span>Reservas</span><b>{{total_registros if outing else 0}}</b><small>totales</small></article>
-        <article class="adminV47Card"><span>Confirmados</span><b>{{active_count if outing else 0}}{% if outing %}/{{outing.max_crew}}{% endif %}</b><small>cupo</small></article>
-        <article class="adminV47Card"><span>Presentes</span><b>{{acta.embarked_count if outing else 0}}</b><small>QR/capitán</small></article>
-        <article class="adminV47Card"><span>No embarcados</span><b>{{acta.not_embarked_count if outing else 0}}</b><small>ausente/no embarca</small></article>
-        <article class="adminV47Card money"><span>Cargos firmes</span><b>$ {{charge_summary.total_label if outing else '0'}}</b><small>contable</small></article>
-      </div>
-      <div class="adminV47TwoCols">
-        <article class="adminV47Panel"><h3>Próximas navegaciones</h3><div class="adminV47List">{% for o in outings[:8] %}<a href="/admin?page=dashboard&outing_id={{o.id}}"><b>{{fmt_admin_datetime_short(o.departure_at)}}</b><span>{{o.title}}</span><em>{{o.status}}</em></a>{% else %}<p>No hay navegaciones próximas.</p>{% endfor %}</div></article>
-        <article class="adminV47Panel"><h3>Lectura administrativa</h3>{% if outing %}<p><b>Estado:</b> {{outing.status}}</p><p><b>Acta:</b> {{acta.embarked_count}} presentes, {{acta.not_embarked_count}} no embarcados, {{waitlist_count}} en espera.</p><p><b>Liquidación:</b> $ {{charge_summary.total_label}} firmes.</p>{% else %}<p>Sin salida seleccionada.</p>{% endif %}</article>
-      </div>
-    </section>
-    {% endif %}
-
-    {% if admin_page == 'navegaciones' %}
-    <section class="adminV47Screen">
-      <div class="adminV47ScreenHead"><div><span>Entrada de datos</span><h2>Navegaciones</h2></div></div>
-      <div class="adminV47TwoCols agenda">
-        <article class="adminV47Panel mainPanel"><div class="adminV47PanelHead"><h3>Agenda publicada</h3><form method="get" action="/admin"><input type="hidden" name="page" value="navegaciones"><select name="outing_id" onchange="this.form.submit()">{% for o in outings %}<option value="{{o.id}}" {% if outing and o.id==outing.id %}selected{% endif %}>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}} · {{o.status}}</option>{% endfor %}{% for g in history_groups %}{% for o in g['items'] %}<option value="{{o.id}}" {% if outing and o.id==outing.id %}selected{% endif %}>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}} · {{o.status}}</option>{% endfor %}{% endfor %}</select></form></div>
-          <div class="adminV47TableBox"><table class="adminV47Table"><thead><tr><th>Fecha</th><th>Nombre</th><th>Estado</th><th>Activos</th><th>Registros</th><th></th></tr></thead><tbody>{% for o in outings %}<tr class="{% if outing and o.id==outing.id %}selected{% endif %}"><td>{{fmt_admin_datetime_short(o.departure_at)}}</td><td><b>{{o.title}}</b></td><td>{{o.status}}</td><td>{{active_counts.get(o.id,0)}}</td><td>{{counts.get(o.id,0)}}</td><td><a href="/admin?page=navegaciones&outing_id={{o.id}}">Ver</a></td></tr>{% endfor %}{% for g in history_groups %}{% for o in g['items'] %}<tr class="muted"><td>{{fmt_admin_datetime_short(o.departure_at)}}</td><td><b>{{o.title}}</b></td><td>{{o.status}}</td><td>{{active_counts.get(o.id,0)}}</td><td>{{counts.get(o.id,0)}}</td><td><a href="/admin?page=navegaciones&outing_id={{o.id}}">Ver</a></td></tr>{% endfor %}{% endfor %}</tbody></table></div>
-        </article>
-        <aside class="adminV47Panel sidePanel"><h3>Programar nueva salida</h3><p class="help">Módulo actual: solo paseos. Administración carga únicamente nombre, fecha y hora.</p><form class="adminV47Form" method="post" action="/admin/new_outing"><label>Nombre<input name="title" placeholder="Ej: Paseo Dársena Norte" required></label><label>Fecha y hora<input class="jsAdminDateV47" type="datetime-local" name="departure_at" value="{{default_new_outing_at.strftime('%Y-%m-%dT%H:%M')}}" required><small data-date-hint></small></label><button>Crear salida</button></form>{% if outing %}<hr><h3>Editar seleccionada</h3><form class="adminV47Form" method="post" action="/admin/update_outing"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="destination" value="{{outing.destination or 'paseo'}}"><input type="hidden" name="guest_fee" value="{{outing.guest_fee|int}}"><label>Nombre<input name="title" value="{{outing.title}}" required></label><label>Fecha y hora<input class="jsAdminDateV47" type="datetime-local" name="departure_at" value="{{outing.departure_at.strftime('%Y-%m-%dT%H:%M')}}" required><small data-date-hint></small></label><button>Guardar cambios</button></form><p class="lock">Administración no cierra ni cancela navegaciones.</p>{% endif %}</aside>
-      </div>
-    </section>
-    {% endif %}
-
-    {% if admin_page == 'reservas' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Consulta</span><h2>Reservas</h2></div>{% if outing %}<a href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a>{% endif %}</div>{% if outing %}<article class="adminV47Panel"><div class="adminV47Toolbar"><input id="reservaSearchV43" type="search" placeholder="Buscar por nombre, DNI, estado o responsable"><select id="reservaEstadoV43"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas</option></select><button type="button" data-clear-v43="reservas">Limpiar</button></div><div class="adminV47TableBox tall"><table class="adminV47Table" id="reservasTableV43"><thead><tr><th>Nombre</th><th>DNI</th><th>Tipo</th><th>Estado administrativo</th><th>Situación física</th><th>Cargo</th></tr></thead><tbody>{% for r in reservations %}{% set v=reservation_views.get(r.id) %}<tr class="{% if v.waitlisted %}waitRow{% elif v.charge>0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}"><td><b>{{r.person_name}}</b>{% if r.responsible_user_id %}<small>Responsable: {{responsible_names.get(r.responsible_user_id, 'ID '~r.responsible_user_id)}}</small>{% endif %}</td><td>{{r.dni}}</td><td>{{v.tipo_label}}</td><td><b>{% if v.waitlisted %}Lista de espera{% elif v.embarked %}Embarcado{% elif v.not_embarked %}No embarcado{% elif v.charge_is_preliminary %}Preliquidación{% else %}{{v.alert}}{% endif %}</b><small>{{v.motivo}}</small></td><td>{{v.estado_fisico}}</td><td>{% if v.charge>0 %}<b>$ {{v.charge_label}}</b>{% elif v.charge_is_preliminary %}Est. $ {{v.charge_preview_label}}{% else %}$ 0{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>{% else %}<p>Sin salida seleccionada.</p>{% endif %}</section>
-    {% endif %}
-
-    {% if admin_page == 'liquidacion' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Contabilidad</span><h2>Liquidación</h2></div>{% if outing %}<a href="/admin/charges.csv?outing_id={{outing.id}}">CSV cargos</a>{% endif %}</div>{% if outing %}<div class="adminV47TwoCols"><article class="adminV47Panel"><h3>Acta de navegación</h3><div class="adminV47Stats4"><div><span>Presentes</span><b>{{acta.embarked_count}}</b></div><div><span>No embarcados</span><b>{{acta.not_embarked_count}}</b></div><div><span>Pendientes</span><b>{{acta.pending_count if not outing_cancelled and not closed else 0}}</b></div><div><span>Total cargos</span><b>$ {{acta.total_label}}</b></div></div></article><article class="adminV47Panel"><h3>Cargos firmes</h3><div class="adminV47Total"><span>Total a cargar</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total==0 %}<p>Sin cargos firmes.</p>{% endif %}{% for c in charge_summary.invitados + charge_summary.socios + charge_summary.menores %}<div class="adminV47Charge"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</article></div>{% else %}<p>Sin salida seleccionada.</p>{% endif %}</section>
-    {% endif %}
-
-    {% if admin_page == 'socios' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Entrada de datos</span><h2>Socios / usuarios</h2></div><span class="pill">Clave inicial: demo1234</span></div><div class="adminV47TwoCols users"><aside class="adminV47Panel"><h3>Alta de usuario</h3><form class="adminV47Form" method="post" action="/admin/create_user"><label>Nombre y apellido<input name="name" required></label><label>DNI / Documento<input name="dni" required></label><label>Nº socio<input name="member_no"></label><label>Email<input type="email" name="email"></label><label>Celular<input name="phone"></label><label>Rol<select name="role"><option value="socio">Socio</option><option value="captain">Capitán</option><option value="admin">Administrador</option></select></label><button>Crear usuario</button></form></aside><article class="adminV47Panel"><div class="adminV47Toolbar"><input id="usuarioSearchV43" type="search" placeholder="Buscar usuario"><select id="usuarioRolV43"><option value="all">Todos</option><option value="socio">Socios</option><option value="captain">Capitanes</option><option value="admin">Administradores</option><option value="inactivo">Inactivos</option></select><button type="button" data-clear-v43="usuarios">Limpiar</button></div><div class="adminV47TableBox tall"><table class="adminV47Table" id="usuariosGridV43"><thead><tr><th>Nombre</th><th>Documento</th><th>Socio</th><th>Contacto</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for u in users %}<tr data-role="{{u.role}}" data-active="{% if u.active %}activo{% else %}inactivo{% endif %}"><td><b>{{u.name}}</b></td><td>{{u.dni}}</td><td>{{u.member_no or '-'}}</td><td>{{u.email or ''}}{% if u.phone %}<small>{{u.phone}}</small>{% endif %}</td><td>{{u.role}}</td><td>{% if u.active %}activo{% else %}inactivo{% endif %}</td><td><details><summary>Editar</summary><form method="post" action="/admin/update_user/{{u.id}}" class="adminV47Inline"><input name="name" value="{{u.name}}" required><input name="dni" value="{{u.dni}}" required><input name="member_no" value="{{u.member_no or ''}}"><input type="email" name="email" value="{{u.email or ''}}"><input name="phone" value="{{u.phone or ''}}"><select name="role"><option value="socio" {% if u.role=='socio' %}selected{% endif %}>Socio</option><option value="captain" {% if u.role=='captain' %}selected{% endif %}>Capitán</option><option value="admin" {% if u.role=='admin' %}selected{% endif %}>Admin</option></select><button>Guardar</button></form></details><form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave a demo1234?');"><button>Reset</button></form><form method="post" action="/admin/toggle_user/{{u.id}}" onsubmit="return confirm('Cambiar estado?');"><button>{% if u.active %}Desactivar{% else %}Activar{% endif %}</button></form></td></tr>{% endfor %}</tbody></table></div></article></div></section>
-    {% endif %}
-
-    {% if admin_page == 'auditoria' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Trazabilidad</span><h2>Auditoría</h2></div></div><article class="adminV47Panel"><div class="adminV47TableBox tall"><table class="adminV47Table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>{% for l in logs %}<tr><td>{{fmt_admin_datetime(l.created_at)}}</td><td>{{l.actor}}</td><td><b>{{l.action}}</b></td><td>{{l.detail}}</td></tr>{% endfor %}</tbody></table></div></article></section>
-    {% endif %}
-
-    {% if admin_page == 'estadisticas' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Módulo previsto</span><h2>Estadísticas</h2></div></div><article class="adminV47Panel placeholder"><h3>Estadísticas en desarrollo</h3><p>Queda reservado para ranking de socios, asistencia, no-shows, invitados frecuentes, uso del barco por mes/año y facturación por período.</p><div class="adminV47Stats4"><div><span>Socios frecuentes</span><b>Próximamente</b></div><div><span>Ocupación</span><b>Próximamente</b></div><div><span>No-shows</span><b>Próximamente</b></div><div><span>Facturación</span><b>Próximamente</b></div></div></article></section>
-    {% endif %}
-
-    {% if admin_page == 'exportar' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Salida de información</span><h2>Exportar</h2></div></div><div class="adminV47TwoCols"><article class="adminV47Panel"><h3>Exportación operativa</h3><p>Manifiesto de reservas, estados y responsables.</p>{% if outing %}<a class="adminV47Button" href="/admin/manifest.csv?outing_id={{outing.id}}">Descargar CSV operativo</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="adminV47Panel"><h3>Exportación contable</h3><p>Cargos firmes para administración / contabilidad.</p>{% if outing %}<a class="adminV47Button" href="/admin/charges.csv?outing_id={{outing.id}}">Descargar CSV cargos</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article></div></section>
-    {% endif %}
-
-    {% if admin_page == 'sistema' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Avanzado</span><h2>Configuración</h2></div></div><div class="adminV47TwoCols"><article class="adminV47Panel danger"><h3>Sistema limpio</h3><p>Borra salidas, reservas, cargos y auditoría. Conserva usuarios. Usar solo para pruebas.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('ATENCIÓN: esto borra salidas, reservas, cargos y auditoría. ¿Continuar?') && confirm('Confirmación final: ¿limpiar sistema?');"><button>Sistema limpio</button></form></article><article class="adminV47Panel"><h3>Backup JSON</h3><p>Descarga o restaura el estado completo.</p><a class="adminV47Button" href="/admin/backup">Descargar backup</a><form method="post" action="/admin/restore" enctype="multipart/form-data" class="adminV47Form"><input type="file" name="file" accept="application/json"><button>Restaurar JSON</button></form></article></div></section>
-    {% endif %}
-
-    <footer class="adminV47Version">{{club_name}} · {{app_name}} · {{version}}</footer>
-  </main>
-</div>
-<script>
-(function(){
-  const wd=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  document.querySelectorAll('.jsAdminDateV47').forEach(inp=>{
-    const hint=inp.parentElement.querySelector('[data-date-hint]');
-    const upd=()=>{ if(!inp.value||!hint) return; const d=new Date(inp.value); if(!isNaN(d)) hint.textContent=wd[d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
-    inp.addEventListener('change',upd); upd();
-  });
-  const resSearch=document.getElementById('reservaSearchV43'), resEstado=document.getElementById('reservaEstadoV43'), resRows=[...document.querySelectorAll('#reservasTableV43 tbody tr')];
-  function filterRes(){const q=(resSearch?.value||'').toLowerCase(), f=resEstado?.value||'all'; resRows.forEach(r=>{const okq=!q||r.innerText.toLowerCase().includes(q); const okf=f==='all'||r.classList.contains(f); r.style.display=okq&&okf?'':'none';});}
-  resSearch?.addEventListener('input',filterRes); resEstado?.addEventListener('change',filterRes);
-  const userSearch=document.getElementById('usuarioSearchV43'), userRol=document.getElementById('usuarioRolV43'), userRows=[...document.querySelectorAll('#usuariosGridV43 tbody tr')];
-  function filterUsers(){const q=(userSearch?.value||'').toLowerCase(), f=userRol?.value||'all'; userRows.forEach(r=>{const okq=!q||r.innerText.toLowerCase().includes(q); const okf=f==='all'||r.dataset.role===f||r.dataset.active===f; r.style.display=okq&&okf?'':'none';});}
-  userSearch?.addEventListener('input',filterUsers); userRol?.addEventListener('change',filterUsers);
-  document.querySelectorAll('[data-clear-v43]').forEach(btn=>btn.addEventListener('click',()=>{ if(btn.dataset.clearV43==='reservas'){ if(resSearch)resSearch.value=''; if(resEstado)resEstado.value='all'; filterRes(); } if(btn.dataset.clearV43==='usuarios'){ if(userSearch)userSearch.value=''; if(userRol)userRol.value='all'; filterUsers(); }}));
-})();
-</script>
 </body>
 </html>
