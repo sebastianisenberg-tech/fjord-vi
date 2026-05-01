@@ -15,6 +15,14 @@
         <span>Administración de oficina</span>
       </div>
 
+      {% if outing %}
+      <div class="officeActiveOutingV47">
+        <span>Salida activa</span>
+        <b>{{outing.title}}</b>
+        <small>{{outing.departure_at.strftime('%d/%m %H:%M')}}</small>
+      </div>
+      {% endif %}
+
       <div class="officeSideSectionV44">Vista</div>
       <a class="officeSideLinkV44" href="#detalle" data-spy-section="detalle"><span>Resumen</span><small>Salida actual</small></a>
       <a class="officeSideLinkV44" href="#salidas" data-spy-section="salidas"><span>Salidas</span><small>Seleccionar / historial</small></a>
@@ -57,27 +65,27 @@
       </div>
       {% endif %}
 
-      <section class="officeCard officeHero" id="detalle">
+      <div class="officePageTitleV47">
+        <span>Administración de oficina</span>
+        <b>Panel operativo Fjord VI</b>
+      </div>
+      <a class="officeMobileLogoutV472" href="/logout">Salir</a>
+
+      <section class="officeCard officeHero officeHeroV47" id="detalle">
         <div class="officeHeroText">
           <span class="officeEyebrow">Salida seleccionada</span>
           {% if outing %}
           <h1>{{outing.title}}</h1>
           <p><b>{{outing.departure_at.strftime('%d/%m/%Y %H:%M')}}</b> · {{outing.destination}}</p>
-          <p>Cupo: {{outing.max_crew}} · Mínimo: {{outing.min_crew}} · Tarifa invitado: $ {{outing.guest_fee|int}}</p>
+          <p>Cupo: {{outing.max_crew}} · Mínimo: {{outing.min_crew}} · Tarifa invitado: $ {{outing.guest_fee|int}} · <span class="officeStatusBadgeV471 {% if outing.status == 'Cancelada por capitán' %}danger{% elif closed %}closed{% else %}open{% endif %}">{% if outing.status == 'Cancelada por capitán' %}Cancelada{% elif closed %}Cerrada{% else %}{{outing.status}}{% endif %}</span></p>
           {% else %}
           <h1>Sin salida seleccionada</h1>
           <p>No hay salidas cargadas.</p>
           {% endif %}
         </div>
-        {% if outing %}
-        <div class="officeStatusBox {% if outing.status == 'Cancelada por capitán' %}danger{% elif closed %}closed{% else %}open{% endif %}" style="background:linear-gradient(135deg,#2f80c2 0%,#1f4e79 52%,#163a5a 100%) !important;color:#ffffff !important;border:1px solid rgba(255,255,255,.30) !important;border-radius:20px !important;box-shadow:0 14px 34px rgba(0,0,0,.24) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;text-align:center !important;min-width:min(270px,100%) !important;min-height:112px !important;padding:22px 24px !important;box-sizing:border-box !important;overflow:hidden !important;">
-          <span style="color:#ffffff !important;font-size:13px !important;font-weight:950 !important;text-transform:uppercase !important;letter-spacing:.12em !important;opacity:1 !important;text-shadow:0 1px 8px rgba(0,0,0,.20) !important;">Estado navegación</span>
-          <b style="color:#ffffff !important;font-size:34px !important;line-height:1.02 !important;margin-top:8px !important;font-weight:950 !important;text-transform:uppercase !important;letter-spacing:.02em !important;opacity:1 !important;text-shadow:0 1px 8px rgba(0,0,0,.20) !important;white-space:normal !important;overflow-wrap:anywhere !important;">{% if outing.status == 'Cancelada por capitán' %}Cancelada{% elif closed %}Cerrada{% else %}{{outing.status}}{% endif %}</b>
-        </div>
-        {% endif %}
       </section>
 
-      <section class="officeCard" id="salidas">
+      <section class="officeCard officeSelectorCardV47" id="salidas">
         <div class="officeSectionHead">
           <div>
             <span class="officeEyebrow">Historial / Programación</span>
@@ -107,7 +115,7 @@
 
       {% if outing %}
       {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-      <section class="officeKpiGrid">
+      <section class="officeKpiGrid officeKpiGridV47">
         <div class="officeKpi"><span>Reservas totales</span><b>{{total_registros}}</b><small>Incluye activas, espera y bajas</small></div>
         <div class="officeKpi"><span>Confirmados</span><b>{{active_count}} / {{outing.max_crew}}</b><small>Cupo vigente de la salida</small></div>
         <div class="officeKpi"><span>Presentes</span><b>{{acta.embarked_count}} / {{active_count}}</b><small>Check-in QR o corrección del capitán</small></div>
@@ -116,7 +124,7 @@
         <div class="officeKpi money"><span>Cargos firmes</span><b>$ {{charge_summary.total_label}}</b><small>Para administración / contable</small></div>
       </section>
 
-      <section class="officeStatusLine {% if outing_cancelled %}danger{% elif closed %}closed{% else %}open{% endif %}">
+      <section class="officeStatusLine officeStatusLineV47 {% if outing_cancelled %}danger{% elif closed %}closed{% else %}open{% endif %}">
         {% if outing_cancelled %}
         <b>Salida cancelada por capitán.</b><span>No se generan cargos firmes ni preliquidaciones vigentes.</span>
         {% elif closed %}
@@ -129,7 +137,7 @@
 
 
       {% if outing %}
-      <section class="officeCard" id="control-admin">
+      <section class="officeCard officeAdminControlV47" id="control-admin">
         <div class="officeSectionHead">
           <div><span class="officeEyebrow">Control administrativo</span><h2>Edición posterior / correcciones</h2></div>
           <span class="officePill">Solo Administración</span>
@@ -155,7 +163,7 @@
       </section>
       {% endif %}
 
-      <section class="officeTwoCols">
+      <section class="officeTwoCols officeTwoColsV47">
         <article class="officeCard">
           <div class="officeSectionHead">
             <div><span class="officeEyebrow">Resultado operativo</span><h2>Acta de navegación</h2></div>
@@ -228,7 +236,7 @@
       </section>
       {% endif %}
 
-      <section class="officeCard" id="crear">
+      <section class="officeCard officeCreateV47" id="crear">
         <div class="officeSectionHead">
           <div><span class="officeEyebrow">Planificación mensual</span><h2>Programar nueva salida</h2></div>
         </div>
@@ -241,7 +249,7 @@
         </form>
       </section>
 
-      <section class="officeCard officeList">
+      <section class="officeCard officeList officeAgendaV47">
         <div class="officeSectionHead"><div><span class="officeEyebrow">Todas las salidas</span><h2>Agenda publicada</h2></div></div>
         {% for o in outings %}
         <a class="officeOutingRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}">
@@ -251,7 +259,7 @@
         {% endfor %}
       </section>
 
-      <section class="officeCard" id="usuarios">
+      <section class="officeCard officeUsersV47" id="usuarios">
         <div class="officeSectionHead"><div><span class="officeEyebrow">Accesos</span><h2>Usuarios del sistema</h2></div><span class="officePill">clave inicial demo1234</span></div>
         <form class="officeForm" method="post" action="/admin/create_user">
           <input name="name" placeholder="Nombre y apellido" required>
@@ -305,12 +313,12 @@
         </div>
       </section>
 
-      <section class="officeTwoCols" id="sistema">
+      <section class="officeTwoCols officeSystemV47" id="sistema">
         <article class="officeCard"><span class="officeEyebrow">Sistema</span><h2>Sistema limpio</h2><p class="officeHelp">Borra salidas, reservas, cargos y auditoría. Conserva usuarios.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('Esto borra salidas, reservas, cargos y auditoría. Conserva usuarios. ¿Seguro?');"><button class="dangerButton" type="submit">Sistema limpio</button></form></article>
         <article class="officeCard"><span class="officeEyebrow">Resguardo</span><h2>Backup JSON</h2><p class="officeHelp">Descarga o restaura el estado completo.</p><a class="officeMini" href="/admin/backup">Descargar backup</a><form method="post" action="/admin/restore" enctype="multipart/form-data" class="officeRestore"><input type="file" name="file" required><button type="submit">Restaurar JSON</button></form></article>
       </section>
 
-      <section class="officeCard" id="logs">
+      <section class="officeCard officeLogsV47" id="logs">
         <div class="officeSectionHead"><div><span class="officeEyebrow">Trazabilidad</span><h2>Auditoría reciente</h2></div></div>
         {% for l in logs %}<div class="officeLog"><b>{{l.action}}</b><small>{{l.created_at.strftime('%d/%m %H:%M')}} · {{l.actor}} · {{l.detail}}</small></div>{% endfor %}
       </section>
@@ -355,13 +363,20 @@
 (function(){
   const links = Array.from(document.querySelectorAll(".officeSideLinkV44[data-spy-section]"));
   const sections = links.map(a => document.getElementById(a.dataset.spySection)).filter(Boolean);
+  const scrollRoot = document.querySelector(".officeMain") || window;
+  function scrollTop(){ return scrollRoot === window ? window.scrollY : scrollRoot.scrollTop; }
+  function relativeTop(el){ return scrollRoot === window ? el.offsetTop : (el.offsetTop - scrollRoot.offsetTop); }
   function setActive(){
     let current = sections[0] ? sections[0].id : null;
-    const fromTop = window.scrollY + 110;
-    for (const sec of sections){ if (sec.offsetTop <= fromTop) current = sec.id; }
-    links.forEach(a => a.classList.toggle("is-active", a.dataset.spySection === current));
+    const fromTop = scrollTop() + 120;
+    for (const sec of sections){ if (relativeTop(sec) <= fromTop) current = sec.id; }
+    links.forEach(a => {
+      const active = a.dataset.spySection === current;
+      a.classList.toggle("is-active", active);
+      a.classList.toggle("active", active);
+    });
   }
-  window.addEventListener("scroll", setActive, {passive:true});
+  scrollRoot.addEventListener("scroll", setActive, {passive:true});
   window.addEventListener("load", setActive);
   setActive();
 })();
