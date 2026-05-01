@@ -12,15 +12,15 @@
     <aside class="officeSidebar officeSidebarV44" aria-label="Navegación administrativa">
       <div class="officeBrand officeBrandV44">
         <b>{{club_name}} · {{app_name}}</b>
-        <span>Administración de oficina</span>
+        <span>Administración</span>
       </div>
 
       <div class="officeSideSectionV44">Vista</div>
-      <a class="officeSideLinkV44" href="#detalle" data-spy-section="detalle"><span>Resumen</span><small>Salida actual</small></a>
-      <a class="officeSideLinkV44" href="#salidas" data-spy-section="salidas"><span>Salidas</span><small>Seleccionar / historial</small></a>
+      <a class="officeSideLinkV44" href="#detalle" data-spy-section="detalle"><span>Dashboard</span><small>Visión general</small></a>
+      <a class="officeSideLinkV44" href="#salidas" data-spy-section="salidas"><span>Navegaciones</span><small>Agenda e historial</small></a>
       <a class="officeSideLinkV44" href="#liquidacion" data-spy-section="liquidacion"><span>Liquidación</span><small>Cargos y cierre</small></a>
       <a class="officeSideLinkV44" href="#reservas" data-spy-section="reservas"><span>Reservas</span><small>Tabla operativa</small></a>
-      <a class="officeSideLinkV44" href="#usuarios" data-spy-section="usuarios"><span>Socios</span><small>Padrón / claves</small></a>
+      <a class="officeSideLinkV44" href="#usuarios" data-spy-section="usuarios"><span>Socios / usuarios</span><small>Altas y claves</small></a>
       <a class="officeSideLinkV44" href="#logs" data-spy-section="logs"><span>Auditoría</span><small>Registro de acciones</small></a>
 
       <div class="officeSideSectionV44">Acciones rápidas</div>
@@ -40,7 +40,19 @@
     </aside>
 
     <section class="officeMain">
-      <div class="officeMobileLogoutV462"><a href="/logout">Salir</a><span>{{club_name}} · {{app_name}} · {{version}}</span></div>
+      <header class="officeDesktopHeaderV467">
+        <div>
+          <span class="officeEyebrow">{{club_name}} · {{app_name}}</span>
+          <h1>Administración</h1>
+          <p>Backoffice de escritorio · Agenda de paseos · Socios / usuarios · Lectura y exportación</p>
+        </div>
+        <div class="officeDesktopHeaderActionsV467">
+          <a href="#crear">Programar navegación</a>
+          <a href="#usuarios">Alta socio / usuario</a>
+          <a href="/logout">Salir</a>
+        </div>
+      </header>
+      <div class="officeMobileLogoutV462"><a href="/logout">Salir</a><span>{{club_name}} · {{app_name}} · Administración · {{version}}</span></div>
       {% if msg %}
       <div class="officeNotice officeNoticeInMain">
         {% if msg=='salida_creada' %}Salida creada correctamente.
@@ -132,10 +144,10 @@
       {% if outing %}
       <section class="officeCard" id="control-admin">
         <div class="officeSectionHead">
-          <div><span class="officeEyebrow">Control administrativo</span><h2>Edición posterior / correcciones</h2></div>
+          <div><span class="officeEyebrow">Datos de navegación</span><h2>Editar agenda</h2></div>
           <span class="officePill">Solo Administración</span>
         </div>
-        <p class="officeHelp">El capitán opera hasta 48 horas desde la hora programada. Después, las correcciones quedan en Administración y se registran en auditoría.</p>
+        <p class="officeHelp">Administración solo mantiene la agenda: nombre de la salida y fecha/hora. El embarque, cierre y cancelación operativa siguen siendo del Capitán.</p>
         <form class="officeForm officeAgendaFormV466" method="post" action="/admin/update_outing">
           <input type="hidden" name="outing_id" value="{{outing.id}}">
           <input type="hidden" name="destination" value="{{outing.destination or 'paseo'}}">
@@ -144,15 +156,10 @@
           <label class="officeFieldV466"><span>Fecha y hora</span><input class="jsAdminDateV466" type="datetime-local" name="departure_at" value="{{outing.departure_at.strftime('%Y-%m-%dT%H:%M')}}" required><small class="officeDateHintV466" data-date-hint></small></label>
           <button>Guardar salida</button>
         </form>
-        <form class="officeForm" method="post" action="/admin/outing_status" style="margin-top:10px;">
-          <input type="hidden" name="outing_id" value="{{outing.id}}">
-          <select name="status">
-            <option value="Reservas abiertas">Reabrir / dejar operativa</option>
-            <option value="Cerrar">Cerrar y recalcular liquidación</option>
-            <option value="Cancelada">Cancelar por administración</option>
-          </select>
-          <button>Aplicar estado</button>
-        </form>
+        <div class="officeReadOnlyWarningV467">
+          <b>Estado operativo protegido</b>
+          <span>Administración no cierra ni cancela salidas desde esta pantalla. Esa operación corresponde al Capitán. Las correcciones auditadas se agregarán en una etapa posterior.</span>
+        </div>
       </section>
       {% endif %}
 
@@ -231,9 +238,9 @@
 
       <section class="officeCard" id="crear">
         <div class="officeSectionHead">
-          <div><span class="officeEyebrow">Planificación mensual</span><h2>Programar nueva salida</h2></div>
+          <div><span class="officeEyebrow">Entrada de datos</span><h2>Programar navegación</h2></div>
         </div>
-        <p class="officeHelp">Módulo actual: solo paseos. Administración carga nombre, fecha y hora. El resto lo resuelve el sistema.</p>
+        <p class="officeHelp">Módulo actual: solo paseos de fin de semana. Administración carga únicamente nombre, fecha y hora. El resto queda en manos del flujo de reservas y Capitán.</p>
         <form class="officeForm officeAgendaFormV466" method="post" action="/admin/new_outing">
           <label class="officeFieldV466"><span>Nombre de la salida</span><input name="title" placeholder="Ej: Paseo Dársena Norte" required></label>
           <label class="officeFieldV466"><span>Fecha y hora</span><input class="jsAdminDateV466" type="datetime-local" name="departure_at" value="{{default_new_outing_at.strftime('%Y-%m-%dT%H:%M')}}" required><small class="officeDateHintV466" data-date-hint></small></label>
