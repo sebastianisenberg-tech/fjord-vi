@@ -63,7 +63,7 @@
           <span class="officeEyebrow">Salida seleccionada</span>
           {% if outing %}
           <h1>{{outing.title}}</h1>
-          <p><b>{{outing.departure_at.strftime('%d/%m/%Y %H:%M')}}</b> · {{outing.destination}}</p>
+          <p><b>{{fmt_admin_datetime(outing.departure_at)}}</b> · {{outing.destination}}</p>
           <p>Cupo: {{outing.max_crew}} · Mínimo: {{outing.min_crew}} · Tarifa invitado: $ {{outing.guest_fee|int}}</p>
           {% else %}
           <h1>Sin salida seleccionada</h1>
@@ -84,19 +84,19 @@
             <span class="officeEyebrow">Historial / Programación</span>
             <h2>Seleccionar salida</h2>
           </div>
-          {% if outing %}<span class="officePill">Actual: {{outing.departure_at.strftime('%d/%m %H:%M')}}</span>{% endif %}
+          {% if outing %}<span class="officePill">Actual: {{fmt_admin_datetime_short(outing.departure_at)}}</span>{% endif %}
         </div>
         <form method="get" action="/admin" class="officeSelector">
           <select name="outing_id" onchange="this.form.submit()">
             <optgroup label="Ventana operativa">
             {% for o in outings %}
-            <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
+            <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
             {% endfor %}
             </optgroup>
             {% for g in history_groups %}
             <optgroup label="Histórico · {{g.label}}">
               {% for o in g["items"] %}
-              <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
+              <option value="{{o.id}}" {% if outing and o.id == outing.id %}selected{% endif %}>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}} · {{o.status}} · {{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</option>
               {% endfor %}
             </optgroup>
             {% endfor %}
@@ -136,13 +136,13 @@
           <span class="officePill">Solo Administración</span>
         </div>
         <p class="officeHelp">El capitán opera hasta 48 horas desde la hora programada. Después, las correcciones quedan en Administración y se registran en auditoría.</p>
-        <form class="officeForm" method="post" action="/admin/update_outing">
+        <form class="officeForm officeAgendaFormV466" method="post" action="/admin/update_outing">
           <input type="hidden" name="outing_id" value="{{outing.id}}">
-          <input name="title" value="{{outing.title}}" placeholder="Título" required>
-          <input name="destination" value="{{outing.destination}}" placeholder="Destino" required>
-          <input type="datetime-local" name="departure_at" value="{{outing.departure_at.strftime('%Y-%m-%dT%H:%M')}}" required>
-          <input type="number" name="guest_fee" value="{{outing.guest_fee|int}}" placeholder="Tarifa invitado">
-          <button>Guardar cambios</button>
+          <input type="hidden" name="destination" value="{{outing.destination or 'paseo'}}">
+          <input type="hidden" name="guest_fee" value="{{outing.guest_fee|int}}">
+          <label class="officeFieldV466"><span>Nombre de la salida</span><input name="title" value="{{outing.title}}" placeholder="Ej: Paseo Dársena Norte" required></label>
+          <label class="officeFieldV466"><span>Fecha y hora</span><input class="jsAdminDateV466" type="datetime-local" name="departure_at" value="{{outing.departure_at.strftime('%Y-%m-%dT%H:%M')}}" required><small class="officeDateHintV466" data-date-hint></small></label>
+          <button>Guardar salida</button>
         </form>
         <form class="officeForm" method="post" action="/admin/outing_status" style="margin-top:10px;">
           <input type="hidden" name="outing_id" value="{{outing.id}}">
@@ -233,11 +233,10 @@
         <div class="officeSectionHead">
           <div><span class="officeEyebrow">Planificación mensual</span><h2>Programar nueva salida</h2></div>
         </div>
-        <form class="officeForm" method="post" action="/admin/new_outing">
-          <input name="title" placeholder="Título" required>
-          <input name="destination" placeholder="Destino" required>
-          <input type="datetime-local" name="departure_at" required>
-          <input type="number" name="guest_fee" value="45000" placeholder="Tarifa invitado">
+        <p class="officeHelp">Módulo actual: solo paseos. Administración carga nombre, fecha y hora. El resto lo resuelve el sistema.</p>
+        <form class="officeForm officeAgendaFormV466" method="post" action="/admin/new_outing">
+          <label class="officeFieldV466"><span>Nombre de la salida</span><input name="title" placeholder="Ej: Paseo Dársena Norte" required></label>
+          <label class="officeFieldV466"><span>Fecha y hora</span><input class="jsAdminDateV466" type="datetime-local" name="departure_at" value="{{default_new_outing_at.strftime('%Y-%m-%dT%H:%M')}}" required><small class="officeDateHintV466" data-date-hint></small></label>
           <button>Crear salida</button>
         </form>
       </section>
@@ -246,7 +245,7 @@
         <div class="officeSectionHead"><div><span class="officeEyebrow">Todas las salidas</span><h2>Agenda publicada</h2></div></div>
         {% for o in outings %}
         <a class="officeOutingRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/admin?outing_id={{o.id}}">
-          <div><b>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}}</b><small>{{o.destination}} · {{o.status}}</small></div>
+          <div><b>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}}</b><small>{{o.destination}} · {{o.status}}</small></div>
           <span>{{active_counts.get(o.id, 0)}} activos / {{counts.get(o.id, 0)}} registros</span>
         </a>
         {% endfor %}
@@ -367,5 +366,34 @@
   setActive();
 })();
 </script>
+<script>
+(function(){
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function describe(value){
+    if(!value) return '';
+    const d = new Date(value);
+    if(Number.isNaN(d.getTime())) return '';
+    return dias[d.getDay()] + ' ' + pad(d.getDate()) + ' ' + meses[d.getMonth()] + ' ' + d.getFullYear() + ' · ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function ensureDefaultTime(input){
+    if(!input.value){
+      const d = new Date();
+      d.setHours(11,0,0,0);
+      input.value = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T11:00';
+    }
+  }
+  document.querySelectorAll('.jsAdminDateV466').forEach(function(input){
+    const hint = input.closest('label')?.querySelector('[data-date-hint]');
+    ensureDefaultTime(input);
+    const sync = function(){ if(hint) hint.textContent = describe(input.value); };
+    input.addEventListener('change', sync);
+    input.addEventListener('input', sync);
+    sync();
+  });
+})();
+</script>
+
 </body>
 </html>
