@@ -1,3 +1,12 @@
+# v38.9.0
+
+- Refinamiento premium específico para socios.
+- Mejor jerarquía visual de salidas, reserva titular, invitados y reglas.
+- Estados operativos más visibles y separados de etiquetas secundarias.
+- Formularios e inputs más claros para Android, iPhone y escritorio.
+- Mejor feedback táctil y navegación inferior más legible.
+- Sin cambios en backend, rutas ni lógica de reservas.
+
 # v38.8.0
 
 - Segunda verificación interna del paquete.
