@@ -1,1 +1,1 @@
-FJORD VI v47.2 - Admin layout profesional auditado preinstalación.
+FJORD VI v48.1 - Admin layout profesional auditado preinstalación.

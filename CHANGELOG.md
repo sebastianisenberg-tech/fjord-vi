@@ -1,7 +1,7 @@
-# v47.2 auditada preinstalación
+# v48.1
 
-- Mantiene layout profesional de administración v47.
-- Corrige salida/logout en administración móvil tras mover Salir a la sidebar.
-- Refuerza colores correctos de estado operativo/cerrado/cancelado en admin.
-- Unifica versión a v47.2.
-- No cambia lógica de reservas, QR, capitán, cargos ni cierre.
+- Admin reordenado en pantallas reales: Resumen, Salidas, Liquidación, Reservas, Socios, Auditoría y Sistema.
+- Se elimina la navegación por scroll largo como mecanismo principal.
+- Sidebar desktop y navegación móvil cambian de vista sin perder contexto.
+- Header de salida y KPIs más compactos.
+- Sin cambios de lógica de reservas, check-in, cargos ni liquidación.

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v45-2-auditado
+    name: fjord-vi-v48-1-auditado
     env: docker
     plan: free
     autoDeploy: true
