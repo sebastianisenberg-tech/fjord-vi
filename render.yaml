@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v38-8-premium-ux-toasts-audit
+    name: fjord-vi-v39-6-1-socios-cierre-fino
     env: docker
     plan: free
     autoDeploy: true

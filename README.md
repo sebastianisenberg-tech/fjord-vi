@@ -1,33 +1,22 @@
-# YCA · Fjord VI · Embarque · v39.3.0
+# YCA · Fjord VI · Embarque · v39.6.1
 
-Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
+Versión auditada de cierre fino para experiencia de socios.
 
-## Estructura de deploy
+## Versión
+- VERSION.txt: v39.6.1
+- main.py: VERSION = v39.6.1
+- APP_BUILD: socios-cierre-fino-v39-6-1
 
-Esta versión es plana y sin duplicados:
+## Cambios de auditoría v39.6.1
+- Corrige metadatos internos que habían quedado desalineados.
+- Actualiza nombre de servicio en render.yaml.
+- Agrega cierre funcional del toast superior desde la X.
+- Mantiene sin cambios la lógica de reservas, cupos, lista de espera y liquidación.
 
-- HTML en la raíz del proyecto.
-- Recursos visuales únicamente en `/static`.
-- Sin carpeta `/templates`.
-- `main.py` usa renderizado seguro desde raíz y sirve `/static/style.css`.
-
-## Fixes incluidos
-
-- Corrige el error Jinja: `builtin_function_or_method object is not iterable` cambiando `g.items` por `g["items"]`.
-- Corrige carga de CSS con `app.mount('/static', StaticFiles(...))`.
-- Mantiene estructura simple para copiar todo en un solo nivel desde celular.
-- Mantiene QR fijo, QR dinámico, ventana operativa, histórico y cierre operativo.
-
-## Validación rápida post deploy
-
-Probar estas rutas:
-
-- `/`
-- `/static/style.css`
-- `/admin`
-- `/captain`
-- `/socio`
-- `/qr_fijo`
-- `/embarque`
-
-Versión interna: v39.3.0
+## Base funcional
+- Bloque Mi embarque.
+- Socios con tarjetas tipo boarding pass.
+- Estados visuales por semántica: verde, rojo, ámbar y gris.
+- Header fijo.
+- Microinteracciones visuales.
+- Toasts superiores para avisos de operación.
