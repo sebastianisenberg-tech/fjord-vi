@@ -1,4 +1,4 @@
-# v39.2.0
+# v39.3.0
 
 - Rediseño iOS Premium de la sesión de socio.
 - Estado operativo con métricas separadas y sin texto pegado.
@@ -6,7 +6,7 @@
 - Footer y versión más visibles, con menos espacio muerto.
 - Solo cambios de UI/render; sin cambios de lógica de reservas.
 
-# v39.2.0
+# v39.3.0
 
 - Refinamiento premium específico para socios.
 - Mejor jerarquía visual de salidas, reserva titular, invitados y reglas.

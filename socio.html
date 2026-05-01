@@ -61,10 +61,28 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
   </div>
 </section>
 
-<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>
-  {% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>
-  {% else %}<div class="statusPanelHeader"><b>Salida operativa</b><small>Tripulación publicada para esta salida</small></div><span class="statusMetrics iosMetrics"><strong><em>{{active_count}} / {{outing.max_crew}}</em><span>ocupados</span></strong><strong><em>{{remaining}}</em><span>libres</span></strong>{% if waitlist_count|default(0) > 0 %}<strong><em>{{waitlist_count}}</em><span>en espera</span></strong>{% endif %}</span>{% endif %}
+<section class="statusPanel premiumStatus socioStatusBlock {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
+  {% if outing_cancelled %}
+    <div class="socioStatusHeader">
+      <b>Cancelada por capitán</b>
+      <small>Sin cargos ni preliquidaciones vigentes.</small>
+    </div>
+  {% elif closed %}
+    <div class="socioStatusHeader">
+      <b>Salida cerrada y liquidada</b>
+      <small>{{final_summary.detail}}</small>
+    </div>
+  {% else %}
+    <div class="socioStatusHeader">
+      <b>Salida operativa</b>
+      <small>Tripulación publicada para esta salida</small>
+    </div>
+    <div class="socioStatusMetrics" aria-label="Estado de cupo de la salida">
+      <div class="socioStatusMetric"><strong>{{active_count}} / {{outing.max_crew}}</strong><span>ocupados</span></div>
+      <div class="socioStatusMetric"><strong>{{remaining}}</strong><span>libres</span></div>
+      {% if waitlist_count|default(0) > 0 %}<div class="socioStatusMetric"><strong>{{waitlist_count}}</strong><span>en espera</span></div>{% endif %}
+    </div>
+  {% endif %}
 </section>
 
 <section class="kpiStrip">

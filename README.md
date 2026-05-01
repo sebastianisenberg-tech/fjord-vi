@@ -1,4 +1,4 @@
-# YCA · Fjord VI · Embarque · v39.2.0
+# YCA · Fjord VI · Embarque · v39.3.0
 
 Sistema piloto para gestionar paseos de fin de semana del Fjord VI.
 
@@ -30,4 +30,4 @@ Probar estas rutas:
 - `/qr_fijo`
 - `/embarque`
 
-Versión interna: v39.2.0
+Versión interna: v39.3.0
