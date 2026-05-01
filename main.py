@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v42.0"
-APP_BUILD = "socios-ui-final-polish-v42-0"
+VERSION = "v43.0"
+APP_BUILD = "admin-captain-scale-v43-0"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1629,17 +1629,21 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     })
 
 def auto_confirm_active_for_close(db: Session, outing: Outing, active):
-    """Cierre inteligente operativo: valida mínimo por cupo activo y confirma pendientes al cerrar."""
+    """Cierre operativo: al cerrar, quien no figura Presente queda Ausente/no-show.
+
+    El QR marca Presente. El cierre consolida esa planilla.
+    No se auto-regalan presentes a los pendientes.
+    """
     changed = []
     for r in active:
         current = (r.attendance or "Por confirmar").strip()
         if current == "Por confirmar":
-            r.attendance = "Presente"
-            r.cancel_reason = ""
-            r.charge_amount = 0
+            r.attendance = "Ausente"
+            r.cancel_reason = "No confirmado al cierre de embarque"
+            r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
             changed.append(r.person_name)
     if changed:
-        log(db, "Sistema", "auto-confirmación cierre", f"{outing.title}: {chr(44).join(changed)}")
+        log(db, "Sistema", "pendientes marcados ausentes al cierre", f"{outing.title}: {chr(44).join(changed)}")
     return changed
 
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
@@ -1915,8 +1919,8 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     active_count = len(active)
     present = sum(1 for r in active if r.attendance == "Presente")
 
-    # Cierre inteligente: el mínimo se valida por cupo activo. Al cerrar,
-    # los activos aún pendientes se confirman automáticamente como presentes.
+    # Cierre: el mínimo se valida por cupo activo. Al cerrar,
+    # los activos aún pendientes quedan ausentes/no-show; solo QR o capitán marcan Presente.
     if active_count < outing.min_crew:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumple", status_code=303)
     if active_count > outing.max_crew:
