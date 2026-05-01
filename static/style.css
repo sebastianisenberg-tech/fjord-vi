@@ -3414,3 +3414,193 @@ body:has(.socioApp){background:linear-gradient(180deg,#edf5fb 0%,#fbfdff 42%,#f2
   .socioApp .socioStatusMetric strong{font-size:16.5px!important;}
   .socioApp .socioStatusMetric span{font-size:9.6px!important;letter-spacing:.035em!important;}
 }
+
+
+/* v39.4.0 · Socios · Mi Embarque premium */
+.socioApp .miEmbarqueCard{margin:14px 0 12px!important;padding:16px!important;border-radius:24px!important;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(247,251,255,.92))!important;border:1px solid rgba(31,78,121,.12)!important;box-shadow:0 14px 34px rgba(15,44,70,.08)!important;backdrop-filter:blur(14px);}
+.socioApp .miEmbTop{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:12px!important;margin-bottom:12px!important;}
+.socioApp .miEmbTop h2{margin:2px 0 3px!important;font-size:24px!important;line-height:1.02!important;letter-spacing:-.035em!important;color:#102033!important;}
+.socioApp .miEmbTop p{margin:0!important;color:#64748b!important;font-size:13.5px!important;font-weight:650!important;}
+.socioApp .miEmbState{white-space:nowrap!important;border-radius:999px!important;padding:8px 12px!important;font-size:13px!important;font-weight:900!important;border:1px solid transparent!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.55)!important;}
+.socioApp .miEmbState.stateOk{background:#dff7eb!important;color:#0f7a43!important;border-color:#bfe9d1!important;}
+.socioApp .miEmbState.stateWarn{background:#fff5d6!important;color:#8a5a00!important;border-color:#ecd58a!important;}
+.socioApp .miEmbState.stateWait{background:#eaf3ff!important;color:#17598c!important;border-color:#c7ddf3!important;}
+.socioApp .miEmbState.stateBad{background:#fff0ee!important;color:#a33a31!important;border-color:#efc4bf!important;}
+.socioApp .miEmbState.stateNeutral{background:#eef2f7!important;color:#475569!important;border-color:#d6dee8!important;}
+.socioApp .miEmbGrid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin:10px 0 12px!important;}
+.socioApp .miEmbGrid>div{background:rgba(255,255,255,.82)!important;border:1px solid rgba(31,78,121,.09)!important;border-radius:17px!important;padding:10px 10px!important;box-shadow:0 7px 16px rgba(15,44,70,.045)!important;min-width:0!important;}
+.socioApp .miEmbGrid small{display:block!important;text-transform:uppercase!important;letter-spacing:.13em!important;color:#7b8797!important;font-size:10px!important;font-weight:900!important;margin-bottom:4px!important;}
+.socioApp .miEmbGrid b{display:block!important;color:#102033!important;font-size:16px!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+.socioApp .miEmbTimeline{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:5px!important;margin:10px 0 12px!important;}
+.socioApp .miEmbTimeline span{position:relative!important;text-align:center!important;border-radius:999px!important;background:#eef3f8!important;color:#728095!important;padding:6px 4px!important;font-size:10.5px!important;font-weight:900!important;}
+.socioApp .miEmbTimeline span.done{background:#dff7eb!important;color:#0f7a43!important;}
+.socioApp .miEmbTimeline span.active{background:#dceeff!important;color:#135d94!important;box-shadow:0 0 0 1px rgba(19,93,148,.12) inset!important;}
+.socioApp .miEmbCta{display:flex!important;align-items:center!important;justify-content:center!important;text-decoration:none!important;min-height:42px!important;border-radius:16px!important;background:linear-gradient(180deg,#2475a8,#0d4d79)!important;color:#fff!important;font-weight:900!important;font-size:14.5px!important;box-shadow:0 8px 18px rgba(13,77,121,.18)!important;}
+.socioApp .miEmbCta:active{transform:scale(.985)!important;box-shadow:0 3px 8px rgba(13,77,121,.18)!important;}
+.socioApp .socioStatusBlock .socioStatusHeader{display:block!important;}
+.socioApp .socioStatusBlock .socioStatusHeader b{display:block!important;margin-bottom:4px!important;}
+.socioApp .socioStatusBlock .socioStatusHeader small{display:block!important;color:#56657a!important;line-height:1.25!important;}
+.socioApp .socioStatusMetrics{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:10px!important;}
+.socioApp .socioStatusMetric{display:block!important;background:#fff!important;border:1px solid rgba(31,78,121,.09)!important;border-radius:14px!important;padding:9px 10px!important;min-width:0!important;}
+.socioApp .socioStatusMetric strong{display:block!important;font-size:17px!important;line-height:1!important;color:#102033!important;margin-bottom:5px!important;}
+.socioApp .socioStatusMetric span{display:block!important;text-transform:uppercase!important;letter-spacing:.11em!important;color:#6f7d90!important;font-size:9.5px!important;font-weight:900!important;}
+.socioApp .socioFooter{margin-top:18px!important;margin-bottom:86px!important;min-height:0!important;padding:8px 0 0!important;}
+.socioApp .socioFooter span{font-size:12px!important;color:#748299!important;}
+.socioApp .socioFooter b{font-size:12px!important;color:#526070!important;}
+@media(max-width:420px){.socioApp .miEmbTop h2{font-size:22px!important;}.socioApp .miEmbGrid{grid-template-columns:1fr 1fr!important;}.socioApp .miEmbGrid>div:last-child{grid-column:1/-1!important;}.socioApp .miEmbTimeline span{font-size:9.5px!important;padding:6px 2px!important;}}
+
+/* =======================================================================
+   v39.5.0 · SOCIOS · PREMIUM INTERACTIONS + BOARDING PASS + SMART TOASTS
+   Capa UX/UI únicamente. No modifica lógica, rutas ni datos.
+   ======================================================================= */
+.socioApp *{-webkit-tap-highlight-color:transparent;}
+.socioApp button,.socioApp .btn,.socioApp .miEmbCta,.socioApp .selectRow,.socioApp .bottom a{
+  will-change:transform,box-shadow,filter;
+  transition:transform .14s cubic-bezier(.2,.8,.2,1),box-shadow .14s ease,filter .14s ease,background .14s ease,border-color .14s ease!important;
+}
+.socioApp button:hover,.socioApp .btn:hover,.socioApp .miEmbCta:hover,.socioApp .selectRow:hover{filter:saturate(1.03) brightness(1.012);}
+.socioApp .isPressed,.socioApp button:active,.socioApp .btn:active,.socioApp .miEmbCta:active,.socioApp .selectRow:active,.socioApp .bottom a:active{
+  transform:translateY(1px) scale(.985)!important;
+}
+.socioApp .disabledBtn{opacity:.58!important;filter:grayscale(.15)!important;cursor:wait!important;}
+
+.socioApp .toastSmart{
+  position:sticky!important;top:64px!important;z-index:80!important;
+  display:grid!important;grid-template-columns:30px 1fr!important;align-items:center!important;gap:10px!important;
+  margin:8px 0 12px!important;padding:12px 14px!important;border-radius:18px!important;
+  font-size:13.5px!important;line-height:1.25!important;font-weight:800!important;
+  animation:toastSlideIn .28s cubic-bezier(.2,.8,.2,1) both!important;
+  backdrop-filter:blur(14px) saturate(1.15)!important;-webkit-backdrop-filter:blur(14px) saturate(1.15)!important;
+}
+.socioApp .toastSmart.toastLeaving{animation:toastFadeSoft .42s ease forwards!important;}
+.socioApp .toastIcon{display:flex!important;align-items:center!important;justify-content:center!important;width:30px!important;height:30px!important;border-radius:999px!important;font-size:15px!important;font-weight:950!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.65)!important;}
+.socioApp .toastText{display:block!important;min-width:0!important;}
+.socioApp .toastOk{background:rgba(235,253,244,.94)!important;border:1px solid #bfead2!important;color:#0c6147!important;box-shadow:0 12px 28px rgba(16,114,82,.12)!important;}
+.socioApp .toastOk .toastIcon{background:#d5f6e4!important;color:#0c7a4f!important;}
+.socioApp .toastWarn{background:rgba(255,248,230,.96)!important;border:1px solid #ead58f!important;color:#77530d!important;box-shadow:0 12px 28px rgba(150,105,18,.10)!important;}
+.socioApp .toastWarn .toastIcon{background:#fff0bd!important;color:#8a5a00!important;}
+.socioApp .toastError{background:rgba(255,241,239,.96)!important;border:1px solid #efc2bd!important;color:#8d2d27!important;box-shadow:0 12px 28px rgba(147,45,38,.11)!important;}
+.socioApp .toastError .toastIcon{background:#ffe0dc!important;color:#a33a31!important;}
+@keyframes toastSlideIn{from{opacity:0;transform:translateY(-8px) scale(.985);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes toastFadeSoft{to{opacity:.18;transform:translateY(-5px) scale(.985);}}
+
+.socioApp .boardingPass{
+  position:relative!important;overflow:hidden!important;
+  padding:15px 14px 15px 16px!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;
+  border:1px solid rgba(15,65,103,.12)!important;
+  border-left:0!important;
+  box-shadow:0 9px 22px rgba(12,35,54,.055)!important;
+}
+.socioApp .boardingPass:before{
+  content:""!important;position:absolute!important;left:0!important;top:14px!important;bottom:14px!important;width:4px!important;border-radius:999px!important;background:#8fa1b3!important;
+}
+.socioApp .boardingPass.ok:before{background:var(--ios-green)!important;}
+.socioApp .boardingPass.warn:before{background:var(--ios-amber)!important;}
+.socioApp .boardingPass.bad:before,.socioApp .boardingPass.inactive:before{background:var(--ios-red)!important;}
+.socioApp .boardingPass:after{
+  content:""!important;position:absolute!important;right:92px!important;top:11px!important;bottom:11px!important;width:1px!important;
+  background:repeating-linear-gradient(to bottom,rgba(15,65,103,.18),rgba(15,65,103,.18) 4px,transparent 4px,transparent 8px)!important;
+  opacity:.75!important;
+}
+.socioApp .boardingPass .personMain{padding-right:8px!important;}
+.socioApp .boardingPass .personAction{display:flex!important;align-items:center!important;justify-content:flex-end!important;}
+.socioApp .boardingPass .badgeTipo{background:#f5f8fb!important;color:#516273!important;border:1px solid #dbe5ee!important;}
+.socioApp .boardingPass .personState{margin-top:9px!important;border-radius:999px!important;padding:7px 11px!important;font-size:12.7px!important;}
+.socioApp .boardingPass .personState small{font-size:11px!important;}
+.socioApp .boardingPass .personAction button{min-height:38px!important;border-radius:999px!important;padding:8px 11px!important;font-size:12.6px!important;box-shadow:none!important;}
+.socioApp .boardingPass .personAction .secondaryDanger{background:#fff!important;color:#a33a31!important;border:1px solid rgba(163,58,49,.28)!important;}
+.socioApp .boardingPass .personAction .okBtn{background:linear-gradient(180deg,#2475a8,#0d4d79)!important;color:#fff!important;box-shadow:0 6px 13px rgba(13,77,121,.14)!important;}
+
+.socioApp .emptyBoarding{
+  display:block!important;border:1px dashed rgba(15,65,103,.20)!important;background:linear-gradient(180deg,#fbfdff,#f7fafc)!important;
+  border-radius:22px!important;padding:16px!important;color:#526070!important;text-align:left!important;
+}
+.socioApp .emptyBoarding b{display:block!important;color:#182c42!important;font-size:15.5px!important;margin-bottom:5px!important;}
+.socioApp .emptyBoarding small{display:block!important;font-size:13px!important;line-height:1.35!important;color:#6f7d90!important;font-weight:650!important;}
+.socioApp .formIntro{margin:13px 0 7px!important;padding:0 2px!important;}
+.socioApp .formIntro b{display:block!important;color:#14263a!important;font-size:15px!important;font-weight:900!important;letter-spacing:-.025em!important;}
+.socioApp .formIntro small{display:block!important;margin-top:2px!important;color:#718094!important;font-size:12.5px!important;font-weight:650!important;}
+.socioApp .premiumForm{margin-top:0!important;}
+
+.socioApp .miEmbarqueCard,.socioApp .premiumCard,.socioApp .socioStatusBlock{animation:softRise .22s ease both;}
+@keyframes softRise{from{opacity:.92;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){.socioApp *{animation:none!important;transition:none!important;}}
+@media(max-width:560px){
+  .socioApp .toastSmart{top:58px!important;margin:7px 0 10px!important;grid-template-columns:28px 1fr!important;padding:11px 12px!important;font-size:13px!important;}
+  .socioApp .toastIcon{width:28px!important;height:28px!important;}
+  .socioApp .boardingPass{padding:14px 12px 14px 14px!important;}
+  .socioApp .boardingPass:after{right:84px!important;}
+  .socioApp .boardingPass .personAction button{font-size:12px!important;padding:7px 9px!important;}
+}
+
+/* v39.6.0 - cierre fino socios */
+:root{--ios-blue:#0d4d79;--ios-blue-2:#17699a;--ios-green:#238457;--ios-green-soft:#eefaf4;--ios-red:#b9473f;--ios-red-soft:#fff3f1;--ios-amber:#b7791f;--ios-amber-soft:#fff8e7;--ios-ink:#14263a;--ios-muted:#6f7d90;--ios-line:#dce6ef;}
+.socioApp{background:linear-gradient(180deg,#f5f8fb 0%,#eef4f8 100%)!important;color:var(--ios-ink)!important;}
+.socioApp .top.appHeaderPremium{min-height:52px!important;padding:8px 14px!important;background:rgba(255,255,255,.86)!important;backdrop-filter:blur(16px) saturate(1.12)!important;-webkit-backdrop-filter:blur(16px) saturate(1.12)!important;border-bottom:1px solid rgba(13,77,121,.10)!important;box-shadow:0 1px 10px rgba(13,45,70,.055)!important;}
+.socioApp .logoutBtn{border-radius:999px!important;padding:7px 11px!important;background:rgba(255,255,255,.62)!important;border:1px solid rgba(185,71,63,.20)!important;color:var(--ios-red)!important;font-size:12.5px!important;font-weight:850!important;box-shadow:none!important;}
+.socioApp .wrap.socioWrap{padding-top:10px!important;padding-bottom:76px!important;}
+.socioApp .miEmbarqueCard,.socioApp .premiumCard,.socioApp .premiumHero,.socioApp .socioStatusBlock,.socioApp .kpiStrip>div{border-radius:22px!important;border:1px solid rgba(13,77,121,.095)!important;background:rgba(255,255,255,.88)!important;box-shadow:0 8px 22px rgba(12,35,54,.055)!important;}
+.socioApp .miEmbarqueCard{padding:16px!important;margin-bottom:12px!important;}
+.socioApp .miEmbTop h2{font-size:20px!important;line-height:1.08!important;letter-spacing:-.035em!important;margin:2px 0 3px!important;}
+.socioApp .miEmbTop p{font-size:13px!important;color:var(--ios-muted)!important;}
+.socioApp .eyebrow{font-size:10.5px!important;letter-spacing:.10em!important;color:#7890a4!important;font-weight:900!important;text-transform:uppercase!important;}
+.socioApp .miEmbState,.socioApp .pill,.socioApp .statusPill{border-radius:999px!important;padding:6px 10px!important;font-size:11.5px!important;font-weight:900!important;line-height:1!important;letter-spacing:.015em!important;}
+.socioApp .stateOk,.socioApp .pill.ok,.socioApp .statusPill.ok{background:var(--ios-green-soft)!important;color:var(--ios-green)!important;border:1px solid rgba(35,132,87,.18)!important;}
+.socioApp .stateBad,.socioApp .pill.bad{background:var(--ios-red-soft)!important;color:var(--ios-red)!important;border:1px solid rgba(185,71,63,.20)!important;}
+.socioApp .stateWarn,.socioApp .stateWait,.socioApp .pill.warn{background:var(--ios-amber-soft)!important;color:var(--ios-amber)!important;border:1px solid rgba(183,121,31,.22)!important;}
+.socioApp .stateNeutral,.socioApp .pill.neutral{background:#f4f7fa!important;color:#607184!important;border:1px solid #dfe8f0!important;}
+.socioApp .miEmbGrid{gap:8px!important;margin-top:12px!important;}
+.socioApp .miEmbGrid>div{background:#f7fafc!important;border:1px solid #e5edf4!important;border-radius:16px!important;padding:10px 11px!important;}
+.socioApp .miEmbGrid small{font-size:10.5px!important;color:#7d8fa2!important;text-transform:uppercase!important;font-weight:850!important;letter-spacing:.055em!important;}
+.socioApp .miEmbGrid b{display:block!important;margin-top:3px!important;font-size:14.5px!important;line-height:1.15!important;}
+.socioApp .miEmbTimeline{margin-top:12px!important;padding:10px!important;border-radius:16px!important;background:#f7fafc!important;border:1px solid #e5edf4!important;}
+.socioApp .miEmbCta,.socioApp .btn.green,.socioApp .btn.light{min-height:42px!important;border-radius:15px!important;background:linear-gradient(180deg,var(--ios-blue-2),var(--ios-blue))!important;color:#fff!important;border:none!important;font-size:14px!important;font-weight:850!important;box-shadow:0 7px 16px rgba(13,77,121,.16)!important;text-decoration:none!important;}
+.socioApp .selectRow{border-radius:18px!important;padding:12px!important;border:1px solid #e1ebf2!important;background:#fff!important;box-shadow:0 5px 15px rgba(12,35,54,.035)!important;}
+.socioApp .selectRow.selected{background:linear-gradient(180deg,#f3f9fd,#fff)!important;border-color:rgba(13,77,121,.28)!important;box-shadow:0 8px 18px rgba(13,77,121,.075)!important;}
+.socioApp .socioStatusBlock.open{background:linear-gradient(180deg,#f2fbf6,#ffffff)!important;border-color:rgba(35,132,87,.18)!important;border-left:4px solid var(--ios-green)!important;}
+.socioApp .socioStatusHeader b{font-size:17px!important;letter-spacing:-.035em!important;color:#17311f!important;}
+.socioApp .socioStatusHeader small{font-size:12.5px!important;color:var(--ios-muted)!important;font-weight:650!important;}
+.socioApp .socioStatusMetrics{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:12px!important;}
+.socioApp .socioStatusMetric{background:#fff!important;border:1px solid rgba(35,132,87,.13)!important;border-radius:16px!important;padding:9px 8px!important;text-align:center!important;}
+.socioApp .socioStatusMetric strong{display:block!important;font-size:17px!important;line-height:1!important;color:#17311f!important;letter-spacing:-.035em!important;}
+.socioApp .socioStatusMetric span{display:block!important;margin-top:4px!important;font-size:10.5px!important;text-transform:uppercase!important;letter-spacing:.065em!important;color:#748797!important;font-weight:900!important;}
+.socioApp .kpiStrip{gap:8px!important;margin:10px 0!important;}
+.socioApp .kpiStrip>div{padding:10px!important;text-align:left!important;box-shadow:none!important;background:#fbfdff!important;}
+.socioApp .premiumPerson{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:12px!important;align-items:center!important;margin-top:10px!important;}
+.socioApp .reservationCard,.socioApp .boardingPass{border-radius:22px!important;background:#fff!important;border:1px solid rgba(13,77,121,.11)!important;box-shadow:0 8px 20px rgba(12,35,54,.052)!important;}
+.socioApp .reservationCard{padding:15px!important;border-left:4px solid var(--ios-blue)!important;}
+.socioApp .boardingPass{padding:15px 14px 15px 17px!important;border-left:0!important;}
+.socioApp .boardingPass.bpActive:before{background:var(--ios-green)!important;}
+.socioApp .boardingPass.bpWait:before{background:var(--ios-amber)!important;}
+.socioApp .boardingPass.bpCancelled:before,.socioApp .boardingPass.inactive:before{background:var(--ios-red)!important;}
+.socioApp .boardingPass.bpActive{background:linear-gradient(180deg,#fff,#fbfffd)!important;border-color:rgba(35,132,87,.14)!important;}
+.socioApp .boardingPass.bpWait{background:linear-gradient(180deg,#fff,#fffdf6)!important;border-color:rgba(183,121,31,.18)!important;}
+.socioApp .boardingPass.bpCancelled{background:linear-gradient(180deg,#fff,#fff8f7)!important;border-color:rgba(185,71,63,.17)!important;}
+.socioApp .personMain>b{font-size:15.5px!important;line-height:1.12!important;letter-spacing:-.025em!important;color:var(--ios-ink)!important;}
+.socioApp .personState{display:inline-flex!important;flex-direction:column!important;align-items:flex-start!important;gap:1px!important;background:#f6f9fb!important;border:1px solid #e2ebf2!important;color:#516273!important;font-weight:850!important;}
+.socioApp .bpActive .personState,.socioApp .ok .personState{background:var(--ios-green-soft)!important;border-color:rgba(35,132,87,.16)!important;color:var(--ios-green)!important;}
+.socioApp .bpWait .personState,.socioApp .warn .personState{background:var(--ios-amber-soft)!important;border-color:rgba(183,121,31,.20)!important;color:var(--ios-amber)!important;}
+.socioApp .bpCancelled .personState,.socioApp .bad .personState,.socioApp .inactive .personState{background:var(--ios-red-soft)!important;border-color:rgba(185,71,63,.18)!important;color:var(--ios-red)!important;}
+.socioApp .personAction button,.socioApp .mini{min-height:36px!important;border-radius:999px!important;padding:7px 10px!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important;}
+.socioApp .secondaryDanger{background:#fff!important;color:var(--ios-red)!important;border:1px solid rgba(185,71,63,.26)!important;box-shadow:none!important;}
+.socioApp .neutralBtn{background:#f6f9fb!important;color:#596a7c!important;border:1px solid #dfe8f0!important;box-shadow:none!important;}
+.socioApp .okBtn{background:linear-gradient(180deg,var(--ios-blue-2),var(--ios-blue))!important;color:#fff!important;border:none!important;}
+.socioApp .emptyBoarding,.socioApp .empty,.socioApp .lockBox{border-radius:20px!important;padding:14px!important;background:#fbfdff!important;border:1px dashed rgba(13,77,121,.18)!important;color:#607184!important;}
+.socioApp .input{min-height:42px!important;border-radius:15px!important;border:1px solid #dce6ef!important;background:#fff!important;padding:10px 12px!important;font-size:14px!important;}
+.socioApp .input:focus{outline:none!important;border-color:rgba(13,77,121,.42)!important;box-shadow:0 0 0 3px rgba(13,77,121,.10)!important;}
+.socioApp .rulesToggle{padding:0!important;overflow:hidden!important;margin-bottom:8px!important;}
+.socioApp .rulesToggle summary{padding:13px 15px!important;font-weight:900!important;cursor:pointer!important;}
+.socioApp .rulesToggle p{padding:0 15px 15px!important;margin:0!important;font-size:13px!important;line-height:1.42!important;color:#526477!important;}
+.socioApp .bottom{height:56px!important;padding:6px 10px!important;background:rgba(255,255,255,.90)!important;backdrop-filter:blur(16px) saturate(1.1)!important;-webkit-backdrop-filter:blur(16px) saturate(1.1)!important;border-top:1px solid rgba(13,77,121,.10)!important;box-shadow:0 -4px 18px rgba(12,35,54,.06)!important;}
+.socioApp .bottom a{border-radius:14px!important;font-size:11.5px!important;font-weight:850!important;color:#607184!important;}
+.socioApp .bottom a.on{background:#edf6fc!important;color:var(--ios-blue)!important;}
+.socioApp .appFooter.socioFooter{margin:4px auto 72px!important;padding:8px 12px!important;width:fit-content!important;max-width:calc(100% - 30px)!important;border-radius:999px!important;background:rgba(255,255,255,.70)!important;border:1px solid rgba(13,77,121,.10)!important;color:#6f7d90!important;font-size:12px!important;box-shadow:none!important;}
+.socioApp .socioFooter b{font-size:12.5px!important;color:var(--ios-blue)!important;margin-left:6px!important;}
+.socioApp button,.socioApp .btn,.socioApp .miEmbCta,.socioApp .selectRow,.socioApp .bottom a,.socioApp summary{transition:transform .14s cubic-bezier(.2,.8,.2,1),box-shadow .14s ease,filter .14s ease,background .14s ease,border-color .14s ease,color .14s ease!important;}
+.socioApp .isPressed,.socioApp button:active,.socioApp .btn:active,.socioApp .miEmbCta:active,.socioApp .selectRow:active,.socioApp .bottom a:active,.socioApp summary:active{transform:translateY(1px) scale(.985)!important;}
+.socioApp .toastSmart{position:sticky!important;top:60px!important;z-index:1200!important;display:grid!important;grid-template-columns:30px 1fr 28px!important;box-shadow:0 12px 30px rgba(12,35,54,.12)!important;}
+.socioApp .toastClose{display:flex!important;align-items:center!important;justify-content:center!important;width:28px!important;height:28px!important;border-radius:999px!important;border:0!important;background:rgba(255,255,255,.55)!important;color:inherit!important;font-size:18px!important;font-weight:900!important;box-shadow:none!important;padding:0!important;}
+@media(max-width:560px){.socioApp .miEmbGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.socioApp .socioStatusMetrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}.socioApp .premiumPerson{grid-template-columns:1fr!important;gap:9px!important}.socioApp .personAction{justify-content:flex-start!important}.socioApp .boardingPass:after{display:none!important}.socioApp .personAction button,.socioApp .mini{width:auto!important;max-width:100%!important}}
+@media(max-width:380px){.socioApp .miEmbGrid,.socioApp .socioStatusMetrics{grid-template-columns:1fr!important}}
