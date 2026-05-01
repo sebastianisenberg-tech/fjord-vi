@@ -4234,3 +4234,69 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .officeFieldV466 span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:#496779;}
 .officeDateHintV466{display:block;font-size:12px;font-weight:850;color:#0f5d86;background:#eef7fc;border:1px solid #d2e8f4;border-radius:12px;padding:8px 10px;min-height:16px;}
 @media(max-width:760px){.officeAgendaFormV466{align-items:stretch}.officeFieldV466{min-width:100%;}}
+
+/* v46.7 - ADMIN DESKTOP BACKOFFICE
+   Administración es PC-first: pantalla ancha, navegación lateral, tablas y módulos claros.
+   No toca lógica de Capitán, QR, cierre ni liquidación. */
+.officeDesktopHeaderV467{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:center!important;
+  gap:24px!important;
+  background:linear-gradient(135deg,#073b5c 0%,#0b5f8f 68%,#062b4b 100%)!important;
+  color:#fff!important;
+  border-radius:24px!important;
+  padding:22px 26px!important;
+  box-shadow:0 18px 42px rgba(7,59,92,.20)!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+}
+.officeDesktopHeaderV467 .officeEyebrow{color:rgba(255,255,255,.72)!important;}
+.officeDesktopHeaderV467 h1{margin:4px 0 4px!important;font-size:34px!important;letter-spacing:-.02em!important;color:#fff!important;line-height:1!important;}
+.officeDesktopHeaderV467 p{margin:0!important;color:rgba(255,255,255,.78)!important;font-weight:650!important;}
+.officeDesktopHeaderActionsV467{display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:flex-end!important;}
+.officeDesktopHeaderActionsV467 a{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:38px!important;padding:0 14px!important;border-radius:999px!important;background:rgba(255,255,255,.13)!important;color:#fff!important;text-decoration:none!important;font-weight:900!important;border:1px solid rgba(255,255,255,.22)!important;}
+.officeDesktopHeaderActionsV467 a:hover{background:rgba(255,255,255,.22)!important;}
+.officeReadOnlyWarningV467{margin-top:12px!important;border-radius:16px!important;padding:13px 15px!important;background:#f4f8fb!important;border:1px solid #d9e7f0!important;color:#21475d!important;display:grid!important;gap:4px!important;}
+.officeReadOnlyWarningV467 b{font-size:14px!important;}
+.officeReadOnlyWarningV467 span{font-size:13px!important;color:#5f7181!important;}
+@media (min-width:981px){
+  body:has(.officeApp){overflow:hidden!important;}
+  .officeMobileLogoutV462{display:none!important;}
+  .officeApp{min-height:100dvh!important;background:linear-gradient(180deg,#eef6fb 0%,#f7fbfd 48%,#eef5f8 100%)!important;}
+  .officeApp .officeLayout{height:100dvh!important;display:block!important;max-width:none!important;margin:0!important;padding:18px 24px 18px 288px!important;box-sizing:border-box!important;overflow:hidden!important;}
+  .officeSidebarV44{position:fixed!important;left:18px!important;top:18px!important;bottom:18px!important;width:238px!important;max-height:none!important;overflow:auto!important;border-radius:24px!important;background:linear-gradient(180deg,#073b5c 0%,#0b5f8f 58%,#062b4b 100%)!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:0 22px 52px rgba(7,59,92,.28)!important;padding:15px!important;}
+  .officeBrandV44{padding:10px 8px 16px!important;margin-bottom:10px!important;border-bottom:1px solid rgba(255,255,255,.15)!important;}
+  .officeBrandV44 b{color:#fff!important;font-size:17px!important;line-height:1.12!important;}
+  .officeBrandV44 span{color:rgba(255,255,255,.72)!important;font-size:13px!important;margin-top:5px!important;}
+  .officeSideSectionV44{color:rgba(255,255,255,.50)!important;font-size:10px!important;text-transform:uppercase!important;letter-spacing:.16em!important;font-weight:950!important;margin:14px 8px 6px!important;}
+  .officeSidebarV44 a.officeSideLinkV44{color:#eaf6ff!important;padding:10px 11px!important;border-radius:15px!important;margin:4px 0!important;border:1px solid transparent!important;}
+  .officeSidebarV44 a.officeSideLinkV44 span{font-size:13px!important;color:#fff!important;font-weight:950!important;}
+  .officeSidebarV44 a.officeSideLinkV44 small{font-size:11px!important;color:rgba(255,255,255,.63)!important;}
+  .officeSidebarV44 a.officeSideLinkV44:hover,.officeSidebarV44 a.officeSideLinkV44.is-active{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.22)!important;}
+  .officeSidebarV44 a.officeSideActionV44{background:#fff!important;color:#073b5c!important;box-shadow:0 7px 18px rgba(0,0,0,.13)!important;}
+  .officeApp .officeMain{height:calc(100dvh - 36px)!important;overflow:auto!important;padding:0 8px 60px 0!important;display:grid!important;gap:16px!important;max-width:1500px!important;margin:0 auto!important;scroll-behavior:smooth!important;}
+  .officeApp .officeMain::-webkit-scrollbar,.officeSidebarV44::-webkit-scrollbar,.officeTableWrap::-webkit-scrollbar{width:10px;height:10px;}
+  .officeApp .officeMain::-webkit-scrollbar-thumb,.officeSidebarV44::-webkit-scrollbar-thumb,.officeTableWrap::-webkit-scrollbar-thumb{background:#b8cfdf;border-radius:999px;border:2px solid #eef6fb;}
+  .officeApp .officeCard{border-radius:22px!important;padding:20px!important;margin-bottom:0!important;box-shadow:0 12px 30px rgba(12,45,68,.07)!important;border-color:#dbe8f0!important;background:rgba(255,255,255,.96)!important;}
+  .officeApp .officeHero{display:grid!important;grid-template-columns:minmax(0,1fr) 280px!important;align-items:stretch!important;border-top:0!important;}
+  .officeApp .officeHero h1{font-size:38px!important;margin:6px 0 8px!important;}
+  .officeApp .officeKpiGrid{grid-template-columns:repeat(6,minmax(120px,1fr))!important;gap:12px!important;}
+  .officeApp .officeKpi{min-height:92px!important;border-radius:18px!important;padding:14px!important;box-shadow:0 7px 20px rgba(12,45,68,.05)!important;}
+  .officeApp .officeTwoCols{grid-template-columns:minmax(0,1fr) minmax(340px,.68fr)!important;gap:16px!important;align-items:start!important;}
+  .officeApp .officeSelector{display:grid!important;grid-template-columns:minmax(0,1fr) 120px 140px!important;align-items:center!important;}
+  .officeApp .officeForm{display:grid!important;grid-template-columns:repeat(2,minmax(260px,1fr)) auto!important;align-items:end!important;}
+  .officeApp #usuarios .officeForm{grid-template-columns:repeat(3,minmax(180px,1fr)) 160px!important;}
+  .officeApp .officeTableWrap{max-height:440px!important;overflow:auto!important;}
+  .officeApp .officeTable{min-width:980px!important;}
+  .officeApp .officeUserGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;max-height:520px!important;overflow:auto!important;padding-right:4px!important;}
+  .officeApp .officeUser{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;border-radius:16px!important;}
+  .officeApp .officeUserActions{display:grid!important;grid-template-columns:1fr!important;align-items:start!important;}
+  .officeApp #crear{border-left:5px solid #0b7fb2!important;}
+  .officeApp #usuarios{border-left:5px solid #2b7a78!important;}
+  .officeApp #liquidacion{border-left:5px solid #b98020!important;}
+}
+@media (max-width:980px){
+  .officeDesktopHeaderV467{margin:0 0 12px!important;padding:16px!important;border-radius:18px!important;display:block!important;}
+  .officeDesktopHeaderV467 h1{font-size:26px!important;}
+  .officeDesktopHeaderActionsV467{margin-top:12px!important;justify-content:flex-start!important;}
+}
