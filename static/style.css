@@ -3886,3 +3886,236 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .socioApp .personMain>b{font-size:15.8px!important;}
 .socioApp .personState{box-shadow:0 1px 0 rgba(255,255,255,.7) inset!important;}
 /* END v46.0 */
+
+
+/* =========================================================
+   v47.0 - Admin desktop real: dashboard compacto, sin banner
+   azul sobredimensionado, versionado unificado.
+   ========================================================= */
+:root{--v47-navy:#062b4b;--v47-blue:#0b5f8f;--v47-cyan:#dff2fb;--v47-bg:#edf6fb;--v47-card:#ffffff;--v47-ink:#102033;--v47-muted:#52687b;--v47-line:#cfddea;--v47-soft:#f7fbfe;}
+.officePageTitleV47{display:none;}
+.officeActiveOutingV47{margin:8px 0 12px!important;padding:10px 12px!important;border-radius:16px!important;background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.14)!important;color:#fff!important;}
+.officeActiveOutingV47 span{display:block!important;font-size:10px!important;text-transform:uppercase!important;letter-spacing:.12em!important;font-weight:950!important;color:rgba(255,255,255,.58)!important;margin-bottom:4px!important;}
+.officeActiveOutingV47 b{display:block!important;font-size:13px!important;line-height:1.15!important;color:#fff!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+.officeActiveOutingV47 small{display:block!important;margin-top:3px!important;font-size:11px!important;color:rgba(255,255,255,.72)!important;font-weight:800!important;}
+@media (min-width:981px){
+  body:has(.officeApp){background:var(--v47-bg)!important;}
+  .officeApp{background:linear-gradient(180deg,#eaf5fb 0%,#f7fbfd 100%)!important;}
+  .officeApp .officeLayout{padding:14px 18px 14px 256px!important;}
+  .officeSidebarV44{width:218px!important;top:14px!important;bottom:14px!important;border-radius:20px!important;padding:14px!important;background:linear-gradient(180deg,#062b4b 0%,#07517b 100%)!important;}
+  .officeBrandV44{padding:11px 12px!important;border-radius:15px!important;margin-bottom:12px!important;}
+  .officeBrandV44 b{font-size:13px!important;}
+  .officeBrandV44 span{font-size:11px!important;}
+  .officeSideSectionV44{margin:12px 2px 7px!important;font-size:10px!important;}
+  .officeSidebarV44 a.officeSideLinkV44{padding:9px 10px!important;border-radius:13px!important;margin-bottom:5px!important;}
+  .officeSidebarV44 a.officeSideLinkV44 span{font-size:12.5px!important;}
+  .officeSidebarV44 a.officeSideLinkV44 small{font-size:10.5px!important;}
+  .officeSidebarV44 a.officeSideLinkV44.is-active{background:rgba(38,154,218,.30)!important;border-color:rgba(255,255,255,.24)!important;box-shadow:inset 3px 0 0 #8bd5ff!important;}
+  .officeSidebarV44 a.officeSideActionV44{min-height:34px!important;padding:8px 10px!important;border-radius:12px!important;font-size:11.5px!important;background:rgba(255,255,255,.92)!important;}
+  .officeApp .officeMain{height:calc(100dvh - 28px)!important;padding:0 10px 32px 0!important;gap:12px!important;max-width:1280px!important;}
+  .officePageTitleV47{display:block!important;margin:0 0 2px!important;color:var(--v47-ink)!important;}
+  .officePageTitleV47 span{display:block!important;text-transform:uppercase!important;letter-spacing:.14em!important;font-weight:950!important;font-size:10px!important;color:#5a7183!important;}
+  .officePageTitleV47 b{display:block!important;font-size:21px!important;letter-spacing:-.035em!important;line-height:1.05!important;color:var(--v47-ink)!important;}
+  .officeApp .officeCard{border-radius:18px!important;padding:14px 16px!important;box-shadow:0 8px 22px rgba(12,35,54,.055)!important;border:1px solid rgba(122,151,172,.28)!important;background:rgba(255,255,255,.94)!important;}
+  .officeApp .officeHeroV47{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:16px!important;min-height:0!important;padding:14px 16px!important;align-items:center!important;}
+  .officeApp .officeHeroV47 .officeHeroText{min-width:0!important;}
+  .officeApp .officeHeroV47 .officeEyebrow{font-size:10px!important;letter-spacing:.13em!important;}
+  .officeApp .officeHeroV47 h1{font-size:26px!important;line-height:1!important;margin:4px 0 6px!important;letter-spacing:-.045em!important;}
+  .officeApp .officeHeroV47 p{font-size:12.5px!important;margin:2px 0!important;color:var(--v47-muted)!important;}
+  .officeApp .officeStatusBox{display:inline-flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;min-width:160px!important;min-height:58px!important;border-radius:16px!important;padding:10px 14px!important;background:linear-gradient(135deg,#0b5f8f,#073b5c)!important;color:#fff!important;box-shadow:0 8px 18px rgba(6,43,75,.16)!important;border:1px solid rgba(255,255,255,.18)!important;}
+  .officeApp .officeStatusBox span{font-size:9px!important;text-transform:uppercase!important;letter-spacing:.13em!important;font-weight:950!important;color:rgba(255,255,255,.78)!important;line-height:1.1!important;}
+  .officeApp .officeStatusBox b{font-size:19px!important;line-height:1.05!important;margin-top:4px!important;text-transform:uppercase!important;font-weight:950!important;color:#fff!important;white-space:nowrap!important;}
+  .officeSelectorCardV47{padding:12px 16px!important;}
+  .officeSelectorCardV47 .officeSectionHead{margin-bottom:8px!important;}
+  .officeApp .officeSectionHead h2{font-size:18px!important;letter-spacing:-.035em!important;margin:2px 0 0!important;}
+  .officeApp .officeEyebrow{font-size:10px!important;letter-spacing:.13em!important;color:#5a7183!important;}
+  .officeApp .officeSelector{grid-template-columns:minmax(0,1fr) 82px 118px!important;gap:8px!important;align-items:center!important;}
+  .officeApp select,.officeApp input,.officeApp textarea{min-height:38px!important;border-radius:12px!important;font-size:12.5px!important;}
+  .officeApp button,.officeApp .officeMini{min-height:36px!important;border-radius:12px!important;font-size:12px!important;}
+  .officeKpiGridV47{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;}
+  .officeApp .officeKpi{min-height:62px!important;padding:10px 11px!important;border-radius:15px!important;box-shadow:0 4px 14px rgba(12,35,54,.045)!important;background:rgba(255,255,255,.96)!important;}
+  .officeApp .officeKpi span{font-size:9.5px!important;letter-spacing:.10em!important;}
+  .officeApp .officeKpi b{font-size:22px!important;margin-top:2px!important;}
+  .officeApp .officeKpi small{font-size:10px!important;line-height:1.15!important;margin-top:3px!important;}
+  .officeStatusLineV47{padding:11px 14px!important;border-radius:15px!important;font-size:12.5px!important;background:#f1fbf6!important;border-left:4px solid #1e8a56!important;}
+  .officeStatusLineV47 b{font-size:13px!important;margin-right:6px!important;}
+  .officeAdminControlV47{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(260px,.9fr)!important;gap:12px!important;align-items:start!important;}
+  .officeAdminControlV47 .officeSectionHead{grid-column:1/-1!important;margin-bottom:0!important;}
+  .officeAdminControlV47 .officeHelp{grid-column:1/-1!important;margin:0!important;font-size:12px!important;}
+  .officeApp .officeForm{gap:8px!important;}
+  .officeApp .officeTwoColsV47{grid-template-columns:minmax(0,1fr) minmax(330px,.72fr)!important;gap:12px!important;}
+  .officeApp .officeActaGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;}
+  .officeApp .officeActaGrid div{padding:9px 10px!important;border-radius:13px!important;background:var(--v47-soft)!important;}
+  .officeApp .officeActaGrid span{font-size:10px!important;letter-spacing:.1em!important;}
+  .officeApp .officeActaGrid b{font-size:20px!important;}
+  .officeTotal{padding:9px 10px!important;border-radius:13px!important;background:var(--v47-soft)!important;}
+  .officeTotal b{font-size:22px!important;}
+  .officeApp .officeTableWrap{max-height:min(44dvh,520px)!important;border-radius:15px!important;}
+  .officeApp .officeTable th{font-size:10px!important;letter-spacing:.10em!important;padding:10px!important;}
+  .officeApp .officeTable td{font-size:12px!important;padding:10px!important;}
+  .officeToolbarV43{gap:8px!important;margin-bottom:8px!important;}
+  .officeCreateV47,.officeAgendaV47,.officeUsersV47,.officeSystemV47,.officeLogsV47{padding:14px 16px!important;}
+  .officeCreateV47 .officeForm{display:grid!important;grid-template-columns:1.2fr 1fr .9fr .6fr auto!important;align-items:end!important;}
+  .officeList .officeOutingRow{padding:10px 12px!important;border-radius:13px!important;margin:6px 0!important;}
+  .officeUsersV47 .officeForm{display:grid!important;grid-template-columns:1.2fr .7fr .55fr 1fr .75fr .65fr auto!important;align-items:end!important;}
+  .officeUserGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;max-height:min(46dvh,560px)!important;padding:2px!important;}
+  .officeUser{padding:10px 11px!important;border-radius:14px!important;}
+  .officeSystemV47{grid-template-columns:1fr 1fr!important;gap:12px!important;}
+  .officeLogsV47{max-height:380px!important;overflow-y:auto!important;}
+}
+@media (max-width:1180px) and (min-width:981px){
+  .officeKpiGridV47{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+  .officeAdminControlV47{grid-template-columns:1fr!important;}
+  .officeCreateV47 .officeForm,.officeUsersV47 .officeForm{grid-template-columns:1fr 1fr!important;}
+  .officeUserGrid{grid-template-columns:1fr!important;}
+}
+@media (max-width:980px){
+  .officeApp .officeHeroV47{grid-template-columns:1fr!important;}
+  .officeApp .officeStatusBox{min-height:72px!important;}
+  .officeApp .officeStatusBox b{font-size:26px!important;}
+}
+/* END v47.0 */
+
+/* =========================
+   v47.1 — AUDITORÍA PREINSTALACIÓN
+   Admin desktop: header compacto, sin bloque azul redundante, scroll interno robusto
+========================= */
+.officeMain {
+  scroll-behavior: smooth;
+}
+.officeHeroV47 {
+  display: block !important;
+  padding: 16px 18px !important;
+  min-height: 0 !important;
+}
+.officeHeroV47 .officeHeroText {
+  width: 100% !important;
+}
+.officeHeroV47 h1 {
+  margin: 4px 0 4px !important;
+  font-size: clamp(22px, 2.2vw, 32px) !important;
+  line-height: 1.05 !important;
+}
+.officeHeroV47 p {
+  margin: 3px 0 !important;
+  color: #314155 !important;
+}
+.officeStatusBadgeV471 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.officeStatusBadgeV471.open {
+  background: #e8f7ef;
+  color: #08734f;
+  border: 1px solid #b7e4cd;
+}
+.officeStatusBadgeV471.closed {
+  background: #eef6ff;
+  color: #114a82;
+  border: 1px solid #c8dffc;
+}
+.officeStatusBadgeV471.danger {
+  background: #fff0ef;
+  color: #9f1d16;
+  border: 1px solid #f0c7c7;
+}
+.officeKpiGridV47 {
+  gap: 10px !important;
+  margin-bottom: 14px !important;
+}
+.officeKpiGridV47 .officeKpi {
+  padding: 12px 13px !important;
+  border-radius: 14px !important;
+}
+.officeKpiGridV47 .officeKpi b {
+  font-size: 24px !important;
+  margin: 3px 0 !important;
+}
+.officeKpiGridV47 .officeKpi small {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+.officeSelectorCardV47,
+.officeCard {
+  scroll-margin-top: 18px;
+}
+.officeSideLinkV44.active {
+  background: rgba(255,255,255,.18) !important;
+  border-color: rgba(255,255,255,.32) !important;
+}
+@media (min-width: 981px) {
+  .officeHeroV47 {
+    margin-bottom: 12px !important;
+  }
+  .officeSelectorCardV47 {
+    padding: 14px 16px !important;
+    margin-bottom: 12px !important;
+  }
+  .officeSectionHead {
+    margin-bottom: 10px !important;
+  }
+  .officeStatusLineV47 {
+    margin-bottom: 12px !important;
+    padding: 12px 15px !important;
+  }
+}
+@media (max-width: 700px) {
+  .officeStatusBadgeV471 {
+    margin-left: 0;
+    margin-top: 6px;
+  }
+}
+
+/* =========================
+   v47.2 — AUDITORÍA PREINSTALACIÓN
+   Correcciones: salida admin móvil + estados visuales consistentes
+========================= */
+.officeMobileLogoutV472{display:none!important;}
+.officeStatusLineV47.open{
+  background:#f1fbf6!important;
+  border-left:4px solid #1e8a56!important;
+  border-color:#b7e4cd!important;
+  color:#102033!important;
+}
+.officeStatusLineV47.closed{
+  background:#eef6ff!important;
+  border-left:4px solid #1d5f99!important;
+  border-color:#c8dffc!important;
+  color:#102033!important;
+}
+.officeStatusLineV47.danger{
+  background:#fff0ef!important;
+  border-left:4px solid #b42318!important;
+  border-color:#f0c7c7!important;
+  color:#102033!important;
+}
+.officeStatusLineV47 span{color:#52687b!important;}
+.officeStatusLineV47.danger b{color:#9f1d16!important;}
+.officeStatusLineV47.closed b{color:#114a82!important;}
+.officeStatusLineV47.open b{color:#08734f!important;}
+@media(max-width:980px){
+  .officeMobileLogoutV472{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:fit-content!important;
+    min-height:36px!important;
+    padding:8px 16px!important;
+    border-radius:999px!important;
+    background:#062b4b!important;
+    color:#fff!important;
+    text-decoration:none!important;
+    font-weight:900!important;
+    box-shadow:0 8px 18px rgba(6,43,75,.18)!important;
+    margin:0 0 4px!important;
+  }
+}
