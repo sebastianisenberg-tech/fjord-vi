@@ -4294,3 +4294,44 @@ body:not([data-office-current-view]) .officeKpiGridV47.officeViewSectionV48[data
     grid-template-columns: 1fr !important;
   }
 }
+
+/* =========================
+   v49.0 CORRECTIVO ADMIN
+   Restaura panel unico operativo: todas las secciones visibles,
+   sidebar como indice, listas con scroll interno.
+========================= */
+body[data-office-current-view] .officeViewSectionV48,
+.officeViewSectionV48,
+.officeViewSectionV48.is-view-active {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.officeMobileAdminNavV48 { display:none !important; }
+.officePageTitleV47 b::after { content:" · panel único operativo"; }
+.officeMain { scroll-behavior:smooth; }
+.officeViewSectionV48 { scroll-margin-top: 18px; }
+.officeCard { margin-bottom: 18px !important; }
+.officeSidebarV44 .officeSideLinkV44 { cursor:pointer; }
+.officeSidebarV44 .officeSideLinkV44 small { opacity:.72; }
+.officeTableWrap { max-height: 420px !important; overflow:auto !important; border-radius:14px; }
+.officeTable thead th { position: sticky; top: 0; z-index: 2; background:#f8fafc; }
+.officeUserGrid { max-height: 430px !important; overflow:auto !important; padding-right:4px; }
+.officeAgendaV47 { max-height: 330px !important; overflow:auto !important; }
+.officeTwoColsV47 { align-items:start; }
+.officeSystemV47 { margin-bottom: 18px !important; }
+.officeStatusLineV47 { display:block !important; }
+.officeHeroV47 { padding:14px 16px !important; }
+.officeHeroV47 h1 { font-size:22px !important; margin:2px 0 4px !important; }
+.officeKpiGridV47 { grid-template-columns: repeat(6, minmax(0,1fr)) !important; }
+.officeKpi { min-height:auto !important; }
+.officeKpi b { font-size:22px !important; }
+.officeAdminControlV47 { display:block !important; }
+.officeSideActionV44.officeLogoutV452 { background:#b91c1c !important; color:white !important; }
+@media (max-width: 980px){
+  .officeMobileAdminNavV48 { display:flex !important; gap:8px; overflow-x:auto; padding:8px 0; }
+  .officeMobileAdminNavV48 a { white-space:nowrap; }
+  .officeKpiGridV47 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  .officeTableWrap, .officeUserGrid { max-height: 360px !important; }
+  .officeAgendaV47 { max-height: 300px !important; }
+}
