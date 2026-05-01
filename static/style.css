@@ -4114,3 +4114,20 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .captainProBody .capAction{min-height:44px!important;padding:10px 8px!important;font-size:13px!important;}
   .captainProBody .captainFilterPro button{padding:8px 11px!important;font-size:12px!important;}
 }
+
+
+/* =========================================================
+   v46.5.3 CAPITAN PRO - feedback operativo + responsable visible
+   ========================================================= */
+.captainToastStack{position:fixed;left:12px;right:12px;top:76px;z-index:100000;display:grid;gap:8px;pointer-events:none;}
+.captainToast{transform:translateY(-8px);opacity:0;transition:opacity .18s ease,transform .18s ease;border-radius:16px;padding:12px 14px;font-weight:900;font-size:13px;line-height:1.25;box-shadow:0 16px 36px rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.35);color:#fff;}
+.captainToast.show{transform:translateY(0);opacity:1;}
+.captainToast.success{background:#0f7a43;}
+.captainToast.error{background:#9f1d1d;}
+.captainToast.warning{background:#a16207;}
+.captainToast.info{background:#075985;}
+.captainResponsibleLine{margin-top:6px;font-size:12.5px;line-height:1.25;color:#334155;background:#f1f7fb;border:1px solid #d9e8f2;border-radius:12px;padding:7px 9px;}
+.captainResponsibleLine b{font-size:12.5px!important;color:#0b3a5b!important;}
+.captainPersonPro.invitado .captainResponsibleLine,.captainPersonPro.hijo_menor .captainResponsibleLine{display:block;}
+.captainReason{line-height:1.28;}
+@media (max-width:420px){.captainToastStack{top:70px;left:8px;right:8px}.captainToast{font-size:12.5px;padding:11px 12px}.captainResponsibleLine{font-size:12px;padding:6px 8px}}
