@@ -4227,3 +4227,10 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .captainTop .captainHeaderBrand small{display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
 .captainTop .captainHeaderName{display:inline-flex!important;align-items:center!important;max-width:140px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;padding:2px 8px!important;border-radius:999px!important;background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.24)!important;color:#fff!important;font-family:ui-serif, Georgia, "Times New Roman", serif!important;font-style:italic!important;font-weight:700!important;letter-spacing:.01em!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)!important;}
 @media(max-width:420px){.captainTop .captainHeaderName{max-width:118px!important;padding:1px 7px!important;font-size:10.8px!important;}.captainTop .headerBrand b{max-width:190px!important;}}
+
+/* v46.6 Admin Agenda: carga mínima de paseos */
+.officeAgendaFormV466{gap:12px;align-items:end;}
+.officeFieldV466{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1;}
+.officeFieldV466 span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:#496779;}
+.officeDateHintV466{display:block;font-size:12px;font-weight:850;color:#0f5d86;background:#eef7fc;border:1px solid #d2e8f4;border-radius:12px;padding:8px 10px;min-height:16px;}
+@media(max-width:760px){.officeAgendaFormV466{align-items:stretch}.officeFieldV466{min-width:100%;}}
