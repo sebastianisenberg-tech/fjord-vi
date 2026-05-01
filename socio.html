@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
   {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>
   {% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>
-  {% else %}<b>Salida operativa</b><span class="statusMetrics"><strong>{{active_count}} / {{outing.max_crew}} activos</strong><strong>{{remaining}} libres</strong>{% if waitlist_count|default(0) > 0 %}<strong>{{waitlist_count}} en espera</strong>{% endif %}</span>{% endif %}
+  {% else %}<div class="statusPanelHeader"><b>Salida operativa</b><small>Tripulación publicada para esta salida</small></div><span class="statusMetrics iosMetrics"><strong><em>{{active_count}} / {{outing.max_crew}}</em><span>ocupados</span></strong><strong><em>{{remaining}}</em><span>libres</span></strong>{% if waitlist_count|default(0) > 0 %}<strong><em>{{waitlist_count}}</em><span>en espera</span></strong>{% endif %}</span>{% endif %}
 </section>
 
 <section class="kpiStrip">
@@ -108,5 +108,5 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
 <details class="card rulesToggle premiumCard" id="reglas"><summary>Ver reglas de cargos</summary><p>Antes del corte de 48h, los socios tienen prioridad sobre invitados. Después del corte, la tripulación queda congelada y la lista de espera entra solo si se libera una vacante. La lista de espera no genera cargo mientras no entre al cupo. Si entra al cupo y luego no embarca o cancela tarde, aplica el cargo reglamentario: socio 70% de tarifa invitado; invitado o menor no socio 100%. Si el capitán cancela la salida, no hay cargos.</p></details>
 {% endif %}
 </main><nav class="bottom"><a class="on" href="#salidas">Salidas</a><a href="#reserva">Reserva</a><a href="#invitados">Invitados</a><a href="#reglas">Reglas</a></nav>
-<footer class="appFooter socioFooter"><small>Embarque Fjord VI</small><b>{{version}}</b></footer>
+<footer class="appFooter socioFooter"><span>Embarque Fjord VI</span><b>{{version}}</b></footer>
 </div></body></html>
