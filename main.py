@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v46.6"
-APP_BUILD = "v46-6-admin-agenda"
+VERSION = "v47.0"
+APP_BUILD = "v47-admin-desktop-real"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -2195,8 +2195,12 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     control_window = captain_control_window(outing) if outing else {}
+    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
+    admin_page = request.query_params.get("page", "dashboard")
+    if admin_page not in allowed_admin_pages:
+        admin_page = "dashboard"
     return templates.TemplateResponse(request, "admin.html", base_template_context(**{
-        "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "counts": counts, "active_counts": active_counts,
+        "request": request, "user": user, "admin_page": admin_page, "outing": outing, "outings": outings, "history_groups": history_groups, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
         "present": present, "pending": pending, "charges": charges,
         "total_charges": total_charges, "logs": logs, "readiness": ready,

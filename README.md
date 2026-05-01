@@ -1,10 +1,7 @@
-# FJORD VI v46.7 ADMIN DESKTOP BACKOFFICE
+FJORD VI v46.8 ADMIN v2 DESKTOP BACKOFFICE
 
-Backoffice de Administración orientado a PC/escritorio. Conserva motor lógico, Capitán, QR, cierre, cargos y reglas existentes.
-
-Cambios principales:
-- título Administración restaurado;
-- estructura visual de escritorio;
-- agenda y usuarios como entradas principales;
-- estado operativo protegido: Admin no cierra ni cancela desde UI;
-- mejor organización para lectura, liquidación, reservas, auditoría y exportación.
+- Administración rediseñada como backoffice de escritorio.
+- Menú lateral con pantallas separadas: Dashboard, Navegaciones, Reservas, Liquidación, Socios, Auditoría, Estadísticas, Exportar y Configuración.
+- Estadísticas queda prevista como módulo en desarrollo.
+- Administración ingresa solo navegaciones y socios/usuarios; lo demás es lectura/exportación.
+- No se modifica Capitán, QR, cierre, cargos, 48h ni suplentes.
