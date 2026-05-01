@@ -1,7 +1,6 @@
-# Fjord VI v45.2
+# FJORD VI v46.1
 
-- Admin: eliminado header superior redundante.
-- Botón Salir movido a sidebar.
-- Barra horizontal superior eliminada para evitar solapamientos.
-- Versionado unificado en v45.2.
-- Refuerzo de contraste en administración.
+- Limpieza menor de admin: sin footer redundante.
+- Avisos de administración dentro del panel principal.
+- “Presentes QR” renombrado a “Presentes”.
+- Sin cambios de lógica operativa.
