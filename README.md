@@ -1,22 +1,11 @@
-# YCA · Fjord VI · Embarque · v40.1
+# YCA · Fjord VI · Embarque · v41.0
 
-Versión auditada de cierre fino para experiencia de socios.
+Versión de pulido visual sobre v40.1.
 
-## Versión
-- VERSION.txt: v40.1
-- main.py: VERSION = v40.1
-- APP_BUILD: socios-cierre-fino-v39-6-1
-
-## Cambios de auditoría v40.1
-- Corrige metadatos internos que habían quedado desalineados.
-- Actualiza nombre de servicio en render.yaml.
-- Agrega cierre funcional del toast superior desde la X.
-- Mantiene sin cambios la lógica de reservas, cupos, lista de espera y liquidación.
-
-## Base funcional
-- Bloque Mi embarque.
-- Socios con tarjetas tipo boarding pass.
-- Estados visuales por semántica: verde, rojo, ámbar y gris.
-- Header fijo.
-- Microinteracciones visuales.
-- Toasts superiores para avisos de operación.
+- Header compacto con contraste alto.
+- Estados visuales normalizados.
+- Corrección de texto cortado en “Tu lugar”.
+- Tarjetas de reserva e invitados con estética tipo boarding pass.
+- Reglas de cargos más legibles y escaneables.
+- Bottom nav más compacto.
+- Sin cambios de lógica de reservas ni de backend.
