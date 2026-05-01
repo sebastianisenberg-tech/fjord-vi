@@ -1,4 +1,0 @@
-Fjord VI · Embarque
-Versión: v37.0.0
-Build: safe-render-plano-sin-jinja-template-response-v37
-Estructura: plana, sin carpeta templates, sin duplicados HTML.
