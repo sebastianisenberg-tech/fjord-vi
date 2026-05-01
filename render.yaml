@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v42-0-socios-final-polish
+    name: fjord-vi-v45-2-auditado
     env: docker
     plan: free
     autoDeploy: true
