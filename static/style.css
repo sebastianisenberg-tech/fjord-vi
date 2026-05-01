@@ -3176,3 +3176,241 @@ body:has(.socioApp){
   .socioApp .premiumPerson{padding:11px!important;}
   .socioApp .bottom{bottom:8px!important;left:8px!important;right:8px!important;}
 }
+
+/* ========================================================================
+   v39.0.0 - SOCIOS FINAL PREMIUM
+   Refinamiento visual de la sesión del socio. Solo CSS + microestructura.
+   ======================================================================== */
+.socioApp .selectRow{min-height:64px!important;align-items:center!important;}
+.socioApp .selectRow .pill{font-size:11.6px!important;padding:6px 10px!important;background:#eef6fc!important;color:#164e73!important;border-color:#d3e7f6!important;}
+.socioApp .selectRow.selected{background:linear-gradient(180deg,#eef8ff 0%,#ffffff 100%)!important;border-color:rgba(31,95,145,.34)!important;box-shadow:0 8px 20px rgba(31,95,145,.10)!important;}
+.socioApp .selectRow.selected .pill{background:#dff1ff!important;color:#0f446a!important;border-color:#b9ddf5!important;}
+.socioApp .premiumHero{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;border:1px solid rgba(31,95,145,.14)!important;box-shadow:0 8px 22px rgba(13,34,54,.06)!important;}
+.socioApp .premiumHero h1{font-size:23px!important;letter-spacing:-.035em!important;}.socioApp .outingIdentity h2{font-weight:900!important;}
+.socioApp .premiumStatus.open{background:linear-gradient(180deg,#effcf7 0%,#ffffff 100%)!important;border-color:#c8eadc!important;border-left:5px solid var(--socio-green)!important;box-shadow:0 8px 20px rgba(21,120,95,.07)!important;}
+.socioApp .premiumStatus b{font-size:16px!important;color:var(--socio-ink)!important;letter-spacing:-.015em!important;}
+.socioApp .statusMetrics{display:flex!important;flex-wrap:wrap!important;gap:7px!important;margin-top:8px!important;}
+.socioApp .statusMetrics strong{display:inline-flex!important;align-items:center!important;min-height:28px!important;padding:5px 9px!important;border-radius:999px!important;background:rgba(255,255,255,.82)!important;border:1px solid rgba(21,120,95,.16)!important;color:#345044!important;font-size:12.6px!important;font-weight:900!important;line-height:1!important;}
+.socioApp .kpiStrip>div{padding:11px 10px!important;border-radius:16px!important;background:rgba(255,255,255,.96)!important;border:1px solid rgba(31,95,145,.12)!important;box-shadow:0 5px 14px rgba(13,34,54,.045)!important;}
+.socioApp .kpiStrip small{font-size:10.5px!important;letter-spacing:.13em!important;font-weight:950!important;color:#7d8998!important;}.socioApp .kpiStrip b{display:block!important;margin-top:3px!important;font-size:23px!important;line-height:1!important;letter-spacing:-.035em!important;color:var(--socio-ink)!important;}
+.socioApp #reserva.focusCard{border-left:5px solid var(--socio-blue)!important;background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;box-shadow:0 10px 26px rgba(13,34,54,.075)!important;}
+.socioApp #reserva .cardTitle h2{font-size:22px!important;letter-spacing:-.035em!important;}.socioApp #reserva .cardTitle>.pill.ok{background:#e9f7f2!important;color:#0f684f!important;border-color:#c7eada!important;}
+.socioApp #reserva .premiumPerson.ok .personState{background:#dff5ec!important;color:#0c6b51!important;border-color:#bae7d5!important;font-size:13.1px!important;}.socioApp #reserva .premiumPerson.ok .personState::before{content:'✓ ';font-weight:950;}
+.socioApp .personAction button.secondaryDanger{min-height:41px!important;color:#9f2f2a!important;border-color:rgba(163,58,52,.34)!important;background:linear-gradient(180deg,#fff,#fffafa)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.85)!important;}.socioApp .personAction button.secondaryDanger:active{background:#fff1ef!important;transform:scale(.985)!important;}
+.socioApp #invitados .premiumPerson.inactive{opacity:1!important;background:linear-gradient(180deg,#fff,#fffdfd)!important;}.socioApp #invitados .premiumPerson.bad .personState,.socioApp #invitados .premiumPerson.inactive .personState{background:#fff1ef!important;color:#9f2f2a!important;border-color:#efc6c1!important;}.socioApp #invitados .personAction{margin-top:2px!important;}.socioApp #invitados .personAction button.okBtn{background:linear-gradient(180deg,#2a76ad,#174f7c)!important;box-shadow:0 7px 15px rgba(31,95,145,.16), inset 0 1px 0 rgba(255,255,255,.22)!important;}
+.socioApp .premiumForm{background:#fbfdff!important;border-color:rgba(31,95,145,.13)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important;}.socioApp .premiumForm button.btn.light{margin-top:1px!important;}
+.socioApp .rulesToggle{margin-bottom:10px!important;padding:0!important;overflow:hidden!important;}.socioApp .rulesToggle summary{min-height:44px!important;padding:0 14px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;font-size:14px!important;font-weight:900!important;color:#164e73!important;cursor:pointer!important;background:#f4f9fd!important;}.socioApp .rulesToggle summary::after{content:'+';display:grid!important;place-items:center!important;width:24px!important;height:24px!important;border-radius:999px!important;background:#e6f2fb!important;color:#164e73!important;font-size:16px!important;line-height:1!important;}.socioApp .rulesToggle[open] summary::after{content:'–';}.socioApp .rulesToggle p{margin:0!important;padding:12px 14px 14px!important;font-size:14.2px!important;line-height:1.48!important;color:#37485c!important;background:#fff!important;}
+.socioWrap{padding-bottom:78px!important;}.socioApp .socioFooter,.socioApp .appFooter{margin:8px 0 74px!important;padding:0!important;min-height:auto!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;color:#8593a4!important;opacity:1!important;text-align:center!important;}.socioApp .socioFooter small,.socioApp .appFooter small{display:inline!important;font-size:12.5px!important;color:#8c98a8!important;font-weight:700!important;}.socioApp .socioFooter b,.socioApp .appFooter b{display:inline!important;font-size:13.5px!important;color:#677589!important;font-weight:950!important;letter-spacing:.01em!important;}
+.socioApp .bottom{background:rgba(255,255,255,.965)!important;border-color:rgba(31,95,145,.18)!important;box-shadow:0 12px 28px rgba(13,34,54,.18)!important;}.socioApp .bottom a.on{color:#0f446a!important;background:linear-gradient(180deg,#e4f3ff,#d6ebfb)!important;}
+@media(max-width:560px){.socioWrap{padding:9px 9px 82px!important;}.socioApp .selectRow{min-height:61px!important;}.socioApp .premiumHero h1{font-size:22px!important;}.socioApp .statusMetrics{gap:6px!important;}.socioApp .statusMetrics strong{font-size:12.2px!important;padding:5px 8px!important;}.socioApp .kpiStrip b{font-size:22px!important;}.socioApp #reserva .cardTitle h2{font-size:21px!important;}.socioApp .rulesToggle p{font-size:14px!important;}.socioApp .socioFooter,.socioApp .appFooter{margin:6px 0 72px!important;}}
+
+/* ========================================================================
+   v39.2.0 - SOCIOS iOS PREMIUM SYSTEM
+   Rediseño visual de la sesión del socio: jerarquía, estados y densidad.
+   Solo CSS + render de estado operativo.
+   ======================================================================== */
+:root{
+  --ios-bg:#f4f7fb;
+  --ios-card:rgba(255,255,255,.96);
+  --ios-line:rgba(15,65,103,.12);
+  --ios-ink:#102033;
+  --ios-muted:#66758a;
+  --ios-blue:#0f5f95;
+  --ios-blue-2:#0a4169;
+  --ios-blue-soft:#eaf5ff;
+  --ios-green:#14795f;
+  --ios-green-soft:#e8f8f2;
+  --ios-red:#a43a34;
+  --ios-red-soft:#fff1ef;
+  --ios-amber:#a87522;
+  --ios-shadow:0 10px 28px rgba(12,35,54,.075);
+  --ios-shadow-soft:0 5px 16px rgba(12,35,54,.055);
+}
+body:has(.socioApp){background:linear-gradient(180deg,#edf5fb 0%,#fbfdff 42%,#f2f7fb 100%)!important;}
+.socioApp{background:transparent!important;color:var(--ios-ink)!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif!important;}
+.socioWrap{max-width:720px!important;padding:10px 10px 78px!important;}
+@media(min-width:900px){.socioWrap{max-width:760px!important;padding-top:18px!important;}}
+.socioApp .appHeaderPremium{min-height:48px!important;padding:7px 14px!important;background:linear-gradient(135deg,rgba(13,72,113,.96),rgba(7,45,74,.98))!important;backdrop-filter:blur(14px) saturate(1.15)!important;-webkit-backdrop-filter:blur(14px) saturate(1.15)!important;box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 8px 22px rgba(9,34,54,.18)!important;}
+.socioApp .headerLogoCapsule{height:26px!important;max-width:48px!important;border-radius:9px!important;padding:2px 5px!important;background:rgba(255,255,255,.94)!important;box-shadow:0 2px 8px rgba(0,0,0,.10)!important;}
+.socioApp .headerBrand b{font-size:13.5px!important;line-height:1.05!important;font-weight:850!important;letter-spacing:-.01em!important;}
+.socioApp .headerBrand small{font-size:11.4px!important;opacity:.76!important;font-weight:650!important;}
+.socioApp .logoutBtn{min-height:30px!important;padding:5px 12px!important;border-radius:999px!important;background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.25)!important;color:#fff!important;font-size:12.6px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16)!important;}
+.socioApp .card,.socioApp .premiumCard,.socioApp .premiumHero,.socioApp .rulesToggle{background:var(--ios-card)!important;border:1px solid var(--ios-line)!important;border-radius:22px!important;box-shadow:var(--ios-shadow-soft)!important;overflow:hidden!important;}
+.socioApp .card,.socioApp .premiumCard{padding:15px!important;margin:10px 0!important;}
+.socioApp .eyebrow{font-size:11px!important;letter-spacing:.22em!important;color:#7d8998!important;font-weight:950!important;}
+.socioApp .cardTitle{align-items:center!important;margin-bottom:13px!important;}
+.socioApp .cardTitle h2{font-size:20px!important;line-height:1.05!important;letter-spacing:-.04em!important;font-weight:850!important;color:var(--ios-ink)!important;}
+.socioApp .selectorList{gap:9px!important;}
+.socioApp .selectRow{min-height:58px!important;padding:10px 11px 10px 15px!important;border-radius:18px!important;border:1px solid rgba(15,65,103,.10)!important;background:linear-gradient(180deg,#fff,#fbfdff)!important;box-shadow:0 2px 8px rgba(12,35,54,.035)!important;}
+.socioApp .selectRow:before{width:3px!important;left:0!important;top:14px!important;bottom:14px!important;border-radius:999px!important;opacity:.45!important;background:#b8d9ee!important;}
+.socioApp .selectRow b{font-size:15px!important;font-weight:880!important;letter-spacing:-.025em!important;color:var(--ios-ink)!important;}
+.socioApp .selectRow small{font-size:12.6px!important;color:#6b788a!important;margin-top:2px!important;}
+.socioApp .selectRow .pill{min-height:32px!important;padding:6px 11px!important;border-radius:999px!important;font-size:12.2px!important;background:#f0f7fc!important;color:#164e73!important;border:1px solid #d7e8f5!important;box-shadow:none!important;}
+.socioApp .selectRow.selected{background:linear-gradient(180deg,#eff8ff,#ffffff)!important;border-color:rgba(15,95,149,.34)!important;box-shadow:0 7px 18px rgba(15,95,149,.10)!important;}
+.socioApp .selectRow.selected:before{opacity:1!important;background:var(--ios-blue)!important;top:13px!important;bottom:13px!important;width:4px!important;}
+.socioApp .selectRow.selected .pill{background:#dff1ff!important;color:#0a4169!important;border-color:#b9ddf5!important;font-weight:900!important;}
+.socioApp .premiumHero{padding:16px!important;display:grid!important;gap:14px!important;}
+.socioApp .premiumHero h1{font-size:24px!important;letter-spacing:-.045em!important;line-height:1.02!important;font-weight:880!important;margin:2px 0 5px!important;}
+.socioApp .premiumHero small,.socioApp .premiumHero p{font-size:13.2px!important;color:var(--ios-muted)!important;line-height:1.25!important;}
+.socioApp .outingIdentity{border-top:1px solid rgba(15,65,103,.10)!important;padding-top:13px!important;}
+.socioApp .outingIdentity h2{font-size:17px!important;font-weight:850!important;letter-spacing:-.025em!important;}
+.socioApp .premiumStatus.open,.socioApp .statusPanel.open{padding:15px 15px 14px 17px!important;border-radius:20px!important;background:linear-gradient(180deg,#eafbf5,#ffffff)!important;border:1px solid #ccebdd!important;border-left:5px solid var(--ios-green)!important;box-shadow:0 9px 22px rgba(20,121,95,.08)!important;}
+.socioApp .premiumStatus.closed,.socioApp .statusPanel.closed{background:linear-gradient(180deg,#eef7ff,#ffffff)!important;border-left:5px solid var(--ios-blue)!important;}
+.socioApp .premiumStatus.cancelled,.socioApp .statusPanel.cancelled{background:linear-gradient(180deg,#fff3f1,#ffffff)!important;border-left:5px solid var(--ios-red)!important;}
+.socioApp .statusPanel:before{display:none!important;}
+.socioApp .statusPanelHeader{display:grid!important;gap:2px!important;margin-bottom:10px!important;}
+.socioApp .statusPanelHeader b,.socioApp .premiumStatus>b{font-size:18px!important;line-height:1.05!important;letter-spacing:-.035em!important;font-weight:900!important;color:var(--ios-ink)!important;}
+.socioApp .statusPanelHeader small{font-size:12.4px!important;font-weight:750!important;color:#597063!important;}
+.socioApp .statusMetrics,.socioApp .iosMetrics{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:0!important;}
+.socioApp .statusMetrics strong{display:grid!important;gap:2px!important;min-height:52px!important;padding:9px 8px!important;border-radius:16px!important;background:rgba(255,255,255,.82)!important;border:1px solid rgba(20,121,95,.15)!important;color:#2f4a3e!important;box-shadow:0 2px 8px rgba(20,121,95,.035)!important;line-height:1!important;text-align:left!important;}
+.socioApp .statusMetrics strong em{font-style:normal!important;font-size:18px!important;letter-spacing:-.04em!important;font-weight:950!important;color:#0f684f!important;}
+.socioApp .statusMetrics strong span{font-size:10.8px!important;text-transform:uppercase!important;letter-spacing:.08em!important;font-weight:900!important;color:#5f7469!important;}
+.socioApp .statusPanel>span:not(.statusMetrics){font-size:13px!important;line-height:1.35!important;color:#536274!important;}
+.socioApp .kpiStrip{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;margin:10px 0 11px!important;}
+.socioApp .kpiStrip>div{padding:9px 10px!important;border-radius:17px!important;background:rgba(255,255,255,.98)!important;border:1px solid rgba(15,65,103,.10)!important;box-shadow:0 3px 10px rgba(12,35,54,.035)!important;}
+.socioApp .kpiStrip small{font-size:10px!important;letter-spacing:.13em!important;color:#7d8998!important;font-weight:950!important;}
+.socioApp .kpiStrip b{font-size:21px!important;letter-spacing:-.045em!important;font-weight:900!important;color:var(--ios-ink)!important;line-height:1!important;}
+.socioApp #reserva.focusCard{padding:16px!important;border-left:0!important;position:relative!important;background:linear-gradient(180deg,#ffffff,#fbfdff)!important;box-shadow:0 12px 30px rgba(12,35,54,.07)!important;}
+.socioApp #reserva.focusCard:before{content:""!important;position:absolute!important;left:0!important;top:18px!important;bottom:18px!important;width:4px!important;border-radius:999px!important;background:var(--ios-blue)!important;}
+.socioApp #reserva .cardTitle h2{font-size:23px!important;font-weight:900!important;letter-spacing:-.05em!important;}
+.socioApp .pill.ok,.socioApp #reserva .cardTitle>.pill.ok{background:#e4f6ef!important;color:#0f684f!important;border:1px solid #c4e8d8!important;}
+.socioApp .pill.warn{background:#fff4dd!important;color:#8a5b13!important;border:1px solid #ead29a!important;}
+.socioApp .pill.neutral{background:#eef4f8!important;color:#526274!important;border:1px solid #d9e4ec!important;}
+.socioApp .premiumPerson{padding:13px!important;margin:8px 0!important;border-radius:19px!important;background:#fff!important;border:1px solid rgba(15,65,103,.105)!important;border-left:4px solid #9aa8b5!important;box-shadow:0 5px 14px rgba(12,35,54,.04)!important;}
+.socioApp .premiumPerson.ok{border-left-color:var(--ios-green)!important;}
+.socioApp .premiumPerson.warn{border-left-color:var(--ios-amber)!important;}
+.socioApp .premiumPerson.bad,.socioApp .premiumPerson.inactive{border-left-color:var(--ios-red)!important;background:linear-gradient(180deg,#fff,#fffdfd)!important;opacity:1!important;}
+.socioApp .personMain b{font-size:16px!important;font-weight:900!important;letter-spacing:-.03em!important;color:var(--ios-ink)!important;}
+.socioApp .badgeTipo{font-size:10.8px!important;padding:5px 9px!important;border-radius:999px!important;margin-left:7px!important;letter-spacing:.055em!important;font-weight:950!important;}
+.socioApp .badgeTipo.socio{background:#eaf5ff!important;color:#0f5f95!important;border:1px solid #d2e6f5!important;}
+.socioApp .badgeTipo.invitado{background:#f0f3f6!important;color:#596779!important;border:1px solid #dce5ed!important;}
+.socioApp .personState{display:inline-flex!important;flex-direction:column!important;width:auto!important;max-width:100%!important;margin-top:10px!important;padding:9px 12px!important;border-radius:14px!important;font-size:13.5px!important;line-height:1.15!important;font-weight:900!important;border:1px solid transparent!important;}
+.socioApp .premiumPerson.ok .personState{background:var(--ios-green-soft)!important;color:#0f684f!important;border-color:#c5e9d9!important;}
+.socioApp .premiumPerson.bad .personState,.socioApp .premiumPerson.inactive .personState{background:var(--ios-red-soft)!important;color:var(--ios-red)!important;border-color:#efc6c1!important;}
+.socioApp .premiumPerson.warn .personState{background:#fff4dd!important;color:#8a5b13!important;border-color:#ead29a!important;}
+.socioApp .personState small{font-size:11.5px!important;font-weight:750!important;line-height:1.25!important;margin-top:4px!important;opacity:.75!important;}
+.socioApp #reserva .premiumPerson.ok .personState::before{content:"✓ "!important;font-weight:950!important;}
+.socioApp .personAction button,.socioApp button.mini{min-height:42px!important;border-radius:15px!important;font-size:13.8px!important;font-weight:850!important;letter-spacing:-.015em!important;transition:transform .12s ease,box-shadow .12s ease,background .12s ease!important;}
+.socioApp .personAction button:active,.socioApp .btn:active{transform:scale(.985)!important;}
+.socioApp .personAction button.secondaryDanger{background:#fff!important;color:var(--ios-red)!important;border:1px solid rgba(164,58,52,.28)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.88)!important;}
+.socioApp .personAction button.secondaryDanger:active{background:#fff1ef!important;box-shadow:0 2px 8px rgba(164,58,52,.10)!important;}
+.socioApp #invitados .personAction button.okBtn,.socioApp .premiumForm button.btn.light,.socioApp .btn.green{min-height:44px!important;border-radius:16px!important;background:linear-gradient(180deg,#2c78ad,#14547f)!important;color:#fff!important;box-shadow:0 8px 18px rgba(20,84,127,.18),inset 0 1px 0 rgba(255,255,255,.24)!important;border:0!important;font-size:14.2px!important;font-weight:900!important;}
+.socioApp #invitados .personAction button.okBtn{min-height:44px!important;}
+.socioApp #invitados{padding:16px!important;}
+.socioApp #invitados .cardTitle h2{font-size:22px!important;font-weight:900!important;letter-spacing:-.045em!important;}
+.socioApp .premiumForm{margin-top:13px!important;padding:13px!important;border-radius:20px!important;background:linear-gradient(180deg,#fbfdff,#fff)!important;border:1px solid rgba(15,65,103,.10)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important;}
+.socioApp input,.socioApp .input,.socioApp select{min-height:46px!important;border-radius:16px!important;background:#fff!important;border:1px solid rgba(15,65,103,.13)!important;font-size:14.5px!important;padding:11px 13px!important;color:var(--ios-ink)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;}
+.socioApp input::placeholder,.socioApp .input::placeholder{color:#9aa6b5!important;}
+.socioApp input:focus,.socioApp .input:focus,.socioApp select:focus{outline:none!important;border-color:#7bbce8!important;box-shadow:0 0 0 4px rgba(15,95,149,.12)!important;}
+.socioApp .rulesToggle{padding:0!important;margin:10px 0 8px!important;border-radius:20px!important;box-shadow:0 6px 16px rgba(12,35,54,.045)!important;}
+.socioApp .rulesToggle summary{min-height:48px!important;padding:0 15px!important;font-size:15px!important;color:#164e73!important;background:#f4f9fd!important;font-weight:900!important;}
+.socioApp .rulesToggle summary::after{width:25px!important;height:25px!important;background:#e4f2fb!important;color:#164e73!important;font-size:17px!important;}
+.socioApp .rulesToggle p{padding:13px 15px 15px!important;font-size:14.5px!important;line-height:1.48!important;color:#37485c!important;background:#fff!important;}
+.socioApp .appFooter.socioFooter{margin:8px 0 78px!important;padding:0!important;min-height:0!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;color:#7e8b9d!important;opacity:1!important;}
+.socioApp .appFooter.socioFooter span{display:inline!important;font-size:13px!important;color:#8a96a7!important;font-weight:700!important;}
+.socioApp .appFooter.socioFooter b{display:inline!important;font-size:14px!important;color:#637187!important;font-weight:950!important;letter-spacing:-.01em!important;}
+.socioApp .bottom{left:10px!important;right:10px!important;bottom:9px!important;padding:6px!important;border-radius:21px!important;background:rgba(255,255,255,.955)!important;border:1px solid rgba(15,65,103,.14)!important;box-shadow:0 14px 32px rgba(12,35,54,.18)!important;backdrop-filter:blur(16px) saturate(1.2)!important;-webkit-backdrop-filter:blur(16px) saturate(1.2)!important;}
+.socioApp .bottom a{min-height:38px!important;border-radius:15px!important;font-size:11.8px!important;font-weight:850!important;color:#647186!important;display:flex!important;align-items:center!important;justify-content:center!important;}
+.socioApp .bottom a.on{background:linear-gradient(180deg,#e5f4ff,#d7ecfb)!important;color:#0a4169!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.92)!important;}
+@media(max-width:560px){.socioWrap{padding:9px 9px 80px!important;}.socioApp .card,.socioApp .premiumCard{padding:14px!important;margin:9px 0!important;border-radius:20px!important;}.socioApp .premiumHero{padding:15px!important;}.socioApp .premiumHero h1{font-size:22px!important;}.socioApp .statusMetrics,.socioApp .iosMetrics{gap:6px!important;}.socioApp .statusMetrics strong{min-height:50px!important;padding:8px 7px!important;}.socioApp .statusMetrics strong em{font-size:17px!important;}.socioApp .statusMetrics strong span{font-size:10px!important;}.socioApp .kpiStrip b{font-size:20px!important;}.socioApp #reserva .cardTitle h2{font-size:22px!important;}.socioApp .personMain b{font-size:15.6px!important;}.socioApp .personState{font-size:13.1px!important;}.socioApp .appFooter.socioFooter{margin:6px 0 76px!important;}}
+
+
+/* v39.3 - SOCIO status block fixed: real component, no text concatenation */
+.socioApp .socioStatusBlock{
+  display:block!important;
+  padding:16px 16px 15px 17px!important;
+  border-radius:22px!important;
+  position:relative!important;
+  overflow:hidden!important;
+  margin:10px 0 12px!important;
+}
+.socioApp .socioStatusBlock.open{
+  background:linear-gradient(180deg,#eafbf5 0%,#ffffff 100%)!important;
+  border:1px solid #c8eadc!important;
+  border-left:5px solid #148f6a!important;
+  box-shadow:0 10px 24px rgba(20,121,95,.075)!important;
+}
+.socioApp .socioStatusBlock.closed{
+  background:linear-gradient(180deg,#eef7ff 0%,#ffffff 100%)!important;
+  border:1px solid #cfe2f3!important;
+  border-left:5px solid #0d5d8c!important;
+}
+.socioApp .socioStatusBlock.cancelled{
+  background:linear-gradient(180deg,#fff3f1 0%,#ffffff 100%)!important;
+  border:1px solid #f3c8c2!important;
+  border-left:5px solid #b5534f!important;
+}
+.socioApp .socioStatusHeader{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin:0 0 12px!important;
+}
+.socioApp .socioStatusHeader b{
+  display:block!important;
+  font-size:18px!important;
+  line-height:1.08!important;
+  letter-spacing:-.035em!important;
+  font-weight:950!important;
+  color:#102033!important;
+  white-space:normal!important;
+}
+.socioApp .socioStatusHeader small{
+  display:block!important;
+  max-width:52%!important;
+  font-size:12.6px!important;
+  line-height:1.22!important;
+  font-weight:750!important;
+  color:#526579!important;
+  text-align:right!important;
+  white-space:normal!important;
+}
+.socioApp .socioStatusMetrics{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+  width:100%!important;
+}
+.socioApp .socioStatusMetric{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  min-height:54px!important;
+  padding:9px 10px!important;
+  border-radius:15px!important;
+  background:rgba(255,255,255,.78)!important;
+  border:1px solid rgba(198,226,216,.88)!important;
+  box-shadow:0 4px 12px rgba(16,32,51,.045)!important;
+  min-width:0!important;
+}
+.socioApp .socioStatusMetric strong{
+  display:block!important;
+  font-size:18px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  letter-spacing:-.025em!important;
+  color:#102033!important;
+  white-space:nowrap!important;
+}
+.socioApp .socioStatusMetric span{
+  display:block!important;
+  margin-top:5px!important;
+  font-size:10.8px!important;
+  line-height:1!important;
+  font-weight:850!important;
+  text-transform:uppercase!important;
+  letter-spacing:.045em!important;
+  color:#667789!important;
+  white-space:nowrap!important;
+}
+@media(max-width:560px){
+  .socioApp .socioStatusBlock{padding:14px 14px 13px 15px!important;border-radius:20px!important;}
+  .socioApp .socioStatusHeader{display:block!important;margin-bottom:10px!important;}
+  .socioApp .socioStatusHeader b{font-size:17px!important;}
+  .socioApp .socioStatusHeader small{max-width:none!important;text-align:left!important;margin-top:3px!important;font-size:12px!important;}
+  .socioApp .socioStatusMetrics{gap:6px!important;}
+  .socioApp .socioStatusMetric{min-height:50px!important;padding:8px 7px!important;border-radius:14px!important;}
+  .socioApp .socioStatusMetric strong{font-size:16.5px!important;}
+  .socioApp .socioStatusMetric span{font-size:9.6px!important;letter-spacing:.035em!important;}
+}
