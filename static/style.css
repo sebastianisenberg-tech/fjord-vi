@@ -3645,3 +3645,43 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   border: 1px solid rgba(255,255,255,.65) !important;
   box-shadow: 0 3px 10px rgba(0,0,0,.20) !important;
 }
+
+/* v41.0 - pulido visual socios: header compacto, estados, boarding pass, reglas */
+.socioApp .top.appHeaderPremium,body .socioApp header.top.appHeaderPremium,body .socioApp .premiumTop.appHeaderPremium,body .socioApp .top.topGreen.appHeaderPremium{min-height:54px!important;height:54px!important;padding:6px 12px!important;border-radius:0!important;}
+.socioApp .appHeaderPremium .headerBrand{gap:9px!important;min-width:0!important;}
+.socioApp .appHeaderPremium .headerLogo,.socioApp .appHeaderPremium .headerLogoCapsule{width:42px!important;height:34px!important;border-radius:14px!important;object-fit:contain!important;}
+.socioApp .appHeaderPremium .headerBrand b{font-size:13.5px!important;line-height:1.05!important;letter-spacing:-.01em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:210px!important;}
+.socioApp .appHeaderPremium .headerBrand small{display:block!important;font-size:10.5px!important;line-height:1.05!important;margin-top:2px!important;font-weight:800!important;opacity:.88!important;}
+.socioApp .top.appHeaderPremium .logoutBtn{min-height:34px!important;padding:7px 12px!important;border-radius:999px!important;font-size:12px!important;font-weight:900!important;}
+.socioApp .miEmbState,.socioApp .pill,.socioApp .statusPill,.socioApp .badgeTipo,.socioApp .personState{border-radius:999px!important;font-weight:900!important;letter-spacing:-.01em!important;}
+.socioApp .stateOk,.socioApp .pill.ok,.socioApp .statusPill.ok{background:#dcfce7!important;color:#166534!important;border:1px solid rgba(22,101,52,.18)!important;}
+.socioApp .stateBad,.socioApp .pill.bad,.socioApp .toastError{background:#fee2e2!important;color:#991b1b!important;border-color:rgba(153,27,27,.18)!important;}
+.socioApp .stateWarn,.socioApp .pill.warn,.socioApp .toastWarn{background:#fef3c7!important;color:#92400e!important;border-color:rgba(146,64,14,.20)!important;}
+.socioApp .stateWait{background:#e0f2fe!important;color:#075985!important;border:1px solid rgba(7,89,133,.18)!important;}
+.socioApp .stateNeutral,.socioApp .pill.neutral,.socioApp .statusPill.neutral{background:#e5e7eb!important;color:#374151!important;border:1px solid rgba(55,65,81,.16)!important;}
+.socioApp .miEmbGrid>div{min-width:0!important;}
+.socioApp .miEmbGrid b{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.12!important;word-break:normal!important;}
+@media(max-width:390px){.socioApp .miEmbGrid b{font-size:15px!important}.socioApp .miEmbGrid small{font-size:10.5px!important}}
+.socioApp .reservationCard,.socioApp .boardingPass{position:relative!important;overflow:hidden!important;border-radius:20px!important;box-shadow:0 8px 20px rgba(12,35,54,.055)!important;}
+.socioApp .reservationCard:before,.socioApp .boardingPass:before{content:""!important;position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:5px!important;border-radius:20px 0 0 20px!important;background:#0b4f7a!important;}
+.socioApp .boardingPass.bpActive:before,.socioApp .reservationCard.ok:before{background:#238457!important;}
+.socioApp .boardingPass.bpWait:before,.socioApp .reservationCard.warn:before{background:#b7791f!important;}
+.socioApp .boardingPass.bpCancelled:before,.socioApp .boardingPass.inactive:before,.socioApp .reservationCard.bad:before{background:#b91c1c!important;}
+.socioApp .premiumPerson{padding-left:17px!important;}
+.socioApp .personMain>b{font-size:15px!important;line-height:1.15!important;}
+.socioApp .personState{padding:7px 10px!important;line-height:1.15!important;max-width:100%!important;}
+.socioApp .personState small{display:block!important;margin-top:3px!important;font-size:10.5px!important;font-weight:800!important;opacity:.78!important;white-space:normal!important;}
+.socioApp .personAction{gap:7px!important;}
+.socioApp .secondaryDanger{background:#fff5f5!important;color:#b91c1c!important;border-color:rgba(185,28,28,.22)!important;}
+.socioApp .neutralBtn{background:#f3f4f6!important;color:#4b5563!important;border-color:rgba(75,85,99,.16)!important;}
+.socioApp .rulesCardV41{padding:0!important;overflow:hidden!important;}
+.socioApp .rulesCardV41 summary{padding:13px 15px!important;border-bottom:1px solid rgba(13,77,121,.08)!important;}
+.socioApp .rulesGridV41{display:grid!important;gap:8px!important;padding:12px 14px 14px!important;}
+.socioApp .rulesGridV41>div{background:#f8fbfd!important;border:1px solid rgba(13,77,121,.09)!important;border-radius:14px!important;padding:10px 11px!important;}
+.socioApp .rulesGridV41 b{display:block!important;font-size:12.5px!important;line-height:1.15!important;color:#102033!important;margin-bottom:3px!important;}
+.socioApp .rulesGridV41 span{display:block!important;font-size:12.5px!important;line-height:1.35!important;color:#526477!important;font-weight:650!important;}
+.socioApp .bottom{height:52px!important;padding:5px 10px!important;border-radius:24px 24px 0 0!important;}
+.socioApp .bottom a{min-height:40px!important;border-radius:15px!important;font-size:11px!important;}
+.socioApp .bottom a.on{background:linear-gradient(180deg,#e6f3fb,#d9edf8)!important;color:#06466d!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.75)!important;}
+.socioApp .miEmbCta,.socioApp .okBtn,.socioApp .btn.primary,.socioApp button.primary{background:linear-gradient(180deg,#0b6f9f 0%,#064f7b 100%)!important;color:#fff!important;font-weight:900!important;box-shadow:0 8px 18px rgba(6,79,123,.18)!important;}
+.socioApp .appFooter.socioFooter{margin-bottom:68px!important;}
