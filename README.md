@@ -1,13 +1,13 @@
-# YCA · Fjord VI · Embarque · v39.6.1
+# YCA · Fjord VI · Embarque · v40.0
 
 Versión auditada de cierre fino para experiencia de socios.
 
 ## Versión
-- VERSION.txt: v39.6.1
-- main.py: VERSION = v39.6.1
-- APP_BUILD: socios-cierre-fino-v39-6-1
+- VERSION.txt: v40.0
+- main.py: VERSION = v40.0
+- APP_BUILD: contraste-header-v40-0
 
-## Cambios de auditoría v39.6.1
+## Cambios de auditoría v40.0
 - Corrige metadatos internos que habían quedado desalineados.
 - Actualiza nombre de servicio en render.yaml.
 - Agrega cierre funcional del toast superior desde la X.

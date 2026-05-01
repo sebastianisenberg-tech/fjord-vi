@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v39-6-1-socios-cierre-fino
+    name: fjord-vi-v40-0-contraste-header
     env: docker
     plan: free
     autoDeploy: true
