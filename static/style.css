@@ -2172,3 +2172,169 @@ input,.input,select,.officeForm input,.officeForm select,.officeSelector select{
   .captainActions .mini,.premiumPerson button.mini{min-height:34px!important;font-size:12.8px!important;}
   .appFooter{padding-top:12px!important;}
 }
+
+/* ==========================================================================
+   v38.4.0 - CAPITAN / COLORES FUNCIONALES REALES
+   Objetivo: separar acciones operativas por color, reducir amontonamiento azul
+   y mantener el azul del club solo para navegación y acciones neutras.
+   Solo CSS. No cambia rutas, backend, formularios ni lógica.
+   ========================================================================== */
+:root{
+  --captain-present:#1f7a4d;
+  --captain-present-2:#145c3a;
+  --captain-present-soft:#edf8f2;
+  --captain-present-line:#b9e1ca;
+
+  --captain-no:#b23a32;
+  --captain-no-2:#84251f;
+  --captain-no-soft:#fff1ef;
+  --captain-no-line:#efc4bf;
+
+  --captain-react:#b27a21;
+  --captain-react-2:#805817;
+  --captain-react-soft:#fff7e6;
+  --captain-react-line:#ead39f;
+
+  --captain-blue:#0d4f78;
+  --captain-blue-2:#083456;
+  --captain-card-line:rgba(13,79,120,.13);
+}
+
+/* Tripulación capitán: limpiar la tarjeta y sacar sensación de bloque azul repetido */
+#tripulacion .premiumPerson,
+.premiumPerson.captainPerson{
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;
+  border:1px solid var(--captain-card-line)!important;
+  border-left-width:4px!important;
+  box-shadow:0 3px 9px rgba(8,31,52,.045)!important;
+}
+#tripulacion .premiumPerson.ok,
+.premiumPerson.captainPerson.ok{
+  border-left-color:var(--captain-present)!important;
+}
+#tripulacion .premiumPerson.warn,
+.premiumPerson.captainPerson.warn{
+  border-left-color:var(--captain-react)!important;
+}
+#tripulacion .premiumPerson.bad,
+.premiumPerson.captainPerson.bad{
+  border-left-color:var(--captain-no)!important;
+  background:linear-gradient(180deg,#fff 0%,#fffafa 100%)!important;
+}
+
+/* Botonera del capitán: colores semánticos fuertes, no variantes del mismo azul */
+#tripulacion .captainActions button.mini,
+.premiumPerson.captainPerson .captainActions button.mini{
+  min-height:34px!important;
+  padding:7px 10px!important;
+  border-radius:12px!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  letter-spacing:.01em!important;
+  border:1px solid rgba(255,255,255,.20)!important;
+  transition:transform .11s ease, box-shadow .11s ease, filter .11s ease!important;
+}
+
+/* Presente = verde sobrio */
+#tripulacion .captainActions button.okBtn,
+.premiumPerson.captainPerson .captainActions button.okBtn,
+button.mini.okBtn,
+.mini.okBtn{
+  background:linear-gradient(180deg,var(--captain-present),var(--captain-present-2))!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.18)!important;
+  box-shadow:0 6px 12px rgba(31,122,77,.18), inset 0 1px 0 rgba(255,255,255,.18)!important;
+}
+
+/* No embarca = rojo operativo, no rosado, no azul */
+#tripulacion .captainActions button.danger,
+.premiumPerson.captainPerson .captainActions button.danger,
+button.mini.danger,
+.mini.danger,
+button.danger{
+  background:linear-gradient(180deg,var(--captain-no),var(--captain-no-2))!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.16)!important;
+  box-shadow:0 6px 12px rgba(178,58,50,.18), inset 0 1px 0 rgba(255,255,255,.16)!important;
+}
+
+/* Reactivar = ámbar/dorado náutico */
+#tripulacion .captainActions button.reactivate,
+.premiumPerson.captainPerson .captainActions button.reactivate,
+button.mini.reactivate,
+.mini.reactivate,
+button.reactivate{
+  background:linear-gradient(180deg,var(--captain-react),var(--captain-react-2))!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.16)!important;
+  box-shadow:0 6px 12px rgba(178,122,33,.19), inset 0 1px 0 rgba(255,255,255,.16)!important;
+}
+
+/* Feedback táctil: se nota al tocar, sin parecer botón 3D viejo */
+#tripulacion .captainActions button.mini:active,
+.premiumPerson.captainPerson .captainActions button.mini:active{
+  transform:translateY(1px) scale(.985)!important;
+  filter:saturate(1.08) brightness(.94)!important;
+  box-shadow:0 2px 6px rgba(8,31,52,.17), inset 0 2px 5px rgba(0,0,0,.18)!important;
+}
+
+/* Estados y badges: que acompañen al color funcional sin competir */
+#tripulacion .personState{
+  color:#4b5c6f!important;
+  font-weight:780!important;
+}
+#tripulacion .premiumPerson.ok .personState{
+  color:#245f42!important;
+}
+#tripulacion .premiumPerson.bad .personState{
+  color:#8b302b!important;
+}
+#tripulacion .badgeTipo.socio{
+  background:var(--captain-present-soft)!important;
+  color:#236046!important;
+  border:1px solid var(--captain-present-line)!important;
+}
+#tripulacion .badgeTipo.invitado{
+  background:#eef6ff!important;
+  color:#285f91!important;
+  border:1px solid #cfe3f6!important;
+}
+
+/* No embarca por capitán: que el estado se lea de inmediato */
+#tripulacion .premiumPerson.bad .personState::before{
+  content:"";
+}
+#tripulacion .premiumPerson.bad .personState{
+  font-weight:850!important;
+}
+
+/* Evitar que los botones deshabilitados parezcan acciones disponibles */
+#tripulacion .premiumPerson.inactive .captainActions button:not(.reactivate){
+  opacity:.42!important;
+  filter:grayscale(.25)!important;
+}
+#tripulacion .premiumPerson.inactive .captainActions button.reactivate{
+  opacity:1!important;
+}
+
+/* Azul del club: reservado para navegación y acciones neutras */
+.top,.officeTop,.premiumTop{
+  background:linear-gradient(180deg,#0f4f79,#083454)!important;
+}
+.btn:not(.green):not(.danger):not(.reactivate),
+.qrBtn,.qrMainBtn,
+button.neutralBtn{
+  background:linear-gradient(180deg,var(--captain-blue),var(--captain-blue-2))!important;
+}
+
+/* Afinado final de densidad en capitán: menos masa, más lectura */
+#tripulacion.card,
+#tripulacion.premiumCard{
+  padding:13px 14px!important;
+}
+#tripulacion .captainActions{
+  gap:6px!important;
+}
+#tripulacion .captainActions form:nth-child(3){
+  margin-top:0!important;
+}
