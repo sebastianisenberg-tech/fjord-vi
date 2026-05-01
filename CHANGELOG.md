@@ -1,4 +1,4 @@
-# v38.9.0
+# v39.0.0
 
 - Refinamiento premium específico para socios.
 - Mejor jerarquía visual de salidas, reserva titular, invitados y reglas.
