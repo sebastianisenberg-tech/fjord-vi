@@ -6,6 +6,38 @@
   <link rel="stylesheet" href="/static/style.css">
   <title>Capitán · {{app_name}}</title>
   <script>
+  function captainToast(message, type){
+    if(!message) return;
+    var wrap = document.getElementById('captainToastStack');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'captainToastStack';
+      wrap.className = 'captainToastStack';
+      document.body.appendChild(wrap);
+    }
+    var t = document.createElement('div');
+    t.className = 'captainToast ' + (type || 'info');
+    t.textContent = message;
+    wrap.appendChild(t);
+    setTimeout(function(){ t.classList.add('show'); }, 10);
+    setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 220); }, 3600);
+  }
+  const CAPTAIN_MSGS = {
+    asistencia_actualizada: ['Asistencia actualizada.', 'success'],
+    socio_responsable_no_presente: ['No puede marcarse presente: el socio responsable no está presente.', 'error'],
+    salida_cerrada: ['La salida está cerrada. No se puede modificar desde Capitán.', 'error'],
+    salida_cancelada: ['La salida está cancelada por capitán. No se pueden hacer cambios.', 'error'],
+    ventana_finalizada: ['Fuera de plazo: el capitán solo puede corregir hasta 48 horas.', 'error'],
+    cierre_anticipado: ['Todavía no se puede cerrar: el cierre se habilita desde la hora programada.', 'warning'],
+    reserva_en_espera: ['No se puede marcar: la persona está en lista de espera.', 'warning'],
+    cierre_ok: ['Embarque cerrado y liquidado.', 'success'],
+    estado_actualizado: ['Estado de la salida actualizado.', 'success'],
+    reapertura_ok: ['Salida reabierta. Se recalcularon preliquidaciones y suplentes.', 'success'],
+    minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
+    maximo_superado: ['No se puede cerrar: se supera el cupo máximo.', 'error'],
+    accion_invalida: ['Acción inválida o registro inexistente.', 'error'],
+    salida_inexistente: ['Salida inexistente.', 'error']
+  };
   document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('form').forEach(function(form){
       form.addEventListener('submit', function(e){
@@ -35,6 +67,8 @@
         people.forEach(p => { p.classList.toggle('is-hidden-v43', !(f === 'all' || p.classList.contains(f))); });
       });
     }
+    var msgCode = document.body.getAttribute('data-msg');
+    if(msgCode && CAPTAIN_MSGS[msgCode]){ captainToast(CAPTAIN_MSGS[msgCode][0], CAPTAIN_MSGS[msgCode][1]); }
   });
 
   function mostrarQRCapitan(){
@@ -48,17 +82,16 @@
   function copiarQRCapitan(){
     var link = document.getElementById('qrCapitanLink');
     if(!link) return;
-    navigator.clipboard.writeText(link.value).then(function(){ alert('Link de check-in copiado'); }).catch(function(){ alert(link.value); });
+    navigator.clipboard.writeText(link.value).then(function(){ captainToast('Link de check-in copiado.', 'success'); }).catch(function(){ captainToast('No se pudo copiar. Copiá el link manualmente.', 'warning'); });
   }
   </script>
 </head>
-<body class="captainProBody"><div class="app captainProApp">
+<body class="captainProBody" data-msg="{{msg or ''}}"><div class="app captainProApp">
 <header class="top topGreen premiumTop appHeaderPremium captainTop">
   <div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán</small></div></div>
   <a href="/logout" class="logoutBtn">Salir</a>
 </header>
 <main class="wrap captainWrap">
-{% if msg %}<div class="toast compactToast captainToast">{% if msg=='cierre_ok' %}Salida cerrada y liquidada.{% elif msg=='asistencia_actualizada' %}Asistencia actualizada.{% elif msg=='socio_responsable_no_presente' %}No se puede marcar presente a ese invitado: primero debe estar presente el socio responsable.{% elif msg=='cierre_anticipado' %}Aún no se puede cerrar: el cierre se habilita desde la hora programada de salida.{% elif msg=='ventana_finalizada' %}Período de edición del capitán finalizado. Para cambios, contactar Administración.{% elif msg=='reserva_en_espera' %}Esa reserva está en lista de espera. Solo se puede operar cuando sea promovida al cupo.{% elif msg=='salida_inexistente' %}Salida inexistente o no seleccionada.{% elif msg=='accion_invalida' %}Acción inválida. Volvé a intentar desde la pantalla de capitán.{% elif msg=='minimo_no_cumple' %}No se puede cerrar: no se alcanza el mínimo de embarcados.{% elif msg=='maximo_superado' %}No se puede cerrar: se supera el máximo de tripulantes.{% elif msg=='reapertura_ok' or msg=='estado_actualizado' %}Estado actualizado. Preliquidaciones recalculadas.{% elif msg=='salida_cerrada' %}La salida ya está cerrada o no admite esa acción.{% else %}Operación registrada.{% endif %}</div>{% endif %}
 
 <section class="card premiumCard captainSelector" id="salidas">
   <div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>
@@ -145,7 +178,8 @@
           {% if v.waitlisted %}<span class="captainStateChip wait">Lista de espera</span>{% elif r.attendance == 'Presente' %}<span class="captainStateChip present">Presente</span>{% elif r.attendance == 'Ausente' %}<span class="captainStateChip absent">Ausente</span>{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="captainStateChip noboard">No embarca</span>{% elif outing_cancelled %}<span class="captainStateChip neutral">Sin cargo</span>{% else %}<span class="captainStateChip pending">Sin marcar</span>{% endif %}
           {% if v.charge > 0 %}<span class="captainChargeChip">$ {{v.charge_label}}</span>{% elif v.charge_is_preliminary %}<span class="captainChargeChip soft">Estim. $ {{v.charge_preview_label}}</span>{% endif %}
         </div>
-        <div class="personState captainReason">{% if v.charge > 0 %}Cargo firme · {{v.motivo}}{% elif v.charge_is_preliminary %}Sujeto a cierre · {{v.motivo}}{% else %}{{v.alert}}{% endif %}</div>
+        {% if v.show_responsible %}<div class="captainResponsibleLine">Invitado de: <b>{{v.responsible_name}}</b></div>{% endif %}
+        <div class="personState captainReason">{% if v.charge > 0 %}Cargo firme · {{v.motivo}}{% elif v.charge_is_preliminary %}{{v.motivo}}{% elif v.show_responsible and r.attendance != 'Presente' %}Depende del embarque del socio responsable.{% else %}{{v.alert}}{% endif %}</div>
       </div>
       <div class="captainActions captainActionsPro">
         {% if closed or outing_cancelled %}
