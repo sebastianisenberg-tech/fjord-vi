@@ -2716,3 +2716,463 @@ body > .officeApp{
     padding-top:calc(50px + env(safe-area-inset-top, 0px))!important;
   }
 }
+
+/* v38.9.0 - Socios Premium Experience
+   Objetivo: que la sesión del socio se sienta clara, elegante y usable en Android/iPhone.
+   Solo CSS. No altera rutas, backend ni reglas. */
+:root{
+  --socio-ink:#0d2236;
+  --socio-muted:#64748b;
+  --socio-soft:#f6f9fc;
+  --socio-blue:#1f5f91;
+  --socio-blue-deep:#103b61;
+  --socio-blue-soft:#eaf5ff;
+  --socio-line:rgba(31,95,145,.13);
+  --socio-green:#15785f;
+  --socio-green-soft:#e7f7f1;
+  --socio-red:#a33a34;
+  --socio-red-soft:#fff1ef;
+  --socio-amber:#9b6a1f;
+  --socio-amber-soft:#fff5dc;
+  --socio-shadow:0 10px 26px rgba(13,34,54,.065);
+}
+
+/* Base socio: más blanco, menos amontonamiento */
+body:has(.socioApp){
+  background:linear-gradient(180deg,#eef5fa 0%,#fbfdff 46%,#f1f6fa 100%)!important;
+}
+.socioApp{color:var(--socio-ink)!important;}
+.socioWrap{
+  max-width:760px!important;
+  margin:0 auto!important;
+}
+.socioApp .card,
+.socioApp .premiumCard,
+.socioApp .rulesToggle{
+  background:rgba(255,255,255,.985)!important;
+  border:1px solid var(--socio-line)!important;
+  border-radius:20px!important;
+  box-shadow:var(--socio-shadow)!important;
+  overflow:hidden!important;
+}
+.socioApp .cardTitle{
+  align-items:center!important;
+  margin-bottom:13px!important;
+}
+.socioApp .cardTitle h2{
+  font-size:18.5px!important;
+  letter-spacing:-.025em!important;
+  color:var(--socio-ink)!important;
+}
+.socioApp .eyebrow{
+  color:#7b899a!important;
+  opacity:1!important;
+  font-size:10.5px!important;
+  letter-spacing:.145em!important;
+  font-weight:900!important;
+}
+
+/* Header fijo: vidrio más fino, con presencia institucional sin bloque pesado */
+.socioApp .appHeaderPremium{
+  min-height:48px!important;
+  background:linear-gradient(135deg,rgba(10,39,66,.94),rgba(31,95,145,.91))!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.13) inset,0 6px 18px rgba(5,24,42,.18)!important;
+}
+.socioApp .headerLogoCapsule{
+  height:25px!important;
+  padding:2px 5px!important;
+  border-radius:8px!important;
+}
+.socioApp .headerBrand b{font-size:12.5px!important;letter-spacing:.02em!important;}
+.socioApp .headerBrand small{font-size:10.8px!important;opacity:.84!important;}
+.socioApp .logoutBtn{
+  padding:7px 12px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  background:rgba(255,255,255,.13)!important;
+}
+
+/* Selector de salidas: lista premium, muy legible para el socio */
+.socioApp #salidas{
+  padding:14px!important;
+}
+.socioApp .selectorList{gap:9px!important;}
+.socioApp .selectRow{
+  position:relative!important;
+  padding:12px 13px 12px 15px!important;
+  border-radius:17px!important;
+  border:1px solid rgba(31,95,145,.12)!important;
+  background:linear-gradient(180deg,#fff,#fbfdff)!important;
+  box-shadow:0 4px 12px rgba(13,34,54,.035)!important;
+}
+.socioApp .selectRow:before{
+  content:"";position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:999px;background:#c9d9e8;
+}
+.socioApp .selectRow.selected{
+  background:linear-gradient(180deg,#f1f8ff,#ffffff)!important;
+  border-color:#9dc7ea!important;
+  box-shadow:0 7px 18px rgba(31,95,145,.09)!important;
+}
+.socioApp .selectRow.selected:before{background:var(--socio-blue)!important;}
+.socioApp .selectRow b{font-size:14.4px!important;letter-spacing:-.01em!important;color:var(--socio-ink)!important;}
+.socioApp .selectRow small{font-size:12px!important;color:var(--socio-muted)!important;line-height:1.28!important;}
+
+/* Estados operativos: más destacados, pero no grotescos */
+.socioApp .pill,
+.socioApp .statusPill{
+  min-height:28px!important;
+  padding:6px 10px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.025em!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+  text-transform:none!important;
+}
+.socioApp .pill.ok,
+.socioApp .statusPill.ok{
+  background:var(--socio-blue-soft)!important;
+  color:var(--socio-blue-deep)!important;
+  border-color:#cbe4f8!important;
+}
+.socioApp .pill.warn{
+  background:var(--socio-amber-soft)!important;
+  color:var(--socio-amber)!important;
+  border-color:#f1dc9f!important;
+}
+.socioApp .pill.bad{
+  background:var(--socio-red-soft)!important;
+  color:var(--socio-red)!important;
+  border-color:#efc6c1!important;
+}
+.socioApp .pill.neutral,
+.socioApp .statusPill.neutral{
+  background:#eef3f7!important;
+  color:#475569!important;
+  border-color:#dbe5ee!important;
+}
+.socioApp .cardTitle>.pill,
+.socioApp .statusPill{
+  font-size:12.3px!important;
+  padding:7px 11px!important;
+}
+
+/* Identidad de socio/salida: panel sereno, tipo app privada */
+.socioApp .premiumHero{
+  display:grid!important;
+  gap:12px!important;
+  padding:16px!important;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbfe 100%)!important;
+  border:1px solid rgba(31,95,145,.12)!important;
+  border-radius:21px!important;
+  box-shadow:0 9px 24px rgba(13,34,54,.06)!important;
+}
+.socioApp .premiumHero h1{
+  font-size:23px!important;
+  letter-spacing:-.035em!important;
+  margin:2px 0 3px!important;
+}
+.socioApp .premiumHero h2{
+  font-size:18px!important;
+  letter-spacing:-.025em!important;
+  margin:0 0 3px!important;
+}
+.socioApp .premiumHero small,
+.socioApp .premiumHero p{
+  font-size:12.7px!important;
+  color:var(--socio-muted)!important;
+}
+.socioApp .outingIdentity{
+  border-top:1px solid rgba(31,95,145,.10)!important;
+  padding-top:12px!important;
+}
+
+/* Estado de salida: más visible que antes, no mini */
+.socioApp .statusPanel,
+.socioApp .premiumStatus{
+  position:relative!important;
+  display:grid!important;
+  gap:3px!important;
+  padding:13px 14px 13px 17px!important;
+  border-radius:18px!important;
+  box-shadow:0 6px 16px rgba(13,34,54,.045)!important;
+}
+.socioApp .statusPanel:before{
+  content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:999px;background:var(--socio-green);
+}
+.socioApp .statusPanel.closed:before{background:var(--socio-blue);}
+.socioApp .statusPanel.cancelled:before{background:#667085;}
+.socioApp .statusPanel b{
+  font-size:15px!important;
+  letter-spacing:-.01em!important;
+  color:var(--socio-ink)!important;
+}
+.socioApp .statusPanel span{
+  font-size:12.8px!important;
+  line-height:1.35!important;
+  color:#536274!important;
+}
+.socioApp .statusPanel.open{
+  background:linear-gradient(180deg,#ecfff7,#ffffff)!important;
+  border-color:#ccebdd!important;
+}
+.socioApp .statusPanel.closed{
+  background:linear-gradient(180deg,#eef6ff,#ffffff)!important;
+  border-color:#d4e5f6!important;
+}
+
+/* KPIs: lectura rápida sin parecer planilla */
+.socioApp .kpiStrip{
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:8px!important;
+  margin:9px 0 11px!important;
+}
+.socioApp .kpiStrip>div{
+  padding:10px 11px!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.96)!important;
+  border:1px solid rgba(31,95,145,.10)!important;
+  box-shadow:0 4px 12px rgba(13,34,54,.035)!important;
+}
+.socioApp .kpiStrip small{
+  display:block!important;
+  color:#7b899a!important;
+  font-size:10.5px!important;
+  font-weight:850!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+  margin-bottom:3px!important;
+}
+.socioApp .kpiStrip b{
+  font-size:20px!important;
+  color:var(--socio-ink)!important;
+  letter-spacing:-.04em!important;
+}
+
+/* Reserva e invitados: el estado tiene prioridad sobre el color institucional */
+.socioApp #reserva,
+.socioApp #invitados{
+  padding:14px!important;
+}
+.socioApp .premiumPerson{
+  grid-template-columns:1fr!important;
+  gap:9px!important;
+  padding:12px!important;
+  margin:8px 0!important;
+  border-radius:17px!important;
+  border:1px solid rgba(31,95,145,.11)!important;
+  border-left-width:4px!important;
+  box-shadow:0 4px 12px rgba(13,34,54,.035)!important;
+}
+.socioApp .premiumPerson.ok{border-left-color:var(--socio-green)!important;}
+.socioApp .premiumPerson.warn{border-left-color:var(--socio-amber)!important;}
+.socioApp .premiumPerson.bad{border-left-color:var(--socio-red)!important;}
+.socioApp .premiumPerson.waitlisted,
+.socioApp .premiumPerson.neutralState{border-left-color:#7b899a!important;}
+.socioApp .personMain b{
+  display:inline!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  color:var(--socio-ink)!important;
+  letter-spacing:-.018em!important;
+}
+.socioApp .badgeTipo{
+  margin-left:6px!important;
+  padding:4px 8px!important;
+  font-size:10.5px!important;
+  line-height:1!important;
+  border-radius:999px!important;
+  vertical-align:1px!important;
+}
+.socioApp .personState{
+  margin-top:8px!important;
+  display:block!important;
+  width:fit-content!important;
+  max-width:100%!important;
+  padding:7px 10px!important;
+  border-radius:12px!important;
+  background:#f4f8fb!important;
+  color:#34465a!important;
+  font-size:12.7px!important;
+  line-height:1.22!important;
+  font-weight:900!important;
+  border:1px solid rgba(31,95,145,.09)!important;
+}
+.socioApp .premiumPerson.ok .personState{
+  background:var(--socio-green-soft)!important;
+  color:#0f684f!important;
+  border-color:#c7eada!important;
+}
+.socioApp .premiumPerson.warn .personState{
+  background:var(--socio-amber-soft)!important;
+  color:var(--socio-amber)!important;
+  border-color:#efd99c!important;
+}
+.socioApp .premiumPerson.bad .personState{
+  background:var(--socio-red-soft)!important;
+  color:var(--socio-red)!important;
+  border-color:#efc6c1!important;
+}
+.socioApp .personState small{
+  display:block!important;
+  margin-top:3px!important;
+  color:inherit!important;
+  opacity:.72!important;
+  font-size:11.2px!important;
+  font-weight:750!important;
+}
+.socioApp .personAction{
+  display:block!important;
+}
+.socioApp .personAction form{margin:0!important;}
+.socioApp .personAction button{
+  min-height:38px!important;
+  border-radius:13px!important;
+  font-size:13px!important;
+}
+.socioApp .personAction button.secondaryDanger{
+  background:#fff!important;
+  color:var(--socio-red)!important;
+  border:1px solid rgba(163,58,52,.30)!important;
+}
+.socioApp .personAction button.okBtn{
+  background:linear-gradient(180deg,#a87425,#805816)!important;
+  color:#fff!important;
+}
+
+/* Formulario de invitados: sensación app, no formulario administrativo */
+.socioApp .premiumForm{
+  display:grid!important;
+  gap:9px!important;
+  margin-top:12px!important;
+  padding:12px!important;
+  border:1px solid rgba(31,95,145,.10)!important;
+  border-radius:17px!important;
+  background:linear-gradient(180deg,#fbfdff,#ffffff)!important;
+}
+.socioApp input,
+.socioApp .input,
+.socioApp select{
+  min-height:44px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(31,95,145,.15)!important;
+  background:#fff!important;
+  font-size:14px!important;
+  padding:10px 12px!important;
+}
+.socioApp input::placeholder,
+.socioApp .input::placeholder{color:#9aa6b5!important;}
+.socioApp input:focus,
+.socioApp .input:focus,
+.socioApp select:focus{
+  outline:none!important;
+  border-color:#76b7e6!important;
+  box-shadow:0 0 0 4px rgba(31,95,145,.12)!important;
+}
+.socioApp .btn.green,
+.socioApp button.btn.green,
+.socioApp .premiumForm button.btn.light{
+  min-height:44px!important;
+  border-radius:14px!important;
+  font-weight:900!important;
+  font-size:14.2px!important;
+  background:linear-gradient(180deg,#2a76ad,#174f7c)!important;
+  box-shadow:0 8px 16px rgba(31,95,145,.18), inset 0 1px 0 rgba(255,255,255,.22)!important;
+}
+.socioApp .disabledBtn{opacity:.58!important;filter:saturate(.75)!important;}
+
+/* Avisos superiores: que se lean como feedback de app */
+.socioApp .toast,
+.socioApp .compactToast{
+  position:relative!important;
+  padding:11px 13px 11px 40px!important;
+  border-radius:16px!important;
+  background:#eff8ff!important;
+  color:#164e73!important;
+  border:1px solid #c9e2f6!important;
+  box-shadow:0 8px 22px rgba(13,34,54,.075)!important;
+  font-size:13px!important;
+  line-height:1.32!important;
+}
+.socioApp .toast:before,
+.socioApp .compactToast:before{
+  content:"i";position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  width:18px;height:18px;border-radius:999px;display:grid;place-items:center;
+  background:#d8ecfb;color:#15547f;font-size:12px;font-weight:950;font-family:ui-serif, Georgia, serif;
+}
+
+/* Historial, reglas y vacío: legibilidad sin competir con la reserva */
+.socioApp .empty,
+.socioApp .lockBox{
+  border-radius:15px!important;
+  padding:12px!important;
+  background:#f7fafc!important;
+  border:1px solid rgba(31,95,145,.09)!important;
+  color:#536274!important;
+}
+.socioApp .historyFold summary{
+  min-height:40px!important;
+  align-items:center!important;
+  font-size:13px!important;
+  background:#f4f9fd!important;
+}
+.socioApp .rulesToggle summary{
+  min-height:42px!important;
+  font-size:13.5px!important;
+}
+.socioApp .rulesToggle p{
+  font-size:13px!important;
+  line-height:1.52!important;
+  color:#4d5d70!important;
+}
+
+/* Navegación inferior: más visible para socios, sin parecer barra pesada */
+.socioApp .bottom{
+  left:10px!important;right:10px!important;bottom:10px!important;
+  padding:6px!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.94)!important;
+  border:1px solid rgba(31,95,145,.14)!important;
+  box-shadow:0 14px 30px rgba(13,34,54,.16)!important;
+}
+.socioApp .bottom a{
+  min-height:36px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  font-size:11.2px!important;
+  font-weight:900!important;
+  color:#66758a!important;
+}
+.socioApp .bottom a.on{
+  background:linear-gradient(180deg,#eaf5ff,#ddecfa)!important;
+  color:var(--socio-blue-deep)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)!important;
+}
+
+@media(min-width:640px){
+  .socioApp .premiumHero{grid-template-columns:.92fr 1.08fr!important;align-items:center!important;}
+  .socioApp .outingIdentity{border-top:0!important;border-left:1px solid rgba(31,95,145,.12)!important;padding-top:0!important;padding-left:15px!important;}
+  .socioApp .premiumPerson{grid-template-columns:minmax(0,1fr) 190px!important;align-items:center!important;}
+  .socioApp .personAction{min-width:0!important;}
+  .socioApp .premiumForm{grid-template-columns:1fr 1fr!important;}
+  .socioApp .premiumForm select,
+  .socioApp .premiumForm #hijo_menor_fields,
+  .socioApp .premiumForm button{grid-column:1/-1!important;}
+}
+@media(max-width:560px){
+  .socioWrap{padding:9px 9px 118px!important;}
+  .socioApp .card,.socioApp .premiumCard,.socioApp .rulesToggle{padding:13px!important;margin:9px 0!important;border-radius:18px!important;}
+  .socioApp #salidas,.socioApp #reserva,.socioApp #invitados{padding:13px!important;}
+  .socioApp .selectRow{padding:11px 12px 11px 14px!important;}
+  .socioApp .premiumHero{padding:14px!important;}
+  .socioApp .premiumHero h1{font-size:21px!important;}
+  .socioApp .premiumHero h2{font-size:17px!important;}
+  .socioApp .kpiStrip{gap:7px!important;}
+  .socioApp .kpiStrip>div{padding:9px 8px!important;}
+  .socioApp .kpiStrip b{font-size:18px!important;}
+  .socioApp .premiumPerson{padding:11px!important;}
+  .socioApp .bottom{bottom:8px!important;left:8px!important;right:8px!important;}
+}
