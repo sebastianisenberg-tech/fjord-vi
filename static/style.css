@@ -3960,3 +3960,157 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .socioProV464 .bottom a.on{background:linear-gradient(180deg,#0b5f8f,#06456d)!important;color:#fff!important;box-shadow:0 8px 18px rgba(11,95,143,.22)!important;}
 .socioProV464 .socioFooter{opacity:.85!important;padding-bottom:84px!important;}
 @media (max-width:420px){.socioProV464 .socioWrap{padding-left:10px!important;padding-right:10px!important;}.socioProV464 .socioProStats,.socioProV464 .socioProKpis{gap:7px!important;}.socioProV464 .socioProStats>div,.socioProV464 .socioProKpis div{padding:10px 7px!important;}.socioProV464 .socioProBoarding{padding:16px!important;border-radius:22px!important;}.socioProV464 .socioProBoarding h2{font-size:21px!important;}}
+
+/* =========================================================
+   v46.5 CAPITAN PRO - tablero mobile, sin tocar el motor
+   ========================================================= */
+.captainProBody{background:#eef3f0;}
+.captainWrap{padding-bottom:96px;}
+.captainTop{position:sticky;top:0;z-index:50;}
+.captainToast{position:sticky;top:70px;z-index:45;box-shadow:0 10px 26px rgba(0,0,0,.12);}
+.captainSelector{margin-top:10px;}
+.captainActiveOutings{display:grid;gap:10px;}
+.captainOutingCard{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid rgba(15,45,35,.10);border-radius:18px;background:linear-gradient(180deg,#ffffff,#f7faf8);box-shadow:0 8px 20px rgba(0,0,0,.045);}
+.captainOutingCard.selected{outline:2px solid rgba(12,122,59,.28);background:#f1faf5;}
+.captainOutingCard .outingMainLink{flex:1;text-decoration:none;color:inherit;min-width:0;}
+.captainOutingCard b{display:block;font-size:16px;line-height:1.15;}
+.captainOutingCard small{display:block;margin-top:4px;color:#5b6b63;font-size:12.5px;line-height:1.25;}
+.captainHistoryFold{margin-top:12px;}
+.captainHistoryFold summary{cursor:pointer;font-weight:800;padding:12px 2px;color:#173b2c;}
+.captainHistoryScroll{max-height:240px;overflow:auto;padding-right:3px;border-radius:14px;}
+.captainStickyPanel{position:sticky;top:70px;z-index:35;margin:12px 0 12px;padding:14px;border-radius:22px;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);box-shadow:0 16px 38px rgba(11,42,30,.16);border:1px solid rgba(12,62,42,.10);}
+.captainStickyPanel.isOpen{border-color:rgba(10,122,59,.18);}
+.captainStickyPanel.isClosed{border-color:rgba(20,50,80,.18);}
+.captainStickyPanel.isCancelled{border-color:rgba(124,69,28,.22);}
+.captainStickyTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.captainStickyTop h1{margin:2px 0 2px;font-size:22px;line-height:1.05;letter-spacing:-.02em;color:#0b2d20;}
+.captainStickyTop small{display:block;color:#55665e;font-size:13px;}
+.captainStickyKpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+.captainStickyKpis div{border-radius:15px;background:#f0f6f3;padding:9px 10px;text-align:center;}
+.captainStickyKpis small{display:block;color:#5b6b63;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.captainStickyKpis b{display:block;font-size:22px;color:#102e22;line-height:1.05;margin-top:2px;}
+.qrCaptainBtn,.captainBigQr{background:#0b7a3b;color:#fff;border:0;border-radius:16px;padding:14px 18px;font-weight:900;font-size:17px;box-shadow:0 10px 24px rgba(11,122,59,.24);width:100%;margin-top:12px;}
+.qrCapitanOverlay{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;}
+.qrCapitanOverlay.hidden{display:none;}
+.qrCapitanBox{background:#fff;color:#102018;border-radius:24px;width:min(94vw,430px);padding:22px;text-align:center;box-shadow:0 22px 80px rgba(0,0,0,.45);}
+.qrCapitanBox h2{margin:0 0 6px;font-size:30px;line-height:1.05;color:#0b3b2a;}
+.qrCapitanBox p{margin:5px 0 14px;color:#43544b;font-size:15px;}
+.qrCapitanQR{width:min(76vw,330px);height:auto;border:10px solid #fff;border-radius:14px;box-shadow:0 3px 16px rgba(0,0,0,.14);}
+.qrCapitanActions{display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap;}
+.qrCapitanActions button,.qrCapitanActions a{appearance:none;text-decoration:none;border:0;border-radius:12px;padding:12px 15px;font-weight:800;background:#0b7a3b;color:#fff;font-size:15px;}
+.qrCapitanActions .secondary{background:#20352d;}
+.qrCapitanNote{font-size:13px!important;line-height:1.35;color:#51635a!important;margin-top:14px!important;}
+.qrLinkInput{position:absolute;left:-9999px;width:1px;height:1px;}
+.captainDecisionGrid{display:grid;grid-template-columns:1fr;gap:10px;}
+.captainDecisionGrid form{margin:0;}
+.captainDecisionBtn{width:100%;border:0;border-radius:16px;padding:15px 16px;font-size:16px;font-weight:900;letter-spacing:.01em;box-shadow:0 8px 20px rgba(0,0,0,.08);}
+.captainDecisionBtn.reopenBtn{background:#113b2c;color:#fff;}
+.captainDecisionBtn.cancelBtn{background:#7a3d16;color:#fff;}
+.captainDecisionBtn.closeBtn{background:#071b33;color:#fff;}
+.captainDecisionHint{border-radius:15px;background:#f4efe6;color:#725018;padding:13px 14px;font-weight:800;text-align:center;}
+.captainTripTitle{align-items:center;}
+.captainTripCount{font-weight:900;color:#173b2c;background:#e9f3ee;padding:7px 10px;border-radius:999px;font-size:13px;}
+.captainFilterPro{display:flex;gap:8px;overflow:auto;padding:4px 0 12px;margin-bottom:4px;-webkit-overflow-scrolling:touch;}
+.captainFilterPro button{white-space:nowrap;border:0;border-radius:999px;background:#edf3f0;color:#173b2c;padding:10px 13px;font-weight:850;}
+.captainFilterPro button.on{background:#103b2b;color:#fff;}
+.captainPeopleList{display:grid;gap:12px;}
+.captainPersonPro{display:grid;grid-template-columns:1fr;gap:12px;padding:14px;border-radius:20px;background:#fff;border:1px solid rgba(14,48,34,.10);box-shadow:0 8px 22px rgba(0,0,0,.045);}
+.captainPersonPro.good,.captainPersonPro.ok{border-left:7px solid #0b7a3b;}
+.captainPersonPro.warn{border-left:7px solid #b58211;}
+.captainPersonPro.bad,.captainPersonPro.critical{border-left:7px solid #9e2b20;}
+.captainPersonPro.neutralState{border-left:7px solid #747d78;}
+.captainPersonName{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.captainPersonName b{font-size:18px;line-height:1.15;color:#102e22;}
+.captainStatusLine{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px;}
+.captainStateChip,.captainChargeChip{display:inline-flex;align-items:center;min-height:28px;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:900;letter-spacing:.01em;}
+.captainStateChip.present{background:#ddf5e7;color:#0b6633;}
+.captainStateChip.pending{background:#eef2f0;color:#45554d;}
+.captainStateChip.absent{background:#fde6e3;color:#9e2b20;}
+.captainStateChip.noboard{background:#ece9e2;color:#554b3a;}
+.captainStateChip.wait{background:#edf0f8;color:#263d73;}
+.captainStateChip.neutral{background:#eceeed;color:#535b57;}
+.captainChargeChip{background:#fff2db;color:#7b4d09;}
+.captainChargeChip.soft{background:#eef1f7;color:#3a4770;}
+.captainReason{font-size:12.5px!important;line-height:1.32;color:#607069!important;margin-top:7px;}
+.captainActionsPro{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.captainActionsPro form{margin:0;}
+.capAction{width:100%;border:0;border-radius:14px;padding:13px 10px;min-height:48px;font-size:14px;font-weight:950;line-height:1.05;box-shadow:0 5px 14px rgba(0,0,0,.06);}
+.capAction.primary{background:#0b7a3b;color:#fff;grid-column:auto;}
+.capAction.danger{background:#a93226;color:#fff;}
+.capAction.neutralAction{background:#e9e3d8;color:#3b342a;}
+.capAction.reactivate{background:#163a5a;color:#fff;}
+.captainActionsPro .primaryForm{grid-column:1/-1;}
+.captainActionsPro .reactivateForm{grid-column:1/-1;}
+.captainBottom{z-index:60;}
+.is-hidden-v43{display:none!important;}
+.disabledBtn{opacity:.55;pointer-events:none;}
+@media (min-width:760px){
+  .captainDecisionGrid{grid-template-columns:repeat(3,1fr);}
+  .captainPersonPro{grid-template-columns:minmax(0,1fr) 310px;align-items:center;}
+  .captainActionsPro{grid-template-columns:1fr 1fr;}
+  .captainActionsPro .primaryForm{grid-column:auto;}
+  .captainActionsPro .reactivateForm{grid-column:auto;}
+}
+@media (max-width:520px){
+  .captainWrap{padding-left:12px;padding-right:12px;}
+  .captainStickyPanel{top:64px;margin-left:-4px;margin-right:-4px;border-radius:20px;}
+  .captainStickyTop h1{font-size:20px;}
+  .captainStickyKpis b{font-size:20px;}
+  .captainOutingCard{align-items:flex-start;}
+  .outingQuickActions{display:flex;flex-direction:column;gap:6px;}
+  .qrCapitanBox{padding:18px;}
+  .qrCapitanBox h2{font-size:27px;}
+  .qrCapitanActions button,.qrCapitanActions a{width:100%;}
+  .captainPersonName b{font-size:17px;}
+}
+
+/* =========================================================
+   v46.5.1 CAPITAN PRO - limpieza visual mobile
+   - selector compacto
+   - decisiones menos amontonadas
+   - QR modal compacto
+   ========================================================= */
+.captainProBody .captainSelector{padding:12px!important;}
+.captainProBody .captainActiveOutings{gap:8px!important;}
+.captainProBody .captainOutingCard{padding:10px 11px!important;border-radius:16px!important;}
+.captainProBody .captainOutingCard b{font-size:14.5px!important;line-height:1.12!important;}
+.captainProBody .captainOutingCard small{font-size:11.5px!important;line-height:1.18!important;margin-top:3px!important;}
+.captainProBody .outingQuickActions{display:flex!important;gap:6px!important;align-items:center!important;}
+.captainProBody .outingQuickActions .pill,.captainProBody .qrQuick{min-height:30px!important;padding:6px 9px!important;border-radius:999px!important;font-size:11.5px!important;border:0!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+.captainProBody .selectedPill{background:#dff4e8!important;color:#0b6633!important;}
+.captainProBody .captainSwitchFold{margin-top:8px!important;border-radius:14px!important;background:#f7faf8!important;border:1px solid rgba(15,45,35,.08)!important;overflow:hidden!important;}
+.captainProBody .captainSwitchFold summary,.captainProBody .captainHistoryFold summary{list-style:none!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:10px 12px!important;font-size:13px!important;font-weight:900!important;color:#113b2c!important;}
+.captainProBody .captainSwitchFold summary::-webkit-details-marker,.captainProBody .captainHistoryFold summary::-webkit-details-marker{display:none!important;}
+.captainProBody .captainSwitchFold summary::after,.captainProBody .captainHistoryFold summary::after{content:'+';width:22px;height:22px;border-radius:999px;background:#e6f0eb;color:#113b2c;display:grid;place-items:center;font-size:15px;}
+.captainProBody .captainSwitchFold[open] summary::after,.captainProBody .captainHistoryFold[open] summary::after{content:'−';}
+.captainProBody .captainHistoryScroll.compact{max-height:150px!important;padding:0 8px 8px!important;}
+.captainProBody .historyRow{display:flex!important;justify-content:space-between!important;gap:8px!important;text-decoration:none!important;color:inherit!important;padding:8px 9px!important;border-radius:12px!important;background:#fff!important;border:1px solid rgba(15,45,35,.07)!important;margin-bottom:6px!important;}
+.captainProBody .historyRow span{font-size:12.5px!important;line-height:1.2!important;}
+.captainProBody .historyRow small{font-size:11px!important;color:#65736d!important;white-space:nowrap!important;}
+.captainProBody .captainDecision{padding:12px!important;}
+.captainProBody .captainDecisionGrid{gap:8px!important;}
+.captainProBody .captainDecisionBtn{min-height:44px!important;padding:11px 12px!important;border-radius:14px!important;font-size:14px!important;box-shadow:0 6px 14px rgba(0,0,0,.08)!important;}
+.captainProBody .cardTitle{margin-bottom:8px!important;}
+.captainProBody .cardTitle h2{font-size:17px!important;}
+.captainProBody .captainStickyPanel{padding:12px!important;border-radius:19px!important;}
+.captainProBody .captainStickyTop h1{font-size:19px!important;margin-bottom:1px!important;}
+.captainProBody .captainStickyKpis{gap:7px!important;margin-top:10px!important;}
+.captainProBody .captainStickyKpis div{padding:8px 7px!important;border-radius:13px!important;}
+.captainProBody .captainStickyKpis b{font-size:18px!important;}
+.captainProBody .qrCaptainBtn,.captainProBody .captainBigQr{min-height:44px!important;padding:11px 14px!important;border-radius:14px!important;font-size:14px!important;margin-top:10px!important;}
+.captainProBody .qrCapitanOverlay{position:fixed!important;inset:0!important;background:rgba(4,14,20,.72)!important;z-index:99999!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:14px!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important;}
+.captainProBody .qrCapitanOverlay.hidden{display:none!important;}
+.captainProBody .qrCapitanBox{width:min(92vw,360px)!important;max-height:88vh!important;overflow:auto!important;border-radius:22px!important;padding:16px!important;text-align:center!important;box-shadow:0 20px 70px rgba(0,0,0,.45)!important;}
+.captainProBody .qrCapitanBox h2{font-size:21px!important;margin:0 0 5px!important;}
+.captainProBody .qrCapitanBox p{font-size:12.5px!important;line-height:1.25!important;margin:4px 0 10px!important;}
+.captainProBody .qrCapitanQR{width:min(68vw,235px)!important;max-width:235px!important;border:6px solid #fff!important;border-radius:10px!important;box-shadow:0 2px 12px rgba(0,0,0,.12)!important;}
+.captainProBody .qrCapitanNote{font-size:11.8px!important;line-height:1.28!important;margin-top:10px!important;}
+.captainProBody .qrCapitanActions{gap:8px!important;margin-top:12px!important;}
+.captainProBody .qrCapitanActions button,.captainProBody .qrCapitanActions a{min-height:38px!important;padding:9px 11px!important;border-radius:12px!important;font-size:13px!important;}
+@media(max-width:520px){
+  .captainProBody .captainWrap{padding-left:9px!important;padding-right:9px!important;}
+  .captainProBody .captainDecisionGrid{grid-template-columns:1fr!important;}
+  .captainProBody .captainPersonPro{padding:12px!important;border-radius:18px!important;}
+  .captainProBody .capAction{min-height:44px!important;padding:10px 8px!important;font-size:13px!important;}
+  .captainProBody .captainFilterPro button{padding:8px 11px!important;font-size:12px!important;}
+}
