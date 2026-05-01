@@ -8,15 +8,7 @@
 </head>
 <body>
 <div class="officeApp">
-  <header class="officeTop appHeaderPremium">
-    <div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div>
-      <b>{{club_name}} · {{app_name}} · Administración de oficina</b>
-      <small>Embarque Fjord VI {{version}}</small>
-    </div></div>
-    <a href="/logout" class="logoutBtn">Salir</a>
-  </header>
-
-  {% if msg %}
+{% if msg %}
   <div class="officeNotice">
     {% if msg=='salida_creada' %}Salida creada correctamente.
     {% elif msg=='demo_reset' %}Datos demo reiniciados.
@@ -56,23 +48,15 @@
       {% endif %}
       <a class="officeSideActionV44" href="#crear">Programar salida</a>
       <a class="officeSideActionV44" href="#sistema">Sistema</a>
+      <a class="officeSideActionV44 officeLogoutV452" href="/logout">Salir</a>
 
       <div class="officeSideFooterV44">
-        <span>v44.0</span>
-        <b>Sidebar fijo</b>
+        <span>{{version}}</span>
+        <b>Admin limpio</b>
       </div>
     </aside>
 
     <section class="officeMain">
-      <div class="officeControlBarV43">
-        <a href="#salidas">Salidas</a>
-        <a href="#reservas">Reservas</a>
-        <a href="#liquidacion">Liquidación</a>
-        <a href="#usuarios">Usuarios</a>
-        <a href="#logs">Auditoría</a>
-        {% if outing %}<a href="/admin/manifest.csv?outing_id={{outing.id}}">CSV operativo</a><a href="/admin/charges.csv?outing_id={{outing.id}}">CSV cargos</a>{% endif %}
-      </div>
-      <p class="adminDesktopHintV43">Vista v44 optimizada para oficina: sidebar fijo, navegación por módulos, filtros y tablas con scroll interno para evitar pantallas interminables.</p>
       <section class="officeCard officeHero" id="detalle">
         <div class="officeHeroText">
           <span class="officeEyebrow">Salida seleccionada</span>

@@ -3809,3 +3809,24 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 @media print{
   img{break-inside:avoid;page-break-inside:avoid;}
 }
+
+
+/* =========================
+   v45.2 - Admin limpio: sidebar como navegación única
+   ========================= */
+.officeApp .officeTop,
+.officeApp .officeControlBarV43,
+.officeApp .adminDesktopHintV43{display:none!important;}
+@media (min-width:981px){
+  .officeApp .officeLayout{max-width:none!important;width:100%!important;margin:0!important;padding:18px 22px 80px 268px!important;display:block!important;box-sizing:border-box!important;}
+  .officeSidebarV44{top:18px!important;bottom:18px!important;width:228px!important;}
+  .officeApp .officeMain{max-width:1360px!important;margin:0 auto!important;}
+}
+.officeSidebarV44 .officeLogoutV452{margin-top:10px!important;background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.24)!important;box-shadow:none!important;}
+.officeSidebarV44 .officeLogoutV452:hover{background:rgba(255,255,255,.24)!important;color:#fff!important;}
+.officeSideFooterV44 span{color:#fff!important;font-weight:950!important;}
+.officeSideFooterV44 b{color:rgba(255,255,255,.72)!important;}
+.officeApp .officeCard,.officeApp .officeKpi,.officeApp .officeTableWrap,.officeApp .officeUserGrid{background:#ffffff!important;color:#102033!important;}
+.officeApp .officeEyebrow,.officeApp small,.officeApp .officeMuted{color:#52687b!important;}
+.officeApp select,.officeApp input,.officeApp textarea{background:#ffffff!important;color:#102033!important;border-color:#cfddea!important;}
+@media (max-width:980px){.officeApp .officeLayout{padding-top:10px!important;}}
