@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css?v=v51.3">
+<link rel="stylesheet" href="/static/style.css?v=v51.4.1">
 <title>Socios · {{app_name}}</title>
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
@@ -45,7 +45,7 @@ function showSocioNotice(text){
 
 {% if outing %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-<section class="socioV51Dashboard" aria-label="Inicio del socio">
+<section class="socioV51Dashboard" id="perfil" aria-label="Inicio del socio">
   <div class="socioV51Hello">
     <div><span class="eyebrow">Inicio</span><h1>Hola, {{user.name}}</h1><small>{% if user.member_no %}Socio Nº {{user.member_no}} · {% endif %}Documento {{user.dni}}</small></div>
     <a class="socioV51Profile" href="#perfil" aria-label="Ver perfil">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
@@ -93,7 +93,7 @@ function showSocioNotice(text){
     {% if outing_cancelled %}
       <a class="miEmbCta soft" href="#inicio">Salida cancelada</a>
     {% elif closed %}
-      <a class="miEmbCta soft" href="#reserva">Salida cerrada</a>
+      <a class="miEmbCta soft" href="#inicio">Salida cerrada</a>
     {% elif self_view and self_view.waitlisted %}
       <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Salir de espera</button></form>
     {% elif has_self %}
@@ -141,63 +141,6 @@ function showSocioNotice(text){
 
 {% if outing %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-<section class="premiumHero socioProIdentity socioV51Identity" id="perfil">
-  <div class="memberIdentity">
-    <span class="eyebrow">Socio</span>
-    <h1>{{user.name}}</h1>
-    <small>{% if user.member_no %}Socio Nº {{user.member_no}} · {% endif %}Documento {{user.dni}}</small>
-  </div>
-  <div class="outingIdentity">
-    <h2>{{outing.title}}</h2>
-    <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
-    <span class="statusPill {% if outing_cancelled %}bad{% elif closed %}neutral{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada por capitán{% elif closed %}Cerrada{% else %}Operativa{% endif %}</span>
-  </div>
-</section>
-
-<section id="estado" class="statusPanel premiumStatus socioStatusBlock socioProStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}
-    <div class="socioStatusHeader">
-      <b>Cancelada por capitán</b>
-      <small>Sin cargos ni preliquidaciones vigentes.</small>
-    </div>
-  {% elif closed %}
-    <div class="socioStatusHeader">
-      <b>Salida cerrada y liquidada</b>
-      <small>{{final_summary.detail}}</small>
-    </div>
-  {% else %}
-    <div class="socioStatusHeader">
-      <b>Salida operativa <span class="helpDot" data-tip="En paseos de sábado y domingo, no presentarse o cancelar tarde puede generar cargo reglamentario.">ⓘ</span></b>
-      <small>Tripulación publicada para esta salida</small>
-    </div>
-    <div class="socioStatusMetrics" aria-label="Estado de cupo de la salida">
-      <div class="socioStatusMetric"><strong>{{active_count}} / {{outing.max_crew}}</strong><span>ocupados</span></div>
-      <div class="socioStatusMetric"><strong>{{remaining}}</strong><span>libres</span></div>
-      {% if waitlist_count|default(0) > 0 %}<div class="socioStatusMetric"><strong>{{waitlist_count}}</strong><span>en espera</span></div>{% endif %}
-    </div>
-  {% endif %}
-</section>
-
-<section class="kpiStrip socioProKpis">
-  <div><small>Ocupación</small><b>{{active_count}} / {{outing.max_crew}}</b></div>
-  <div><small>Libres</small><b>{{remaining}}</b></div>
-  <div><small>Mínimo</small><b>{{outing.min_crew}}</b></div>
-</section>
-
-<section class="card premiumCard focusCard socioProCard socioProReserva" id="reserva">
-  <div class="cardTitle"><div><span class="eyebrow">Reserva titular</span><h2>Tu lugar <span class="helpDot" data-tip="Reservar implica compromiso. Si no podés ir, cancelá a tiempo para liberar el lugar.">ⓘ</span></h2></div>{% if outing_cancelled %}<span class="pill bad">Pausada</span>{% elif self_view and self_view.waitlisted %}<span class="pill neutral">Lista de espera</span>{% elif has_self %}<span class="pill ok">Activo</span>{% else %}<span class="pill warn">Sin reserva</span>{% endif %}</div>
-  {% if self_reservation %}
-    {% set v = reservation_views.get(self_reservation.id) %}
-    <div class="premiumPerson reservationCard {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %}">
-      <div class="personMain"><b>Mi lugar</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
-      </div>
-      <div class="personAction titularInfo">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<span class="pill neutral">En espera</span>{% elif has_self %}<span class="pill ok">Confirmada</span>{% else %}<span class="pill softCancel">Cancelada</span>{% endif %}</div>
-    </div>
-  {% elif outing_cancelled %}<div class="empty lockBox"><b>Anotación deshabilitada.</b><br>Pendiente de reapertura por capitán.</div>
-  {% elif not closed %}<form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn green">{% if remaining == 0 %}Anotarme en lista de espera{% else %}Reservar mi lugar{% endif %}</button></form>{% endif %}
-</section>
-
 <section class="card premiumCard socioProCard socioProGuests" id="invitados">
   <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados y menores</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
   {% set ns = namespace(count=0) %}
@@ -218,7 +161,7 @@ function showSocioNotice(text){
 
 <details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
 {% endif %}
-</main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio">Inicio</a><a href="#reserva">Reservas</a><a href="#salidas">Calendario</a><a href="#perfil">Perfil</a></nav>
+</main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio">Inicio</a><a href="#invitados">Reservas</a><a href="#salidas">Calendario</a><a href="#perfil">Perfil</a></nav>
 <footer class="appFooter socioFooter"><span>Embarque Fjord VI</span><b>{{version}}</b></footer>
-</div><script src="/static/app.js?v=v51.3"></script>
+</div><script src="/static/app.js?v=v51.4.1"></script>
 </body></html>
