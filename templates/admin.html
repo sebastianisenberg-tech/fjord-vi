@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v47_7">
+  <link rel="stylesheet" href="/static/style.css?v=v49">
 
   <!-- CSS crítico Admin v47.1 inline: evita HTML pelado si cachea /static/style.css -->
   <style>
@@ -27,7 +27,7 @@
   </style>
   <title>Administración · {{club_name}} · {{app_name}} · {{version}}</title>
 </head>
-<body class="adminV47Body">
+<body class="adminV47Body" data-admin-msg="{{msg or ''}}">
 {% set selected_q = '&outing_id=' ~ outing.id if outing else '' %}
 <div class="adminV47">
   <aside class="adminV47Side">
@@ -76,7 +76,7 @@
         <article class="adminV47Card"><span>Confirmados</span><b>{{active_count if outing else 0}}{% if outing %}/{{outing.max_crew}}{% endif %}</b><small>cupo</small></article>
         <article class="adminV47Card"><span>Presentes</span><b>{{acta.embarked_count if outing else 0}}</b><small>QR/capitán</small></article>
         <article class="adminV47Card"><span>No embarcados</span><b>{{acta.not_embarked_count if outing else 0}}</b><small>ausente/no embarca</small></article>
-        <article class="adminV47Card money"><span>Cargos firmes</span><b>$ {{charge_summary.total_label if outing else '0'}}</b><small>contable</small></article>
+        <article class="adminV47Card money"><span>Cargos firmes <span class="helpDot" data-tip="Monto definitivo a cargar en contabilidad una vez cerrada la navegación.">ⓘ</span></span><b>$ {{charge_summary.total_label if outing else '0'}}</b><small>contable</small></article>
       </div>
       <div class="adminV47TwoCols">
         <article class="adminV47Panel"><h3>Próximas navegaciones</h3><div class="adminV47List">{% for o in outings[:8] %}<a href="/admin?page=dashboard&outing_id={{o.id}}"><b>{{fmt_admin_datetime_short(o.departure_at)}}</b><span>{{o.title}}</span><em>{{o.status}}</em></a>{% else %}<p>No hay navegaciones próximas.</p>{% endfor %}</div></article>
@@ -110,7 +110,7 @@
     {% endif %}
 
     {% if admin_page == 'auditoria' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Trazabilidad</span><h2>Auditoría</h2></div></div><article class="adminV47Panel"><div class="adminV47TableBox tall"><table class="adminV47Table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>{% for l in logs %}<tr><td>{{fmt_admin_datetime(l.created_at)}}</td><td>{{l.actor}}</td><td><b>{{l.action}}</b></td><td>{{l.detail}}</td></tr>{% endfor %}</tbody></table></div></article></section>
+    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Trazabilidad</span><h2>Auditoría <span class="helpDot" data-tip="Registro de acciones: quién hizo qué, cuándo y sobre qué salida.">ⓘ</span></h2></div></div><article class="adminV47Panel"><div class="adminV47TableBox tall"><table class="adminV47Table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>{% for l in logs %}<tr><td>{{fmt_admin_datetime(l.created_at)}}</td><td>{{l.actor}}</td><td><b>{{l.action}}</b></td><td>{{l.detail}}</td></tr>{% endfor %}</tbody></table></div></article></section>
     {% endif %}
 
     {% if admin_page == 'estadisticas' %}
@@ -118,7 +118,7 @@
     {% endif %}
 
     {% if admin_page == 'exportar' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Salida de información</span><h2>Exportar</h2></div></div><div class="adminV47TwoCols"><article class="adminV47Panel"><h3>Exportación operativa</h3><p>Manifiesto de reservas, estados y responsables.</p>{% if outing %}<a class="adminV47Button" href="/admin/manifest.csv?outing_id={{outing.id}}">Descargar CSV operativo</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="adminV47Panel"><h3>Exportación contable</h3><p>Cargos firmes para administración / contabilidad.</p>{% if outing %}<a class="adminV47Button" href="/admin/charges.csv?outing_id={{outing.id}}">Descargar CSV cargos</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article></div></section>
+    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Salida de información</span><h2>Exportar <span class="helpDot" data-tip="Descarga datos para contabilidad o control administrativo.">ⓘ</span></h2></div></div><div class="adminV47TwoCols"><article class="adminV47Panel"><h3>Exportación operativa</h3><p>Manifiesto de reservas, estados y responsables.</p>{% if outing %}<a class="adminV47Button" href="/admin/manifest.csv?outing_id={{outing.id}}">Descargar CSV operativo</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="adminV47Panel"><h3>Exportación contable</h3><p>Cargos firmes para administración / contabilidad.</p>{% if outing %}<a class="adminV47Button" href="/admin/charges.csv?outing_id={{outing.id}}">Descargar CSV cargos</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article></div></section>
     {% endif %}
 
     {% if admin_page == 'sistema' %}
@@ -145,5 +145,6 @@
   document.querySelectorAll('[data-clear-v43]').forEach(btn=>btn.addEventListener('click',()=>{ if(btn.dataset.clearV43==='reservas'){ if(resSearch)resSearch.value=''; if(resEstado)resEstado.value='all'; filterRes(); } if(btn.dataset.clearV43==='usuarios'){ if(userSearch)userSearch.value=''; if(userRol)userRol.value='all'; filterUsers(); }}));
 })();
 </script>
+<script src="/static/app.js?v=v49"></script>
 </body>
 </html>
