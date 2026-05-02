@@ -1,0 +1,206 @@
+{
+  "version": "v47.4",
+  "build": "v47.4-admin-operativo-probado",
+  "exported_at": "2026-05-01T21:57:30.359241",
+  "users": [
+    {
+      "id": 1,
+      "name": "Juan Pérez",
+      "dni": "20123456",
+      "member_no": "1234",
+      "email": "juan@example.com",
+      "phone": "",
+      "role": "socio",
+      "password_hash": "pbkdf2_sha256$750650fe35602408a1bca129677520e6$89690414c0a4ee177833ca84721732ceb7506dc28cb37a500fe6be1de59cec3f",
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "Capitán Martín",
+      "dni": "30999111",
+      "member_no": "CAP-01",
+      "email": "capitan@example.com",
+      "phone": "",
+      "role": "captain",
+      "password_hash": "pbkdf2_sha256$56a157efbab9595f0f2d9dee2139e30f$93b636e7f5cd779438d9b4e831f6df09a31a825c977ad8e1accd72711bf6bafd",
+      "active": true
+    },
+    {
+      "id": 3,
+      "name": "Admin Club",
+      "dni": "27999111",
+      "member_no": "ADM-01",
+      "email": "admin@example.com",
+      "phone": "",
+      "role": "admin",
+      "password_hash": "pbkdf2_sha256$086a2394bff7d4db25cfb155f1af26b7$b1edd734e7232ccae484085c0f0f2edeacd71d01a3dd2e8cf2cbee1f3e25fbbf",
+      "active": true
+    }
+  ],
+  "outings": [
+    {
+      "id": 1,
+      "title": "Paseo de domingo",
+      "destination": "Dársena Norte / Río de la Plata",
+      "departure_at": "2026-05-03T10:00:00",
+      "status": "En reservas",
+      "max_crew": 9,
+      "min_crew": 2,
+      "guest_fee": 45000.0,
+      "notes": "Piloto fin de semana. Mínimo 2, máximo 9 tripulantes sin contar capitán.",
+      "created_at": "2026-05-01T21:56:01.446039"
+    }
+  ],
+  "reservations": [
+    {
+      "id": 1,
+      "outing_id": 1,
+      "person_name": "Juan Pérez",
+      "dni": "20123456",
+      "kind": "socio",
+      "responsible_user_id": 1,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.450581",
+      "cancelled_at": null
+    },
+    {
+      "id": 2,
+      "outing_id": 1,
+      "person_name": "María Gómez",
+      "dni": "35111222",
+      "kind": "invitado",
+      "responsible_user_id": 1,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.451178",
+      "cancelled_at": null
+    },
+    {
+      "id": 3,
+      "outing_id": 1,
+      "person_name": "Carlos Rodríguez",
+      "dni": "23452345",
+      "kind": "socio",
+      "responsible_user_id": null,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.451295",
+      "cancelled_at": null
+    },
+    {
+      "id": 4,
+      "outing_id": 1,
+      "person_name": "Ana López",
+      "dni": "32111333",
+      "kind": "invitado",
+      "responsible_user_id": 1,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.451360",
+      "cancelled_at": null
+    },
+    {
+      "id": 5,
+      "outing_id": 1,
+      "person_name": "Pedro Martínez",
+      "dni": "28456456",
+      "kind": "socio",
+      "responsible_user_id": null,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.451417",
+      "cancelled_at": null
+    },
+    {
+      "id": 6,
+      "outing_id": 1,
+      "person_name": "Lucía Fernández",
+      "dni": "36777888",
+      "kind": "invitado",
+      "responsible_user_id": 1,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.451471",
+      "cancelled_at": null
+    },
+    {
+      "id": 7,
+      "outing_id": 1,
+      "person_name": "Diego Sánchez",
+      "dni": "30456789",
+      "kind": "socio",
+      "responsible_user_id": null,
+      "status": "Confirmado",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "",
+      "created_at": "2026-05-01T21:56:01.451524",
+      "cancelled_at": null
+    },
+    {
+      "id": 8,
+      "outing_id": 1,
+      "person_name": "Tomás Ruiz",
+      "dni": "44999111",
+      "kind": "hijo_menor",
+      "responsible_user_id": 1,
+      "status": "Hijo menor de socio no socio",
+      "attendance": "Por confirmar",
+      "charge_amount": 0.0,
+      "cancel_reason": "",
+      "birth_date": "2012-01-01",
+      "created_at": "2026-05-01T21:56:01.451572",
+      "cancelled_at": null
+    }
+  ],
+  "audit_logs": [
+    {
+      "id": 1,
+      "created_at": "2026-05-01T21:56:01.452536",
+      "actor": "sistema",
+      "action": "seed",
+      "detail": "Datos demo creados"
+    },
+    {
+      "id": 2,
+      "created_at": "2026-05-01T21:56:19.429721",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 3,
+      "created_at": "2026-05-01T21:57:16.460606",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 4,
+      "created_at": "2026-05-01T21:57:30.356975",
+      "actor": "Capitán Martín",
+      "action": "login",
+      "detail": "captain"
+    }
+  ]
+}
