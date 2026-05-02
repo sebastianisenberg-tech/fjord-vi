@@ -75,3 +75,56 @@
     });
   });
 })();
+
+/* =========================================================
+   v49 · Helpers UI globales: tooltips y toasts
+   ========================================================= */
+(function(){
+  function removeHelp(){ document.querySelectorAll('.helpPopoverV49').forEach(function(e){e.remove();}); }
+  function placeHelp(el, text){
+    removeHelp();
+    var pop=document.createElement('div');
+    pop.className='helpPopoverV49';
+    pop.textContent=text;
+    document.body.appendChild(pop);
+    var r=el.getBoundingClientRect();
+    var pr=pop.getBoundingClientRect();
+    var left=Math.max(14, Math.min(window.innerWidth-pr.width-14, r.left + r.width/2 - pr.width/2));
+    var top=Math.max(14, r.top - pr.height - 12);
+    if(top < 20){ top = r.bottom + 12; }
+    pop.style.left=left+'px';
+    pop.style.top=top+'px';
+    setTimeout(function(){pop.classList.add('show');},10);
+    setTimeout(removeHelp,4200);
+  }
+  window.fjordToastV49=function(message,type){
+    if(!message) return;
+    var stack=document.querySelector('.fjordToastStackV49');
+    if(!stack){ stack=document.createElement('div'); stack.className='fjordToastStackV49'; document.body.appendChild(stack); }
+    var t=document.createElement('div');
+    var kind=type||'info';
+    t.className='fjordToastV49 '+kind;
+    var icon=kind==='err'?'!':(kind==='warn'?'i':'✓');
+    t.innerHTML='<span class="tIcon">'+icon+'</span><span class="tText"></span><button type="button" class="tClose" aria-label="Cerrar aviso">×</button>';
+    t.querySelector('.tText').textContent=message;
+    t.querySelector('.tClose').addEventListener('click',function(){t.remove();});
+    stack.appendChild(t);
+    setTimeout(function(){t.classList.add('show');},10);
+    setTimeout(function(){t.classList.remove('show'); setTimeout(function(){t.remove();},220);},4200);
+  };
+  var adminMsgs={
+    usuario_creado:['Usuario creado correctamente.','ok'], usuario_existente:['Ya existe un usuario con ese documento.','err'], datos_usuario_invalidos:['Revisá nombre, documento y rol.','err'], rol_invalido:['Rol inválido.','err'], clave_reseteada:['Clave reseteada a demo1234.','ok'], usuario_actualizado:['Usuario actualizado.','ok'], salida_creada:['Navegación creada correctamente.','ok'], salida_actualizada:['Salida actualizada.','ok'], estado_actualizado:['Estado actualizado.','ok'], estado_invalido:['Estado inválido.','err'], json_restaurado:['Backup restaurado.','ok'], json_importado:['Datos importados.','ok'], demo_reset:['Datos demo recargados.','warn']
+  };
+  document.addEventListener('click',function(e){
+    var h=e.target.closest('[data-tip]');
+    if(h){ e.preventDefault(); e.stopPropagation(); placeHelp(h, h.getAttribute('data-tip')); return; }
+    removeHelp();
+  });
+  document.addEventListener('DOMContentLoaded',function(){
+    var body=document.body;
+    var code=body ? body.getAttribute('data-admin-msg') : '';
+    if(code && adminMsgs[code]){ window.fjordToastV49(adminMsgs[code][0], adminMsgs[code][1]); }
+    var inline=document.querySelector('[data-toast-message]');
+    if(inline){ window.fjordToastV49(inline.getAttribute('data-toast-message'), inline.getAttribute('data-toast-type')||'info'); }
+  });
+})();

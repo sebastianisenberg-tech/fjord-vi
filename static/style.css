@@ -4460,3 +4460,37 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
     background-repeat: no-repeat !important;
   }
 }
+
+/* =========================================================
+   v49 · Tooltips y toasts modernos, sin tocar lógica
+   ========================================================= */
+.helpDot{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:18px!important;height:18px!important;border-radius:999px!important;
+  background:rgba(11,95,143,.12)!important;color:#0b5f8f!important;
+  border:1px solid rgba(11,95,143,.22)!important;font-size:12px!important;font-weight:950!important;
+  margin-left:6px!important;vertical-align:middle!important;cursor:pointer!important;line-height:1!important;
+}
+.topGreen .helpDot,.appHeaderPremium .helpDot,.captainTop .helpDot{background:rgba(255,255,255,.18)!important;color:#fff!important;border-color:rgba(255,255,255,.24)!important;}
+.helpDot:focus{outline:2px solid rgba(11,95,143,.35)!important;outline-offset:2px!important;}
+.helpPopoverV49{
+  position:fixed!important;z-index:99999!important;max-width:min(320px,calc(100vw - 28px))!important;
+  background:rgba(13,31,48,.96)!important;color:#fff!important;border-radius:14px!important;
+  padding:12px 14px!important;box-shadow:0 18px 44px rgba(0,0,0,.28)!important;
+  font-size:14px!important;line-height:1.35!important;font-weight:700!important;
+  transform:translateY(-6px)!important;opacity:0!important;transition:opacity .16s ease, transform .16s ease!important;
+}
+.helpPopoverV49.show{opacity:1!important;transform:translateY(0)!important;}
+.helpPopoverV49:after{content:"";position:absolute;left:22px;bottom:-6px;width:12px;height:12px;background:rgba(13,31,48,.96);transform:rotate(45deg);}
+.fjordToastStackV49{position:fixed!important;left:50%!important;bottom:22px!important;transform:translateX(-50%)!important;z-index:99998!important;display:grid!important;gap:10px!important;width:min(460px,calc(100vw - 28px))!important;pointer-events:none!important;}
+.fjordToastV49{display:grid!important;grid-template-columns:34px 1fr 28px!important;gap:10px!important;align-items:center!important;border-radius:16px!important;padding:12px 13px!important;box-shadow:0 18px 44px rgba(0,0,0,.22)!important;border:1px solid rgba(255,255,255,.24)!important;background:rgba(15,38,58,.96)!important;color:#fff!important;font-size:14px!important;font-weight:800!important;opacity:0!important;transform:translateY(10px) scale(.985)!important;transition:opacity .18s ease,transform .18s ease!important;pointer-events:auto!important;}
+.fjordToastV49.show{opacity:1!important;transform:translateY(0) scale(1)!important;}
+.fjordToastV49.ok{background:rgba(8,116,76,.96)!important;}
+.fjordToastV49.warn{background:rgba(170,104,0,.96)!important;}
+.fjordToastV49.err{background:rgba(168,34,34,.96)!important;}
+.fjordToastV49 .tIcon{width:34px!important;height:34px!important;border-radius:999px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(255,255,255,.18)!important;font-weight:950!important;}
+.fjordToastV49 .tText{min-width:0!important;line-height:1.28!important;}
+.fjordToastV49 .tClose{border:0!important;background:rgba(255,255,255,.18)!important;color:#fff!important;border-radius:999px!important;width:28px!important;height:28px!important;font-size:18px!important;line-height:1!important;cursor:pointer!important;padding:0!important;}
+.reglamentoSocioBtnV49{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;border:0!important;border-radius:999px!important;padding:10px 14px!important;background:linear-gradient(180deg,#0b6f9f,#084b70)!important;color:#fff!important;font-weight:900!important;text-decoration:none!important;box-shadow:0 10px 24px rgba(8,75,112,.22)!important;margin:8px 0!important;}
+.socioReglamentoBarV49{display:flex!important;justify-content:flex-end!important;align-items:center!important;margin:-4px 0 12px!important;}
+@media(max-width:760px){.fjordToastStackV49{bottom:16px!important}.helpPopoverV49{font-size:13px!important}.socioReglamentoBarV49{justify-content:flex-start!important;margin:8px 0 12px!important}}
