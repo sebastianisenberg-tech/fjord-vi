@@ -4712,3 +4712,193 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .socioV51 .socioWrap{padding-left:10px!important;padding-right:10px!important;}
   .socioV51.socioProV464 .socioProBoarding.socioV51HeroCard{padding:16px!important;}
 }
+
+
+/* =======================================================================
+   v51.2 · SOCIO · DEPURACIÓN PREMIUM QUIRÚRGICA
+   Ajuste visual únicamente. No modifica rutas, formularios, endpoints,
+   tooltips ni toasts. Objetivo: menos ruido, más jerarquía y paleta sobria.
+   ======================================================================= */
+.socioApp.socioV51{
+  --premium-bg:#eef3f6;
+  --premium-card:#ffffff;
+  --premium-sub:#f6f8fa;
+  --premium-line:#dfe7ee;
+  --premium-ink:#122236;
+  --premium-muted:#627386;
+  --premium-blue:#1f5f82;
+  --premium-blue-2:#2d7394;
+  --premium-blue-soft:#e3f0f6;
+  --premium-green:#257a58;
+  --premium-green-soft:#e6f5ee;
+  --premium-warn:#9a6a22;
+  --premium-warn-soft:#f6efe2;
+  --premium-neutral:#6f7f8f;
+  --premium-neutral-soft:#f1f4f7;
+  background:var(--premium-bg)!important;
+  color:var(--premium-ink)!important;
+}
+.socioApp.socioV51 .wrap{background:var(--premium-bg)!important;}
+.socioApp.socioV51 .premiumCard,
+.socioApp.socioV51 .miEmbarqueCard,
+.socioApp.socioV51 .premiumHero,
+.socioApp.socioV51 .socioStatusBlock{
+  background:var(--premium-card)!important;
+  border:0!important;
+  box-shadow:0 8px 22px rgba(18,34,54,.055)!important;
+}
+.socioApp.socioV51 .socioV51Hello{
+  background:rgba(255,255,255,.94)!important;
+  border:0!important;
+  box-shadow:0 7px 20px rgba(18,34,54,.055)!important;
+}
+.socioApp.socioV51 .socioV51Profile{
+  width:38px!important;height:38px!important;min-width:38px!important;
+  background:linear-gradient(180deg,var(--premium-blue-2),var(--premium-blue))!important;
+  font-size:15px!important;box-shadow:0 6px 14px rgba(31,95,130,.16)!important;
+}
+.socioApp.socioV51 .socioV51HeroCard{
+  background:#fff!important;
+  border-radius:24px!important;
+  box-shadow:0 10px 26px rgba(18,34,54,.07)!important;
+}
+.socioApp.socioV51 .miEmbTop h2,
+.socioApp.socioV51 .cardTitle h2,
+.socioApp.socioV51 .memberIdentity h1{
+  color:var(--premium-ink)!important;
+}
+.socioApp.socioV51 .miEmbTop p,
+.socioApp.socioV51 small,
+.socioApp.socioV51 .eyebrow{
+  color:var(--premium-muted)!important;
+}
+
+/* Estado: cancelado normal deja de gritar rojo. Rojo queda reservado para errores/toasts críticos. */
+.socioApp.socioV51 .miEmbState.stateBad,
+.socioApp.socioV51 .stateBad,
+.socioApp.socioV51 .pill.bad{
+  background:var(--premium-neutral-soft)!important;
+  color:var(--premium-neutral)!important;
+  border:1px solid var(--premium-line)!important;
+}
+.socioApp.socioV51 .miEmbState.stateOk,
+.socioApp.socioV51 .stateOk,
+.socioApp.socioV51 .pill.ok,
+.socioApp.socioV51 .statusPill.ok{
+  background:var(--premium-green-soft)!important;color:var(--premium-green)!important;border-color:#c8e8d8!important;
+}
+.socioApp.socioV51 .miEmbState.stateWarn,
+.socioApp.socioV51 .stateWarn,
+.socioApp.socioV51 .pill.warn,
+.socioApp.socioV51 .stateWait{
+  background:var(--premium-warn-soft)!important;color:var(--premium-warn)!important;border-color:#e4d5bb!important;
+}
+
+/* Menos cajitas: datos del embarque como tablero compacto, no tres cards pesadas. */
+.socioApp.socioV51 .miEmbGrid{
+  display:grid!important;
+  grid-template-columns:1.15fr .75fr .85fr!important;
+  gap:0!important;
+  margin:12px 0!important;
+  background:var(--premium-sub)!important;
+  border:1px solid var(--premium-line)!important;
+  border-radius:16px!important;
+  overflow:hidden!important;
+}
+.socioApp.socioV51 .miEmbGrid>div{
+  background:transparent!important;
+  border:0!important;
+  border-right:1px solid var(--premium-line)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding:10px 11px!important;
+}
+.socioApp.socioV51 .miEmbGrid>div:last-child{border-right:0!important;}
+.socioApp.socioV51 .miEmbGrid small{
+  font-size:9.8px!important;
+  letter-spacing:.07em!important;
+  color:#7c8b9b!important;
+}
+.socioApp.socioV51 .miEmbGrid b{font-size:14px!important;color:var(--premium-ink)!important;}
+
+/* CTA principal más cápsula, más sobrio y menos agresivo. */
+.socioApp.socioV51 .miEmbCta,
+.socioApp.socioV51 .btn.green,
+.socioApp.socioV51 .btn.light,
+.socioApp.socioV51 .okBtn,
+.socioApp.socioV51 .premiumForm button.btn.light{
+  border-radius:999px!important;
+  background:linear-gradient(180deg,var(--premium-blue-2),var(--premium-blue))!important;
+  box-shadow:0 7px 16px rgba(31,95,130,.14)!important;
+  min-height:43px!important;
+  letter-spacing:.005em!important;
+}
+
+/* Calendario más limpio: toda la tarjeta ya es clickeable. */
+.socioApp.socioV51 .selectRow{
+  border:0!important;
+  background:#fff!important;
+  box-shadow:0 5px 14px rgba(18,34,54,.045)!important;
+}
+.socioApp.socioV51 .selectRow.selected{
+  background:var(--premium-blue-soft)!important;
+  border:1px solid rgba(31,95,130,.16)!important;
+  box-shadow:0 7px 18px rgba(31,95,130,.075)!important;
+}
+.socioApp.socioV51 .selectRow .pill:not(.selectedPill){background:#f2f5f7!important;color:#667789!important;border-color:#e1e7ed!important;}
+.socioApp.socioV51 .selectRow .selectedPill{background:#dbeaf2!important;color:var(--premium-blue)!important;border-color:#c6dce8!important;}
+
+/* Perfil inferior: se elimina repetición visual del nombre, se conserva el ancla Perfil. */
+.socioApp.socioV51 .socioV51Identity .memberIdentity{display:none!important;}
+.socioApp.socioV51 .socioV51Identity{
+  padding:14px!important;
+  background:#fff!important;
+}
+.socioApp.socioV51 .socioV51Identity .outingIdentity{
+  border:0!important;
+  padding:0!important;
+}
+
+/* Reservas canceladas: neutral/ámbar sobrio, no rojo de alarma. */
+.socioApp.socioV51 .premiumPerson.bad,
+.socioApp.socioV51 .premiumPerson.inactive,
+.socioApp.socioV51 .boardingPass.bpCancelled,
+.socioApp.socioV51 .boardingPass.inactive{
+  background:#fff!important;
+  border-color:#e4e9ee!important;
+  opacity:1!important;
+}
+.socioApp.socioV51 .boardingPass.bpCancelled:before,
+.socioApp.socioV51 .boardingPass.inactive:before,
+.socioApp.socioV51 .premiumPerson.bad{border-left-color:#9aa8b5!important;}
+.socioApp.socioV51 .bpCancelled .personState,
+.socioApp.socioV51 .bad .personState,
+.socioApp.socioV51 .inactive .personState{
+  background:var(--premium-neutral-soft)!important;
+  color:var(--premium-neutral)!important;
+  border-color:var(--premium-line)!important;
+}
+.socioApp.socioV51 .personMain>b{font-size:15px!important;}
+.socioApp.socioV51 .secondaryDanger{
+  color:#8a4a42!important;
+  border-color:#e3d0cb!important;
+  background:#fff!important;
+}
+
+/* Bottom nav: mantener, solo más fino. */
+.socioApp.socioV51 .bottom{
+  background:rgba(255,255,255,.93)!important;
+  box-shadow:0 -3px 16px rgba(18,34,54,.075)!important;
+  border-top:1px solid rgba(31,95,130,.08)!important;
+}
+.socioApp.socioV51 .bottom a.on{
+  background:linear-gradient(180deg,var(--premium-blue-2),var(--premium-blue))!important;
+  color:#fff!important;
+  box-shadow:0 5px 12px rgba(31,95,130,.15)!important;
+}
+
+@media(max-width:420px){
+  .socioApp.socioV51 .miEmbGrid{grid-template-columns:1fr!important;}
+  .socioApp.socioV51 .miEmbGrid>div{border-right:0!important;border-bottom:1px solid var(--premium-line)!important;}
+  .socioApp.socioV51 .miEmbGrid>div:last-child{border-bottom:0!important;}
+}
