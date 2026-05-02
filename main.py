@@ -41,8 +41,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v47.4"
-APP_BUILD = "v47.4-admin-operativo-probado"
+VERSION = "v47.5"
+APP_BUILD = "v47.5-cierre-no-show-sin-minimo-presentes"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -1961,10 +1961,10 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     active_count = len(active)
     present = sum(1 for r in active if r.attendance == "Presente")
 
-    # Cierre: el mínimo se valida por cupo activo. Al cerrar,
-    # los activos aún pendientes quedan ausentes/no-show; solo QR o capitán marcan Presente.
-    if active_count < outing.min_crew:
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumple", status_code=303)
+    # Cierre administrativo: NO se bloquea por mínimo de tripulación.
+    # El mínimo sirve para indicar si la salida puede operar, pero si llegó la hora
+    # el capitán debe poder cerrar y liquidar aunque nadie haya marcado Presente.
+    # Al cerrar, los activos pendientes quedan Ausentes/no-show y se calculan cargos.
     if active_count > outing.max_crew:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
