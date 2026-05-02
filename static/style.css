@@ -4992,3 +4992,80 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .socioApp .socioProGuests{margin-top:12px!important;}
 .socioApp .lockedGuestBox{padding:8px!important;}
 .socioApp .lockedGuestBox .lockedBtn{width:100%;max-width:none;border-style:dashed!important;}
+
+
+/* ========================================================================
+   v51.5 - REFINAMIENTO FINAL SOCIO
+   Joyería mínima: jerarquía secundaria, barra de cupo más fina,
+   estados más sutiles y respiración. Solo CSS. No toca lógica.
+   ======================================================================== */
+.socioApp.socioV51 .socioWrap > section,
+.socioApp.socioV51 .socioWrap > .socioV51Dashboard,
+.socioApp.socioV51 .socioWrap > details{
+  margin-bottom:18px!important;
+}
+.socioApp.socioV51 .socioProProgress{
+  height:4px!important;
+  margin:11px 2px 14px!important;
+  background:#e4eef5!important;
+  border-radius:999px!important;
+  overflow:hidden!important;
+}
+.socioApp.socioV51 .socioProProgress i{
+  background:linear-gradient(90deg,#4f90ad,#2f7297)!important;
+  box-shadow:none!important;
+}
+.socioApp.socioV51 .selectRow .selectedPill{
+  background:#e9f3f8!important;
+  color:#2f7297!important;
+  border:1px solid #d7e7ef!important;
+  box-shadow:none!important;
+}
+.socioApp.socioV51 #invitados .personAction button.okBtn,
+.socioApp.socioV51 #invitados .personAction button.neutralBtn,
+.socioApp.socioV51 #invitados .personAction button.secondaryDanger{
+  background:transparent!important;
+  color:#5d6f82!important;
+  border:1px solid #cfd9e2!important;
+  box-shadow:none!important;
+  border-radius:999px!important;
+  min-height:36px!important;
+  padding:8px 12px!important;
+  font-weight:850!important;
+}
+.socioApp.socioV51 #invitados .personAction button.okBtn:hover,
+.socioApp.socioV51 #invitados .personAction button.neutralBtn:hover,
+.socioApp.socioV51 #invitados .personAction button.secondaryDanger:hover{
+  background:#f6f9fb!important;
+}
+.socioApp.socioV51 .lockedGuestBox{
+  padding:6px!important;
+  background:transparent!important;
+  border:1px dashed #d7e1e9!important;
+  border-radius:16px!important;
+}
+.socioApp.socioV51 .lockedGuestBox .lockedBtn{
+  width:auto!important;
+  margin:0 auto!important;
+  display:flex!important;
+  min-height:34px!important;
+  padding:7px 13px!important;
+  background:transparent!important;
+  border:0!important;
+  color:#6d7f90!important;
+  box-shadow:none!important;
+}
+.socioApp.socioV51 .socioV51QuickActions{
+  margin:14px 0 18px!important;
+}
+.socioApp.socioV51 .socioV51QuickActions a{
+  box-shadow:0 8px 22px rgba(13,34,54,.04)!important;
+}
+.socioApp.socioV51 .bottom a.on:before{
+  height:2px!important;
+  width:20px!important;
+  background:#2f7297!important;
+}
+.socioApp.socioV51 .bottom a.on{
+  color:#245c7b!important;
+}
