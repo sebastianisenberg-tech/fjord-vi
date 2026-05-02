@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v53.2">
+  <link rel="stylesheet" href="/static/style.css?v=v53.3">
   <title>Fjord VI · Administración</title>
   <style>
     :root{
@@ -30,6 +30,79 @@
     .drawerBackdrop{position:fixed;inset:0;background:rgba(10,25,35,.25);z-index:90;display:none}.drawerBackdrop.open{display:block}.erpDrawer{position:fixed;right:0;top:0;height:100vh;width:500px;max-width:96vw;background:#fff;z-index:100;box-shadow:-20px 0 50px rgba(0,0,0,.22);transform:translateX(105%);transition:.18s ease;display:flex;flex-direction:column}.erpDrawer.open{transform:translateX(0)}.drawerHead{height:54px;border-bottom:1px solid var(--erp-line);display:flex;align-items:center;justify-content:space-between;padding:0 16px}.drawerHead h2{font-size:17px;margin:0}.drawerBody{padding:14px;overflow:auto;display:grid;gap:12px}.drawerForm{display:grid;gap:10px}.drawerForm label{display:grid;gap:5px;font-weight:850;color:#334958}.drawerForm input,.drawerForm select{height:34px;border:1px solid var(--erp-line);border-radius:7px;padding:0 9px}.drawerForm button{height:36px;border:0;border-radius:8px;background:var(--erp-blue2);color:#fff;font-weight:950}.drawerClose{border:0;background:#eef3f6;border-radius:999px;width:30px;height:30px;font-weight:900;cursor:pointer}
     .calendarBox{border:1px solid var(--erp-line);border-radius:10px;padding:10px;background:#fbfdfe}.calHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.calHead button{height:28px;border:1px solid var(--erp-line);background:#fff;border-radius:7px;font-weight:900}.calMonth{font-weight:950}.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.calDow{font-size:11px;color:#71828e;text-align:center;font-weight:900;text-transform:uppercase}.calDay{height:42px;border:1px solid #e0e8ee;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:850;cursor:pointer}.calDay:hover{background:#eef7fc}.calDay.selected{background:var(--erp-blue2);color:#fff;border-color:var(--erp-blue2)}.calDay.hasOuting{box-shadow:inset 0 -3px 0 #73b7d8}.calDay.empty{visibility:hidden}.hourBtns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.hourBtns button{height:32px;border:1px solid var(--erp-line);background:#fff;color:#27475a;border-radius:7px}.hourBtns button.selected{background:var(--erp-blue3);border-color:#a7cfe4;color:#0d5f8e}.miniNote{font-size:12px;color:#607080;background:#f5f8fa;border-radius:8px;padding:9px}.msg{background:#fff8df;border:1px solid #f0d68b;color:#6f5207;padding:8px 10px;border-radius:8px;font-weight:850}.chartBar{height:26px;background:#eef3f6;border-radius:6px;overflow:hidden}.chartBar i{display:block;height:100%;background:#a9d2e8}.chartGrid{display:grid;gap:8px}.chartLine{display:grid;grid-template-columns:160px 1fr 70px;gap:10px;align-items:center}
     @media(max-width:900px){html,body{min-width:0}.erpNav{overflow:auto}.erpToolbar input{min-width:160px}.twoCols{grid-template-columns:1fr}.kpiRow,.erpCards{grid-template-columns:1fr}.erpTableBox{max-height:none}.erpDrawer{width:100%}}
+
+
+    /* v53.3 · Densidad ERP intermedia: más datos visibles, sin perder legibilidad */
+    .erpShell button,
+    .erpShell .erpBtn,
+    .erpShell a.erpBtn,
+    .erpToolbar button,
+    .erpToolbar a{
+      width:auto!important;
+      min-height:0!important;
+      height:28px!important;
+      padding:0 10px!important;
+      border-radius:7px!important;
+      box-shadow:none!important;
+      white-space:nowrap!important;
+      line-height:1!important;
+    }
+    .erpTop{height:30px!important;padding:0 12px!important;font-size:12px!important;}
+    .erpBrand{gap:9px!important}.erpBrand b{font-size:13px!important}.erpVersion{font-size:11px!important}.erpUser{gap:8px!important}.erpUser a{height:24px!important;padding:0 9px!important;font-size:12px!important;}
+    .erpNav{height:34px!important;padding:0 10px!important;gap:2px!important;box-shadow:none!important;}
+    .erpNav a{height:27px!important;padding:0 10px!important;border-radius:7px!important;font-size:12px!important;}
+    .erpMain{padding:8px 12px 10px!important;gap:7px!important;}
+    .erpTitle{min-height:30px!important;gap:10px!important;}
+    .erpTitle h1{font-size:18px!important;line-height:1.1!important;}
+    .erpTitle p{font-size:11.5px!important;margin-top:1px!important;}
+    .erpTitleActions{gap:6px!important;}
+    .erpToolbar{min-height:34px!important;padding:4px 6px!important;gap:6px!important;border-radius:8px!important;box-shadow:none!important;}
+    .erpToolbar input,.erpToolbar select{height:28px!important;min-height:0!important;border-radius:7px!important;font-size:12px!important;padding:0 9px!important;}
+    .erpToolbar input{min-width:240px!important;max-width:380px!important;flex:0 1 320px!important;}
+    .erpToolbar select{min-width:115px!important;max-width:150px!important;}
+    .erpPrimary,.erpToolbar .erpPrimary{background:#134f78!important;border-color:#134f78!important;color:#fff!important;}
+    .erpSoft{background:#e8f3f9!important;color:#175a7e!important;border-color:#cfe3ef!important;}
+    .kpiRow{gap:7px!important;}
+    .kpi{padding:8px 10px!important;border-radius:8px!important;box-shadow:none!important;}
+    .kpi span{font-size:10px!important;letter-spacing:.55px!important;}.kpi b{font-size:20px!important;margin-top:2px!important;}
+    .twoCols{grid-template-columns:minmax(0,1fr) 360px!important;gap:8px!important;}
+    .sideStatic{max-height:calc(100vh - 145px)!important;border-radius:8px!important;padding:10px!important;}
+    .erpGridWrap{border-radius:8px!important;box-shadow:none!important;}
+    .erpGridMeta{height:26px!important;padding:0 8px!important;font-size:11.5px!important;}
+    .erpScrollTop{height:13px!important;}
+    .erpTableBox{max-height:calc(100vh - 165px)!important;min-height:220px!important;}
+    .erpTableBox.tall{max-height:calc(100vh - 148px)!important;}
+    table.erpTable{width:max-content!important;min-width:0!important;font-size:12px!important;line-height:1.18!important;}
+    .erpTable th{padding:6px 7px!important;font-size:10.5px!important;letter-spacing:.52px!important;}
+    .erpTable td{padding:5px 7px!important;max-width:260px!important;}
+    .erpTable .colName{width:210px!important;min-width:210px!important;max-width:235px!important;}
+    .erpTable .colEmail{width:260px!important;min-width:250px!important;max-width:300px!important;}
+    .erpTable .colSalida{width:195px!important;min-width:190px!important;max-width:230px!important;}
+    .erpTable .colDoc{width:92px!important;min-width:88px!important;max-width:96px!important;text-align:right!important;}
+    .erpTable .colSocio{width:70px!important;min-width:66px!important;max-width:74px!important;text-align:right!important;}
+    .erpTable .colTipo{width:78px!important;min-width:74px!important;max-width:84px!important;text-align:center!important;}
+    .erpTable .colEstado{width:104px!important;min-width:98px!important;max-width:112px!important;text-align:center!important;}
+    .erpTable .colSituacion{width:118px!important;min-width:112px!important;max-width:126px!important;}
+    .erpTable .colMotivo{width:185px!important;min-width:175px!important;max-width:220px!important;}
+    .erpTable .colFecha{width:120px!important;min-width:116px!important;max-width:128px!important;}
+    .erpTable .colCargo{width:84px!important;min-width:80px!important;max-width:92px!important;text-align:right!important;}
+    .erpTable .colAcciones{width:150px!important;min-width:140px!important;max-width:170px!important;}
+    .erpTable .sticky2{left:210px!important;}
+    .erpTable .stickyDate2{left:120px!important;}
+    .badge{padding:2px 7px!important;font-size:10.5px!important;line-height:1.15!important;}
+    .rowActions{gap:4px!important;}.rowActions a,.rowActions button,summary.erpMini{padding:4px 6px!important;font-size:10.5px!important;border-radius:5px!important;height:24px!important;}
+    .inlineEdit form{top:27px!important;grid-template-columns:repeat(2,170px)!important;gap:6px!important;padding:8px!important;}
+    .inlineEdit input,.inlineEdit select{height:28px!important;font-size:12px!important;}
+    .erpCards{gap:8px!important;}.erpCard{padding:11px!important;border-radius:8px!important;box-shadow:none!important;}.erpCard h3{font-size:15px!important}.erpCard p{font-size:12px!important;min-height:24px!important;}
+    #dashReservas{min-width:570px!important;}
+    #outingsTable{min-width:980px!important;}
+    #reservasTableV43{min-width:1070px!important;}
+    #usuariosGridV43{min-width:1040px!important;}
+    #historialTableV517{min-width:1680px!important;}
+    #auditTable{min-width:760px!important;}
+    .drawerHead{height:48px!important}.erpDrawer{width:480px!important}.drawerBody{padding:12px!important}.drawerForm{gap:9px!important}.drawerForm input,.drawerForm select,.drawerForm button{min-height:34px!important;font-size:12.5px!important;}
+    @media(max-width:900px){.erpTop{height:44px!important}.erpNav{height:52px!important}.erpNav a{height:38px!important;font-size:15px!important}.erpMain{padding:14px 16px 18px!important}.erpTitle{min-height:46px!important}.erpTitle h1{font-size:26px!important}.erpToolbar{display:flex!important;align-items:stretch!important;flex-direction:column!important}.erpToolbar input,.erpToolbar select,.erpToolbar button,.erpToolbar a{width:100%!important;height:44px!important;font-size:16px!important}.twoCols{grid-template-columns:1fr!important}.erpTableBox{max-height:none!important}.erpTableBox.tall{max-height:none!important}}
+
   </style>
 </head>
 <body class="adminERPBody">
@@ -68,13 +141,13 @@
 
     {% if admin_page == 'reservas' %}
     <section class="erpTitle"><div><h1>Reservas</h1><p>{% if outing %}{{outing.title}} · {{fmt_admin_datetime(outing.departure_at)}}{% else %}Sin salida seleccionada{% endif %}</p></div><div class="erpTitleActions">{% if outing %}<a class="erpBtn" href="/admin/manifest.csv?outing_id={{outing.id}}">Exportar salida CSV</a>{% endif %}<a class="erpBtn" href="/admin/reservations_all.csv">Historial completo CSV</a></div></section>
-    {% if outing %}<div class="erpToolbar"><input id="reservaSearchV43" type="search" placeholder="Buscar nombre, DNI, responsable, estado"><select id="reservaEstadoV43"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas</option></select><button type="button" data-clear-v43="reservas">Limpiar</button><span class="spacer"></span><button type="button" data-export-table="reservasTableV43" data-export-name="fjord_vi_reservas_vista_filtrada.csv">Exportar vista</button><a href="/admin/manifest.csv?outing_id={{outing.id}}">Exportar todo</a></div><article class="erpGridWrap"><div class="erpGridMeta"><b>Planilla de reservas</b><span>Nombre fijo a la izquierda; scroll superior e inferior</span></div><div class="erpTableBox tall"><table class="erpTable" id="reservasTableV43"><thead><tr><th class="colName sticky1">Nombre</th><th class="colDoc sticky2">DNI</th><th class="colTipo">Tipo</th><th class="colName">Responsable</th><th class="colEstado">Estado</th><th>Situación física</th><th class="colCargo">Cargo</th><th class="colFecha">Reserva</th><th class="colFecha">Cancelación</th></tr></thead><tbody>{% for r in reservations %}{% set v=reservation_views.get(r.id) %}<tr class="{% if v.waitlisted %}waitRow{% elif v.charge>0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}"><td class="colName sticky1"><b>{{r.person_name}}</b></td><td class="colDoc sticky2">{{r.dni}}</td><td class="colTipo">{{v.tipo_label}}</td><td class="colName">{% if r.responsible_user_id %}{{responsible_names.get(r.responsible_user_id, 'ID '~r.responsible_user_id)}}{% else %}-{% endif %}</td><td class="colEstado"><span class="badge {% if v.cancelled %}cancel{% elif v.waitlisted %}warn{% else %}ok{% endif %}">{% if v.waitlisted %}Espera{% elif v.embarked %}Embarcado{% elif v.not_embarked %}No embarcado{% elif v.cancelled %}Cancelada{% else %}{{v.alert}}{% endif %}</span></td><td>{{v.estado_fisico}}</td><td class="colCargo">{% if v.charge>0 %}$ {{v.charge_label}}{% elif v.charge_is_preliminary %}Est. $ {{v.charge_preview_label}}{% else %}-{% endif %}</td><td class="colFecha">{{fmt_admin_datetime(r.created_at)}}</td><td class="colFecha">{% if r.cancelled_at %}{{fmt_admin_datetime(r.cancelled_at)}}{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>{% else %}<p>Sin salida seleccionada.</p>{% endif %}
+    {% if outing %}<div class="erpToolbar"><input id="reservaSearchV43" type="search" placeholder="Buscar nombre, DNI, responsable, estado"><select id="reservaEstadoV43"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas</option></select><button type="button" data-clear-v43="reservas">Limpiar</button><span class="spacer"></span><button type="button" data-export-table="reservasTableV43" data-export-name="fjord_vi_reservas_vista_filtrada.csv">Exportar vista</button><a href="/admin/manifest.csv?outing_id={{outing.id}}">Exportar todo</a></div><article class="erpGridWrap"><div class="erpGridMeta"><b>Planilla de reservas</b><span>Nombre fijo a la izquierda; scroll superior e inferior</span></div><div class="erpTableBox tall"><table class="erpTable" id="reservasTableV43"><thead><tr><th class="colName sticky1">Nombre</th><th class="colDoc sticky2">DNI</th><th class="colTipo">Tipo</th><th class="colName">Responsable</th><th class="colEstado">Estado</th><th class="colSituacion">Situación física</th><th class="colCargo">Cargo</th><th class="colFecha">Reserva</th><th class="colFecha">Cancelación</th></tr></thead><tbody>{% for r in reservations %}{% set v=reservation_views.get(r.id) %}<tr class="{% if v.waitlisted %}waitRow{% elif v.charge>0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}"><td class="colName sticky1"><b>{{r.person_name}}</b></td><td class="colDoc sticky2">{{r.dni}}</td><td class="colTipo">{{v.tipo_label}}</td><td class="colName">{% if r.responsible_user_id %}{{responsible_names.get(r.responsible_user_id, 'ID '~r.responsible_user_id)}}{% else %}-{% endif %}</td><td class="colEstado"><span class="badge {% if v.cancelled %}cancel{% elif v.waitlisted %}warn{% else %}ok{% endif %}">{% if v.waitlisted %}Espera{% elif v.embarked %}Embarcado{% elif v.not_embarked %}No embarcado{% elif v.cancelled %}Cancelada{% else %}{{v.alert}}{% endif %}</span></td><td class="colSituacion">{{v.estado_fisico}}</td><td class="colCargo">{% if v.charge>0 %}$ {{v.charge_label}}{% elif v.charge_is_preliminary %}Est. $ {{v.charge_preview_label}}{% else %}-{% endif %}</td><td class="colFecha">{{fmt_admin_datetime(r.created_at)}}</td><td class="colFecha">{% if r.cancelled_at %}{{fmt_admin_datetime(r.cancelled_at)}}{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>{% else %}<p>Sin salida seleccionada.</p>{% endif %}
     {% endif %}
 
     {% if admin_page == 'historial' %}
     <section class="erpTitle"><div><h1>Historial completo</h1><p>Planilla maestra de todas las reservas de todas las salidas.</p></div><div class="erpTitleActions"><a class="erpBtn erpPrimary" href="/admin/reservations_all.csv">Descargar todo CSV</a></div></section>
     <div class="erpToolbar"><input id="histSearchV517" type="search" placeholder="Buscar en todo el historial"><select id="histEstadoV517"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas/cancelados</option></select><button type="button" id="histClearV517">Limpiar</button><span class="spacer"></span><button type="button" data-export-table="historialTableV517" data-export-name="fjord_vi_historial_vista_filtrada.csv">Exportar vista filtrada</button><a href="/admin/reservations_all.csv">Exportar todo</a><span class="badge neutral">{{all_reservation_count}} registros</span></div>
-    <article class="erpGridWrap"><div class="erpGridMeta"><b>Historial completo</b><span>Salida y fecha quedan fijas para no perder contexto</span></div><div class="erpTableBox tall"><table class="erpTable" id="historialTableV517"><thead><tr><th class="colFecha sticky1">Fecha salida</th><th class="colSalida stickyDate2">Salida</th><th class="colEstado">Estado salida</th><th class="colName">Persona</th><th class="colDoc">DNI</th><th class="colTipo">Tipo</th><th class="colName">Responsable</th><th class="colEstado">Estado reserva</th><th>Asistencia</th><th>Situación</th><th>Condición</th><th class="colName">Motivo</th><th class="colCargo">Cargo</th><th class="colCargo">Preliq.</th><th class="colFecha">Creado</th><th class="colFecha">Cancelado</th></tr></thead><tbody>{% for row in all_reservation_rows %}<tr class="{{row.row_class}}"><td class="colFecha sticky1">{{row.outing_date}}</td><td class="colSalida stickyDate2"><b>{{row.outing_title}}</b><small>ID {{row.outing_id}}</small></td><td class="colEstado">{{row.outing_status}}</td><td class="colName"><b>{{row.name}}</b></td><td class="colDoc">{{row.dni}}</td><td class="colTipo">{{row.kind}}</td><td class="colName">{{row.responsible or '-'}}</td><td class="colEstado">{{row.status}}</td><td>{{row.attendance}}</td><td>{{row.physical}}</td><td>{{row.regulatory}}</td><td class="colName">{{row.reason}}</td><td class="colCargo">{% if row.charge>0 %}$ {{row.charge_label}}{% else %}-{% endif %}</td><td class="colCargo">{% if row.charge_preview>0 %}$ {{row.charge_preview_label}}{% else %}-{% endif %}</td><td class="colFecha">{{row.created_at}}</td><td class="colFecha">{{row.cancelled_at or '-'}}</td></tr>{% endfor %}</tbody></table></div></article>
+    <article class="erpGridWrap"><div class="erpGridMeta"><b>Historial completo</b><span>Salida y fecha quedan fijas para no perder contexto</span></div><div class="erpTableBox tall"><table class="erpTable" id="historialTableV517"><thead><tr><th class="colFecha sticky1">Fecha salida</th><th class="colSalida stickyDate2">Salida</th><th class="colEstado">Estado salida</th><th class="colName">Persona</th><th class="colDoc">DNI</th><th class="colTipo">Tipo</th><th class="colName">Responsable</th><th class="colEstado">Estado reserva</th><th class="colEstado">Asistencia</th><th class="colSituacion">Situación</th><th class="colEstado">Condición</th><th class="colMotivo">Motivo</th><th class="colCargo">Cargo</th><th class="colCargo">Preliq.</th><th class="colFecha">Creado</th><th class="colFecha">Cancelado</th></tr></thead><tbody>{% for row in all_reservation_rows %}<tr class="{{row.row_class}}"><td class="colFecha sticky1">{{row.outing_date}}</td><td class="colSalida stickyDate2"><b>{{row.outing_title}}</b><small>ID {{row.outing_id}}</small></td><td class="colEstado">{{row.outing_status}}</td><td class="colName"><b>{{row.name}}</b></td><td class="colDoc">{{row.dni}}</td><td class="colTipo">{{row.kind}}</td><td class="colName">{{row.responsible or '-'}}</td><td class="colEstado">{{row.status}}</td><td class="colEstado">{{row.attendance}}</td><td class="colSituacion">{{row.physical}}</td><td class="colEstado">{{row.regulatory}}</td><td class="colMotivo">{{row.reason}}</td><td class="colCargo">{% if row.charge>0 %}$ {{row.charge_label}}{% else %}-{% endif %}</td><td class="colCargo">{% if row.charge_preview>0 %}$ {{row.charge_preview_label}}{% else %}-{% endif %}</td><td class="colFecha">{{row.created_at}}</td><td class="colFecha">{{row.cancelled_at or '-'}}</td></tr>{% endfor %}</tbody></table></div></article>
     {% endif %}
 
     {% if admin_page == 'socios' %}
@@ -151,6 +224,6 @@
   document.getElementById('calPrev')?.addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderCal();});document.getElementById('calNext')?.addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);renderCal();});document.querySelectorAll('[data-hour]').forEach(b=>{if(b.dataset.hour===selectedHour)b.classList.add('selected');b.addEventListener('click',()=>{selectedHour=b.dataset.hour;document.querySelectorAll('[data-hour]').forEach(x=>x.classList.toggle('selected',x===b));setInputDate(selected);});});renderCal();
 })();
 </script>
-<script src="/static/app.js?v=v53.2"></script>
+<script src="/static/app.js?v=v53.3"></script>
 </body>
 </html>
