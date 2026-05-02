@@ -4538,3 +4538,177 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .socioV51Bottom a.on{background:#e7f4fb!important;color:#0b5f8f!important;}
 .socioV51 .toastSmart{z-index:9999!important;position:relative!important;}
 @media(max-width:420px){.socioV51QuickActions{gap:7px!important}.socioV51QuickActions a{padding:12px 8px!important}.socioV51HeroCard h2{font-size:22px!important}.socioV51Crew span{width:29px!important;height:29px!important;font-size:10px!important}.socioV51Hello h1{font-size:21px!important}.socioV51Profile{width:42px!important;height:42px!important}}
+
+/* =========================================================
+   v51.1 · Ajuste cromático profesional Socio
+   Menos saturación, menos brillo, mayor legibilidad.
+   Sólo CSS: no toca lógica, rutas, formularios ni handlers.
+   ========================================================= */
+.socioV51{
+  --pro-navy:#0b2f4a;
+  --pro-blue:#0e5f88;
+  --pro-blue-2:#16749e;
+  --pro-ink:#102235;
+  --pro-muted:#627486;
+  --pro-bg:#f3f6f8;
+  --pro-card:#ffffff;
+  --pro-line:#dce6ee;
+  background:linear-gradient(180deg,#f5f8fa 0%,#eef4f7 100%)!important;
+  color:var(--pro-ink)!important;
+}
+.socioV51 .topGreen.appHeaderPremium,
+.socioV51 .appHeaderPremium{
+  background:linear-gradient(180deg,#0b3d5d 0%,#082e49 100%)!important;
+  box-shadow:0 8px 20px rgba(7,32,50,.16)!important;
+  border-bottom:1px solid rgba(255,255,255,.10)!important;
+}
+.socioV51 .logoutBtn{
+  background:rgba(255,255,255,.13)!important;
+  border:1px solid rgba(255,255,255,.24)!important;
+  box-shadow:none!important;
+}
+.socioV51 .reglamentoSocioBtnV49{
+  background:linear-gradient(180deg,#0e638d 0%,#0a4565 100%)!important;
+  box-shadow:0 8px 18px rgba(10,69,101,.16)!important;
+  letter-spacing:-.01em!important;
+}
+.socioV51 .socioV51Hello{
+  background:#ffffff!important;
+  border:1px solid var(--pro-line)!important;
+  box-shadow:0 8px 22px rgba(12,35,54,.055)!important;
+}
+.socioV51 .socioV51Hello h1,
+.socioV51 .cardTitle h2,
+.socioV51 .premiumHero h1,
+.socioV51 .miEmbTop h2{
+  color:var(--pro-ink)!important;
+}
+.socioV51 .socioV51Profile{
+  background:linear-gradient(180deg,#0e638d,#0a3c5a)!important;
+  box-shadow:0 8px 18px rgba(10,60,90,.18)!important;
+}
+.socioV51.socioProV464 .socioProBoarding.socioV51HeroCard,
+.socioV51 .miEmbarqueCard.socioV51HeroCard{
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbfd 100%)!important;
+  border:1px solid var(--pro-line)!important;
+  box-shadow:0 10px 26px rgba(12,35,54,.07)!important;
+  color:var(--pro-ink)!important;
+}
+.socioV51.socioProV464 .socioProBoarding.socioV51HeroCard:before,
+.socioV51 .miEmbarqueCard.socioV51HeroCard:before{
+  background:radial-gradient(circle at 92% 0%,rgba(14,95,136,.10),transparent 34%)!important;
+}
+.socioV51.socioProV464 .socioProBoarding.socioV51HeroCard .miEmbTop,
+.socioV51 .socioV51HeroCard .miEmbTop{
+  border-bottom:1px dashed #cfdce6!important;
+}
+.socioV51.socioProV464 .socioProBoarding.socioV51HeroCard h2,
+.socioV51 .socioV51HeroCard h2{
+  color:var(--pro-ink)!important;
+}
+.socioV51.socioProV464 .socioProBoarding.socioV51HeroCard p,
+.socioV51 .socioV51HeroCard p,
+.socioV51 .socioV51HeroCard small{
+  color:var(--pro-muted)!important;
+}
+.socioV51 .socioV51HeroCard .eyebrow{
+  color:#2f6f90!important;
+}
+.socioV51 .socioV51HeroCard .miEmbState,
+.socioV51 .pill.ok{
+  background:#e7f4ec!important;
+  color:#16613f!important;
+  border:1px solid #c6e5d4!important;
+  backdrop-filter:none!important;
+}
+.socioV51 .socioV51HeroCard .socioProStats>div{
+  background:#f6f9fb!important;
+  border:1px solid #e1eaf1!important;
+  color:var(--pro-ink)!important;
+  box-shadow:none!important;
+}
+.socioV51 .socioV51HeroCard .socioProStats b{
+  color:var(--pro-ink)!important;
+}
+.socioV51 .socioV51HeroCard .socioProStats small{
+  color:#6f8091!important;
+}
+.socioV51 .socioProProgress{
+  background:#e5edf3!important;
+}
+.socioV51 .socioProProgress i{
+  background:linear-gradient(90deg,#0e638d,#16749e)!important;
+}
+.socioV51 .socioV51Crew span{
+  background:#ffffff!important;
+  color:#0e638d!important;
+  border:1px solid #dce7ef!important;
+  box-shadow:0 5px 12px rgba(12,35,54,.08)!important;
+}
+.socioV51 .socioV51Crew span.empty{
+  background:#f1f5f8!important;
+  color:#9aabba!important;
+  border-color:#e2eaf0!important;
+}
+.socioV51.socioProV464 .socioProBoarding.socioV51HeroCard .miEmbTimeline,
+.socioV51 .socioV51HeroCard .miEmbTimeline{
+  background:#f3f7fa!important;
+  border:1px solid #dce7ef!important;
+}
+.socioV51 .socioV51HeroCard .miEmbTimeline span{
+  color:#66788a!important;
+  background:#ffffff!important;
+  border:1px solid #e3ebf1!important;
+}
+.socioV51 .socioV51HeroCard .miEmbTimeline span.done{
+  background:#e8f4ee!important;
+  color:#16613f!important;
+  border-color:#cde6d8!important;
+}
+.socioV51 .socioV51HeroCard .miEmbTimeline span.active{
+  background:#e8f2f8!important;
+  color:#0e638d!important;
+  border-color:#c9dfea!important;
+}
+.socioV51 .socioV51HeroCard .miEmbCta,
+.socioV51 .btn.green,
+.socioV51 .btn.light,
+.socioV51 .okBtn,
+.socioV51 .btn.primary,
+.socioV51 button.primary{
+  background:linear-gradient(180deg,#0e638d 0%,#0a4565 100%)!important;
+  color:#fff!important;
+  box-shadow:0 8px 18px rgba(10,69,101,.17)!important;
+  border:none!important;
+}
+.socioV51 .socioV51QuickActions a,
+.socioV51 .premiumCard,
+.socioV51 .premiumHero,
+.socioV51 .statusPanel,
+.socioV51 .kpiStrip>div{
+  background:#ffffff!important;
+  border:1px solid var(--pro-line)!important;
+  box-shadow:0 8px 22px rgba(12,35,54,.055)!important;
+}
+.socioV51 .selectRow{
+  background:#ffffff!important;
+  border:1px solid #dce7ef!important;
+}
+.socioV51 .selectRow.selected{
+  background:#edf6fb!important;
+  border-color:#c6dfea!important;
+}
+.socioV51Bottom{
+  background:rgba(255,255,255,.96)!important;
+  box-shadow:0 12px 34px rgba(12,35,54,.16)!important;
+  border:1px solid #dce7ef!important;
+}
+.socioV51Bottom a.on{
+  background:linear-gradient(180deg,#0e638d,#0a4565)!important;
+  color:#fff!important;
+  box-shadow:0 8px 18px rgba(10,69,101,.16)!important;
+}
+@media(max-width:420px){
+  .socioV51 .socioWrap{padding-left:10px!important;padding-right:10px!important;}
+  .socioV51.socioProV464 .socioProBoarding.socioV51HeroCard{padding:16px!important;}
+}
