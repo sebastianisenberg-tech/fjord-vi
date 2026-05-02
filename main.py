@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v51.5"
+VERSION = "v51.7"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1647,6 +1647,43 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
+
+    # Tabla maestra para Administración: historial completo de reservas, independiente de la salida seleccionada.
+    all_outings = db.query(Outing).order_by(Outing.departure_at.desc()).all()
+    outing_by_id = {o.id: o for o in all_outings}
+    all_reservations = db.query(Reservation).order_by(Reservation.created_at.desc()).all()
+    all_responsible_ids = sorted({r.responsible_user_id for r in all_reservations if r.responsible_user_id})
+    all_responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(all_responsible_ids)).all()} if all_responsible_ids else {}
+    all_reservation_rows = []
+    for rr in sorted(all_reservations, key=lambda x: (outing_by_id.get(x.outing_id).departure_at if outing_by_id.get(x.outing_id) else datetime.min, x.created_at or datetime.min), reverse=True):
+        row_outing = outing_by_id.get(rr.outing_id)
+        if not row_outing:
+            continue
+        vv = reservation_view(row_outing, rr)
+        all_reservation_rows.append({
+            "id": rr.id,
+            "outing_id": row_outing.id,
+            "outing_title": row_outing.title,
+            "outing_date": fmt_admin_datetime(row_outing.departure_at),
+            "outing_status": row_outing.status,
+            "name": rr.person_name,
+            "dni": rr.dni,
+            "kind": vv.get("tipo_label", rr.kind),
+            "status": rr.status,
+            "attendance": rr.attendance,
+            "physical": vv.get("estado_fisico", ""),
+            "regulatory": vv.get("estado_reglamentario", ""),
+            "reason": vv.get("motivo", ""),
+            "charge": vv.get("charge", 0),
+            "charge_label": vv.get("charge_label", "0"),
+            "charge_preview": vv.get("charge_preview", 0),
+            "charge_preview_label": vv.get("charge_preview_label", "0"),
+            "responsible": all_responsible_names.get(rr.responsible_user_id, "") if rr.responsible_user_id else "",
+            "created_at": fmt_admin_datetime(rr.created_at),
+            "cancelled_at": fmt_admin_datetime(rr.cancelled_at) if rr.cancelled_at else "",
+            "row_class": "chargeRow" if vv.get("charge", 0) > 0 else ("waitRow" if vv.get("waitlisted") else ("mutedRow" if vv.get("cancelled") else "")),
+        })
+
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     checkin_url = ""
@@ -2166,7 +2203,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     history_groups = historical_outing_groups(history_outings)
     outing, reservations, active, present, absent, pending, socios_presentes = outing_context(db, outing_id)
     charges = [r for r in db.query(Reservation).filter(Reservation.outing_id == outing.id).all() if reservation_view(outing, r)["charge"] > 0] if outing else []
-    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(15).all()
+    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(1000).all()
     total_charges = sum(reservation_view(outing, r)["charge"] for r in charges) if outing else 0
     ready = readiness_state(outing, len(active), present)
     all_outings_for_counts = outings + history_outings
@@ -2192,10 +2229,47 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
+
+    # Tabla maestra para Administración: historial completo de reservas, independiente de la salida seleccionada.
+    all_outings = db.query(Outing).order_by(Outing.departure_at.desc()).all()
+    outing_by_id = {o.id: o for o in all_outings}
+    all_reservations = db.query(Reservation).order_by(Reservation.created_at.desc()).all()
+    all_responsible_ids = sorted({r.responsible_user_id for r in all_reservations if r.responsible_user_id})
+    all_responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(all_responsible_ids)).all()} if all_responsible_ids else {}
+    all_reservation_rows = []
+    for rr in sorted(all_reservations, key=lambda x: (outing_by_id.get(x.outing_id).departure_at if outing_by_id.get(x.outing_id) else datetime.min, x.created_at or datetime.min), reverse=True):
+        row_outing = outing_by_id.get(rr.outing_id)
+        if not row_outing:
+            continue
+        vv = reservation_view(row_outing, rr)
+        all_reservation_rows.append({
+            "id": rr.id,
+            "outing_id": row_outing.id,
+            "outing_title": row_outing.title,
+            "outing_date": fmt_admin_datetime(row_outing.departure_at),
+            "outing_status": row_outing.status,
+            "name": rr.person_name,
+            "dni": rr.dni,
+            "kind": vv.get("tipo_label", rr.kind),
+            "status": rr.status,
+            "attendance": rr.attendance,
+            "physical": vv.get("estado_fisico", ""),
+            "regulatory": vv.get("estado_reglamentario", ""),
+            "reason": vv.get("motivo", ""),
+            "charge": vv.get("charge", 0),
+            "charge_label": vv.get("charge_label", "0"),
+            "charge_preview": vv.get("charge_preview", 0),
+            "charge_preview_label": vv.get("charge_preview_label", "0"),
+            "responsible": all_responsible_names.get(rr.responsible_user_id, "") if rr.responsible_user_id else "",
+            "created_at": fmt_admin_datetime(rr.created_at),
+            "cancelled_at": fmt_admin_datetime(rr.cancelled_at) if rr.cancelled_at else "",
+            "row_class": "chargeRow" if vv.get("charge", 0) > 0 else ("waitRow" if vv.get("waitlisted") else ("mutedRow" if vv.get("cancelled") else "")),
+        })
+
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     control_window = captain_control_window(outing) if outing else {}
-    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
+    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
@@ -2211,7 +2285,11 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "responsible_names": responsible_names,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
         "control_window": control_window,
-        "default_new_outing_at": default_new_outing_datetime()
+        "default_new_outing_at": default_new_outing_datetime(),
+        "all_outings": all_outings,
+        "all_reservation_rows": all_reservation_rows,
+        "all_reservation_count": len(all_reservation_rows),
+        "all_logs_count": len(logs),
     }))
 
 
@@ -2475,6 +2553,69 @@ def charges_csv(outing_id: Optional[int] = None, db: Session = Depends(db_sessio
         ])
     filename = f"liquidaciones_fjord_vi_salida_{outing.id if outing else 'todas'}.csv"
     return csv_response_excel(output, filename)
+
+
+@app.get("/admin/reservations_all.csv")
+def reservations_all_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow([
+        "salida_id", "salida", "fecha_salida", "estado_salida",
+        "reserva_id", "nombre", "dni", "tipo", "responsable",
+        "estado_reserva", "asistencia", "estado_fisico", "condicion_reglamentaria",
+        "motivo", "cargo_firme", "preliquidacion", "creado_en", "cancelado_en"
+    ])
+    outings = {o.id: o for o in db.query(Outing).all()}
+    responsible_ids = sorted({r.responsible_user_id for r in db.query(Reservation).all() if r.responsible_user_id})
+    responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(responsible_ids)).all()} if responsible_ids else {}
+    rows = db.query(Reservation).order_by(Reservation.outing_id.desc(), Reservation.created_at.desc()).all()
+    for r in rows:
+        o = outings.get(r.outing_id)
+        if not o:
+            continue
+        v = reservation_view(o, r)
+        writer.writerow([
+            o.id, o.title, o.departure_at.isoformat(), o.status,
+            r.id, r.person_name, r.dni, v["tipo_label"], responsible_names.get(r.responsible_user_id, "") if r.responsible_user_id else "",
+            r.status, r.attendance, v["estado_fisico"], v["estado_reglamentario"],
+            v["motivo"], v["charge"], v["charge_preview"],
+            r.created_at.isoformat() if r.created_at else "",
+            r.cancelled_at.isoformat() if r.cancelled_at else ""
+        ])
+    return csv_response_excel(output, "fjord_vi_historial_reservas_completo.csv")
+
+
+@app.get("/admin/outings.csv")
+def outings_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow(["salida_id", "titulo", "destino", "fecha_salida", "estado", "max_tripulantes", "min_tripulantes", "tarifa_invitado", "creada_en", "registros", "activos", "cargos_firmes"])
+    for o in db.query(Outing).order_by(Outing.departure_at.desc()).all():
+        reservations = db.query(Reservation).filter_by(outing_id=o.id).all()
+        active = active_reservations(reservations)
+        total_charges = sum(reservation_view(o, r)["charge"] for r in reservations)
+        writer.writerow([o.id, o.title, o.destination, o.departure_at.isoformat(), o.status, o.max_crew, o.min_crew, float(o.guest_fee or 0), o.created_at.isoformat() if o.created_at else "", len(reservations), len(active), total_charges])
+    return csv_response_excel(output, "fjord_vi_salidas_completo.csv")
+
+
+@app.get("/admin/users.csv")
+def users_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "email", "telefono", "rol", "activo"])
+    for u in db.query(User).order_by(User.name.asc()).all():
+        writer.writerow([u.id, u.name, u.dni, u.member_no or "", u.email or "", u.phone or "", u.role, "si" if u.active else "no"])
+    return csv_response_excel(output, "fjord_vi_usuarios.csv")
+
+
+@app.get("/admin/audit.csv")
+def audit_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow(["log_id", "fecha", "usuario", "accion", "detalle"])
+    for l in db.query(AuditLog).order_by(AuditLog.created_at.desc()).all():
+        writer.writerow([l.id, l.created_at.isoformat() if l.created_at else "", l.actor, l.action, l.detail])
+    return csv_response_excel(output, "fjord_vi_auditoria.csv")
 
 
 @app.get("/admin/backup")
