@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css?v=v51.2">
+<link rel="stylesheet" href="/static/style.css?v=v51.3">
 <title>Socios · {{app_name}}</title>
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
@@ -11,6 +11,20 @@ document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
 document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){form.querySelectorAll('button').forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});});});});
 
 document.addEventListener("DOMContentLoaded",function(){const toast=document.querySelector(".toastSmart");if(toast){const close=toast.querySelector(".toastClose");if(close){close.addEventListener("click",function(){toast.classList.add("toastLeaving");});}setTimeout(function(){toast.classList.add("toastLeaving");},5200);}document.querySelectorAll("button,.btn,.miEmbCta,.selectRow,.bottom a").forEach(function(el){el.addEventListener("pointerdown",function(){el.classList.add("isPressed");});["pointerup","pointercancel","pointerleave"].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove("isPressed");});});});});
+
+function showSocioNotice(text){
+  var old=document.querySelector('.inlineToastV513');
+  if(old) old.remove();
+  var t=document.createElement('div');
+  t.className='toast compactToast toastSmart inlineToastV513 toastWarn';
+  t.setAttribute('role','status');
+  t.innerHTML='<span class="toastIcon">i</span><span class="toastText">'+text+'</span><button type="button" class="toastClose" aria-label="Cerrar aviso">×</button>';
+  var main=document.querySelector('.socioWrap');
+  if(main){ main.insertBefore(t, main.firstChild); }
+  var c=t.querySelector('.toastClose');
+  if(c){ c.addEventListener('click',function(){t.remove();}); }
+  setTimeout(function(){ if(t && t.parentNode){ t.remove(); } },4200);
+}
 </script>
 </head>
 <body><div class="app socioApp socioProV464 socioV51">
@@ -75,14 +89,28 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
     <span class="{% if closed %}done{% elif has_self %}active{% endif %}">Embarque</span>
     <span class="{% if closed %}active{% endif %}">Cierre</span>
   </div>
-  <a class="miEmbCta" href="#reserva">{% if outing_cancelled %}Ver estado{% elif self_view and self_view.waitlisted %}Ver lista de espera{% elif has_self %}Ver mi reserva{% elif self_reservation %}Reincorporarme{% else %}Reservar mi lugar{% endif %}</a>
+  <div class="miEmbCtaWrap">
+    {% if outing_cancelled %}
+      <a class="miEmbCta soft" href="#inicio">Salida cancelada</a>
+    {% elif closed %}
+      <a class="miEmbCta soft" href="#reserva">Salida cerrada</a>
+    {% elif self_view and self_view.waitlisted %}
+      <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Salir de espera</button></form>
+    {% elif has_self %}
+      <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Cancelar mi lugar</button></form>
+    {% elif self_reservation %}
+      <form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta" type="submit">Reincorporarme</button></form>
+    {% else %}
+      <form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta" type="submit">{% if remaining == 0 %}Anotarme en espera{% else %}Reservar mi lugar{% endif %}</button></form>
+    {% endif %}
+  </div>
 </section>
 {% endif %}
 
 <section class="socioV51QuickActions" aria-label="Acciones rápidas">
   <a href="#invitados"><b>Invitar</b><small>Agregar acompañante</small></a>
   <a href="/static/reglamento.html" target="_blank" rel="noopener"><b>Reglamento</b><small>Reglas y cargos</small></a>
-  <a href="#estado"><b>Estado</b><small>Cupo y salida</small></a>
+  <a href="#inicio"><b>Estado</b><small>Cupo y salida</small></a>
 </section>
 
 <section class="card premiumCard socioProCard socioProCalendar socioV51Calendar" id="salidas">
@@ -164,7 +192,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
       <div class="personMain"><b>Mi lugar</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
         <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
       </div>
-      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini neutralBtn">Salir de espera</button></form>{% elif has_self %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Cancelar mi reserva</button></form>{% else %}<form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporarme</button></form>{% endif %}</div>
+      <div class="personAction titularInfo">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<span class="pill neutral">En espera</span>{% elif has_self %}<span class="pill ok">Confirmada</span>{% else %}<span class="pill softCancel">Cancelada</span>{% endif %}</div>
     </div>
   {% elif outing_cancelled %}<div class="empty lockBox"><b>Anotación deshabilitada.</b><br>Pendiente de reapertura por capitán.</div>
   {% elif not closed %}<form method="post" action="/socio/add_self"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="btn green">{% if remaining == 0 %}Anotarme en lista de espera{% else %}Reservar mi lugar{% endif %}</button></form>{% endif %}
@@ -185,12 +213,12 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   {% if outing_cancelled %}<div class="empty lockBox">Alta de invitados deshabilitada.<br>Pendiente de reapertura por capitán.</div>
   {% elif not closed and has_self %}
   <div class="formIntro"><b>Agregar acompañante</b><small>Los invitados quedan asociados a tu reserva titular.</small></div><form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">{% if remaining == 0 %}Agregar a lista de espera{% else %}Agregar invitado{% endif %}</button></form>
-  {% elif not closed and not has_self %}<div class="empty">Para agregar invitados, primero anotate como socio titular.</div>{% endif %}
+  {% elif not closed and not has_self %}<div class="empty lockedGuestBox"><button type="button" class="mini neutralBtn lockedBtn" onclick="showSocioNotice('Primero debés anotarte como socio titular para agregar invitados.')">🔒 Agregar invitados</button></div>{% endif %}
 </section>
 
 <details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
 {% endif %}
 </main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio">Inicio</a><a href="#reserva">Reservas</a><a href="#salidas">Calendario</a><a href="#perfil">Perfil</a></nav>
 <footer class="appFooter socioFooter"><span>Embarque Fjord VI</span><b>{{version}}</b></footer>
-</div><script src="/static/app.js?v=v51.2"></script>
+</div><script src="/static/app.js?v=v51.3"></script>
 </body></html>
