@@ -4433,3 +4433,27 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .socioProV464 .socioHeaderName{display:inline-block!important;max-width:145px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;padding:1px 7px!important;border-radius:999px!important;background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.22)!important;color:#fff!important;font-family:ui-serif, Georgia, "Times New Roman", serif!important;font-style:italic!important;font-weight:750!important;}
 @media(max-width:420px){.socioProV464 .socioHeaderRole{max-width:178px!important}.socioProV464 .socioHeaderName{max-width:112px!important;padding:1px 6px!important;}}
 .adminV47BrandTop{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:10px!important}.adminV47BrandLogout{display:inline-flex!important;align-items:center!important;justify-content:center!important;text-decoration:none!important;color:#fff!important;background:rgba(255,255,255,.20)!important;border:1px solid rgba(255,255,255,.28)!important;border-radius:999px!important;padding:6px 11px!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important}
+
+
+/* =========================================================
+   v47.7 · Hero Fjord VI responsive
+   Desktop: imagen ancha optimizada. Mobile: foto vertical original del barco.
+   ========================================================= */
+.loginBody.institutionalLogin{
+  background-image:
+    linear-gradient(90deg,rgba(4,17,32,.74) 0%,rgba(4,17,32,.52) 44%,rgba(4,17,32,.20) 100%),
+    linear-gradient(180deg,rgba(0,0,0,.16) 0%,rgba(0,0,0,.24) 100%),
+    url('/static/hero_fjord_desktop.jpg') !important;
+  background-size:cover!important;
+  background-position:center right!important;
+  background-repeat:no-repeat!important;
+}
+@media (max-width: 768px){
+  .loginBody.institutionalLogin{
+    background-image:
+      linear-gradient(180deg,rgba(4,17,32,.20) 0%,rgba(4,17,32,.55) 56%,rgba(4,17,32,.88) 100%),
+      url('/static/hero_fjord_mobile.jpg') !important;
+    background-size:cover!important;
+    background-position:center top!important;
+  }
+}
