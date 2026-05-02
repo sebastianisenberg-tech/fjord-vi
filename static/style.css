@@ -4982,3 +4982,13 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   content:"";position:absolute;top:3px;left:50%;transform:translateX(-50%);width:22px;height:3px;border-radius:999px;background:#2f7297;
 }
 .socioApp .inlineToastV513{position:sticky!important;top:8px!important;z-index:60!important;margin:8px 0 10px!important;}
+
+
+/*
+   v51.4 - SOCIO REDUCCION FINAL PREMIUM
+   Se retiraron bloques redundantes de estado/reserva titular.
+   Mantiene compatibilidad visual con las clases existentes.
+*/
+.socioApp .socioProGuests{margin-top:12px!important;}
+.socioApp .lockedGuestBox{padding:8px!important;}
+.socioApp .lockedGuestBox .lockedBtn{width:100%;max-width:none;border-style:dashed!important;}
