@@ -1,7 +1,7 @@
 {
-  "version": "v47.7",
+  "version": "v51.4.1",
   "build": "v47.7-hero-fjord-responsive",
-  "exported_at": "2026-05-01T22:00:05.993894",
+  "exported_at": "2026-05-02T04:15:58.951985",
   "users": [
     {
       "id": 1,
@@ -245,6 +245,48 @@
       "actor": "Admin Club",
       "action": "alta usuario",
       "detail": "Socio Prueba / 44455566 / socio"
+    },
+    {
+      "id": 8,
+      "created_at": "2026-05-02T04:15:24.578386",
+      "actor": "Juan Pérez",
+      "action": "login",
+      "detail": "socio"
+    },
+    {
+      "id": 9,
+      "created_at": "2026-05-02T04:15:24.798495",
+      "actor": "Capitán Martín",
+      "action": "login",
+      "detail": "captain"
+    },
+    {
+      "id": 10,
+      "created_at": "2026-05-02T04:15:24.994096",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 11,
+      "created_at": "2026-05-02T04:15:58.570806",
+      "actor": "Juan Pérez",
+      "action": "login",
+      "detail": "socio"
+    },
+    {
+      "id": 12,
+      "created_at": "2026-05-02T04:15:58.770613",
+      "actor": "Capitán Martín",
+      "action": "login",
+      "detail": "captain"
+    },
+    {
+      "id": 13,
+      "created_at": "2026-05-02T04:15:58.950325",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
     }
   ]
 }
