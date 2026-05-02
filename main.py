@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v53.1"
+VERSION = "v53.2"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2620,12 +2620,21 @@ def audit_csv(db: Session = Depends(db_session), user: User = Depends(require_ro
 
 @app.get("/admin/backup")
 def admin_backup(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    persist_json(db)
-    return FileResponse(
-        str(JSON_BACKUP_PATH),
-        media_type="application/json",
-        filename="fjord_vi_backup.json"
-    )
+    """Descarga segura de backup JSON.
+
+    Importante para oficina: no escribimos primero el archivo en disco ni navegamos
+    dentro del Admin, porque en algunas PCs/Chrome eso podía dejar la pestaña
+    esperando y con sensación de pantalla congelada. Generamos el JSON en memoria
+    y lo enviamos como adjunto descargable.
+    """
+    payload = json.dumps(export_state(db), ensure_ascii=False, separators=(",", ":"))
+    filename = f"fjord_vi_backup_{now_local().strftime('%Y%m%d_%H%M')}.json"
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    }
+    return Response(payload, media_type="application/json; charset=utf-8", headers=headers)
 
 @app.get("/admin/export_data.json")
 def export_data_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
