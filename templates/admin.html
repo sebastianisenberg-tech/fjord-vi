@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v51.8">
+  <link rel="stylesheet" href="/static/style.css?v=v51.9">
 
   <!-- CSS crítico Admin v47.1 inline: evita HTML pelado si cachea /static/style.css -->
   <style>
@@ -201,6 +201,107 @@
   }
 }
 
+
+
+/* v51.9 ADMIN OPERATIVO: tablas con doble scroll, columnas guía y exportaciones claras */
+.adminV47ScreenHead .adminExportNote{
+  display:block;
+  margin-top:6px;
+  color:#5a7182;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:0;
+  text-transform:none;
+}
+.adminV47TableBox{
+  position:relative !important;
+  overflow:auto !important;
+  max-width:100% !important;
+  scrollbar-gutter:stable both-edges !important;
+  border:1px solid #d6e6f0 !important;
+}
+.adminScrollTop{
+  height:18px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  background:#f6fbfe;
+  border:1px solid #d6e6f0;
+  border-bottom:0;
+  border-radius:14px 14px 0 0;
+  margin:0 0 -1px 0;
+}
+.adminScrollTopInner{height:1px;}
+.adminScrollHint{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#567083;
+  font-size:12px;
+  font-weight:900;
+  margin:0 2px 8px;
+}
+.adminScrollHint span:last-child{color:#0b6fa5;}
+.adminV47TableBox.hasTopScroll{border-radius:0 0 14px 14px !important;}
+.adminV47Table{
+  table-layout:auto !important;
+}
+.adminV47Table th:nth-child(1),
+.adminV47Table td:nth-child(1){
+  min-width:170px !important;
+  max-width:220px !important;
+}
+.adminV47Table th:nth-child(2),
+.adminV47Table td:nth-child(2){
+  min-width:210px !important;
+  max-width:280px !important;
+}
+.adminV47Table.stickyGuide th:nth-child(1),
+.adminV47Table.stickyGuide td:nth-child(1){
+  position:sticky !important;
+  left:0 !important;
+  z-index:12 !important;
+  background:#fff !important;
+  box-shadow:8px 0 10px rgba(12,45,78,.05) !important;
+}
+.adminV47Table.stickyGuide th:nth-child(2),
+.adminV47Table.stickyGuide td:nth-child(2){
+  position:sticky !important;
+  left:170px !important;
+  z-index:11 !important;
+  background:#fff !important;
+  box-shadow:8px 0 10px rgba(12,45,78,.04) !important;
+}
+.adminV47Table.stickyGuide th:nth-child(1),
+.adminV47Table.stickyGuide th:nth-child(2){
+  z-index:30 !important;
+  background:#eaf4fa !important;
+}
+.adminV47Table.stickyGuide tr.selected td:nth-child(1),
+.adminV47Table.stickyGuide tr.selected td:nth-child(2){background:#eef9f1 !important;}
+.adminV47Table.stickyGuide tr.muted td:nth-child(1),
+.adminV47Table.stickyGuide tr.muted td:nth-child(2){background:#fbfdff !important;}
+.adminV47Table td.wrap,
+.adminV47Table th.wrap{min-width:260px !important;}
+.adminV47Button.exportPrimary,
+.adminV47ScreenHead a.exportPrimary{
+  background:linear-gradient(180deg,#0b73a8,#07527d) !important;
+  color:#fff !important;
+  border:0 !important;
+  box-shadow:0 8px 18px rgba(0,54,90,.18) !important;
+}
+.adminV47Toolbar .exportInline{
+  background:#0b6fa5 !important;
+  color:#fff !important;
+}
+@media(max-width:900px){
+  .adminScrollTop,.adminScrollHint{display:none;}
+  .adminV47Table.stickyGuide th:nth-child(1),
+  .adminV47Table.stickyGuide td:nth-child(1),
+  .adminV47Table.stickyGuide th:nth-child(2),
+  .adminV47Table.stickyGuide td:nth-child(2){position:static !important;box-shadow:none !important;}
+}
+
 </style>
   <title>Administración · {{club_name}} · {{app_name}} · {{version}}</title>
 </head>
@@ -288,11 +389,11 @@
     {% endif %}
 
     {% if admin_page == 'reservas' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Consulta</span><h2>Reservas</h2></div><div class="adminV47TopActions">{% if outing %}<a href="/admin/manifest.csv?outing_id={{outing.id}}">CSV salida seleccionada</a>{% endif %}<a href="/admin/reservations_all.csv">CSV historial completo</a></div></div>{% if outing %}<article class="adminV47Panel"><div class="adminV47Toolbar"><input id="reservaSearchV43" type="search" placeholder="Buscar por nombre, DNI, estado o responsable"><select id="reservaEstadoV43"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas</option></select><button type="button" data-clear-v43="reservas">Limpiar</button><a href="/admin?page=historial{{selected_q}}">Ver historial completo</a></div><div class="adminV47TableBox tall"><table class="adminV47Table wide" id="reservasTableV43"><thead><tr><th>Nombre</th><th>DNI</th><th>Tipo</th><th>Responsable</th><th>Estado administrativo</th><th>Situación física</th><th>Cargo</th><th>Reserva</th><th>Cancelación</th></tr></thead><tbody>{% for r in reservations %}{% set v=reservation_views.get(r.id) %}<tr class="{% if v.waitlisted %}waitRow{% elif v.charge>0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}"><td class="wrap"><b>{{r.person_name}}</b></td><td>{{r.dni}}</td><td>{{v.tipo_label}}</td><td class="wrap">{% if r.responsible_user_id %}{{responsible_names.get(r.responsible_user_id, 'ID '~r.responsible_user_id)}}{% else %}-{% endif %}</td><td class="wrap"><b>{% if v.waitlisted %}Lista de espera{% elif v.embarked %}Embarcado{% elif v.not_embarked %}No embarcado{% elif v.charge_is_preliminary %}Preliquidación{% else %}{{v.alert}}{% endif %}</b><small>{{v.motivo}}</small></td><td>{{v.estado_fisico}}</td><td>{% if v.charge>0 %}<b>$ {{v.charge_label}}</b>{% elif v.charge_is_preliminary %}Est. $ {{v.charge_preview_label}}{% else %}$ 0{% endif %}</td><td>{{fmt_admin_datetime(r.created_at)}}</td><td>{% if r.cancelled_at %}{{fmt_admin_datetime(r.cancelled_at)}}{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>{% else %}<p>Sin salida seleccionada.</p>{% endif %}</section>
+    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Consulta</span><h2>Reservas</h2></div><div class="adminV47TopActions">{% if outing %}<a href="/admin/manifest.csv?outing_id={{outing.id}}">CSV salida seleccionada</a>{% endif %}<a href="/admin/reservations_all.csv">CSV historial completo</a></div></div>{% if outing %}<article class="adminV47Panel"><div class="adminV47Toolbar"><input id="reservaSearchV43" type="search" placeholder="Buscar por nombre, DNI, estado o responsable"><select id="reservaEstadoV43"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas</option></select><button type="button" data-clear-v43="reservas">Limpiar</button><a href="/admin?page=historial{{selected_q}}">Ver historial completo</a></div><div class="adminScrollHint"><span>Columnas guía fijas: nombre y DNI</span><span>Desplazá horizontalmente para ver estado, cargo, reserva y cancelación →</span></div><div class="adminV47TableBox tall"><table class="adminV47Table wide stickyGuide" id="reservasTableV43"><thead><tr><th>Nombre</th><th>DNI</th><th>Tipo</th><th>Responsable</th><th>Estado administrativo</th><th>Situación física</th><th>Cargo</th><th>Reserva</th><th>Cancelación</th></tr></thead><tbody>{% for r in reservations %}{% set v=reservation_views.get(r.id) %}<tr class="{% if v.waitlisted %}waitRow{% elif v.charge>0 %}chargeRow{% elif v.cancelled %}mutedRow{% endif %}"><td class="wrap"><b>{{r.person_name}}</b></td><td>{{r.dni}}</td><td>{{v.tipo_label}}</td><td class="wrap">{% if r.responsible_user_id %}{{responsible_names.get(r.responsible_user_id, 'ID '~r.responsible_user_id)}}{% else %}-{% endif %}</td><td class="wrap"><b>{% if v.waitlisted %}Lista de espera{% elif v.embarked %}Embarcado{% elif v.not_embarked %}No embarcado{% elif v.charge_is_preliminary %}Preliquidación{% else %}{{v.alert}}{% endif %}</b><small>{{v.motivo}}</small></td><td>{{v.estado_fisico}}</td><td>{% if v.charge>0 %}<b>$ {{v.charge_label}}</b>{% elif v.charge_is_preliminary %}Est. $ {{v.charge_preview_label}}{% else %}$ 0{% endif %}</td><td>{{fmt_admin_datetime(r.created_at)}}</td><td>{% if r.cancelled_at %}{{fmt_admin_datetime(r.cancelled_at)}}{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>{% else %}<p>Sin salida seleccionada.</p>{% endif %}</section>
     {% endif %}
 
     {% if admin_page == 'historial' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Planilla maestra</span><h2>Historial completo</h2></div><div class="adminV47TopActions"><a href="/admin/reservations_all.csv">Exportar historial CSV</a><a href="/admin/outings.csv">Exportar salidas CSV</a></div></div><article class="adminV47Panel"><div class="adminV47Toolbar"><input id="histSearchV517" type="search" placeholder="Buscar en todo el historial"><select id="histEstadoV517"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas/cancelados</option></select><button type="button" id="histClearV517">Limpiar</button><span class="pill">{{all_reservation_count}} registros</span></div><div class="adminV47TableBox tall"><table class="adminV47Table fullwide" id="historialTableV517"><thead><tr><th>Fecha salida</th><th class="wrap">Salida</th><th>Estado salida</th><th class="wrap">Persona</th><th>DNI</th><th>Tipo</th><th class="wrap">Responsable</th><th>Estado reserva</th><th>Asistencia</th><th>Situación física</th><th>Condición</th><th class="wrap">Motivo</th><th>Cargo</th><th>Preliq.</th><th>Creado</th><th>Cancelado</th></tr></thead><tbody>{% for row in all_reservation_rows %}<tr class="{{row.row_class}}"><td>{{row.outing_date}}</td><td class="wrap"><b>{{row.outing_title}}</b><small>ID {{row.outing_id}}</small></td><td>{{row.outing_status}}</td><td class="wrap"><b>{{row.name}}</b></td><td>{{row.dni}}</td><td>{{row.kind}}</td><td class="wrap">{{row.responsible or '-'}}</td><td>{{row.status}}</td><td>{{row.attendance}}</td><td>{{row.physical}}</td><td>{{row.regulatory}}</td><td class="wrap">{{row.reason}}</td><td>{% if row.charge>0 %}$ {{row.charge_label}}{% else %}$ 0{% endif %}</td><td>{% if row.charge_preview>0 %}$ {{row.charge_preview_label}}{% else %}-{% endif %}</td><td>{{row.created_at}}</td><td>{{row.cancelled_at or '-'}}</td></tr>{% endfor %}</tbody></table></div></article></section>
+    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Planilla maestra</span><h2>Historial completo</h2><small class="adminExportNote">Vista completa de reservas. Usá la barra horizontal superior o inferior para recorrer todas las columnas.</small></div><div class="adminV47TopActions"><a class="exportPrimary" href="/admin/reservations_all.csv">Descargar historial completo CSV</a><a href="/admin/outings.csv">Descargar salidas CSV</a></div></div><article class="adminV47Panel"><div class="adminV47Toolbar"><input id="histSearchV517" type="search" placeholder="Buscar en todo el historial"><select id="histEstadoV517"><option value="all">Todos</option><option value="chargeRow">Con cargo</option><option value="waitRow">Lista de espera</option><option value="mutedRow">Bajas/cancelados</option></select><a class="exportInline" href="/admin/reservations_all.csv">Exportar vista completa</a><button type="button" id="histClearV517">Limpiar</button><span class="pill">{{all_reservation_count}} registros</span></div><div class="adminScrollHint"><span>Columnas guía fijas: fecha y salida</span><span>Desplazá horizontalmente para ver persona, DNI, responsable, cargo, creado y cancelado →</span></div><div class="adminV47TableBox tall"><table class="adminV47Table fullwide stickyGuide" id="historialTableV517"><thead><tr><th>Fecha salida</th><th class="wrap">Salida</th><th>Estado salida</th><th class="wrap">Persona</th><th>DNI</th><th>Tipo</th><th class="wrap">Responsable</th><th>Estado reserva</th><th>Asistencia</th><th>Situación física</th><th>Condición</th><th class="wrap">Motivo</th><th>Cargo</th><th>Preliq.</th><th>Creado</th><th>Cancelado</th></tr></thead><tbody>{% for row in all_reservation_rows %}<tr class="{{row.row_class}}"><td>{{row.outing_date}}</td><td class="wrap"><b>{{row.outing_title}}</b><small>ID {{row.outing_id}}</small></td><td>{{row.outing_status}}</td><td class="wrap"><b>{{row.name}}</b></td><td>{{row.dni}}</td><td>{{row.kind}}</td><td class="wrap">{{row.responsible or '-'}}</td><td>{{row.status}}</td><td>{{row.attendance}}</td><td>{{row.physical}}</td><td>{{row.regulatory}}</td><td class="wrap">{{row.reason}}</td><td>{% if row.charge>0 %}$ {{row.charge_label}}{% else %}$ 0{% endif %}</td><td>{% if row.charge_preview>0 %}$ {{row.charge_preview_label}}{% else %}-{% endif %}</td><td>{{row.created_at}}</td><td>{{row.cancelled_at or '-'}}</td></tr>{% endfor %}</tbody></table></div></article></section>
     {% endif %}
 
     {% if admin_page == 'liquidacion' %}
@@ -300,11 +401,11 @@
     {% endif %}
 
     {% if admin_page == 'socios' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Entrada de datos</span><h2>Socios / usuarios</h2></div><div class="adminV47TopActions"><span class="pill">Clave inicial: demo1234</span><a href="/admin/users.csv">Exportar usuarios CSV</a></div></div><div class="adminV47TwoCols users"><aside class="adminV47Panel"><h3>Alta de usuario</h3><form class="adminV47Form" method="post" action="/admin/create_user"><label>Nombre y apellido<input name="name" required></label><label>DNI / Documento<input name="dni" required></label><label>Nº socio<input name="member_no"></label><label>Email<input type="email" name="email"></label><label>Celular<input name="phone"></label><label>Rol<select name="role"><option value="socio">Socio</option><option value="captain">Capitán</option><option value="admin">Administrador</option></select></label><button>Crear usuario</button></form></aside><article class="adminV47Panel"><div class="adminV47Toolbar"><input id="usuarioSearchV43" type="search" placeholder="Buscar usuario"><select id="usuarioRolV43"><option value="all">Todos</option><option value="socio">Socios</option><option value="captain">Capitanes</option><option value="admin">Administradores</option><option value="inactivo">Inactivos</option></select><button type="button" data-clear-v43="usuarios">Limpiar</button></div><div class="adminV47TableBox tall"><table class="adminV47Table" id="usuariosGridV43"><thead><tr><th>Nombre</th><th>Documento</th><th>Socio</th><th>Contacto</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for u in users %}<tr data-role="{{u.role}}" data-active="{% if u.active %}activo{% else %}inactivo{% endif %}"><td><b>{{u.name}}</b></td><td>{{u.dni}}</td><td>{{u.member_no or '-'}}</td><td>{{u.email or ''}}{% if u.phone %}<small>{{u.phone}}</small>{% endif %}</td><td>{{u.role}}</td><td>{% if u.active %}activo{% else %}inactivo{% endif %}</td><td><details><summary>Editar</summary><form method="post" action="/admin/update_user/{{u.id}}" class="adminV47Inline"><input name="name" value="{{u.name}}" required><input name="dni" value="{{u.dni}}" required><input name="member_no" value="{{u.member_no or ''}}"><input type="email" name="email" value="{{u.email or ''}}"><input name="phone" value="{{u.phone or ''}}"><select name="role"><option value="socio" {% if u.role=='socio' %}selected{% endif %}>Socio</option><option value="captain" {% if u.role=='captain' %}selected{% endif %}>Capitán</option><option value="admin" {% if u.role=='admin' %}selected{% endif %}>Admin</option></select><button>Guardar</button></form></details><form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave a demo1234?');"><button>Reset</button></form><form method="post" action="/admin/toggle_user/{{u.id}}" onsubmit="return confirm('Cambiar estado?');"><button>{% if u.active %}Desactivar{% else %}Activar{% endif %}</button></form></td></tr>{% endfor %}</tbody></table></div></article></div></section>
+    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Entrada de datos</span><h2>Socios / usuarios</h2></div><div class="adminV47TopActions"><span class="pill">Clave inicial: demo1234</span><a href="/admin/users.csv">Exportar usuarios CSV</a></div></div><div class="adminV47TwoCols users"><aside class="adminV47Panel"><h3>Alta de usuario</h3><form class="adminV47Form" method="post" action="/admin/create_user"><label>Nombre y apellido<input name="name" required></label><label>DNI / Documento<input name="dni" required></label><label>Nº socio<input name="member_no"></label><label>Email<input type="email" name="email"></label><label>Celular<input name="phone"></label><label>Rol<select name="role"><option value="socio">Socio</option><option value="captain">Capitán</option><option value="admin">Administrador</option></select></label><button>Crear usuario</button></form></aside><article class="adminV47Panel"><div class="adminV47Toolbar"><input id="usuarioSearchV43" type="search" placeholder="Buscar usuario"><select id="usuarioRolV43"><option value="all">Todos</option><option value="socio">Socios</option><option value="captain">Capitanes</option><option value="admin">Administradores</option><option value="inactivo">Inactivos</option></select><button type="button" data-clear-v43="usuarios">Limpiar</button></div><div class="adminScrollHint"><span>Columnas guía fijas: nombre y documento</span><span>Desplazá horizontalmente para contacto, rol, estado y acciones →</span></div><div class="adminV47TableBox tall"><table class="adminV47Table stickyGuide" id="usuariosGridV43"><thead><tr><th>Nombre</th><th>Documento</th><th>Socio</th><th>Contacto</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for u in users %}<tr data-role="{{u.role}}" data-active="{% if u.active %}activo{% else %}inactivo{% endif %}"><td><b>{{u.name}}</b></td><td>{{u.dni}}</td><td>{{u.member_no or '-'}}</td><td>{{u.email or ''}}{% if u.phone %}<small>{{u.phone}}</small>{% endif %}</td><td>{{u.role}}</td><td>{% if u.active %}activo{% else %}inactivo{% endif %}</td><td><details><summary>Editar</summary><form method="post" action="/admin/update_user/{{u.id}}" class="adminV47Inline"><input name="name" value="{{u.name}}" required><input name="dni" value="{{u.dni}}" required><input name="member_no" value="{{u.member_no or ''}}"><input type="email" name="email" value="{{u.email or ''}}"><input name="phone" value="{{u.phone or ''}}"><select name="role"><option value="socio" {% if u.role=='socio' %}selected{% endif %}>Socio</option><option value="captain" {% if u.role=='captain' %}selected{% endif %}>Capitán</option><option value="admin" {% if u.role=='admin' %}selected{% endif %}>Admin</option></select><button>Guardar</button></form></details><form method="post" action="/admin/reset_password/{{u.id}}" onsubmit="return confirm('Resetear clave a demo1234?');"><button>Reset</button></form><form method="post" action="/admin/toggle_user/{{u.id}}" onsubmit="return confirm('Cambiar estado?');"><button>{% if u.active %}Desactivar{% else %}Activar{% endif %}</button></form></td></tr>{% endfor %}</tbody></table></div></article></div></section>
     {% endif %}
 
     {% if admin_page == 'auditoria' %}
-    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Trazabilidad</span><h2>Auditoría <span class="helpDot" data-tip="Registro de acciones: quién hizo qué, cuándo y sobre qué salida.">ⓘ</span></h2></div><a href="/admin/audit.csv">Exportar auditoría CSV</a></div><article class="adminV47Panel"><div class="adminV47Toolbar"><span class="pill">Últimos {{all_logs_count}} registros visibles</span></div><div class="adminV47TableBox tall"><table class="adminV47Table wide"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th class="wrap">Detalle</th></tr></thead><tbody>{% for l in logs %}<tr><td>{{fmt_admin_datetime(l.created_at)}}</td><td>{{l.actor}}</td><td><b>{{l.action}}</b></td><td class="wrap">{{l.detail}}</td></tr>{% endfor %}</tbody></table></div></article></section>
+    <section class="adminV47Screen"><div class="adminV47ScreenHead"><div><span>Trazabilidad</span><h2>Auditoría <span class="helpDot" data-tip="Registro de acciones: quién hizo qué, cuándo y sobre qué salida.">ⓘ</span></h2></div><a href="/admin/audit.csv">Exportar auditoría CSV</a></div><article class="adminV47Panel"><div class="adminV47Toolbar"><span class="pill">Últimos {{all_logs_count}} registros visibles</span></div><div class="adminScrollHint"><span>Columnas guía fijas: fecha y usuario</span><span>Desplazá horizontalmente si el detalle es largo →</span></div><div class="adminV47TableBox tall"><table class="adminV47Table wide stickyGuide"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th class="wrap">Detalle</th></tr></thead><tbody>{% for l in logs %}<tr><td>{{fmt_admin_datetime(l.created_at)}}</td><td>{{l.actor}}</td><td><b>{{l.action}}</b></td><td class="wrap">{{l.detail}}</td></tr>{% endfor %}</tbody></table></div></article></section>
     {% endif %}
 
     {% if admin_page == 'estadisticas' %}
@@ -341,8 +442,34 @@
   const histSearch=document.getElementById('histSearchV517'), histEstado=document.getElementById('histEstadoV517'), histRows=[...document.querySelectorAll('#historialTableV517 tbody tr')];
   function filterHist(){const q=(histSearch?.value||'').toLowerCase(), f=histEstado?.value||'all'; histRows.forEach(r=>{const okq=!q||r.innerText.toLowerCase().includes(q); const okf=f==='all'||r.classList.contains(f); r.style.display=okq&&okf?'':'none';});}
   histSearch?.addEventListener('input',filterHist); histEstado?.addEventListener('change',filterHist); document.getElementById('histClearV517')?.addEventListener('click',()=>{if(histSearch)histSearch.value=''; if(histEstado)histEstado.value='all'; filterHist();});
+
+  // v51.9: barra horizontal superior sincronizada con la inferior en todas las planillas anchas.
+  function installTopScrollers(){
+    document.querySelectorAll('.adminV47TableBox').forEach(box=>{
+      if(box.dataset.topScrollInstalled==='1') return;
+      const table=box.querySelector('table');
+      if(!table) return;
+      box.dataset.topScrollInstalled='1';
+      box.classList.add('hasTopScroll');
+      const top=document.createElement('div');
+      top.className='adminScrollTop';
+      const inner=document.createElement('div');
+      inner.className='adminScrollTopInner';
+      top.appendChild(inner);
+      box.parentNode.insertBefore(top, box);
+      const syncWidth=()=>{ inner.style.width = Math.max(table.scrollWidth, box.scrollWidth) + 'px'; };
+      let lock=false;
+      top.addEventListener('scroll',()=>{ if(lock) return; lock=true; box.scrollLeft=top.scrollLeft; lock=false; });
+      box.addEventListener('scroll',()=>{ if(lock) return; lock=true; top.scrollLeft=box.scrollLeft; lock=false; });
+      window.addEventListener('resize',syncWidth);
+      setTimeout(syncWidth,50);
+      setTimeout(syncWidth,500);
+    });
+  }
+  installTopScrollers();
+
 })();
 </script>
-<script src="/static/app.js?v=v51.8"></script>
+<script src="/static/app.js?v=v51.9"></script>
 </body>
 </html>
