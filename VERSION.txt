@@ -1,5 +1,1 @@
-v49
-- Tooltips informativos modernos
-- Toasts/alertas conectados en Admin, Socio y Capitán sin tocar lógica
-- Reglamento Fjord VI en formato app para socios
-- Base lógica intacta
+v51_SOCIO_PREMIUM_CONSERVADOR
