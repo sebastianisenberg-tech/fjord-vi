@@ -1,1 +1,5 @@
-v47.5
+v47.6
+- Base estable v47.5
+- Socio: nombre visible en barra superior
+- Admin: salir visible arriba en lateral
+- Sin cambios en enclavamientos de navegación
