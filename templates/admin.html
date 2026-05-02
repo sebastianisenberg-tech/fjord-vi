@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v47_1">
+  <link rel="stylesheet" href="/static/style.css?v=v47_6">
 
   <!-- CSS crítico Admin v47.1 inline: evita HTML pelado si cachea /static/style.css -->
   <style>
@@ -11,7 +11,7 @@
 .adminV47{height:100vh;display:grid;grid-template-columns:260px 1fr;gap:0}
 .adminV47Side{height:100vh;background:linear-gradient(180deg,#102a51 0%,#075f94 100%);color:#fff;padding:22px 18px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px;box-shadow:12px 0 28px rgba(8,40,72,.18);z-index:2}
 .adminV47Brand{border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:18px 16px;background:rgba(255,255,255,.06)}
-.adminV47Brand b{display:block;font-size:18px;letter-spacing:.2px}.adminV47Brand span{display:block;color:#93c9ee;margin-top:6px}.adminV47Brand small{display:inline-block;margin-top:10px;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.12);color:#d8eefc;font-weight:800}
+.adminV47Brand b{display:block;font-size:18px;letter-spacing:.2px}.adminV47Brand span{display:block;color:#93c9ee;margin-top:6px}.adminV47Brand small{display:inline-block;margin-top:10px;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.12);color:#d8eefc;font-weight:800}.adminV47BrandTop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.adminV47BrandLogout{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:#fff!important;background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:900;white-space:nowrap}.adminV47BrandLogout:hover{background:rgba(255,255,255,.30)}
 .adminV47Nav{display:flex;flex-direction:column;gap:8px}.adminV47Nav a,.adminV47SideFoot a{color:#d9effb;text-decoration:none;border-radius:14px;padding:13px 14px;display:block}.adminV47Nav a b{display:block;font-size:15px}.adminV47Nav a span{display:block;font-size:12px;opacity:.76;margin-top:2px}.adminV47Nav a.active{background:linear-gradient(180deg,#0e7bb4,#08517d);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 8px 18px rgba(0,0,0,.16)}
 .adminV47SideFoot{margin-top:auto;display:grid;gap:10px}.adminV47SideFoot a{background:rgba(255,255,255,.10);text-align:center;font-weight:800}.adminV47SideFoot .logout{background:rgba(255,255,255,.22)}.adminV47SideFoot .config.active{background:#123b5f}
 .adminV47Main{height:100vh;overflow:hidden;padding:28px 32px 18px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px}
@@ -32,7 +32,7 @@
 <div class="adminV47">
   <aside class="adminV47Side">
     <div class="adminV47Brand">
-      <b>YCA · Fjord VI</b>
+      <div class="adminV47BrandTop"><b>YCA · Fjord VI</b><a class="adminV47BrandLogout" href="/logout">Salir</a></div>
       <span>Administración</span>
       <small>{{version}}</small>
     </div>
