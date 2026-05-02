@@ -1,5 +1,6 @@
-v47.6
-- Base estable v47.5
-- Socio: nombre visible en barra superior
-- Admin: salir visible arriba en lateral
-- Sin cambios en enclavamientos de navegación
+v47.7
+- Base estable v47.6.
+- Nueva imagen hero desktop del Fjord VI optimizada para computadora.
+- Imagen hero mobile vertical del Fjord VI para celular.
+- CSS responsive para usar imagen distinta en desktop y mobile.
+- No se modifica lógica de cargos, reservas, cierre, capitán ni liquidación.
