@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>YCA - Fjord VI Administración</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="stylesheet" href="/static/style.css">
 
@@ -10,7 +11,7 @@
         body {
             margin: 0;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-            background: #f4f6f9;
+            background: #eef5f8;
             color: #172333;
         }
 
@@ -21,10 +22,14 @@
 
         .sidebar {
             width: 260px;
-            background: linear-gradient(180deg, #0f2a44, #163d5c);
+            background: linear-gradient(180deg, #0f2a44, #15466a);
             color: white;
             padding: 22px 20px;
             box-sizing: border-box;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: auto;
         }
 
         .brand {
@@ -32,47 +37,48 @@
         }
 
         .brand-title {
-            font-weight: 800;
+            font-weight: 850;
             font-size: 18px;
             letter-spacing: .2px;
         }
 
         .brand-subtitle {
             font-size: 13px;
-            opacity: .75;
+            opacity: .78;
             margin-top: 4px;
         }
 
         .nav-label {
             font-size: 11px;
-            letter-spacing: 1.6px;
+            letter-spacing: 1.7px;
             text-transform: uppercase;
             opacity: .55;
             margin: 24px 0 10px;
-            font-weight: 800;
+            font-weight: 900;
         }
 
-        .sidebar a {
+        .nav-item {
             display: block;
             color: #d8e5ef;
             text-decoration: none;
             padding: 11px 12px;
             border-radius: 12px;
             margin: 4px 0;
-            font-weight: 700;
+            font-weight: 750;
             font-size: 14px;
+            cursor: pointer;
         }
 
-        .sidebar a small {
+        .nav-item small {
             display: block;
             font-weight: 500;
             opacity: .68;
             margin-top: 2px;
         }
 
-        .sidebar a.active,
-        .sidebar a:hover {
-            background: rgba(255,255,255,.12);
+        .nav-item.active,
+        .nav-item:hover {
+            background: rgba(255,255,255,.14);
             color: #fff;
         }
 
@@ -131,9 +137,10 @@
             background: #0e5f8e;
             color: white;
             text-decoration: none;
-            font-weight: 800;
+            font-weight: 850;
             font-size: 14px;
             box-shadow: 0 8px 18px rgba(0,0,0,.12);
+            cursor: pointer;
         }
 
         .btn.secondary {
@@ -145,6 +152,14 @@
             font-size: 12px;
             opacity: .78;
             margin-top: 8px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
         }
 
         .section-title {
@@ -160,6 +175,10 @@
             display: grid;
             grid-template-columns: repeat(4, minmax(160px, 1fr));
             gap: 14px;
+        }
+
+        .grid.three {
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
         }
 
         .card {
@@ -197,6 +216,10 @@
             margin-top: 16px;
         }
 
+        .wide-card {
+            margin-top: 16px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -207,6 +230,7 @@
             padding: 11px 10px;
             border-bottom: 1px solid #e5edf3;
             text-align: left;
+            vertical-align: top;
         }
 
         th {
@@ -226,6 +250,32 @@
             font-size: 12px;
         }
 
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 220px 160px;
+            gap: 12px;
+            align-items: end;
+        }
+
+        label {
+            font-size: 12px;
+            color: #65798a;
+            font-weight: 850;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+        }
+
+        input, select {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 6px;
+            padding: 12px 13px;
+            border: 1px solid #d9e4eb;
+            border-radius: 12px;
+            background: #fff;
+            font: inherit;
+        }
+
         .danger-box {
             border: 1px solid #f0c6c6;
             background: #fff7f7;
@@ -238,6 +288,18 @@
             box-shadow: none;
         }
 
+        .placeholder {
+            min-height: 260px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .placeholder h2 {
+            margin: 0 0 8px;
+        }
+
         @media (max-width: 900px) {
             .layout {
                 display: block;
@@ -245,6 +307,8 @@
 
             .sidebar {
                 width: auto;
+                height: auto;
+                position: relative;
                 border-radius: 0 0 18px 18px;
             }
 
@@ -263,7 +327,9 @@
             }
 
             .grid,
-            .two-col {
+            .grid.three,
+            .two-col,
+            .form-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -280,18 +346,18 @@
         </div>
 
         <div class="nav-label">Vista</div>
-        <a class="active" href="/admin?page=dashboard">Dashboard <small>Visión general</small></a>
-        <a href="/admin?page=navegaciones">Navegaciones <small>Agenda y edición</small></a>
-        <a href="/admin?page=reservas">Reservas <small>Tabla operativa</small></a>
-        <a href="/admin?page=liquidacion">Liquidación <small>Cargos y exportación</small></a>
-        <a href="/admin?page=socios">Socios / usuarios <small>Altas y claves</small></a>
-        <a href="/admin?page=auditoria">Auditoría <small>Registro de acciones</small></a>
-        <a href="/admin?page=estadisticas">Estadísticas <small>Previsto</small></a>
-        <a href="/admin?page=exportar">Exportar <small>Archivos contables</small></a>
+        <a class="nav-item active" data-page="dashboard">Dashboard <small>Visión general</small></a>
+        <a class="nav-item" data-page="navegaciones">Navegaciones <small>Agenda y edición</small></a>
+        <a class="nav-item" data-page="reservas">Reservas <small>Tabla operativa</small></a>
+        <a class="nav-item" data-page="liquidacion">Liquidación <small>Cargos y exportación</small></a>
+        <a class="nav-item" data-page="socios">Socios / usuarios <small>Altas y claves</small></a>
+        <a class="nav-item" data-page="auditoria">Auditoría <small>Registro de acciones</small></a>
+        <a class="nav-item" data-page="estadisticas">Estadísticas <small>Previsto</small></a>
+        <a class="nav-item" data-page="exportar">Exportar <small>Archivos contables</small></a>
 
         <div class="nav-label">Sistema</div>
-        <a href="/admin?page=configuracion">Configuración avanzada</a>
-        <a href="/logout">Salir</a>
+        <a class="nav-item" data-page="configuracion">Configuración avanzada</a>
+        <a class="nav-item" href="/logout">Salir</a>
     </aside>
 
     <main class="main">
@@ -300,104 +366,264 @@
                 <div class="hero-kicker">YCA · Fjord VI</div>
                 <h1>Administración</h1>
                 <p>Backoffice de escritorio · Agenda de paseos · Socios / usuarios · Lectura y exportación</p>
-                <div class="version">Fjord VI · v47.1</div>
+                <div class="version">Fjord VI · v47.2</div>
             </div>
             <div class="hero-actions">
-                <a class="btn" href="/admin?page=navegaciones">Programar navegación</a>
-                <a class="btn secondary" href="/admin?page=socios">Alta socio / usuario</a>
+                <button class="btn" data-jump="navegaciones">Programar navegación</button>
+                <button class="btn secondary" data-jump="socios">Alta socio / usuario</button>
                 <a class="btn secondary" href="/logout">Salir</a>
             </div>
         </section>
 
-        <div class="section-title">Dashboard</div>
+        <section id="page-dashboard" class="page active">
+            <div class="section-title">Dashboard</div>
 
-        <section class="grid">
-            <div class="card">
-                <div class="card-label">Reservas totales</div>
-                <div class="card-value">2</div>
-                <div class="card-note">Incluye activas, espera y bajas</div>
-            </div>
+            <section class="grid">
+                <div class="card">
+                    <div class="card-label">Reservas totales</div>
+                    <div class="card-value">2</div>
+                    <div class="card-note">Incluye activas, espera y bajas</div>
+                </div>
 
-            <div class="card">
-                <div class="card-label">Confirmados</div>
-                <div class="card-value">2 / 9</div>
-                <div class="card-note">Cupo vigente de la salida</div>
-            </div>
+                <div class="card">
+                    <div class="card-label">Confirmados</div>
+                    <div class="card-value">2 / 9</div>
+                    <div class="card-note">Cupo vigente de la salida</div>
+                </div>
 
-            <div class="card">
-                <div class="card-label">Presentes</div>
-                <div class="card-value">0 / 2</div>
-                <div class="card-note">Check-in QR o corrección del capitán</div>
-            </div>
+                <div class="card">
+                    <div class="card-label">Presentes</div>
+                    <div class="card-value">0 / 2</div>
+                    <div class="card-note">Check-in QR o corrección del capitán</div>
+                </div>
 
-            <div class="card">
-                <div class="card-label">Cargos firmes</div>
-                <div class="card-value">$ 0</div>
-                <div class="card-note">Para administración / contable</div>
-            </div>
+                <div class="card">
+                    <div class="card-label">Cargos firmes</div>
+                    <div class="card-value">$ 0</div>
+                    <div class="card-note">Para administración / contable</div>
+                </div>
+            </section>
+
+            <section class="two-col">
+                <div class="card">
+                    <div class="section-title" style="margin-top:0;">Salida seleccionada</div>
+                    <h2 style="margin:0 0 6px;">paseo darsena</h2>
+                    <p style="margin:0 0 12px;color:#617687;">Dom 31/05/2026 11:00 · En reservas</p>
+                    <span class="pill">paseo</span>
+                    <span class="pill">15 registros</span>
+                    <span class="pill">9 activos</span>
+                </div>
+
+                <div class="card">
+                    <div class="section-title" style="margin-top:0;">Lectura administrativa</div>
+                    <p><strong>Estado:</strong> En reservas</p>
+                    <p><strong>Acta:</strong> 0 presentes, 6 no embarcados, 0 en espera.</p>
+                    <p><strong>Liquidación:</strong> $ 0 firmes.</p>
+                </div>
+            </section>
         </section>
 
-        <section class="two-col">
-            <div class="card">
-                <div class="section-title" style="margin-top:0;">Salida seleccionada</div>
-                <h2 style="margin:0 0 6px;">paseo darsena</h2>
-                <p style="margin:0 0 12px;color:#617687;">Dom 31/05/2026 11:00 · En reservas</p>
-                <span class="pill">paseo</span>
-                <span class="pill">15 registros</span>
-                <span class="pill">9 activos</span>
-            </div>
+        <section id="page-navegaciones" class="page">
+            <div class="section-title">Navegaciones</div>
 
             <div class="card">
-                <div class="section-title" style="margin-top:0;">Lectura administrativa</div>
-                <p><strong>Estado:</strong> En reservas</p>
-                <p><strong>Acta:</strong> 0 presentes, 6 no embarcados, 0 en espera.</p>
-                <p><strong>Liquidación:</strong> $ 0 firmes.</p>
+                <h2 style="margin-top:0;">Programar nueva salida</h2>
+                <div class="form-grid">
+                    <div>
+                        <label>Nombre de la salida</label>
+                        <input type="text" placeholder="Ej: paseo darsena">
+                    </div>
+                    <div>
+                        <label>Fecha y hora</label>
+                        <input type="datetime-local" value="2026-05-31T11:00">
+                    </div>
+                    <div>
+                        <button class="btn" style="width:100%;">Crear salida</button>
+                    </div>
+                </div>
+                <p class="card-note">Todas las salidas de este módulo son paseos. La hora sugerida es 11:00.</p>
             </div>
-        </section>
 
-        <section class="two-col">
-            <div class="card">
-                <div class="section-title" style="margin-top:0;">Próximas navegaciones</div>
+            <div class="card wide-card">
+                <h2 style="margin-top:0;">Agenda publicada</h2>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Nombre</th>
-                            <th>Estado</th>
-                            <th>Registros</th>
-                        </tr>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Nombre</th>
+                        <th>Estado</th>
+                        <th>Registros</th>
+                    </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Sáb 16/05 23:32</td>
-                            <td>aniversario</td>
-                            <td><span class="pill">Embarque cerrado</span></td>
-                            <td>2</td>
-                        </tr>
-                        <tr>
-                            <td>Dom 17/05 12:00</td>
-                            <td>cumpleaños Pablo</td>
-                            <td><span class="pill">Embarque cerrado</span></td>
-                            <td>4</td>
-                        </tr>
-                        <tr>
-                            <td>Dom 31/05 11:00</td>
-                            <td>paseo darsena</td>
-                            <td><span class="pill">En reservas</span></td>
-                            <td>15</td>
-                        </tr>
+                    <tr><td>Sáb 16/05 23:32</td><td>aniversario</td><td><span class="pill">Embarque cerrado</span></td><td>2</td></tr>
+                    <tr><td>Dom 17/05 12:00</td><td>cumpleaños Pablo</td><td><span class="pill">Embarque cerrado</span></td><td>4</td></tr>
+                    <tr><td>Dom 31/05 11:00</td><td>paseo darsena</td><td><span class="pill">En reservas</span></td><td>15</td></tr>
+                    <tr><td>Mar 02/06 11:34</td><td>entrenamiento</td><td><span class="pill">En reservas</span></td><td>17</td></tr>
                     </tbody>
                 </table>
             </div>
+        </section>
 
-            <div class="card danger-box">
-                <div class="section-title" style="margin-top:0;">Configuración avanzada</div>
-                <p>Backup, restauración y limpieza del sistema deben quedar separados del uso diario.</p>
-                <a class="btn danger-button" href="/admin?page=configuracion">Abrir configuración</a>
+        <section id="page-reservas" class="page">
+            <div class="section-title">Reservas</div>
+            <div class="card">
+                <h2 style="margin-top:0;">Tabla operativa</h2>
+                <table>
+                    <thead><tr><th>Nombre</th><th>DNI</th><th>Tipo</th><th>Responsable</th><th>Estado</th></tr></thead>
+                    <tbody>
+                    <tr><td>Sebastian Isenberg</td><td>12949364</td><td>Socio</td><td>Sebastian Isenberg</td><td><span class="pill">Activo</span></td></tr>
+                    <tr><td>Nestor</td><td>538</td><td>Invitado</td><td>Sebastian Isenberg</td><td><span class="pill">Activo</span></td></tr>
+                    </tbody>
+                </table>
             </div>
+        </section>
+
+        <section id="page-liquidacion" class="page">
+            <div class="section-title">Liquidación</div>
+            <section class="grid.three grid">
+                <div class="card">
+                    <div class="card-label">Presentes</div>
+                    <div class="card-value">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">No embarcados</div>
+                    <div class="card-value">6</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Total cargos</div>
+                    <div class="card-value">$ 0</div>
+                </div>
+            </section>
+            <div class="card wide-card">
+                <h2 style="margin-top:0;">Exportación contable</h2>
+                <p>Acá se generará el archivo para el módulo contable del club.</p>
+                <button class="btn">CSV cargos</button>
+            </div>
+        </section>
+
+        <section id="page-socios" class="page">
+            <div class="section-title">Socios / usuarios</div>
+            <div class="card">
+                <h2 style="margin-top:0;">Alta socio / usuario</h2>
+                <div class="form-grid">
+                    <div>
+                        <label>Nombre y apellido</label>
+                        <input type="text" placeholder="Nombre y apellido">
+                    </div>
+                    <div>
+                        <label>DNI / Documento</label>
+                        <input type="text" placeholder="Documento">
+                    </div>
+                    <div>
+                        <button class="btn" style="width:100%;">Crear usuario</button>
+                    </div>
+                </div>
+                <p class="card-note">Clave inicial: demo1234.</p>
+            </div>
+
+            <div class="card wide-card">
+                <h2 style="margin-top:0;">Usuarios del sistema</h2>
+                <table>
+                    <thead><tr><th>Nombre</th><th>Documento</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                    <tr><td>Admin Club</td><td>27999111</td><td>admin</td><td>activo</td><td><button class="btn secondary">Reset clave</button></td></tr>
+                    <tr><td>Capitán Martín</td><td>30999111</td><td>capitán</td><td>activo</td><td><button class="btn secondary">Reset clave</button></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="page-auditoria" class="page">
+            <div class="section-title">Auditoría</div>
+            <div class="card">
+                <h2 style="margin-top:0;">Registro de acciones</h2>
+                <table>
+                    <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+                    <tbody>
+                    <tr><td>Vie 01/05/2026 19:43</td><td>Admin Club</td><td><strong>login</strong></td><td>admin</td></tr>
+                    <tr><td>Vie 01/05/2026 19:38</td><td>Capitán Martín</td><td><strong>cierre embarque</strong></td><td>cumple María / presentes 6 / activos 6</td></tr>
+                    <tr><td>Vie 01/05/2026 19:37</td><td>Capitán Martín</td><td><strong>asistencia</strong></td><td>Marquitos Cabral: Presente</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="page-estadisticas" class="page">
+            <div class="section-title">Estadísticas</div>
+            <div class="card placeholder">
+                <h2>Estadísticas</h2>
+                <p>Módulo previsto para ranking de socios, asistencia, no-shows, ocupación del barco y facturación por período.</p>
+            </div>
+        </section>
+
+        <section id="page-exportar" class="page">
+            <div class="section-title">Exportar</div>
+            <div class="card placeholder">
+                <h2>Archivos contables</h2>
+                <p>Exportación operativa y cargos para el sistema contable del club.</p>
+                <button class="btn">Exportar CSV</button>
+            </div>
+        </section>
+
+        <section id="page-configuracion" class="page">
+            <div class="section-title">Configuración avanzada</div>
+            <section class="two-col">
+                <div class="card danger-box">
+                    <h2 style="margin-top:0;">Sistema limpio</h2>
+                    <p>Borra salidas, reservas, cargos y auditoría. Conserva usuarios.</p>
+                    <button class="btn danger-button">Sistema limpio</button>
+                </div>
+                <div class="card">
+                    <h2 style="margin-top:0;">Backup JSON</h2>
+                    <p>Descarga o restaura el estado completo.</p>
+                    <button class="btn">Descargar backup</button>
+                    <br><br>
+                    <input type="file">
+                    <br><br>
+                    <button class="btn">Restaurar JSON</button>
+                </div>
+            </section>
         </section>
     </main>
 
 </div>
+
+<script>
+(function () {
+    function showPage(page) {
+        var selected = page || "dashboard";
+
+        document.querySelectorAll(".page").forEach(function (el) {
+            el.classList.toggle("active", el.id === "page-" + selected);
+        });
+
+        document.querySelectorAll(".nav-item[data-page]").forEach(function (el) {
+            el.classList.toggle("active", el.getAttribute("data-page") === selected);
+        });
+
+        var url = new URL(window.location.href);
+        url.searchParams.set("page", selected);
+        window.history.replaceState({}, "", url.toString());
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.querySelectorAll(".nav-item[data-page]").forEach(function (el) {
+        el.addEventListener("click", function (event) {
+            event.preventDefault();
+            showPage(el.getAttribute("data-page"));
+        });
+    });
+
+    document.querySelectorAll("[data-jump]").forEach(function (el) {
+        el.addEventListener("click", function () {
+            showPage(el.getAttribute("data-jump"));
+        });
+    });
+
+    var params = new URLSearchParams(window.location.search);
+    showPage(params.get("page") || "dashboard");
+})();
+</script>
 </body>
 </html>
