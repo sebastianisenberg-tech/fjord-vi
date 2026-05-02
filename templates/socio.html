@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css?v=v51">
+<link rel="stylesheet" href="/static/style.css?v=v51.2">
 <title>Socios · {{app_name}}</title>
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
@@ -161,7 +161,7 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
   {% if self_reservation %}
     {% set v = reservation_views.get(self_reservation.id) %}
     <div class="premiumPerson reservationCard {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %}">
-      <div class="personMain"><b>{{self_reservation.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
+      <div class="personMain"><b>Mi lugar</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
         <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
       </div>
       <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">Cerrado</span>{% elif v.waitlisted %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini neutralBtn">Salir de espera</button></form>{% elif has_self %}<form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Cancelar mi reserva</button></form>{% else %}<form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporarme</button></form>{% endif %}</div>
@@ -192,5 +192,5 @@ document.addEventListener("DOMContentLoaded",function(){const toast=document.que
 {% endif %}
 </main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio">Inicio</a><a href="#reserva">Reservas</a><a href="#salidas">Calendario</a><a href="#perfil">Perfil</a></nav>
 <footer class="appFooter socioFooter"><span>Embarque Fjord VI</span><b>{{version}}</b></footer>
-</div><script src="/static/app.js?v=v51"></script>
+</div><script src="/static/app.js?v=v51.2"></script>
 </body></html>
