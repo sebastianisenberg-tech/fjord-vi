@@ -4995,7 +4995,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 
 
 /* ========================================================================
-   v51.5 - REFINAMIENTO FINAL SOCIO
+   v53.5 - REFINAMIENTO FINAL SOCIO
    Joyería mínima: jerarquía secundaria, barra de cupo más fina,
    estados más sutiles y respiración. Solo CSS. No toca lógica.
    ======================================================================== */
@@ -5070,10 +5070,13 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   color:#245c7b!important;
 }
 
-/* v53.4 · Capitán: reasignación de invitados */
+/* v53.5 · Capitán: reasignación de invitados */
 .reassignGuestForm{grid-column:1/-1;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:2px!important;background:#f7fafc;border:1px solid #dbe5ec;border-radius:14px;padding:8px;}
 .capReassignSelect{width:100%;min-width:0;border:1px solid #cbd5df;border-radius:10px;background:#fff;color:#26323d;font-size:12.5px;font-weight:750;padding:9px 8px;outline:none;}
 .capReassignSelect:focus{border-color:#2d6f92;box-shadow:0 0 0 3px rgba(45,111,146,.12);}
 .capAction.reassignAction{min-height:38px!important;padding:8px 10px!important;border-radius:10px!important;background:#eef4f8!important;color:#2a596f!important;border:1px solid #c9d9e3!important;box-shadow:none!important;font-size:12.5px!important;}
 .capAction.reassignAction:active{transform:scale(.98);}
 @media (max-width:560px){.reassignGuestForm{grid-template-columns:1fr}.capAction.reassignAction{width:100%;}}
+/* v53.5 ficha cierre */
+.btnSmall{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:12px;background:#0f5e87;color:white!important;text-decoration:none;font-weight:800;font-size:13px;box-shadow:0 6px 14px rgba(0,0,0,.12)}
+.statusPanel .btnSmall{margin-top:10px;align-self:flex-start}
