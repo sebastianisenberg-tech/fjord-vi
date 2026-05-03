@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v53.5"
+VERSION = "v53.6"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1319,7 +1319,10 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
         person = {
             "name": r.person_name,
             "tipo": display_kind(r.kind),
+            # Regla documental: socio visible por N° de socio; invitado visible por DNI.
             "member_no": (responsible.member_no if k == "socio" and responsible else "") or "",
+            "dni": (r.dni or "") if k in ("invitado", "hijo_menor") else "",
+            "responsible_member_no": (responsible.member_no if responsible else "") or "",
             "reason": v.get("motivo") or "",
             "amount": charge,
             "amount_label": human_money(charge),
@@ -1399,6 +1402,19 @@ def sheet_payload(sheet: ClosingSheet) -> dict:
     data.setdefault("status", sheet.status)
     data.setdefault("generated_at", sheet.created_at.strftime("%d/%m/%Y %H:%M") if sheet.created_at else "")
     return data
+
+
+def closing_sheet_replacement(db: Session, sheet: ClosingSheet) -> Optional[ClosingSheet]:
+    """Devuelve la ficha vigente o posterior que reemplaza a una anulada."""
+    if not sheet or sheet.status != "ANULADA":
+        return None
+    vigente = closing_sheet_current(db, sheet.outing_id)
+    if vigente and vigente.sequence > sheet.sequence:
+        return vigente
+    return db.query(ClosingSheet).filter(
+        ClosingSheet.outing_id == sheet.outing_id,
+        ClosingSheet.sequence > sheet.sequence
+    ).order_by(ClosingSheet.sequence.asc(), ClosingSheet.id.asc()).first()
 
 def final_status_summary(outing: Outing, reservations, active_count: int, present: int, pending: int) -> dict:
     if not outing:
@@ -2296,8 +2312,20 @@ def closing_sheet_view(sheet_id: int, request: Request, db: Session = Depends(db
     if not sheet:
         raise HTTPException(404, "Ficha inexistente")
     data = sheet_payload(sheet)
-    return_url = f"/captain?outing_id={sheet.outing_id}" if user.role == "captain" else f"/admin?outing_id={sheet.outing_id}&page=reservas"
-    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url})
+    all_sheets = closing_sheet_all(db, sheet.outing_id)
+    replacement = closing_sheet_replacement(db, sheet)
+    return_url = f"/captain?outing_id={sheet.outing_id}" if user.role == "captain" else f"/admin?outing_id={sheet.outing_id}&page=fichas"
+    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url, "all_sheets": all_sheets, "replacement": replacement})
+
+
+@app.get("/cierre/salida/{outing_id}", response_class=HTMLResponse)
+def closing_sheet_index(outing_id: int, request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
+    outing = db.get(Outing, outing_id)
+    if not outing:
+        raise HTTPException(404, "Salida inexistente")
+    sheets = closing_sheet_all(db, outing.id)
+    return_url = f"/captain?outing_id={outing.id}" if user.role == "captain" else f"/admin?outing_id={outing.id}&page=fichas"
+    return templates.TemplateResponse(request, "closing_sheets.html", {"request": request, "user": user, "outing": outing, "sheets": sheets, "return_url": return_url})
 
 
 @app.get("/cierre/{sheet_id}/csv")
@@ -2313,14 +2341,14 @@ def closing_sheet_csv(sheet_id: int, db: Session = Depends(db_session), user: Us
     w.writerow(["Fecha", data.get("departure_label", "")])
     w.writerow(["Capitán", data.get("captain", "")])
     w.writerow([])
-    w.writerow(["Socio", "N° socio", "Concepto", "Persona", "Tipo", "Importe"])
+    w.writerow(["Socio", "N° socio", "Concepto", "Persona", "Tipo", "DNI invitado", "Importe"])
     for g in data.get("groups", []):
         for p in g.get("cargos_navegacion", []):
-            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "Navegación", p.get("name", ""), p.get("tipo", ""), p.get("amount", 0)])
+            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "Navegación", p.get("name", ""), p.get("tipo", ""), p.get("dni", ""), p.get("amount", 0)])
         for p in g.get("cargos_no_show", []):
-            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "No-show", p.get("name", ""), p.get("tipo", ""), p.get("amount", 0)])
+            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "No-show", p.get("name", ""), p.get("tipo", ""), p.get("dni", ""), p.get("amount", 0)])
     w.writerow([])
-    w.writerow(["TOTAL", "", "", "", "", data.get("summary", {}).get("total", 0)])
+    w.writerow(["TOTAL", "", "", "", "", "", data.get("summary", {}).get("total", 0)])
     filename = f"fjord_ficha_cierre_{sheet.outing_id}_{sheet.sequence}.csv"
     return Response(out.getvalue().encode("utf-8-sig"), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
@@ -2598,7 +2626,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     control_window = captain_control_window(outing) if outing else {}
     current_sheet = closing_sheet_current(db, outing.id) if outing else None
     closing_sheets = closing_sheet_all(db, outing.id) if outing else []
-    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
+    all_closing_sheets = db.query(ClosingSheet).order_by(ClosingSheet.created_at.desc(), ClosingSheet.sequence.desc()).all()
+    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
@@ -2621,6 +2650,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "all_logs_count": len(logs),
         "current_sheet": current_sheet,
         "closing_sheets": closing_sheets,
+        "all_closing_sheets": all_closing_sheets,
     }))
 
 
