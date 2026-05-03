@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v53.3.1"
+VERSION = "v53.4.1"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -67,6 +67,7 @@ class User(Base):
     role = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     active = Column(Boolean, default=True)
+    club_status = Column(String, default="socio")  # socio / no_socio / baja
 
 class Outing(Base):
     __tablename__ = "outings"
@@ -134,6 +135,8 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
         if "phone" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
+        if "club_status" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN club_status VARCHAR DEFAULT 'socio'"))
 
 ensure_schema()
 app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
@@ -2196,6 +2199,63 @@ def checkin_html_alias(request: Request):
 def admin_qr_html_alias():
     return RedirectResponse("/admin_qr", status_code=303)
 
+
+def admin_detail_groups(db: Session, outing: Outing, reservations: list) -> dict:
+    """Agrupa una salida para la pantalla administrativa de detalle.
+
+    La oficina necesita ver el viaje como expediente: embarcados, espera,
+    ausentes, no embarca, cancelados, cargos y auditoría del viaje.
+    """
+    rows = []
+    views = reservation_views(outing, reservations) if outing else {}
+    responsible_ids = sorted({r.responsible_user_id for r in reservations if r.responsible_user_id})
+    responsible_users = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids)).all()} if responsible_ids else {}
+    for r in sorted(reservations, key=lambda x: (x.created_at or datetime.min, x.id or 0)):
+        v = views.get(r.id) or reservation_view(outing, r)
+        resp = responsible_users.get(r.responsible_user_id) if r.responsible_user_id else None
+        rows.append({
+            "reservation": r,
+            "view": v,
+            "name": r.person_name,
+            "dni": r.dni,
+            "tipo": v.get("tipo_label", display_kind(r.kind)),
+            "responsable": resp.name if resp else "",
+            "responsable_dni": resp.dni if resp else "",
+            "estado": v.get("estado_fisico", ""),
+            "condicion": v.get("estado_reglamentario", ""),
+            "motivo": v.get("motivo", ""),
+            "cargo": v.get("charge", 0),
+            "cargo_label": v.get("charge_label", "0"),
+            "preliq": v.get("charge_preview", 0),
+            "preliq_label": v.get("charge_preview_label", "0"),
+            "created_at": fmt_admin_datetime(r.created_at) if r.created_at else "",
+            "cancelled_at": fmt_admin_datetime(r.cancelled_at) if r.cancelled_at else "",
+            "waitlisted": bool(v.get("waitlisted")),
+            "embarked": bool(v.get("embarked")),
+            "not_embarked": bool(v.get("not_embarked")),
+            "cancelled": bool(v.get("cancelled")),
+            "level": v.get("level", "neutral"),
+        })
+    embarked = [x for x in rows if x["embarked"]]
+    waitlist = [x for x in rows if x["waitlisted"]]
+    absent = [x for x in rows if (x["estado"] or "").lower() == "ausente"]
+    no_board = [x for x in rows if x["not_embarked"] and x not in absent and not x["cancelled"]]
+    cancelled = [x for x in rows if x["cancelled"]]
+    pending = [x for x in rows if not x["embarked"] and not x["waitlisted"] and not x["not_embarked"] and not x["cancelled"]]
+    charges = [x for x in rows if float(x.get("cargo") or 0) > 0]
+    return {
+        "rows": rows,
+        "embarked": embarked,
+        "waitlist": waitlist,
+        "absent": absent,
+        "no_board": no_board,
+        "cancelled": cancelled,
+        "pending": pending,
+        "charges": charges,
+        "total_charges": sum(float(x.get("cargo") or 0) for x in charges),
+        "total_charges_label": human_money(sum(float(x.get("cargo") or 0) for x in charges)),
+    }
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     outings = visible_outings(db, outing_id)
@@ -2269,7 +2329,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     control_window = captain_control_window(outing) if outing else {}
-    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
+    detail_groups = admin_detail_groups(db, outing, reservations) if outing else {}
+    allowed_admin_pages = {"dashboard", "navegaciones", "detalle", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
@@ -2290,6 +2351,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "all_reservation_rows": all_reservation_rows,
         "all_reservation_count": len(all_reservation_rows),
         "all_logs_count": len(logs),
+        "detail_groups": detail_groups,
     }))
 
 
@@ -2301,6 +2363,7 @@ def create_user(
     email: str = Form(""),
     phone: str = Form(""),
     role: str = Form("socio"),
+    club_status: str = Form("socio"),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -2310,6 +2373,8 @@ def create_user(
 
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
+    if club_status not in ("socio", "no_socio", "baja"):
+        club_status = "socio" if role == "socio" else "no_socio"
 
     existing = db.query(User).filter_by(dni=dni_clean).first()
     if existing:
@@ -2322,6 +2387,7 @@ def create_user(
         email=email.strip() or None,
         phone=phone.strip() or None,
         role=role,
+        club_status=club_status,
         password_hash=hash_password("demo1234"),
         active=True
     )
@@ -2375,6 +2441,7 @@ def update_user(
     email: str = Form(""),
     phone: str = Form(""),
     role: str = Form("socio"),
+    club_status: str = Form("socio"),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -2388,6 +2455,8 @@ def update_user(
 
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
+    if club_status not in ("socio", "no_socio", "baja"):
+        club_status = "socio" if role == "socio" else "no_socio"
 
     existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first()
     if existing:
@@ -2399,8 +2468,11 @@ def update_user(
     target.email = email.strip() or None
     target.phone = phone.strip() or None
     target.role = role
+    target.club_status = club_status
+    if club_status == "baja":
+        target.active = False
     db.commit()
-    log(db, user.name, "edita usuario", f"{target.name} / {target.dni} / {target.role}")
+    log(db, user.name, "edita usuario", f"{target.name} / {target.dni} / {target.role} / {target.club_status}")
     return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
 
 
@@ -2419,7 +2491,8 @@ def users_json(
             "email": u.email or "",
             "phone": u.phone or "",
             "role": u.role,
-            "active": bool(u.active)
+            "active": bool(u.active),
+            "club_status": getattr(u, "club_status", "socio") or "socio"
         }
         for u in users
     ]
@@ -2602,9 +2675,9 @@ def outings_csv(db: Session = Depends(db_session), user: User = Depends(require_
 def users_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     output = io.StringIO()
     writer = csv.writer(output, delimiter=';')
-    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "email", "telefono", "rol", "activo"])
+    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "email", "telefono", "rol", "condicion", "activo"])
     for u in db.query(User).order_by(User.name.asc()).all():
-        writer.writerow([u.id, u.name, u.dni, u.member_no or "", u.email or "", u.phone or "", u.role, "si" if u.active else "no"])
+        writer.writerow([u.id, u.name, u.dni, u.member_no or "", u.email or "", u.phone or "", u.role, getattr(u, "club_status", "socio") or "socio", "si" if u.active else "no"])
     return csv_response_excel(output, "fjord_vi_usuarios.csv")
 
 

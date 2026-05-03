@@ -1,7 +1,7 @@
 {
-  "version": "v51.4.1",
+  "version": "v53.4",
   "build": "v47.7-hero-fjord-responsive",
-  "exported_at": "2026-05-02T04:15:58.951985",
+  "exported_at": "2026-05-03T00:21:26.558916",
   "users": [
     {
       "id": 1,
@@ -30,8 +30,8 @@
       "name": "Admin Club",
       "dni": "27999111",
       "member_no": "ADM-01",
-      "email": "admin@example.com",
-      "phone": "",
+      "email": "test@example.com",
+      "phone": "123",
       "role": "admin",
       "password_hash": "pbkdf2_sha256$086a2394bff7d4db25cfb155f1af26b7$b1edd734e7232ccae484085c0f0f2edeacd71d01a3dd2e8cf2cbee1f3e25fbbf",
       "active": true
@@ -287,6 +287,41 @@
       "actor": "Admin Club",
       "action": "login",
       "detail": "admin"
+    },
+    {
+      "id": 14,
+      "created_at": "2026-05-03T00:15:09.034076",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 15,
+      "created_at": "2026-05-03T00:15:26.536912",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 16,
+      "created_at": "2026-05-03T00:20:56.307856",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 17,
+      "created_at": "2026-05-03T00:21:26.247061",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 18,
+      "created_at": "2026-05-03T00:21:26.558083",
+      "actor": "Admin Club",
+      "action": "edita usuario",
+      "detail": "Admin Club / 27999111 / admin / no_socio"
     }
   ]
 }
