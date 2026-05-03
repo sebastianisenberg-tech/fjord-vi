@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v53.5">
+  <link rel="stylesheet" href="/static/style.css?v=v53.6">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -194,7 +194,7 @@
 </section>
 
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha de cierre</a>{% endif %}{% else %}<b>Salida operativa</b><span>QR o capitán marcan Presente. Ausente genera cargo si corresponde. No embarca no genera cargo.</span>{% endif %}
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>QR o capitán marcan Presente. Ausente genera cargo si corresponde. No embarca no genera cargo.</span>{% endif %}
 </section>
 <section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
 
@@ -262,7 +262,7 @@
   {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
 </section>
 
-<section class="card premiumCard" id="cargos"><div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ficha de cierre</a>{% endif %}</div><div class="chargeTotal"><span>Total firme</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total == 0 %}<div class="empty">Sin cargos.</div>{% endif %}{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</section>
+<section class="card premiumCard" id="cargos"><div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial fichas</a>{% endif %}</div><div class="chargeTotal"><span>Total firme</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total == 0 %}<div class="empty">Sin cargos.</div>{% endif %}{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</section>
 {% endif %}
 </main>
 <nav class="bottom captainBottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#cargos">Cargos</a></nav>
@@ -290,6 +290,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
-<script src="/static/app.js?v=v53.5"></script>
+<script src="/static/app.js?v=v53.6"></script>
 </body>
 </html>
