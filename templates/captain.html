@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v53.4.3">
+  <link rel="stylesheet" href="/static/style.css?v=v53.4">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -36,6 +36,11 @@
     minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
     maximo_superado: ['No se puede cerrar: se supera el cupo máximo.', 'error'],
     accion_invalida: ['Acción inválida o registro inexistente.', 'error'],
+    reasignacion_ok: ['Invitado reasignado al nuevo socio responsable.', 'success'],
+    reasignacion_invalida: ['Reasignación inválida.', 'error'],
+    socio_reasignacion_no_valido: ['El nuevo responsable no tiene reserva de socio activa en esta salida.', 'error'],
+    socio_reasignacion_no_presente: ['El nuevo responsable debe estar presente para tomar invitados.', 'error'],
+    reasignacion_sin_cambios: ['El invitado ya estaba a cargo de ese socio.', 'warning'],
     salida_inexistente: ['Salida inexistente.', 'error']
   };
   document.addEventListener('DOMContentLoaded', function(){
@@ -47,6 +52,12 @@
         const cancel = statusValue === 'Cancelada';
         const absent = form.classList.contains('attendanceAbsentForm');
         const noBoard = form.classList.contains('attendanceNoBoardForm');
+        const reassign = form.classList.contains('reassignGuestForm');
+        if (reassign) {
+          const sel = form.querySelector('select[name="new_responsible_user_id"]');
+          if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return; }
+          if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return; }
+        }
         if (close && !confirm('Confirmar cierre de embarque y liquidación? Los pendientes pasarán a ausentes con cargo.')) { e.preventDefault(); return; }
         if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
         if (absent && !confirm('Marcar AUSENTE? Esta acción puede generar cargo reglamentario.')) { e.preventDefault(); return; }
@@ -232,6 +243,17 @@
           {% if r.attendance != 'Ausente' %}<form class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="capAction danger">Ausente <span class="helpDot" data-tip="Ausente genera cargo reglamentario cuando corresponde. Se usa para quien no se presentó.">ⓘ</span></button></form>{% endif %}
           {% if r.attendance != 'No embarca' and r.attendance != 'No embarcable' %}<form class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction neutralAction">No embarca <span class="helpDot" data-tip="No embarca no genera cargo. Es decisión del capitán por seguridad, aptitud o criterio operativo.">ⓘ</span></button></form>{% endif %}
           {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar</button></form>{% endif %}
+          {% if v.show_responsible and captain_responsible_options|length > 0 %}
+          <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+            <select name="new_responsible_user_id" class="capReassignSelect" aria-label="Nuevo socio responsable">
+              <option value="">Reasignar a socio presente</option>
+              {% for opt in captain_responsible_options %}
+                {% if opt.id != r.responsible_user_id %}<option value="{{opt.id}}">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</option>{% endif %}
+              {% endfor %}
+            </select>
+            <button class="capAction reassignAction">Reasignar</button>
+          </form>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -268,6 +290,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
-<script src="/static/app.js?v=v53.4.3"></script>
+<script src="/static/app.js?v=v53.4"></script>
 </body>
 </html>
