@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v57.0"
+VERSION = "v57.1"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2631,7 +2631,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     outing_lookup = {o.id: o for o in all_outings}
     all_closing_sheet_rows = []
     for sh in all_closing_sheets:
-        payload = parse_sheet_payload(sh)
+        payload = sheet_payload(sh)
         sh_outing = outing_lookup.get(sh.outing_id)
         all_closing_sheet_rows.append({
             "id": sh.id,
