@@ -1,3 +1,10 @@
+# v55.1
+
+- Fichas A4 finales: lectura lineal en una sola columna para Navegaron y No-show.
+- Tipografía de PDF/impresión agrandada y más legible.
+- Mantiene A4 en una hoja en casos normales.
+- Conserva selector de fichas, anuladas, DNI de invitados y subtotales.
+
 # FJORD VI v46.4
 
 - Base funcional v46.2 preservada.
