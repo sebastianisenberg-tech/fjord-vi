@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v55.1"
+VERSION = "v57.0"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2628,6 +2628,27 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     current_sheet = closing_sheet_current(db, outing.id) if outing else None
     closing_sheets = closing_sheet_all(db, outing.id) if outing else []
     all_closing_sheets = db.query(ClosingSheet).order_by(ClosingSheet.created_at.desc(), ClosingSheet.sequence.desc()).all()
+    outing_lookup = {o.id: o for o in all_outings}
+    all_closing_sheet_rows = []
+    for sh in all_closing_sheets:
+        payload = parse_sheet_payload(sh)
+        sh_outing = outing_lookup.get(sh.outing_id)
+        all_closing_sheet_rows.append({
+            "id": sh.id,
+            "outing_id": sh.outing_id,
+            "sequence": sh.sequence,
+            "status": sh.status,
+            "created_at": fmt_admin_datetime(sh.created_at) if sh.created_at else "",
+            "created_sort": sh.created_at,
+            "created_by": sh.created_by,
+            "annul_reason": sh.annul_reason or "-",
+            "outing_title": payload.get("outing_title") or (sh_outing.title if sh_outing else f"Salida #{sh.outing_id}"),
+            "departure_label": payload.get("departure_label") or (fmt_admin_datetime(sh_outing.departure_at) if sh_outing and sh_outing.departure_at else ""),
+            "total_label": (payload.get("summary") or {}).get("total_label", "0"),
+            "navegaron": (payload.get("summary") or {}).get("navegaron", ""),
+            "socios": (payload.get("summary") or {}).get("socios", ""),
+            "invitados": (payload.get("summary") or {}).get("invitados", ""),
+        })
     allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
@@ -2652,6 +2673,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "current_sheet": current_sheet,
         "closing_sheets": closing_sheets,
         "all_closing_sheets": all_closing_sheets,
+        "all_closing_sheet_rows": all_closing_sheet_rows,
     }))
 
 
