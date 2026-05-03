@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v53.4.1"
+VERSION = "v53.4.3"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2236,13 +2236,21 @@ def admin_detail_groups(db: Session, outing: Outing, reservations: list) -> dict
             "cancelled": bool(v.get("cancelled")),
             "level": v.get("level", "neutral"),
         })
-    embarked = [x for x in rows if x["embarked"]]
+    # Clasificación administrativa de detalle.
+    # Para oficina, "Embarcaron" debe reflejar la presencia marcada por Capitán,
+    # aunque la salida todavía no esté cerrada. El cierre liquida cargos, no debe
+    # ocultar a los presentes dentro de "pendientes".
+    def norm(v):
+        return (v or "").strip().lower()
+
     waitlist = [x for x in rows if x["waitlisted"]]
-    absent = [x for x in rows if (x["estado"] or "").lower() == "ausente"]
-    no_board = [x for x in rows if x["not_embarked"] and x not in absent and not x["cancelled"]]
     cancelled = [x for x in rows if x["cancelled"]]
-    pending = [x for x in rows if not x["embarked"] and not x["waitlisted"] and not x["not_embarked"] and not x["cancelled"]]
+    absent = [x for x in rows if norm(x["estado"]) == "ausente" and x not in cancelled and x not in waitlist]
+    no_board = [x for x in rows if x["not_embarked"] and x not in absent and x not in cancelled and x not in waitlist]
+    embarked = [x for x in rows if norm(x["estado"]) == "presente" and x not in cancelled and x not in waitlist and x not in no_board]
+    pending = [x for x in rows if x not in embarked and x not in waitlist and x not in absent and x not in no_board and x not in cancelled]
     charges = [x for x in rows if float(x.get("cargo") or 0) > 0]
+    total_charges = sum(float(x.get("cargo") or 0) for x in charges)
     return {
         "rows": rows,
         "embarked": embarked,
@@ -2252,8 +2260,12 @@ def admin_detail_groups(db: Session, outing: Outing, reservations: list) -> dict
         "cancelled": cancelled,
         "pending": pending,
         "charges": charges,
-        "total_charges": sum(float(x.get("cargo") or 0) for x in charges),
-        "total_charges_label": human_money(sum(float(x.get("cargo") or 0) for x in charges)),
+        "total_charges": total_charges,
+        "total_charges_label": human_money(total_charges),
+        "pending_count": len(pending),
+        "absent_count": len(absent),
+        "no_board_count": len(no_board),
+        "cancelled_count": len(cancelled),
     }
 
 @app.get("/admin", response_class=HTMLResponse)

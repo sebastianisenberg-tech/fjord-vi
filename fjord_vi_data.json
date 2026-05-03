@@ -1,7 +1,7 @@
 {
-  "version": "v53.4",
+  "version": "v53.4.3",
   "build": "v47.7-hero-fjord-responsive",
-  "exported_at": "2026-05-03T00:21:26.558916",
+  "exported_at": "2026-05-03T00:55:44.339265",
   "users": [
     {
       "id": 1,
@@ -322,6 +322,20 @@
       "actor": "Admin Club",
       "action": "edita usuario",
       "detail": "Admin Club / 27999111 / admin / no_socio"
+    },
+    {
+      "id": 19,
+      "created_at": "2026-05-03T00:55:04.317274",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
+    },
+    {
+      "id": 20,
+      "created_at": "2026-05-03T00:55:44.336189",
+      "actor": "Admin Club",
+      "action": "login",
+      "detail": "admin"
     }
   ]
 }
