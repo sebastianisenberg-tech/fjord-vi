@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v53.6"
+VERSION = "v54.0"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2314,8 +2314,9 @@ def closing_sheet_view(sheet_id: int, request: Request, db: Session = Depends(db
     data = sheet_payload(sheet)
     all_sheets = closing_sheet_all(db, sheet.outing_id)
     replacement = closing_sheet_replacement(db, sheet)
+    replaced_sheets = [s for s in all_sheets if s.status == "ANULADA" and s.sequence < sheet.sequence] if sheet.status == "VIGENTE" else []
     return_url = f"/captain?outing_id={sheet.outing_id}" if user.role == "captain" else f"/admin?outing_id={sheet.outing_id}&page=fichas"
-    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url, "all_sheets": all_sheets, "replacement": replacement})
+    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url, "all_sheets": all_sheets, "replacement": replacement, "replaced_sheets": replaced_sheets})
 
 
 @app.get("/cierre/salida/{outing_id}", response_class=HTMLResponse)
