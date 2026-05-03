@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v53.4"
+VERSION = "v53.5"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -105,6 +105,24 @@ class AuditLog(Base):
     actor = Column(String, nullable=False)
     action = Column(String, nullable=False)
     detail = Column(Text, default="")
+
+class ClosingSheet(Base):
+    """Ficha de cierre de navegación.
+
+    No se edita ni se pisa: si la salida se reabre, la ficha vigente se
+    anula y el próximo cierre genera una nueva ficha.
+    """
+    __tablename__ = "closing_sheets"
+    id = Column(Integer, primary_key=True)
+    outing_id = Column(Integer, ForeignKey("outings.id"), nullable=False)
+    sequence = Column(Integer, nullable=False, default=1)
+    status = Column(String, nullable=False, default="VIGENTE")
+    created_at = Column(DateTime, default=now_local)
+    created_by = Column(String, nullable=False, default="")
+    annulled_at = Column(DateTime, nullable=True)
+    annulled_by = Column(String, nullable=True)
+    annul_reason = Column(Text, default="")
+    payload = Column(Text, default="{}")
 
 Base.metadata.create_all(engine)
 
@@ -414,6 +432,13 @@ def export_state(db: Session) -> dict:
             {"id": l.id, "created_at": dt_to_str(l.created_at), "actor": l.actor, "action": l.action, "detail": l.detail or ""}
             for l in db.query(AuditLog).order_by(AuditLog.id).all()
         ],
+        "closing_sheets": [
+            {"id": cs.id, "outing_id": cs.outing_id, "sequence": cs.sequence, "status": cs.status,
+             "created_at": dt_to_str(cs.created_at), "created_by": cs.created_by or "",
+             "annulled_at": dt_to_str(cs.annulled_at), "annulled_by": cs.annulled_by or "",
+             "annul_reason": cs.annul_reason or "", "payload": cs.payload or "{}"}
+            for cs in db.query(ClosingSheet).order_by(ClosingSheet.id).all()
+        ],
     }
 
 def persist_json(db: Session):
@@ -426,6 +451,10 @@ def persist_json(db: Session):
         pass
 
 def import_state(db: Session, data: dict):
+    try:
+        db.query(ClosingSheet).delete()
+    except Exception:
+        pass
     db.query(AuditLog).delete()
     db.query(Reservation).delete()
     db.query(Outing).delete()
@@ -456,6 +485,13 @@ def import_state(db: Session, data: dict):
     for l in data.get("audit_logs", []):
         db.add(AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or now_local(),
                         actor=l.get("actor") or "sistema", action=l.get("action") or "import", detail=l.get("detail") or ""))
+    db.commit()
+    for cs in data.get("closing_sheets", []):
+        db.add(ClosingSheet(id=cs.get("id"), outing_id=cs.get("outing_id"), sequence=int(cs.get("sequence") or 1),
+                            status=cs.get("status") or "VIGENTE", created_at=str_to_dt(cs.get("created_at")) or now_local(),
+                            created_by=cs.get("created_by") or "", annulled_at=str_to_dt(cs.get("annulled_at")),
+                            annulled_by=cs.get("annulled_by") or None, annul_reason=cs.get("annul_reason") or "",
+                            payload=cs.get("payload") or "{}"))
     db.commit()
     persist_json(db)
 
@@ -594,9 +630,17 @@ def enforce_responsible_dependency(db: Session, outing: Outing, reservations=Non
         responsible_row = by_dni.get(responsible.dni) if responsible else None
         responsible_present = bool(responsible_row and canonical_kind(responsible_row.kind) == "socio" and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
         if not responsible_present and r.attendance == "Presente":
-            r.attendance = "No embarca"
-            r.cancel_reason = "No embarcado: socio responsable no embarca"
-            r.charge_amount = 0
+            if responsible_row and responsible_row.attendance == "Ausente":
+                # Socio ausente: el invitado no embarca, pero la plaza se cobra al socio
+                # salvo reasignación previa a otro socio presente.
+                r.attendance = "Ausente"
+                r.cancel_reason = "No embarcó por ausencia del socio responsable"
+                r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
+            else:
+                # No embarca por decisión/impedimento operativo: no genera cargo.
+                r.attendance = "No embarca"
+                r.cancel_reason = "No embarcado: socio responsable no embarca"
+                r.charge_amount = 0
             changed.append(r.person_name)
     return changed
 
@@ -1203,6 +1247,159 @@ def final_acta(outing: Outing, reservations) -> dict:
         "pending_count": len(pending),
     }
 
+
+def closing_sheet_current(db: Session, outing_id: int) -> Optional[ClosingSheet]:
+    return db.query(ClosingSheet).filter_by(outing_id=outing_id, status="VIGENTE").order_by(ClosingSheet.sequence.desc(), ClosingSheet.id.desc()).first()
+
+
+def closing_sheet_all(db: Session, outing_id: int) -> list:
+    return db.query(ClosingSheet).filter_by(outing_id=outing_id).order_by(ClosingSheet.sequence.desc(), ClosingSheet.id.desc()).all()
+
+
+def next_closing_sequence(db: Session, outing_id: int) -> int:
+    last = db.query(ClosingSheet).filter_by(outing_id=outing_id).order_by(ClosingSheet.sequence.desc(), ClosingSheet.id.desc()).first()
+    return int(last.sequence if last else 0) + 1
+
+
+def annul_current_closing_sheet(db: Session, outing: Outing, actor: str, reason: str) -> Optional[ClosingSheet]:
+    sheet = closing_sheet_current(db, outing.id) if outing else None
+    if sheet:
+        sheet.status = "ANULADA"
+        sheet.annulled_at = now_local()
+        sheet.annulled_by = actor
+        sheet.annul_reason = reason
+        log(db, actor, "anula ficha de cierre", f"{outing.title} / ficha {sheet.sequence} / {reason}")
+    return sheet
+
+
+def build_closing_payload(db: Session, outing: Outing, reservations, sequence: int, actor: str) -> dict:
+    """Arma la ficha simple y contable: quién navegó y qué se cobra.
+
+    No incluye lista de espera ni historial. Eso queda para auditoría.
+    """
+    users = {u.id: u for u in db.query(User).all()}
+
+    def responsible_for(r: Reservation):
+        if canonical_kind(r.kind) == "socio":
+            return users.get(r.responsible_user_id) or db.query(User).filter_by(dni=r.dni).first()
+        return users.get(r.responsible_user_id)
+
+    groups = {}
+
+    def group_for(responsible: User):
+        if not responsible:
+            key = "sin_responsable"
+            label = "Sin socio responsable"
+            member_no = ""
+        else:
+            key = f"u{responsible.id}"
+            label = responsible.name
+            member_no = responsible.member_no or ""
+        if key not in groups:
+            groups[key] = {
+                "responsible_name": label,
+                "member_no": member_no,
+                "navegaron": [],
+                "cargos_navegacion": [],
+                "no_show": [],
+                "cargos_no_show": [],
+                "subtotal_navegacion": 0.0,
+                "subtotal_no_show": 0.0,
+            }
+        return groups[key]
+
+    for r in reservations:
+        v = reservation_view(outing, r)
+        if v["waitlisted"] or v["cancelled"] or is_captain_cancelled(r) or is_no_board_by_captain(r):
+            continue
+        responsible = responsible_for(r)
+        g = group_for(responsible)
+        k = canonical_kind(r.kind)
+        charge = float(v.get("charge", 0) or 0)
+        person = {
+            "name": r.person_name,
+            "tipo": display_kind(r.kind),
+            "member_no": (responsible.member_no if k == "socio" and responsible else "") or "",
+            "reason": v.get("motivo") or "",
+            "amount": charge,
+            "amount_label": human_money(charge),
+        }
+        if v["embarked"]:
+            g["navegaron"].append(person)
+            if charge > 0:
+                g["cargos_navegacion"].append(person)
+                g["subtotal_navegacion"] += charge
+        elif charge > 0:
+            # No navegó, pero genera cargo: socio ausente, invitado ausente o invitado caído por socio ausente.
+            g["no_show"].append(person)
+            g["cargos_no_show"].append(person)
+            g["subtotal_no_show"] += charge
+
+    ordered_groups = [g for g in groups.values() if g["navegaron"] or g["no_show"] or g["subtotal_navegacion"] or g["subtotal_no_show"]]
+    ordered_groups.sort(key=lambda g: (g["responsible_name"] or "").lower())
+
+    subtotal_nav = sum(g["subtotal_navegacion"] for g in ordered_groups)
+    subtotal_ns = sum(g["subtotal_no_show"] for g in ordered_groups)
+    navegantes = sum(len(g["navegaron"]) for g in ordered_groups)
+    socios_navegantes = sum(1 for r in reservations if canonical_kind(r.kind) == "socio" and reservation_view(outing, r)["embarked"])
+    invitados_navegantes = max(navegantes - socios_navegantes, 0)
+
+    return {
+        "club": "Yacht Club Argentino",
+        "boat": "Fjord VI",
+        "title": "FICHA DE CIERRE DE NAVEGACIÓN",
+        "subtitle": "Manifiesto y Liquidación de Embarque",
+        "outing_id": outing.id,
+        "outing_title": outing.title,
+        "departure_label": fmt_admin_datetime(outing.departure_at),
+        "captain": actor,
+        "sequence": sequence,
+        "status": "VIGENTE",
+        "generated_at": now_local().strftime("%d/%m/%Y %H:%M"),
+        "summary": {
+            "navegaron": navegantes,
+            "socios": socios_navegantes,
+            "invitados": invitados_navegantes,
+            "subtotal_navegacion": subtotal_nav,
+            "subtotal_navegacion_label": human_money(subtotal_nav),
+            "subtotal_no_show": subtotal_ns,
+            "subtotal_no_show_label": human_money(subtotal_ns),
+            "total": subtotal_nav + subtotal_ns,
+            "total_label": human_money(subtotal_nav + subtotal_ns),
+        },
+        "groups": ordered_groups,
+    }
+
+
+def create_closing_sheet(db: Session, outing: Outing, reservations, actor: str) -> ClosingSheet:
+    # Una sola ficha vigente por salida. Si por datos heredados queda una vigente, se anula antes de crear otra.
+    annul_current_closing_sheet(db, outing, actor, "Nueva ficha generada por cierre posterior")
+    sequence = next_closing_sequence(db, outing.id)
+    payload = build_closing_payload(db, outing, reservations, sequence, actor)
+    sheet = ClosingSheet(
+        outing_id=outing.id,
+        sequence=sequence,
+        status="VIGENTE",
+        created_at=now_local(),
+        created_by=actor,
+        payload=json.dumps(payload, ensure_ascii=False)
+    )
+    db.add(sheet)
+    db.flush()
+    log(db, actor, "genera ficha de cierre", f"{outing.title} / ficha {sequence} / total ${payload['summary']['total_label']}")
+    return sheet
+
+
+def sheet_payload(sheet: ClosingSheet) -> dict:
+    try:
+        data = json.loads(sheet.payload or "{}")
+    except Exception:
+        data = {}
+    data.setdefault("sequence", sheet.sequence)
+    data.setdefault("status", sheet.status)
+    data.setdefault("generated_at", sheet.created_at.strftime("%d/%m/%Y %H:%M") if sheet.created_at else "")
+    return data
+
 def final_status_summary(outing: Outing, reservations, active_count: int, present: int, pending: int) -> dict:
     if not outing:
         return {"closed": False, "label": "Sin salida", "detail": "No hay salida seleccionada", "liquidacion": "Sin datos"}
@@ -1710,6 +1907,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         checkin_url = f"{base}/checkin?t={token}"
         qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=" + checkin_url
     control_window = captain_control_window(outing) if outing else {}
+    current_sheet = closing_sheet_current(db, outing.id) if outing else None
     return templates.TemplateResponse(request, "captain.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "reservations": reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
@@ -1719,7 +1917,8 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "closed": is_closed_outing(outing) if outing else False,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
         "checkin_url": checkin_url, "qr_url": qr_url, "control_window": control_window,
-        "captain_responsible_options": captain_responsible_options
+        "captain_responsible_options": captain_responsible_options,
+        "current_sheet": current_sheet
     })
 
 def auto_confirm_active_for_close(db: Session, outing: Outing, active):
@@ -1743,18 +1942,22 @@ def auto_confirm_active_for_close(db: Session, outing: Outing, active):
 def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, active):
     """Cierra embarque y liquida la salida.
 
-    Reglas:
+    Reglas acordadas:
     - Socio presente: sin cargo.
-    - Invitado presente: paga tarifa completa de invitado.
-    - Hijo menor de socio no socio presente: sin cargo.
-    - Ausente/no embarcable: cargo reglamentario por plaza perdida.
+    - Invitado presente: paga tarifa completa de invitado al socio responsable.
+    - Socio ausente/no-show: paga 70% de tarifa invitado.
+    - Invitados de socio ausente: no embarcan, pero se cobran al socio ausente
+      salvo que el capitán los haya reasignado a otro socio presente antes del cierre.
+    - No embarca por decisión del capitán: sin cargo.
+    - Lista de espera: sin cargo.
     """
     normalize_member_reservations(db, reservations)
-    # Blindaje previo al cierre: ningún invitado/menor puede quedar embarcado
-    # si su socio responsable no está presente.
-    enforce_responsible_dependency(db, outing, reservations)
     users = {u.id: u for u in db.query(User).all()}
-    present_dnis = {r.dni for r in reservations if canonical_kind(r.kind) == "socio" and r.attendance == "Presente" and reservation_is_active(r)}
+    present_socio_rows = {
+        r.responsible_user_id: r
+        for r in reservations
+        if canonical_kind(r.kind) == "socio" and r.attendance == "Presente" and reservation_is_active(r)
+    }
     guest_fee = float(outing.guest_fee or 0)
 
     for r in reservations:
@@ -1785,13 +1988,14 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             r.attendance = "Ausente"
             r.cancel_reason = r.cancel_reason or "No confirmado al cierre de embarque"
 
-        # Invitados e hijos menores no socios solo pueden embarcar si embarca su socio responsable.
+        # Invitados/menores no pueden embarcar sin socio responsable presente.
+        # Si quedaron asociados a un socio ausente, se transforman en no-show con cargo
+        # al socio responsable, no en 'No embarca sin cargo'.
         if k in ("invitado", "hijo_menor") and r.attendance == "Presente":
-            responsible = users.get(r.responsible_user_id)
-            if responsible and responsible.dni not in present_dnis:
-                r.attendance = "No embarca"
-                r.cancel_reason = "No embarcado: socio responsable no embarca"
-                r.charge_amount = 0
+            if r.responsible_user_id not in present_socio_rows:
+                r.attendance = "Ausente"
+                r.cancel_reason = "No embarcó por ausencia del socio responsable"
+                r.charge_amount = reservation_charge(outing, r)
 
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
@@ -1801,6 +2005,9 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             if k == "invitado":
                 r.charge_amount = guest_fee
                 r.cancel_reason = "Tarifa de invitado embarcado"
+            elif k == "hijo_menor":
+                r.charge_amount = 0
+                r.cancel_reason = "Hijo menor de socio embarcado sin cargo"
             else:
                 r.charge_amount = 0
                 r.cancel_reason = ""
@@ -1887,6 +2094,9 @@ def outing_status(
     if status == "Cancelada":
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
 
+        # Si existía ficha vigente, queda anulada: nunca se pisa ni se borra.
+        annul_current_closing_sheet(db, outing, user.name, "Salida cancelada/reabierta por capitán")
+
         for r in reservations:
             # La cancelación total por capitán anula toda preliquidación,
             # pero no borra cancel_reason/cancelled_at. Así, si el capitán
@@ -1902,31 +2112,14 @@ def outing_status(
 
     # ===== CERRAR =====
     if status == "Cerrar":
-        if old_status == "Cancelada por capitán":
-            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
-
-        reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
-        enforce_capacity(db, outing)
-        active = active_reservations(reservations)
-        active_count = len(active)
-        present = sum(1 for r in active if r.attendance == "Presente")
-
-        if active_count < outing.min_crew:
-            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=minimo_no_cumple", status_code=303)
-        if active_count > outing.max_crew:
-            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
-
-        auto_confirm_active_for_close(db, outing, active)
-        present = sum(1 for r in active if r.attendance == "Presente")
-        liquidate_and_close_boarding(db, outing, reservations, active)
-
-        db.commit()
-        log(db, user.name, "cierre", f"{outing.title} / presentes {present} / activos {active_count}")
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
+        # Cierre único: el botón válido es /captain/close.
+        # Se evita mantener dos caminos con reglas distintas.
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=usar_cerrar_liquidar", status_code=303)
 
     # ===== REABRIR =====
     if status == "Reservas abiertas":
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por capitán")
         outing.status = "En reservas"
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         promoted = promote_waitlist(db, outing)
@@ -2086,12 +2279,50 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
     auto_confirm_active_for_close(db, outing, active)
-    present = sum(1 for r in active if r.attendance == "Presente")
     liquidate_and_close_boarding(db, outing, reservations, active)
+    # Releer después de liquidar para que la ficha se arme con los estados finales.
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
+    present = sum(1 for r in reservations if r.attendance == "Presente" and reservation_is_active(r))
+    sheet = create_closing_sheet(db, outing, reservations, user.name)
     db.commit()
-    log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count}")
-    return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok", status_code=303)
+    log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}")
+    return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
+
+
+@app.get("/cierre/{sheet_id}", response_class=HTMLResponse)
+def closing_sheet_view(sheet_id: int, request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
+    sheet = db.get(ClosingSheet, sheet_id)
+    if not sheet:
+        raise HTTPException(404, "Ficha inexistente")
+    data = sheet_payload(sheet)
+    return_url = f"/captain?outing_id={sheet.outing_id}" if user.role == "captain" else f"/admin?outing_id={sheet.outing_id}&page=reservas"
+    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url})
+
+
+@app.get("/cierre/{sheet_id}/csv")
+def closing_sheet_csv(sheet_id: int, db: Session = Depends(db_session), user: User = Depends(require_role("admin", "captain"))):
+    sheet = db.get(ClosingSheet, sheet_id)
+    if not sheet:
+        raise HTTPException(404, "Ficha inexistente")
+    data = sheet_payload(sheet)
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["Ficha", sheet.sequence, sheet.status])
+    w.writerow(["Salida", data.get("outing_title", "")])
+    w.writerow(["Fecha", data.get("departure_label", "")])
+    w.writerow(["Capitán", data.get("captain", "")])
+    w.writerow([])
+    w.writerow(["Socio", "N° socio", "Concepto", "Persona", "Tipo", "Importe"])
+    for g in data.get("groups", []):
+        for p in g.get("cargos_navegacion", []):
+            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "Navegación", p.get("name", ""), p.get("tipo", ""), p.get("amount", 0)])
+        for p in g.get("cargos_no_show", []):
+            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "No-show", p.get("name", ""), p.get("tipo", ""), p.get("amount", 0)])
+    w.writerow([])
+    w.writerow(["TOTAL", "", "", "", "", data.get("summary", {}).get("total", 0)])
+    filename = f"fjord_ficha_cierre_{sheet.outing_id}_{sheet.sequence}.csv"
+    return Response(out.getvalue().encode("utf-8-sig"), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
 @app.get("/admin_qr", response_class=HTMLResponse)
@@ -2365,6 +2596,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     control_window = captain_control_window(outing) if outing else {}
+    current_sheet = closing_sheet_current(db, outing.id) if outing else None
+    closing_sheets = closing_sheet_all(db, outing.id) if outing else []
     allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "exportar", "sistema"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
@@ -2386,6 +2619,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "all_reservation_rows": all_reservation_rows,
         "all_reservation_count": len(all_reservation_rows),
         "all_logs_count": len(logs),
+        "current_sheet": current_sheet,
+        "closing_sheets": closing_sheets,
     }))
 
 
