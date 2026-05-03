@@ -11,28 +11,38 @@
       --danger:#dc2626; --dangerDark:#991b1b; --dangerBg:#fee2e2;
     }
     *{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#edf4f8;color:var(--ink)}
-    .toolbar{max-width:920px;margin:18px auto 0;padding:0 18px;display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
-    .btn{display:inline-block;border:1px solid var(--line);background:white;color:var(--ink);padding:9px 13px;border-radius:10px;text-decoration:none;font-weight:700}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:#edf4f8;color:var(--ink);font-size:13px;line-height:1.35}
+    .toolbar{max-width:920px;margin:14px auto 0;padding:0 18px;display:flex;gap:9px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-block;border:1px solid var(--line);background:white;color:var(--ink);padding:8px 12px;border-radius:10px;text-decoration:none;font-weight:700}
     .btn.primary{background:var(--blue);color:white;border-color:var(--blue)}
     .selector{display:flex;gap:8px;align-items:center;margin-right:auto;color:var(--muted);font-weight:700;font-size:13px}
-    .selector select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:white;font-weight:700;color:var(--ink)}
-    .sheet{max-width:920px;margin:16px auto 28px;background:white;padding:42px 48px;border-radius:16px;box-shadow:0 14px 38px rgba(0,0,0,.08);position:relative;overflow:hidden}
-    .sheet.anulada::after{content:'ANULADA';position:absolute;left:-68px;top:42%;transform:rotate(-28deg);font-size:92px;letter-spacing:.09em;color:rgba(220,38,38,.13);font-weight:900;pointer-events:none;white-space:nowrap}
-    .top{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid var(--line);padding-bottom:18px;margin-bottom:20px;position:relative;z-index:1}
-    .club{font-size:13px;letter-spacing:.12em;font-weight:800;color:var(--muted);text-transform:uppercase}
-    h1{font-size:28px;margin:8px 0 3px;letter-spacing:.02em}.subtitle{color:var(--muted);font-size:16px}
-    .status{text-align:right;font-weight:800}.status .pill{display:inline-block;border-radius:999px;padding:7px 13px;background:var(--okbg);color:var(--ok);letter-spacing:.03em}.status.anulada .pill{background:var(--danger);color:white}
-    .notice{border-radius:12px;padding:12px 14px;margin:0 0 18px;font-weight:700;position:relative;z-index:1}
+    .selector select{padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:white;font-weight:700;color:var(--ink)}
+    .sheet{max-width:920px;margin:14px auto 24px;background:white;padding:30px 34px;border-radius:16px;box-shadow:0 14px 38px rgba(0,0,0,.08);position:relative;overflow:hidden}
+    .sheet.anulada::after{content:'ANULADA';position:absolute;left:-58px;top:42%;transform:rotate(-28deg);font-size:88px;letter-spacing:.09em;color:rgba(220,38,38,.13);font-weight:900;pointer-events:none;white-space:nowrap}
+    .top{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid var(--line);padding-bottom:12px;margin-bottom:14px;position:relative;z-index:1}
+    .club{font-size:12px;letter-spacing:.12em;font-weight:800;color:var(--muted);text-transform:uppercase}
+    h1{font-size:25px;line-height:1.06;margin:7px 0 3px;letter-spacing:.01em}.subtitle{color:var(--muted);font-size:13px}
+    .status{text-align:right;font-weight:800}.status .pill{display:inline-block;border-radius:999px;padding:6px 12px;background:var(--okbg);color:var(--ok);letter-spacing:.03em}.status.anulada .pill{background:var(--danger);color:white}
+    .notice{border-radius:10px;padding:10px 12px;margin:0 0 12px;font-weight:700;position:relative;z-index:1}
     .notice.annul{border:2px solid var(--danger);background:var(--dangerBg);color:var(--dangerDark);box-shadow:0 0 0 1px var(--danger) inset}.notice.annul strong{color:#7f1d1d;font-weight:900}
     .notice.vigente{border:1px solid #b7dec7;background:#effaf4;color:#12633b}.notice.vigente strong{font-weight:900}
-    .data{display:grid;grid-template-columns:1fr 1fr;gap:8px 30px;margin-bottom:22px;color:var(--muted);position:relative;z-index:1}.data b{color:var(--ink)}
-    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 18px;position:relative;z-index:1}.metric{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--soft)}.metric span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;font-weight:800;letter-spacing:.08em}.metric b{display:block;font-size:22px;margin-top:5px}
-    .moneybox{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 26px;position:relative;z-index:1}.moneyitem{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:white}.moneyitem span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;font-weight:800;letter-spacing:.06em}.moneyitem b{display:block;font-size:18px;margin-top:4px}.moneyitem.total{background:#f4f9fc;border-color:#bfd1dc}.moneyitem.total b{font-size:21px}
-    h2{font-size:17px;text-transform:uppercase;letter-spacing:.08em;margin:25px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px;position:relative;z-index:1}
-    .group{padding:13px 0;border-bottom:1px solid #edf2f5;position:relative;z-index:1}.responsible{font-weight:800;font-size:16px;margin-bottom:8px}ul{margin:6px 0 8px 20px;padding:0}li{margin:4px 0}.guestDni{color:var(--muted);font-size:12px}.amount{font-weight:800;text-align:right;margin-top:6px}.finalTotal{margin-top:22px;border-top:2px solid var(--line);padding-top:18px;text-align:right;font-size:22px;font-weight:900;position:relative;z-index:1}.foot{margin-top:24px;color:var(--muted);font-size:12px;text-align:center;position:relative;z-index:1}
-    @media print{body{background:white}.toolbar{display:none}.sheet{box-shadow:none;margin:0;max-width:none;border-radius:0}.sheet.anulada::after{color:rgba(220,38,38,.16)}}
-    @media(max-width:700px){.sheet{padding:24px 18px;margin:0;border-radius:0}.top,.data{display:block}.status{text-align:left;margin-top:12px}.summary,.moneybox{grid-template-columns:1fr 1fr}.selector{width:100%}.sheet.anulada::after{font-size:66px;left:-46px}}
+    .data{display:grid;grid-template-columns:1fr 1fr;gap:5px 26px;margin-bottom:14px;color:var(--muted);position:relative;z-index:1;font-size:13px}.data b{color:var(--ink)}
+    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 10px;position:relative;z-index:1}.metric{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft)}.metric span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800;letter-spacing:.08em}.metric b{display:block;font-size:19px;margin-top:3px}
+    .moneybox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px;position:relative;z-index:1}.moneyitem{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:white}.moneyitem span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800;letter-spacing:.06em}.moneyitem b{display:block;font-size:16px;margin-top:3px}.moneyitem.total{background:#f4f9fc;border-color:#bfd1dc}.moneyitem.total b{font-size:18px}
+    h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 9px;border-bottom:1px solid var(--line);padding-bottom:7px;position:relative;z-index:1}
+    .peopleGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;position:relative;z-index:1}
+    .group{padding:8px 0;border-bottom:1px solid #edf2f5;break-inside:avoid;page-break-inside:avoid}.responsible{font-weight:800;font-size:14px;margin-bottom:5px}ul{margin:4px 0 6px 18px;padding:0}li{margin:2px 0}.guestDni{color:var(--muted);font-size:11px;white-space:nowrap}.amount{font-weight:800;text-align:right;margin-top:4px;font-size:13px}.finalTotal{margin-top:16px;border-top:2px solid var(--line);padding-top:12px;text-align:right;font-size:19px;font-weight:900;position:relative;z-index:1}.foot{margin-top:16px;color:var(--muted);font-size:11px;text-align:center;position:relative;z-index:1}
+    @page{size:A4;margin:11mm}
+    @media print{
+      body{background:white;font-size:12px;line-height:1.28}
+      .toolbar{display:none}
+      .sheet{box-shadow:none;margin:0;max-width:none;border-radius:0;padding:0;overflow:visible}
+      .sheet.anulada::after{color:rgba(220,38,38,.14);font-size:82px;top:44%}
+      .top{padding-bottom:9px;margin-bottom:10px} h1{font-size:22px}.subtitle{font-size:12px}.club{font-size:11px}.notice{padding:8px 10px;margin-bottom:10px}
+      .data{font-size:12px;margin-bottom:10px}.summary{gap:7px;margin:9px 0}.metric{padding:8px 9px}.metric b{font-size:17px}.moneybox{gap:7px;margin-bottom:12px}.moneyitem{padding:8px 9px}.moneyitem b{font-size:15px}.moneyitem.total b{font-size:17px}
+      h2{font-size:13px;margin:13px 0 7px;padding-bottom:5px}.responsible{font-size:12.5px}.group{padding:6px 0}li{margin:1px 0}.amount{font-size:12px}.finalTotal{font-size:17px;margin-top:12px;padding-top:10px}.foot{font-size:10px;margin-top:12px}
+    }
+    @media(max-width:700px){.sheet{padding:24px 18px;margin:0;border-radius:0}.top,.data{display:block}.status{text-align:left;margin-top:12px}.summary,.moneybox,.peopleGrid{grid-template-columns:1fr}.selector{width:100%}.sheet.anulada::after{font-size:66px;left:-46px}}
   </style>
 </head>
 <body>
@@ -52,9 +62,13 @@
     <div class="summary"><div class="metric"><span>Navegaron</span><b>{{ data.summary.navegaron }}</b></div><div class="metric"><span>Socios</span><b>{{ data.summary.socios }}</b></div><div class="metric"><span>Invitados</span><b>{{ data.summary.invitados }}</b></div><div class="metric"><span>Total</span><b>$ {{ data.summary.total_label }}</b></div></div>
     <div class="moneybox"><div class="moneyitem"><span>Subtotal navegación</span><b>$ {{ data.summary.subtotal_navegacion_label or '0' }}</b></div><div class="moneyitem"><span>Subtotal no-show</span><b>$ {{ data.summary.subtotal_no_show_label or '0' }}</b></div><div class="moneyitem total"><span>Total general</span><b>$ {{ data.summary.total_label }}</b></div></div>
     <h2>Navegaron</h2>
+    <div class="peopleGrid">
     {% for g in data.groups %}{% if g.navegaron %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li>{{ p.name }} <small>({{ p.tipo }})</small>{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal navegación: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
+    </div>
     <h2>Ausentes / No-show con cargo</h2>
+    <div class="peopleGrid">
     {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li>{{ p.name }} <small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small></li>{% endfor %}</ul><div class="amount">Subtotal no-show: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
+    </div>
     <div class="finalTotal">TOTAL GENERAL A COBRAR: $ {{ data.summary.total_label }}</div>
     <div class="foot">Documento generado automáticamente por el sistema Fjord VI.</div>
   </main>
