@@ -1,16 +1,8 @@
-# Changelog
+v65 TAP LISTA OPS3 TIPS/TOASTS
 
-## v65 - Capitán ultra rápido
-
-Base consolidada sobre v64.1.
-
-Cambios principales:
-- Rediseño completo de la pantalla de Capitán en modo ultra rápido.
-- Cada tripulante queda en una fila compacta.
-- Tap sobre la fila cicla estado: Presente → No vino → No embarca → Presente.
-- Botones compactos directos por persona: Presente, No vino, No embarca.
-- Confirmación solo para “No vino”, porque genera cargo reglamentario.
-- Eliminación de textos redundantes y tarjetas largas en Capitán.
-- Se mantiene intacta la lógica existente de cargos, ficha, reapertura, administración, socios y validaciones.
-
-No se modificaron reglas de liquidación ni generación de ficha.
+- Mantiene tablero compacto por tap.
+- Mantiene reasignación de invitados en menú oculto.
+- Mantiene No embarca / sin cargo como acción excepcional en menú oculto.
+- Agrega ayudas discretas tipo i donde corresponde.
+- Agrega confirmación específica para No embarca / sin cargo.
+- No toca socio, administración, fichas ni liquidación.
