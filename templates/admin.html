@@ -149,6 +149,9 @@
     .rowMenuBox.open{display:grid;gap:4px}.rowMenuBox a,.rowMenuBox button{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:0;border-radius:8px;background:#fff;color:#1f3e52;text-decoration:none;font-weight:850;font-size:12px;text-align:left}.rowMenuBox a:hover,.rowMenuBox button:hover{background:#eef6fb}
     .erpHintLine{font-size:12px;color:#607080;font-weight:700}.erpHintLine b{color:#173f5f}
     @media(max-width:900px){.erpCommand{display:none}.erpTop{padding:0 10px}.erpUser span{display:none}}
+
+    /* v66.3 System Console */
+    .systemHero{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:10px;margin:8px 0 12px}.systemStatusCard{background:#fff;border:1px solid var(--erp-line);border-radius:13px;padding:14px;box-shadow:0 8px 22px rgba(20,40,55,.05)}.systemStatusCard span{display:block;color:#607080;font-size:11px;text-transform:uppercase;font-weight:950;letter-spacing:.5px}.systemStatusCard b{display:block;font-size:24px;margin:4px 0;color:#173f5f}.systemStatusCard small{color:#607080;font-weight:800}.systemGrid{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:12px}.systemWide{grid-column:1/-1}.systemKv{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #edf3f6;padding:7px 0}.systemKv span{color:#607080;font-weight:850}.systemKv b{font-weight:950;text-align:right}.systemMiniGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.systemMiniGrid div{background:#f5f9fc;border:1px solid #dfeaf1;border-radius:10px;padding:10px}.systemMiniGrid span{display:block;color:#607080;font-size:10px;text-transform:uppercase;font-weight:950}.systemMiniGrid b{font-size:20px;color:#173f5f}.systemCheckList{display:grid;gap:6px;margin-top:10px}.checkRow{display:flex;justify-content:space-between;gap:10px;border-radius:9px;padding:8px 10px;border:1px solid #dfeaf1;background:#f8fbfd}.checkRow.ok{background:#eef8f1;border-color:#cfe9d5}.checkRow.bad{background:#fff1f1;border-color:#f0c8c8}.checkRow b{font-weight:950}.checkRow span{color:#607080;text-align:right}.checkRow.bad span{color:#8a3a3a}.compact .checkRow{padding:6px 8px}.okText{color:#27663a!important}.badText{color:#8a3a3a!important}.dangerNote{border:1px solid #f0c8c8;background:#fff1f1;color:#8a3a3a;border-radius:10px;padding:9px;font-weight:800}.dangerZone{border-color:#ecc4c4!important;background:#fffafa!important}.erpTableBox.small{max-height:330px;overflow:auto}@media(max-width:1100px){.systemHero,.systemGrid{grid-template-columns:1fr}.systemWide{grid-column:auto}.systemMiniGrid{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
 <body class="adminERPBody">
@@ -240,7 +243,65 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema</h1><p>Herramientas avanzadas. Usar con cuidado.</p></div></section><div class="erpCards"><article class="erpCard"><h3>Backup JSON</h3><p>Resguardo completo del estado actual.</p><a class="erpBtn" href="/admin/backup" target="_blank" download>Descargar backup</a><form method="post" action="/admin/restore" enctype="multipart/form-data" class="drawerForm"><input type="file" name="file" accept="application/json"><button>Restaurar JSON</button></form></article><article class="erpCard"><h3>Sistema limpio</h3><p>Borra salidas, reservas, cargos y auditoría. Conserva usuarios. Solo pruebas.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('ATENCIÓN: esto borra salidas, reservas, cargos y auditoría. ¿Continuar?') && confirm('Confirmación final: ¿limpiar sistema?');"><button class="erpBtn erpDanger">Sistema limpio</button></form></article></div>
+    <section class="erpTitle"><div><h1>Sistema</h1><p>Consola técnica para soporte, backups, base de datos, esquema e integridad.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
+
+    <div class="systemHero">
+      <article class="systemStatusCard"><span>Aplicación</span><b>{{version}}</b><small>{{app_build}}</small></article>
+      <article class="systemStatusCard"><span>Base de datos</span><b class="{% if system_console.db_ok %}okText{% else %}badText{% endif %}">{% if system_console.db_info.engine == 'postgres' %}PostgreSQL{% else %}SQLite{% endif %}</b><small>{% if system_console.db_ok %}conexión OK{% else %}error de conexión{% endif %}</small></article>
+      <article class="systemStatusCard"><span>Schema</span><b>v{{system_console.counts_system.schema_version}}</b><small>guard interno activo</small></article>
+      <article class="systemStatusCard"><span>Usuarios activos</span><b>{{system_console.activity.active_5m}}</b><small>últimos 5 minutos</small></article>
+    </div>
+
+    <div class="systemGrid">
+      <article class="erpCard systemWide"><h3>Estado técnico</h3>
+        <div class="systemKv"><span>Hora servidor</span><b>{{system_console.counts_system.server_time}}</b></div>
+        <div class="systemKv"><span>URL pública</span><b>{{system_console.public_url}}</b></div>
+        <div class="systemKv"><span>Motor activo</span><b>{{system_console.db_info.engine}}</b></div>
+        <div class="systemKv"><span>Host DB</span><b>{{system_console.db_info.host or '-'}}</b></div>
+        <div class="systemKv"><span>Base DB</span><b>{{system_console.db_info.database or '-'}}</b></div>
+        {% if system_console.db_error %}<p class="dangerNote">{{system_console.db_error}}</p>{% endif %}
+      </article>
+
+      <article class="erpCard"><h3>Conteos principales</h3>
+        <div class="systemMiniGrid"><div><span>Usuarios</span><b>{{system_console.counts_system.users}}</b></div><div><span>Salidas</span><b>{{system_console.counts_system.outings}}</b></div><div><span>Reservas</span><b>{{system_console.counts_system.reservations}}</b></div><div><span>Fichas</span><b>{{system_console.counts_system.sheets}}</b></div><div><span>Auditoría</span><b>{{system_console.counts_system.audit}}</b></div></div>
+      </article>
+
+      <article class="erpCard"><h3>Backups</h3>
+        <p>Backup JSON completo y backup lógico de PostgreSQL. Si <b>pg_dump</b> no está disponible, el sistema entrega fallback JSON.</p>
+        <div class="systemKv"><span>JSON existe</span><b>{% if system_console.backup_info.exists %}sí{% else %}no{% endif %}</b></div>
+        <div class="systemKv"><span>Último JSON</span><b>{{system_console.backup_info.mtime or '-'}}</b></div>
+        <div class="systemKv"><span>Tamaño JSON</span><b>{{system_console.backup_info.size}} bytes</b></div>
+        <div class="systemKv"><span>pg_dump</span><b>{% if system_console.backup_info.pg_dump_available %}disponible{% else %}no disponible / fallback{% endif %}</b></div>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/backup" target="_blank" download>Descargar JSON</a><a class="erpBtn" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a></div>
+        <form method="post" action="/admin/restore" enctype="multipart/form-data" class="drawerForm" onsubmit="return confirm('Restaurar un JSON reemplaza datos actuales. ¿Continuar?') && confirm('Confirmación final: restaurar backup?');"><input type="file" name="file" accept="application/json"><button>Restaurar JSON</button></form>
+      </article>
+
+      <article class="erpCard"><h3>Esquema / migraciones</h3>
+        <p>Revisión liviana de tablas y columnas críticas. No borra datos.</p>
+        <form method="post" action="/admin/schema/check"><button class="erpBtn erpPrimary">Revisar / aplicar reparación segura</button></form>
+        <div class="systemCheckList">{% for row in system_console.schema_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.table}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
+      </article>
+
+      <article class="erpCard"><h3>Integridad de datos</h3>
+        <p>Controles críticos antes de soporte o producción.</p>
+        <div class="systemCheckList">{% for row in system_console.integrity_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
+      </article>
+
+      <article class="erpCard"><h3>Actividad y uso</h3>
+        <div class="systemMiniGrid"><div><span>Activos 5m</span><b>{{system_console.activity.active_5m}}</b></div><div><span>Activos 30m</span><b>{{system_console.activity.active_30m}}</b></div><div><span>Activos hoy</span><b>{{system_console.activity.active_today}}</b></div><div><span>Eventos hoy</span><b>{{system_console.activity.events_today}}</b></div></div>
+        <h4>Módulos usados hoy</h4>
+        <div class="systemCheckList compact">{% for mod, n in system_console.activity.module_counts %}<div class="checkRow ok"><b>{{mod}}</b><span>{{n}}</span></div>{% endfor %}</div>
+        <a class="erpBtn" href="/admin/activity.csv">Exportar actividad CSV</a>
+      </article>
+
+      <article class="erpCard systemWide"><h3>Últimos movimientos técnicos</h3>
+        <div class="erpTableBox small"><table class="erpTable"><thead><tr><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Módulo</th><th>Ruta</th></tr></thead><tbody>{% for a in system_console.activity.recent %}<tr><td>{{fmt_admin_datetime(a.created_at)}}</td><td>{{a.user_name}}</td><td>{{a.role}}</td><td>{{a.module}}</td><td>{{a.path}}</td></tr>{% endfor %}</tbody></table></div>
+      </article>
+
+      <article class="erpCard"><h3>Comunicaciones</h3><p>Módulo previsto para v67. Estado actual: no configurado.</p><div class="systemKv"><span>SMTP</span><b>pendiente</b></div><div class="systemKv"><span>Plantillas</span><b>pendiente</b></div><div class="systemKv"><span>Eventos</span><b>pendiente</b></div></article>
+
+      <article class="erpCard dangerZone"><h3>Sistema limpio</h3><p>Borra salidas, reservas, cargos y auditoría. Conserva usuarios. Solo pruebas o reinstalación controlada.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('ATENCIÓN: esto borra salidas, reservas, cargos y auditoría. ¿Continuar?') && confirm('Confirmación final: ¿limpiar sistema?');"><button class="erpBtn erpDanger">Sistema limpio</button></form></article>
+    </div>
     {% endif %}
   </main>
 </div>
