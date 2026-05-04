@@ -158,6 +158,15 @@
     .resetPhraseBox{display:inline-block;margin:4px 0 8px;padding:8px 10px;border:1px dashed #b91c1c;border-radius:10px;background:#fff5f5;color:#7f1d1d;font-weight:900;font-size:13px;letter-spacing:.5px}
     .checkLine{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:#7f1d1d;font-weight:700;line-height:1.35}
     .checkLine input{margin-top:2px}
+
+    /* v66.7 Smart UI Guidance + Final Clean */
+    .smartTip{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:999px;background:#e7f2f8;color:#0f6796;border:1px solid #c7e1ef;font-size:11px;font-weight:950;vertical-align:middle;cursor:help;margin-left:5px;text-transform:none;letter-spacing:0}
+    .smartTip:hover{background:#d9edf8}
+    .smartAlert{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;margin:8px 0;border:1px solid #dfeaf1;background:#f5f9fc;color:#29495e;line-height:1.35;box-shadow:0 6px 16px rgba(20,40,55,.04)}
+    .smartAlert b{font-weight:950}.smartAlert span{flex:1}.smartAlert a{font-weight:900;color:#0f6796;text-decoration:none}.smartAlert.warn{background:#fff7df;border-color:#ecd48e;color:#78560b}.smartAlert.danger{background:#fff1f1;border-color:#f0c8c8;color:#8a3a3a}.smartAlert.ok{background:#eef8f1;border-color:#cfe9d5;color:#27663a}
+    .advancedTech{margin-top:10px;border:1px dashed #cbdce7;border-radius:10px;padding:8px 10px;background:#fbfdfe}.advancedTech summary{font-weight:950;color:#4f6575;cursor:pointer}.advancedTech .erpBtn{margin-top:8px}
+    .compactLog{max-height:190px!important;min-height:0!important}.pagerBar{display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;border:1px solid var(--erp-line);border-radius:10px;padding:10px;margin-top:4px;font-weight:900;color:#5b6d78}.pagerBar span{padding:0 8px}.systemCheckList .checkRow.bad::before{content:'⚠';font-weight:950;color:#8a3a3a}.systemCheckList .checkRow.ok::before{content:'✓';font-weight:950;color:#27663a}.systemCheckList .checkRow{align-items:center}.systemCheckList .checkRow b{margin-right:auto}.systemCheckList .checkRow span{margin-left:8px}
+
 </style>
 </head>
 <body class="adminERPBody">
@@ -177,6 +186,7 @@
     <a class="{% if admin_page=='estadisticas' %}active{% endif %}" href="/admin?page=estadisticas{% if outing %}&outing_id={{outing.id}}{% endif %}">Estadísticas</a>
     <a class="{% if admin_page=='fichas' %}active{% endif %}" href="/admin?page=fichas{% if outing %}&outing_id={{outing.id}}{% endif %}">Fichas</a>
     <a class="{% if admin_page=='auditoria' %}active{% endif %}" href="/admin?page=auditoria{% if outing %}&outing_id={{outing.id}}{% endif %}">Auditoría</a>
+    <a class="{% if admin_page=='actividad' %}active{% endif %}" href="/admin?page=actividad{% if outing %}&outing_id={{outing.id}}{% endif %}">Actividad</a>
     <a class="{% if admin_page=='exportar' %}active{% endif %}" href="/admin?page=exportar{% if outing %}&outing_id={{outing.id}}{% endif %}">Exportaciones</a>
     <a class="soon" href="#" title="Previsto para v67: emails, plantillas y avisos automáticos">Comunicaciones</a>
     <a class="{% if admin_page=='sistema' %}active{% endif %}" href="/admin?page=sistema{% if outing %}&outing_id={{outing.id}}{% endif %}">Sistema</a>
@@ -184,6 +194,7 @@
 
   <main class="erpMain">
     {% if msg %}<div class="msg">Operación registrada: {{msg}}</div>{% endif %}
+    {% if admin_page == 'sistema' and system_console.missing_sheet_count and system_console.missing_sheet_count > 0 %}<div class="smartAlert warn"><b>Atención técnica:</b><span>{{system_console.missing_sheet_count}} salidas cerradas no tienen ficha vigente.</span><a href="#integridad">Revisar integridad</a></div>{% endif %}
 
     {% if admin_page == 'dashboard' %}
     <section class="erpTitle"><div><h1>Inicio operativo</h1><p>Escritorio de administración: cargas principales, salida seleccionada y accesos frecuentes.</p></div><div class="erpTitleActions"><button class="erpBtn erpPrimary" data-open-drawer="outingDrawer">+ Nueva salida</button><button class="erpBtn erpSoft" data-open-drawer="userDrawer">+ Nuevo usuario</button>{% if outing %}<a class="erpBtn" href="/admin?page=reservas&outing_id={{outing.id}}">Ver reservas</a>{% endif %}</div></section>
@@ -238,6 +249,14 @@
     {% endif %}
 
 
+    {% if admin_page == 'actividad' %}
+    <section class="erpTitle"><div><h1>Actividad técnica</h1><p>Historial paginado de accesos y movimientos técnicos. Útil para soporte, no para liquidación.</p></div><div class="actions"><a class="erpBtn" href="/admin?page=sistema{% if outing %}&outing_id={{outing.id}}{% endif %}">Volver a Sistema</a><a class="erpBtn erpPrimary" href="/admin/activity.csv">Exportar CSV</a></div></section>
+    <div class="erpToolbar"><input data-filter-table="activityTable" type="search" placeholder="Buscar usuario, módulo, ruta"><span class="spacer"></span><span class="badge neutral">Página {{activity_page}} de {{activity_pages}}</span><span class="badge neutral">{{activity_total}} eventos</span></div>
+    <article class="erpGridWrap"><div class="erpGridMeta"><b>Historial completo</b><span>50 movimientos por página</span></div><div class="erpTableBox tall"><table class="erpTable" id="activityTable"><thead><tr><th class="colFecha sticky1">Fecha</th><th class="colName">Usuario</th><th class="colEstado">Rol</th><th class="colEstado">Módulo</th><th class="colEstado">Acción</th><th class="colName">Ruta</th><th class="colName">Detalle</th></tr></thead><tbody>{% for a in activity_rows %}<tr><td class="colFecha sticky1">{{fmt_admin_datetime(a.created_at)}}</td><td class="colName">{{a.user_name}}</td><td class="colEstado">{{a.role}}</td><td class="colEstado">{{a.module}}</td><td class="colEstado">{{a.action}}</td><td class="colName">{{a.path}}</td><td class="colName">{{a.detail}}</td></tr>{% endfor %}</tbody></table></div></article>
+    <div class="pagerBar">{% if activity_page > 1 %}<a class="erpBtn" href="/admin?page=actividad&p={{activity_page-1}}{% if outing %}&outing_id={{outing.id}}{% endif %}">Anterior</a>{% endif %}<span>Página {{activity_page}} de {{activity_pages}}</span>{% if activity_page < activity_pages %}<a class="erpBtn" href="/admin?page=actividad&p={{activity_page+1}}{% if outing %}&outing_id={{outing.id}}{% endif %}">Siguiente</a>{% endif %}</div>
+    {% endif %}
+ 
+
     {% if admin_page == 'fichas' %}
     <section class="erpTitle"><div><h1>Fichas de cierre</h1><p>Listado general de todas las fichas de todas las salidas. Por defecto muestra las más recientes para uso de oficina.</p></div><div class="erpTitleActions"><button type="button" class="erpBtn" data-export-table="fichasTableV57" data-export-name="fjord_vi_fichas_vista.csv">Exportar vista</button></div></section>
     <div class="erpToolbar"><input data-filter-table="fichasTableV57" type="search" placeholder="Buscar salida, capitán, estado, fecha"><select id="fichasEstadoV57"><option value="all">Todas</option><option value="VIGENTE">Vigentes</option><option value="ANULADA">Anuladas</option></select><button type="button" id="fichasClearV57">Limpiar</button><span class="spacer"></span><span class="badge neutral">{{all_closing_sheet_rows|length}} fichas</span></div>
@@ -245,17 +264,17 @@
     {% endif %}
 
     {% if admin_page == 'exportar' %}
-    <section class="erpTitle"><div><h1>Exportaciones</h1><p>Salidas de información para Excel, contabilidad, auditoría y resguardo.</p></div><span class="badge neutral">CSV compatible Excel</span></section><div class="erpCards"><article class="erpCard"><h3>Fichas de cierre</h3><p>Manifiesto y liquidación de embarque generado por Capitán. Incluye fichas vigentes y anuladas.</p>{% if outing %}<a class="erpBtn erpPrimary" href="/admin?page=fichas&outing_id={{outing.id}}">Ver historial de fichas</a><a class="erpBtn" href="/cierre/salida/{{outing.id}}">Listado imprimible</a>{% if current_sheet %}<a class="erpBtn" href="/cierre/{{current_sheet.id}}">PDF vigente</a><a class="erpBtn" href="/cierre/{{current_sheet.id}}/csv">CSV vigente</a>{% endif %}{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="erpCard"><h3>Reservas de la salida</h3><p>Manifiesto operativo de la salida seleccionada.</p>{% if outing %}<a class="erpBtn erpPrimary" href="/admin/manifest.csv?outing_id={{outing.id}}">Descargar CSV salida</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="erpCard"><h3>Historial completo</h3><p>Todas las reservas, estados, responsables, cargos y fechas.</p><a class="erpBtn erpPrimary" href="/admin/reservations_all.csv">Descargar historial CSV</a></article><article class="erpCard"><h3>Cargos</h3><p>Cargos firmes por salida o acumulados.</p>{% if outing %}<a class="erpBtn" href="/admin/charges.csv?outing_id={{outing.id}}">Cargos salida</a>{% endif %}<a class="erpBtn" href="/admin/charges.csv">Cargos todos</a></article><article class="erpCard"><h3>Salidas</h3><p>Agenda completa con capacidad, tarifa y estado.</p><a class="erpBtn" href="/admin/outings.csv">Descargar salidas CSV</a></article><article class="erpCard"><h3>Usuarios</h3><p>Padrón operativo de socios, capitanes y administradores.</p><a class="erpBtn" href="/admin/users.csv">Descargar usuarios CSV</a></article><article class="erpCard"><h3>Auditoría</h3><p>Registro de acciones administrativas.</p><a class="erpBtn" href="/admin/audit.csv">Descargar auditoría CSV</a></article><article class="erpCard"><h3>Backup JSON</h3><p>Copia completa del sistema.</p><a class="erpBtn" href="/admin/backup" target="_blank" download>Descargar backup</a></article></div>
+    <section class="erpTitle"><div><h1>Exportaciones</h1><p>Salidas de información para Excel, contabilidad, auditoría y resguardo.</p></div><span class="badge neutral">CSV compatible Excel</span></section><div class="erpCards"><article class="erpCard"><h3>Fichas de cierre</h3><p>Manifiesto y liquidación de embarque generado por Capitán. Incluye fichas vigentes y anuladas.</p>{% if outing %}<a class="erpBtn erpPrimary" href="/admin?page=fichas&outing_id={{outing.id}}">Ver historial de fichas</a><a class="erpBtn" href="/cierre/salida/{{outing.id}}">Listado imprimible</a>{% if current_sheet %}<a class="erpBtn" href="/cierre/{{current_sheet.id}}">PDF vigente</a><a class="erpBtn" href="/cierre/{{current_sheet.id}}/csv">CSV vigente</a>{% endif %}{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="erpCard"><h3>Reservas de la salida</h3><p>Manifiesto operativo de la salida seleccionada.</p>{% if outing %}<a class="erpBtn erpPrimary" href="/admin/manifest.csv?outing_id={{outing.id}}">Descargar CSV salida</a>{% else %}<p>Seleccioná una salida.</p>{% endif %}</article><article class="erpCard"><h3>Historial completo</h3><p>Todas las reservas, estados, responsables, cargos y fechas.</p><a class="erpBtn erpPrimary" href="/admin/reservations_all.csv">Descargar historial CSV</a></article><article class="erpCard"><h3>Cargos</h3><p>Cargos firmes por salida o acumulados.</p>{% if outing %}<a class="erpBtn" href="/admin/charges.csv?outing_id={{outing.id}}">Cargos salida</a>{% endif %}<a class="erpBtn" href="/admin/charges.csv">Cargos todos</a></article><article class="erpCard"><h3>Salidas</h3><p>Agenda completa con capacidad, tarifa y estado.</p><a class="erpBtn" href="/admin/outings.csv">Descargar salidas CSV</a></article><article class="erpCard"><h3>Usuarios</h3><p>Padrón operativo de socios, capitanes y administradores.</p><a class="erpBtn" href="/admin/users.csv">Descargar usuarios CSV</a></article><article class="erpCard"><h3>Auditoría</h3><p>Registro de acciones administrativas.</p><a class="erpBtn" href="/admin/audit.csv">Descargar auditoría CSV</a></article><article class="erpCard"><h3>Backup técnico</h3><p>Para producción usá PostgreSQL. JSON queda oculto como exportación técnica, no como restauración operativa.</p><a class="erpBtn erpPrimary" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a><a class="erpBtn" href="/admin/diagnostic.txt">Diagnóstico</a></article></div>
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema</h1><p>Consola técnica para soporte, backups, base de datos, esquema e integridad.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado de base de datos, integridad, backups y reset controlado. No es una pantalla operativa diaria.">i</span></h1><p>Consola técnica para soporte, backups, base de datos, esquema e integridad.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
 
     <div class="systemHero">
-      <article class="systemStatusCard"><span>Aplicación</span><b>{{version}}</b><small>{{app_build}}</small></article>
-      <article class="systemStatusCard"><span>Base de datos</span><b class="{% if system_console.db_ok %}okText{% else %}badText{% endif %}">{% if system_console.db_info.engine == 'postgres' %}PostgreSQL{% else %}SQLite{% endif %}</b><small>{% if system_console.db_ok %}conexión OK{% else %}error de conexión{% endif %}</small></article>
+      <article class="systemStatusCard"><span>Aplicación <span class="smartTip" data-tip="Versión instalada en Render. Sirve para soporte y control de cambios.">i</span></span><b>{{version}}</b><small>{{app_build}}</small></article>
+      <article class="systemStatusCard"><span>Base de datos <span class="smartTip" data-tip="PostgreSQL debe ser la fuente única de verdad en producción.">i</span></span><b class="{% if system_console.db_ok %}okText{% else %}badText{% endif %}">{% if system_console.db_info.engine == 'postgres' %}PostgreSQL{% else %}SQLite{% endif %}</b><small>{% if system_console.db_ok %}conexión OK{% else %}error de conexión{% endif %}</small></article>
       <article class="systemStatusCard"><span>Schema</span><b>v{{system_console.counts_system.schema_version}}</b><small>guard interno activo</small></article>
-      <article class="systemStatusCard"><span>Usuarios activos</span><b>{{system_console.activity.active_5m}}</b><small>últimos 5 minutos</small></article>
+      <article class="systemStatusCard"><span>Usuarios activos <span class="smartTip" data-tip="Estimación por actividad reciente, no conexión permanente. Últimos 5 minutos.">i</span></span><b>{{system_console.activity.active_5m}}</b><small>últimos 5 minutos</small></article>
     </div>
 
     <div class="systemGrid">
@@ -263,8 +282,7 @@
         <div class="systemKv"><span>Hora servidor</span><b>{{system_console.counts_system.server_time}}</b></div>
         <div class="systemKv"><span>URL pública</span><b>{{system_console.public_url}}</b></div>
         <div class="systemKv"><span>Motor activo</span><b>{{system_console.db_info.engine}}</b></div>
-        <div class="systemKv"><span>Host DB</span><b>{{system_console.db_info.host or '-'}}</b></div>
-        <div class="systemKv"><span>Base DB</span><b>{{system_console.db_info.database or '-'}}</b></div>
+        <div class="systemKv"><span>Base DB</span><b>{% if system_console.db_info.engine == 'postgres' %}Render PostgreSQL conectado{% else %}{{system_console.db_info.database or '-' }}{% endif %}</b></div>
         {% if system_console.db_error %}<p class="dangerNote">{{system_console.db_error}}</p>{% endif %}
       </article>
 
@@ -272,25 +290,22 @@
         <div class="systemMiniGrid"><div><span>Usuarios</span><b>{{system_console.counts_system.users}}</b></div><div><span>Salidas</span><b>{{system_console.counts_system.outings}}</b></div><div><span>Reservas</span><b>{{system_console.counts_system.reservations}}</b></div><div><span>Fichas</span><b>{{system_console.counts_system.sheets}}</b></div><div><span>Auditoría</span><b>{{system_console.counts_system.audit}}</b></div></div>
       </article>
 
-      <article class="erpCard"><h3>Backups</h3>
-        <p>Backup PostgreSQL real y exportación JSON manual. En producción PostgreSQL es la fuente única de verdad; el JSON no se restaura automáticamente ni se usa como fallback operativo.</p>
-        <div class="systemKv"><span>Modo JSON</span><b>solo exportación</b></div>
-        <div class="systemKv"><span>JSON en disco</span><b>{{system_console.backup_info.mtime or 'no generado'}}</b></div>
-        <div class="systemKv"><span>Tamaño JSON</span><b>{{system_console.backup_info.size}} bytes</b></div>
-        <div class="systemKv"><span>pg_dump</span><b>{% if system_console.backup_info.pg_dump_available %}disponible{% else %}no disponible / fallback{% endif %}</b></div>
-        <div class="systemKv"><span>Versión pg_dump</span><b>{{system_console.backup_info.pg_dump_version}}</b></div>
-        <div class="systemKv"><span>Servidor PostgreSQL</span><b>{{system_console.backup_info.postgres_server_version or "-"}}</b></div>
-        <div class="systemKv"><span>Compatibilidad backup</span><b>{{system_console.backup_info.pg_dump_compat}}</b></div>
-        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a><a class="erpBtn" href="/admin/backup" target="_blank" download>Exportar JSON manual</a></div><p class="mutedHint"><b>Producción:</b> no hay restauración JSON desde esta pantalla para evitar pisar PostgreSQL por error. La recuperación debe hacerse con backup SQL y soporte técnico.</p>
+      <article class="erpCard"><h3>Backups <span class="smartTip" data-tip="Backup principal de producción. JSON queda solo como exportación técnica oculta.">i</span></h3>
+        <p>PostgreSQL es la fuente única de verdad. El backup recomendado para soporte es el SQL de PostgreSQL.</p>
+        <div class="systemKv"><span>Backup PostgreSQL</span><b>{% if system_console.backup_info.pg_dump_available %}disponible{% else %}no disponible{% endif %}</b></div>
+        <div class="systemKv"><span>Compatibilidad</span><b>{{system_console.backup_info.pg_dump_compat}}</b></div>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a></div>
+        <details class="advancedTech"><summary>Avanzado técnico</summary><div class="systemKv"><span>Modo JSON</span><b>solo exportación</b></div><div class="systemKv"><span>Último JSON</span><b>{{system_console.backup_info.mtime or 'no generado'}}</b></div><div class="systemKv"><span>Tamaño JSON</span><b>{{system_console.backup_info.size}} bytes</b></div><div class="systemKv"><span>pg_dump</span><b>{{system_console.backup_info.pg_dump_version}}</b></div><div class="systemKv"><span>Servidor PostgreSQL</span><b>{{system_console.backup_info.postgres_server_version or "-"}}</b></div><a class="erpBtn" href="/admin/backup" target="_blank" download>Exportar JSON técnico</a></details>
+        <p class="mutedHint"><b>Producción:</b> no hay restauración JSON desde esta pantalla. Recuperación solo con backup SQL y soporte técnico.</p>
       </article>
 
-      <article class="erpCard"><h3>Esquema / migraciones</h3>
+      <article class="erpCard"><h3>Esquema / migraciones <span class="smartTip" data-tip="Revisa tablas y columnas obligatorias. La reparación segura no borra datos.">i</span></h3>
         <p>Revisión liviana de tablas y columnas críticas. No borra datos.</p>
         <form method="post" action="/admin/schema/check"><button class="erpBtn erpPrimary">Revisar / aplicar reparación segura</button></form>
         <div class="systemCheckList">{% for row in system_console.schema_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.table}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
       </article>
 
-      <article class="erpCard"><h3>Integridad de datos</h3>
+      <article class="erpCard" id="integridad"><h3>Integridad de datos <span class="smartTip" data-tip="Controles de consistencia antes de operar o diagnosticar problemas.">i</span></h3>
         <p>Controles críticos antes de soporte o producción.</p>
         <div class="systemCheckList">{% for row in system_console.integrity_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
         {% if system_console.missing_sheet_count and system_console.missing_sheet_count > 0 %}
@@ -300,20 +315,21 @@
         {% endif %}
       </article>
 
-      <article class="erpCard"><h3>Actividad y uso</h3>
+      <article class="erpCard"><h3>Actividad y uso <span class="smartTip" data-tip="Actividad reciente estimada por eventos. No equivale a usuarios conectados por WebSocket.">i</span></h3>
         <div class="systemMiniGrid"><div><span>Activos 5m</span><b>{{system_console.activity.active_5m}}</b></div><div><span>Activos 30m</span><b>{{system_console.activity.active_30m}}</b></div><div><span>Activos hoy</span><b>{{system_console.activity.active_today}}</b></div><div><span>Eventos hoy</span><b>{{system_console.activity.events_today}}</b></div></div>
         <h4>Módulos usados hoy</h4>
         <div class="systemCheckList compact">{% for mod, n in system_console.activity.module_counts %}<div class="checkRow ok"><b>{{mod}}</b><span>{{n}}</span></div>{% endfor %}</div>
         <a class="erpBtn" href="/admin/activity.csv">Exportar actividad CSV</a>
       </article>
 
-      <article class="erpCard systemWide"><h3>Últimos movimientos técnicos</h3>
-        <div class="erpTableBox small"><table class="erpTable"><thead><tr><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Módulo</th><th>Ruta</th></tr></thead><tbody>{% for a in system_console.activity.recent %}<tr><td>{{fmt_admin_datetime(a.created_at)}}</td><td>{{a.user_name}}</td><td>{{a.role}}</td><td>{{a.module}}</td><td>{{a.path}}</td></tr>{% endfor %}</tbody></table></div>
+      <article class="erpCard systemWide"><h3>Actividad técnica reciente <span class="smartTip" data-tip="Resumen corto. El historial completo está paginado para no hacer interminable esta pantalla.">i</span></h3>
+        <div class="erpTableBox compactLog"><table class="erpTable"><thead><tr><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Módulo</th><th>Ruta</th></tr></thead><tbody>{% for a in system_console.activity.recent %}<tr><td>{{fmt_admin_datetime(a.created_at)}}</td><td>{{a.user_name}}</td><td>{{a.role}}</td><td>{{a.module}}</td><td>{{a.path}}</td></tr>{% endfor %}</tbody></table></div>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin?page=actividad{% if outing %}&outing_id={{outing.id}}{% endif %}">Ver historial completo</a><a class="erpBtn" href="/admin/activity.csv">Exportar CSV</a></div>
       </article>
 
       <article class="erpCard"><h3>Comunicaciones</h3><p>Módulo previsto para v67. Estado actual: no configurado.</p><div class="systemKv"><span>SMTP</span><b>pendiente</b></div><div class="systemKv"><span>Plantillas</span><b>pendiente</b></div><div class="systemKv"><span>Eventos</span><b>pendiente</b></div></article>
 
-      <article class="erpCard dangerZone productionResetCard"><h3>Reset Producción</h3><p><b>Reinicio total operativo para comenzar el uso comercial.</b> Borra salidas, reservas, fichas, cargos, auditoría y actividad. Conserva usuarios, configuración y conexión PostgreSQL.</p><p class="muted">Antes de borrar genera backup JSON y, si está disponible, backup PostgreSQL. Después reinicia numeración: salida Nº 1 y ficha Nº 1.</p><form method="post" action="/admin/production_reset" class="drawerForm productionResetForm" onsubmit="return confirm('ATENCIÓN: esto reinicia todo lo operativo y no se puede deshacer sin backup. ¿Continuar?') && confirm('Confirmación final: ¿ejecutar RESET PRODUCCIÓN?');"><label>Para confirmar escribí exactamente:</label><div class="resetPhraseBox">RESET PRODUCCION FJORD VI</div><input name="reset_phrase" autocomplete="off" placeholder="Escribir frase exacta"><label class="checkLine"><input type="checkbox" name="understood"> Entiendo que se borran todos los datos operativos y se reinicia la numeración.</label><button class="erpBtn erpDanger">Ejecutar Reset Producción</button></form></article>
+      <article class="erpCard dangerZone productionResetCard"><h3>Reset Producción <span class="smartTip" data-tip="Uso excepcional para iniciar operación comercial desde cero. Conserva usuarios y configuración, borra datos operativos.">i</span></h3><p><b>Reinicio total operativo para comenzar el uso comercial.</b> Borra salidas, reservas, fichas, cargos, auditoría y actividad. Conserva usuarios, configuración y conexión PostgreSQL.</p><div class="smartAlert danger"><b>Acción irreversible.</b><span>Usar solo después de descargar backup PostgreSQL. Reinicia salida Nº 1 y ficha Nº 1.</span></div><p class="muted">Antes de borrar genera backup JSON y, si está disponible, backup PostgreSQL. Después reinicia numeración: salida Nº 1 y ficha Nº 1.</p><form method="post" action="/admin/production_reset" class="drawerForm productionResetForm" onsubmit="return confirm('ATENCIÓN: esto reinicia todo lo operativo y no se puede deshacer sin backup. ¿Continuar?') && confirm('Confirmación final: ¿ejecutar RESET PRODUCCIÓN?');"><label>Para confirmar escribí exactamente:</label><div class="resetPhraseBox">RESET PRODUCCION FJORD VI</div><input name="reset_phrase" autocomplete="off" placeholder="Escribir frase exacta"><label class="checkLine"><input type="checkbox" name="understood"> Entiendo que se borran todos los datos operativos y se reinicia la numeración.</label><button class="erpBtn erpDanger">Ejecutar Reset Producción</button></form></article>
     </div>
     {% endif %}
   </main>
@@ -352,8 +368,10 @@
   function exportVisibleTable(tableId, filename){const table=document.getElementById(tableId);if(!table){alert('No se encontró la planilla.');return;}const rows=[];rows.push([...table.querySelectorAll('thead th')].map(th=>csvEscape(th.innerText)).join(';'));table.querySelectorAll('tbody tr').forEach(tr=>{if(tr.style.display==='none')return;rows.push([...tr.children].map(td=>csvEscape(td.innerText)).join(';'));});const blob=new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename||'fjord_vi_vista.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   document.querySelectorAll('[data-export-table]').forEach(btn=>btn.addEventListener('click',()=>{exportVisibleTable(btn.dataset.exportTable,btn.dataset.exportName);erpToast('Vista exportada a CSV','ok');}));
 
-  function erpToast(text,type='ok'){const stack=document.getElementById('erpToastStack');if(!stack)return;const t=document.createElement('div');t.className='erpToast '+type;t.textContent=text;stack.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),220);},2600);}
+  function erpToast(text,type='ok'){const stack=document.getElementById('erpToastStack');if(!stack)return;const t=document.createElement('div');t.className='erpToast '+type;t.textContent=text;stack.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),220);},3200);}
+  document.querySelectorAll('.smartTip[data-tip]').forEach(el=>{el.setAttribute('title',el.dataset.tip);el.addEventListener('click',ev=>{ev.preventDefault();erpToast(el.dataset.tip,'warn');});});
   {% if msg %}erpToast('Operación registrada: '+{{msg|tojson}},'ok');{% endif %}
+  {% if admin_page == 'sistema' and system_console.missing_sheet_count and system_console.missing_sheet_count > 0 %}erpToast('Hay {{system_console.missing_sheet_count}} salidas cerradas sin ficha vigente. Revisar Integridad.','warn');{% endif %}
 
   function updateTableCounter(tableId){const table=document.getElementById(tableId);if(!table)return;let input=document.querySelector('[data-filter-table="'+tableId+'"]');if(!input){const map={reservasTableV43:'reservaSearchV43',usuariosGridV43:'usuarioSearchV43',historialTableV517:'histSearchV517'};input=document.getElementById(map[tableId]);}const toolbar=input?.closest('.erpToolbar');if(!toolbar)return;let c=toolbar.querySelector('.toolbarCount');if(!c){c=document.createElement('span');c.className='toolbarCount';toolbar.appendChild(c);}const rows=[...table.querySelectorAll('tbody tr')];const visible=rows.filter(r=>r.style.display!=='none').length;c.textContent=visible+' / '+rows.length+' filas';}
   setTimeout(()=>{document.querySelectorAll('table.erpTable').forEach(t=>updateTableCounter(t.id));},80);
