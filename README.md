@@ -1,4 +1,3 @@
-FJORD VI v65 TAP LISTA OPS3 TIPS/TOASTS
+# FJORD VI v65.2
 
-Base: v65 TAP LISTA OPS2.
-Mantiene funciones operativas del capitán y agrega ayudas discretas tipo i y avisos toast/confirmaciones para acciones sensibles.
+Versión Capitán TAP LISTA con menú `⋯` funcional para acciones excepcionales.
