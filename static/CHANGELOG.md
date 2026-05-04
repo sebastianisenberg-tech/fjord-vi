@@ -1,1 +1,3 @@
-v63.0 - Capitán ultra compacto: menos texto visible, Más acciones contextual y tarjetas más bajas.
+# Static changelog
+
+v65: estilos agregados para Capitán ultra rápido. No modifica lógica de liquidación.

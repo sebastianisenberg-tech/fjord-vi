@@ -5407,3 +5407,54 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .captainProBody .captainMoreOpsV64,.captainProBody .captainMoreOpsV64>summary{width:38px!important;min-height:34px!important;}
   .captainProBody .captainMoreOpsBody{right:0!important;min-width:230px!important;}
 }
+
+/* ===============================
+   V65 CAPITAN ULTRA RAPIDO
+   Base: v64.1. Solo UI Capitán.
+   =============================== */
+.captainV65Card{padding-bottom:14px!important;}
+.captainTripTitleV65{margin-bottom:8px!important;}
+.captainV65Hint{font-size:12px;line-height:1.25;color:rgba(255,255,255,.66);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:8px 10px;margin:0 0 10px;}
+.captainFilterV65{margin-bottom:10px!important;gap:6px!important;}
+.captainFilterV65 button{padding:7px 10px!important;font-size:12px!important;border-radius:999px!important;}
+.captainPeopleListV65{display:flex;flex-direction:column;gap:7px!important;}
+.captainFastRowV65{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;min-height:48px;padding:7px 8px 7px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.055);box-shadow:0 7px 18px rgba(0,0,0,.12);transition:transform .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;cursor:pointer;}
+.captainFastRowV65:active{transform:scale(.992);}
+.captainFastRowV65.isSubmittingV65{opacity:.62;pointer-events:none;}
+.captainFastRowV65.statePresent{border-left:5px solid #22c55e;background:linear-gradient(90deg,rgba(34,197,94,.18),rgba(255,255,255,.055));}
+.captainFastRowV65.stateAbsent{border-left:5px solid #ef4444;background:linear-gradient(90deg,rgba(239,68,68,.20),rgba(255,255,255,.055));}
+.captainFastRowV65.stateNoBoard{border-left:5px solid #94a3b8;background:linear-gradient(90deg,rgba(148,163,184,.18),rgba(255,255,255,.055));}
+.captainFastRowV65.statePending{border-left:5px solid rgba(255,255,255,.24);}
+.captainFastIdentityV65{min-width:0;display:flex;align-items:center;gap:7px;overflow:hidden;}
+.captainFastIdentityV65 b{font-size:14px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;}
+.captainFastIdentityV65 .badgeTipo{font-size:10px!important;padding:3px 6px!important;border-radius:999px!important;flex:0 0 auto;}
+.captainFastIdentityV65 small{font-size:10.5px;color:rgba(255,255,255,.54);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:22vw;}
+.captainFastStateV65{display:flex;justify-content:flex-end;}
+.fastStateChipV65{font-size:11.5px;font-weight:800;border-radius:999px;padding:5px 8px;white-space:nowrap;border:1px solid rgba(255,255,255,.12);}
+.fastStateChipV65.present{background:rgba(34,197,94,.20);color:#dcfce7;}
+.fastStateChipV65.absent{background:rgba(239,68,68,.22);color:#fee2e2;}
+.fastStateChipV65.noboard,.fastStateChipV65.neutral{background:rgba(148,163,184,.18);color:#e2e8f0;}
+.fastStateChipV65.pending,.fastStateChipV65.wait{background:rgba(250,204,21,.16);color:#fef9c3;}
+.captainFastActionsV65{display:flex;align-items:center;gap:4px;}
+.captainFastActionsV65 form{margin:0!important;}
+.fastBtnV65{height:32px;min-width:32px;border:1px solid rgba(255,255,255,.13);border-radius:10px;background:rgba(255,255,255,.075);color:white;font-size:11.5px;font-weight:900;padding:0 8px;box-shadow:none!important;}
+.fastBtnV65.present{font-size:16px;padding:0;}
+.fastBtnV65.present.active{background:#16a34a;border-color:#22c55e;color:white;}
+.fastBtnV65.absent.active{background:#dc2626;border-color:#ef4444;color:white;}
+.fastBtnV65.noboard.active{background:#64748b;border-color:#94a3b8;color:white;}
+.fastBtnV65:active{transform:scale(.96);}
+.captainMoreOpsV65{position:relative;}
+.captainMoreOpsV65 summary{height:32px;min-width:28px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);font-size:18px;line-height:1;}
+.captainMoreOpsV65 .captainMoreOpsBody{right:0;left:auto;min-width:235px;z-index:15;}
+.captainFastRowV65.locked{cursor:default;opacity:.78;}
+.captainFastRowV65.locked:active{transform:none;}
+@media (max-width:560px){
+  .captainFastRowV65{grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:7px 7px 7px 9px;}
+  .captainFastStateV65{display:none;}
+  .captainFastActionsV65{gap:3px;}
+  .fastBtnV65{height:30px;min-width:30px;font-size:10.8px;padding:0 6px;border-radius:9px;}
+  .fastBtnV65.present{font-size:15px;padding:0;}
+  .captainFastIdentityV65 b{max-width:45vw;font-size:13.5px;}
+  .captainFastIdentityV65 small{display:none;}
+  .captainV65Hint{font-size:11.5px;padding:7px 9px;}
+}
