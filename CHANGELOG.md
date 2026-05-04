@@ -1,22 +1,29 @@
+# FJORD VI v66.1 - ADMIN ERP CONTROLES AUDITADOS
 
-## v65.8 - Versión centralizada
-- La versión visible sale de una única constante `VERSION` en `main.py`.
-- Se reemplazaron textos hardcodeados de versión en templates.
-- CSS/JS usan `?v={{version}}` para evitar mezcla de caché.
-- Ficha, preflight y listados muestran la versión del sistema.
+- Se auditó el módulo Administración completo.
+- Se corrigió la interacción de filas clickeables en Salidas / navegaciones.
+- Botones Ver, Reservas, Cargos, Fichas, CSV, Exportaciones, Usuarios y Sistema verificados.
+- Comunicaciones permanece previsto para v67, sin lógica activa de envío.
 
-# v65.7 - Preflight socio responsable + ficha total label
+# FJORD VI v66 - ADMIN ERP LAYOUT
 
-- Agrega validación bloqueante: invitado presente no puede quedar asociado a socio no presente.
-- Revalida la regla justo antes de cerrar, después de convertir pendientes a ausentes.
-- Cambia el rótulo final de ficha de "por invitados" a "TOTAL GENERAL A LIQUIDAR".
+Cambios principales:
 
-# v65.6 - Estado final limpio y liquidación reglamentaria
+- Administración orientada a escritorio con criterio ERP.
+- Inicio operativo con dos cargas principales: Salidas y Usuarios.
+- Tarjeta prevista para Comunicaciones, sin activar emails todavía.
+- Salidas / navegaciones con tabla activa: click en fila o botón Ver selecciona la salida.
+- Panel lateral/contextual en Salidas con KPIs de la salida seleccionada.
+- Accesos rápidos desde el panel: Reservas, Cargos, Fichas, CSV salida y ficha vigente.
+- Fila seleccionada resaltada.
+- Versión centralizada actualizada a v66.
 
-- La liquidación queda basada exclusivamente en el estado final de cada persona.
-- Socio presente: $0.
-- Socio no vino: 70% de la tarifa de invitado.
-- Invitado presente: 100% de la tarifa de invitado.
-- Invitado no vino: 100% de la tarifa de invitado.
-- No embarca por decisión del capitán: $0.
-- Al volver a Presente se limpian cargos previos de no-show.
+Sin cambios en:
+
+- lógica de capitán;
+- reservas de socio;
+- liquidación;
+- fichas;
+- preflight;
+- reglas de cobro;
+- motor de comunicaciones/emails, que queda previsto para v67.
