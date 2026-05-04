@@ -1,1 +1,0 @@
-v53.1: corrige scroll horizontal de página en escritorio. El scroll horizontal queda contenido en las tablas, no en el body; fuerza scroll inicial a la izquierda; evita pantalla blanca por posición horizontal heredada en Chrome/Edge.
