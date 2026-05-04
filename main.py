@@ -8,6 +8,10 @@ import io
 import json
 import os
 import secrets
+import shutil
+import subprocess
+import tempfile
+from urllib.parse import urlparse
 from typing import Optional
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
@@ -41,8 +45,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v66.2"
-APP_BUILD = "v66-admin-erp-ux"
+VERSION = "v66.3.1"
+APP_BUILD = "v66-system-console-audit-fix"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -125,6 +129,26 @@ class ClosingSheet(Base):
     annul_reason = Column(Text, default="")
     payload = Column(Text, default="{}")
 
+class SystemMeta(Base):
+    __tablename__ = "system_meta"
+    key = Column(String, primary_key=True)
+    value = Column(Text, default="")
+    updated_at = Column(DateTime, default=now_local)
+
+class ActivityLog(Base):
+    __tablename__ = "activity_log"
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=now_local)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_name = Column(String, default="")
+    role = Column(String, default="")
+    module = Column(String, default="")
+    action = Column(String, default="pageview")
+    path = Column(String, default="")
+    detail = Column(Text, default="")
+    ip = Column(String, default="")
+    user_agent = Column(Text, default="")
+
 Base.metadata.create_all(engine)
 
 def ensure_schema():
@@ -156,7 +180,28 @@ def ensure_schema():
         if "birth_date" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN birth_date VARCHAR"))
 
+
+def set_system_meta(key: str, value: str):
+    try:
+        with SessionLocal() as db:
+            row = db.get(SystemMeta, key)
+            if not row:
+                row = SystemMeta(key=key, value=str(value), updated_at=now_local())
+                db.add(row)
+            else:
+                row.value = str(value)
+                row.updated_at = now_local()
+            db.commit()
+    except Exception:
+        pass
+
+def get_system_meta(db: Session, key: str, default: str = "") -> str:
+    row = db.get(SystemMeta, key)
+    return row.value if row and row.value is not None else default
+
 ensure_schema()
+set_system_meta("schema_version", "1")
+set_system_meta("last_schema_check", now_local().isoformat())
 app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
 
 STATIC_DIR = APP_DIR / "static"
@@ -276,6 +321,159 @@ def base_template_context(**extra):
     ctx.update(extra)
     return ctx
 
+
+
+def db_engine_label() -> str:
+    return "postgres" if DB_URL.startswith("postgres") else "sqlite"
+
+def safe_db_url_summary() -> dict:
+    if DB_URL.startswith("sqlite"):
+        return {"engine": "sqlite", "host": "archivo local", "database": str(DB_URL).replace("sqlite:///", ""), "url_configured": False}
+    parsed = urlparse(DB_URL)
+    return {
+        "engine": "postgres",
+        "host": parsed.hostname or "",
+        "database": (parsed.path or "").lstrip("/"),
+        "port": parsed.port or "",
+        "url_configured": bool(os.getenv("DATABASE_URL")),
+    }
+
+def table_count(db: Session, model) -> int:
+    try:
+        return db.query(model).count()
+    except Exception:
+        return -1
+
+def schema_required_status() -> list:
+    required = {
+        "users": ["id", "name", "dni", "member_no", "email", "phone", "birth_date", "role", "active"],
+        "outings": ["id", "title", "destination", "departure_at", "status", "max_crew", "min_crew", "guest_fee"],
+        "reservations": ["id", "outing_id", "person_name", "dni", "kind", "responsible_user_id", "status", "attendance", "charge_amount", "birth_date"],
+        "audit_logs": ["id", "created_at", "actor", "action", "detail"],
+        "closing_sheets": ["id", "outing_id", "sequence", "status", "payload"],
+        "system_meta": ["key", "value", "updated_at"],
+        "activity_log": ["id", "created_at", "user_id", "user_name", "role", "module", "action", "path"],
+    }
+    inspector = inspect(engine)
+    rows = []
+    try:
+        tables = set(inspector.get_table_names())
+    except Exception:
+        tables = set()
+    for table, cols in required.items():
+        if table not in tables:
+            rows.append({"table": table, "ok": False, "detail": "tabla faltante"})
+            continue
+        try:
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            missing = [c for c in cols if c not in existing]
+            rows.append({"table": table, "ok": not missing, "detail": "OK" if not missing else "faltan: " + ", ".join(missing)})
+        except Exception as e:
+            rows.append({"table": table, "ok": False, "detail": f"error: {type(e).__name__}"})
+    return rows
+
+def integrity_checks(db: Session) -> list:
+    checks = []
+    try:
+        duplicate_rows = 0
+        for o in db.query(Outing).all():
+            seen = set()
+            for r in db.query(Reservation).filter_by(outing_id=o.id).all():
+                d = norm_dni(r.dni)
+                if d and d in seen:
+                    duplicate_rows += 1
+                seen.add(d)
+        checks.append({"name": "DNI duplicado por salida", "ok": duplicate_rows == 0, "detail": "OK" if duplicate_rows == 0 else f"{duplicate_rows} duplicados"})
+    except Exception as e:
+        checks.append({"name": "DNI duplicado por salida", "ok": False, "detail": type(e).__name__})
+    try:
+        over = 0
+        for o in db.query(Outing).all():
+            rows = db.query(Reservation).filter_by(outing_id=o.id).all()
+            if len([r for r in rows if r.attendance == "Presente" and reservation_is_active(r)]) > int(o.max_crew or MAX_CREW):
+                over += 1
+        checks.append({"name": "Cupos excedidos", "ok": over == 0, "detail": "OK" if over == 0 else f"{over} salidas"})
+    except Exception as e:
+        checks.append({"name": "Cupos excedidos", "ok": False, "detail": type(e).__name__})
+    try:
+        bad = 0
+        for o in db.query(Outing).all():
+            rows = db.query(Reservation).filter_by(outing_id=o.id).all()
+            bad += len(present_guest_without_present_responsible_errors(db, o, rows))
+        checks.append({"name": "Invitado presente con socio ausente", "ok": bad == 0, "detail": "OK" if bad == 0 else f"{bad} casos"})
+    except Exception as e:
+        checks.append({"name": "Invitado presente con socio ausente", "ok": False, "detail": type(e).__name__})
+    try:
+        closed = db.query(Outing).filter(Outing.status.in_(["Embarque cerrado", "Realizada"])).all()
+        without = sum(1 for o in closed if not closing_sheet_current(db, o.id))
+        checks.append({"name": "Salidas cerradas sin ficha vigente", "ok": without == 0, "detail": "OK" if without == 0 else f"{without} salidas"})
+    except Exception as e:
+        checks.append({"name": "Salidas cerradas sin ficha vigente", "ok": False, "detail": type(e).__name__})
+    try:
+        no_member_no = db.query(User).filter(User.role == "socio", User.active == True).filter((User.member_no == None) | (User.member_no == "")).count()
+        checks.append({"name": "Socios sin Nº socio", "ok": no_member_no == 0, "detail": "OK" if no_member_no == 0 else f"{no_member_no} socios"})
+    except Exception as e:
+        checks.append({"name": "Socios sin Nº socio", "ok": False, "detail": type(e).__name__})
+    return checks
+
+def activity_summary(db: Session) -> dict:
+    now = now_local()
+    def active_since(minutes):
+        since = now - timedelta(minutes=minutes)
+        rows = db.query(ActivityLog).filter(ActivityLog.created_at >= since).all()
+        return len({(r.user_id or 0, r.user_name or "") for r in rows})
+    today_start = datetime(now.year, now.month, now.day)
+    module_counts = {}
+    for r in db.query(ActivityLog).filter(ActivityLog.created_at >= today_start).all():
+        module_counts[r.module or "-"] = module_counts.get(r.module or "-", 0) + 1
+    recent = db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(30).all()
+    return {
+        "active_5m": active_since(5),
+        "active_30m": active_since(30),
+        "active_today": active_since(24*60),
+        "events_today": sum(module_counts.values()),
+        "module_counts": sorted(module_counts.items(), key=lambda kv: kv[1], reverse=True)[:8],
+        "recent": recent,
+    }
+
+def system_console_context(db: Session, request: Request) -> dict:
+    backup_exists = JSON_BACKUP_PATH.exists()
+    backup_size = JSON_BACKUP_PATH.stat().st_size if backup_exists else 0
+    backup_mtime = datetime.fromtimestamp(JSON_BACKUP_PATH.stat().st_mtime) if backup_exists else None
+    db_ok = True
+    db_error = ""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_ok = False
+        db_error = f"{type(e).__name__}: {e}"
+    pg_dump_path = shutil.which("pg_dump")
+    diag = {
+        "app": f"{APP_NAME} {VERSION}",
+        "build": APP_BUILD,
+        "server_time": now_local().isoformat(timespec="seconds"),
+        "db": db_engine_label(),
+        "db_ok": db_ok,
+        "schema_version": get_system_meta(db, "schema_version", "1"),
+        "users": table_count(db, User),
+        "outings": table_count(db, Outing),
+        "reservations": table_count(db, Reservation),
+        "sheets": table_count(db, ClosingSheet),
+        "audit": table_count(db, AuditLog),
+    }
+    return {
+        "db_info": safe_db_url_summary(),
+        "db_ok": db_ok,
+        "db_error": db_error,
+        "counts_system": diag,
+        "schema_rows": schema_required_status(),
+        "integrity_rows": integrity_checks(db),
+        "backup_info": {"exists": backup_exists, "path": str(JSON_BACKUP_PATH), "size": backup_size, "mtime": fmt_admin_datetime(backup_mtime) if backup_mtime else "", "pg_dump_available": bool(pg_dump_path), "pg_dump_path": pg_dump_path or ""},
+        "activity": activity_summary(db),
+        "diagnostic_text": "\n".join([f"{k}: {v}" for k, v in diag.items()]),
+        "public_url": str(request.base_url).rstrip("/"),
+        "communications_ready": False,
+    }
 
 def db_session():
     db = SessionLocal()
@@ -552,6 +750,44 @@ def require_role(*roles):
             raise HTTPException(status_code=403, detail="Rol no autorizado")
         return user
     return dep
+
+@app.middleware("http")
+async def activity_tracker(request: Request, call_next):
+    response = await call_next(request)
+    try:
+        path = request.url.path
+        if request.method == "GET" and not path.startswith("/static") and path not in ("/health", "/favicon.ico"):
+            module = ""
+            if path.startswith("/admin"):
+                module = "admin"
+            elif path.startswith("/captain"):
+                module = "capitán"
+            elif path.startswith("/socio"):
+                module = "socio"
+            elif path.startswith("/checkin") or path.startswith("/embarque"):
+                module = "check-in"
+            if module:
+                db = SessionLocal()
+                try:
+                    uid = unsign_value(request.cookies.get("fjord_uid", ""))
+                    u = db.get(User, int(uid)) if uid else None
+                    db.add(ActivityLog(
+                        user_id=u.id if u else None,
+                        user_name=u.name if u else "público",
+                        role=u.role if u else "public",
+                        module=module,
+                        action="vista",
+                        path=path,
+                        detail=str(request.url.query or ""),
+                        ip=(request.client.host if request.client else ""),
+                        user_agent=(request.headers.get("user-agent") or "")[:500],
+                    ))
+                    db.commit()
+                finally:
+                    db.close()
+    except Exception:
+        pass
+    return response
 
 def active_reservations(rows):
     """Reservas que ocupan cupo operativo.
@@ -1600,7 +1836,15 @@ def outing_context(db: Session, outing_id: Optional[int] = None):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": "postgres" if DB_URL.startswith("postgres") else "sqlite", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True}
+    db_ok = True
+    db_error = ""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        db_ok = False
+        db_error = f"{type(e).__name__}: {e}"
+    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True}
 
 @app.head("/")
 def head_index():
@@ -2883,6 +3127,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "closing_sheets": closing_sheets,
         "all_closing_sheets": all_closing_sheets,
         "all_closing_sheet_rows": all_closing_sheet_rows,
+        "system_console": system_console_context(db, request) if admin_page == "sistema" else {},
     }))
 
 
@@ -3219,6 +3464,59 @@ def audit_csv(db: Session = Depends(db_session), user: User = Depends(require_ro
         writer.writerow([l.id, l.created_at.isoformat() if l.created_at else "", l.actor, l.action, l.detail])
     return csv_response_excel(output, "fjord_vi_auditoria.csv")
 
+
+@app.post("/admin/schema/check")
+def admin_schema_check(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ensure_schema()
+    set_system_meta("schema_version", "1")
+    set_system_meta("last_schema_check", now_local().isoformat())
+    log(db, user.name, "schema check", "Revisión técnica de esquema ejecutada desde Sistema")
+    return RedirectResponse("/admin?page=sistema&msg=schema_ok", status_code=303)
+
+@app.get("/admin/diagnostic.txt")
+def admin_diagnostic_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ctx = system_console_context(db, request)
+    lines = [ctx.get("diagnostic_text", "")]
+    lines.append("")
+    lines.append("DB_INFO:")
+    for k, v in ctx.get("db_info", {}).items():
+        lines.append(f"{k}: {v}")
+    lines.append("")
+    lines.append("INTEGRIDAD:")
+    for row in ctx.get("integrity_rows", []):
+        lines.append(f"{'OK' if row['ok'] else 'ERROR'} - {row['name']}: {row['detail']}")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_diagnostico.txt"})
+
+@app.get("/admin/postgres_backup")
+def admin_postgres_backup(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    if not DB_URL.startswith("postgres"):
+        return RedirectResponse("/admin?page=sistema&msg=postgres_no_activo", status_code=303)
+    pg_dump = shutil.which("pg_dump")
+    if not pg_dump:
+        # Fallback seguro: si pg_dump no está instalado en el contenedor, se entrega
+        # un backup lógico JSON completo. No es un .dump nativo, pero permite recuperar datos.
+        payload = json.dumps(export_state(db), ensure_ascii=False, indent=2)
+        filename = f"fjord_vi_postgres_logical_fallback_{now_local().strftime('%Y%m%d_%H%M')}.json"
+        return Response(payload, media_type="application/json; charset=utf-8", headers={"Content-Disposition": f"attachment; filename={filename}"})
+    with tempfile.NamedTemporaryFile(suffix=".sql") as tmp:
+        result = subprocess.run([pg_dump, DB_URL, "--no-owner", "--no-privileges"], stdout=tmp, stderr=subprocess.PIPE, timeout=45)
+        if result.returncode != 0:
+            detail = result.stderr.decode("utf-8", errors="ignore")[:400]
+            raise HTTPException(500, f"pg_dump falló: {detail}")
+        tmp.flush(); tmp.seek(0)
+        data = tmp.read()
+    filename = f"fjord_vi_postgres_{now_local().strftime('%Y%m%d_%H%M')}.sql"
+    log(db, user.name, "backup postgres", filename)
+    return Response(data, media_type="application/sql; charset=utf-8", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+@app.get("/admin/activity.csv")
+def admin_activity_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow(["fecha", "usuario", "rol", "modulo", "accion", "ruta", "detalle", "ip"] )
+    for a in db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(5000).all():
+        writer.writerow([fmt_admin_datetime(a.created_at), a.user_name, a.role, a.module, a.action, a.path, a.detail, a.ip])
+    return csv_response_excel(output, "fjord_vi_actividad.csv")
 
 @app.get("/admin/backup")
 def admin_backup(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):

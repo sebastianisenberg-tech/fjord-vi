@@ -1,3 +1,24 @@
+# v66.3.1 SYSTEM CONSOLE AUDIT FIX
+
+- Auditoría de compatibilidad del módulo Sistema.
+- Dockerfile corregido para instalar `postgresql-client` y disponer de `pg_dump`.
+- El backup PostgreSQL ya puede generar `.sql` real en Render cuando `DATABASE_URL` está activo.
+- Mantiene fallback JSON si `pg_dump` fallara.
+- Sin cambios en socio, capitán, liquidación ni fichas.
+
+# v66.3 · SYSTEM CONSOLE + ACTIVITY
+
+- Mejora de pestaña Sistema como consola técnica.
+- Estado de aplicación, versión, hora servidor y URL pública.
+- Estado de base de datos: PostgreSQL/SQLite, host y conexión.
+- Conteos principales: usuarios, salidas, reservas, fichas y auditoría.
+- Schema guard: revisión de tablas/columnas críticas y reparación segura.
+- Backups: JSON y backup lógico PostgreSQL con fallback JSON si pg_dump no está disponible.
+- Integridad: DNI duplicado por salida, cupos excedidos, invitados presentes con socio ausente, salidas cerradas sin ficha y socios sin Nº de socio.
+- Actividad: activos últimos 5/30 minutos, activos del día, módulos usados y últimos movimientos.
+- Diagnóstico técnico descargable.
+- Comunicaciones queda previsto para v67, sin activar emails.
+
 # FJORD VI v66.1 - ADMIN ERP CONTROLES AUDITADOS
 
 - Se auditó el módulo Administración completo.

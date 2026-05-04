@@ -1,1 +1,4 @@
-FJORD VI v66.2 - Administración ERP UX: buscador global, toasts, filtros con contador, menú de acciones y estados visuales reforzados
+FJORD VI · v66.3.1
+Build: v66-system-console-audit-fix
+Base: v66.3 SYSTEM CONSOLE ACTIVITY
+Fecha: 2026-05-04
