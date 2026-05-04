@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v61.1">
+  <link rel="stylesheet" href="/static/style.css?v=v62.1">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -59,7 +59,7 @@
           if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return; }
           if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return; }
         }
-        if (close && !confirm('Confirmar cierre de embarque y liquidación? Los pendientes pasarán a ausentes con cargo.')) { e.preventDefault(); return; }
+        if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No vino (con cargo).')) { e.preventDefault(); return; }
         if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
         if (absent && !confirm('Marcar AUSENTE? Esta acción puede generar cargo reglamentario.')) { e.preventDefault(); return; }
         if (noBoard && !confirm('Marcar NO EMBARCA por decisión del capitán? No genera cargo.')) { e.preventDefault(); return; }
@@ -195,7 +195,7 @@
 </section>
 
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada y liquidada</b><span>{{final_summary.detail}}</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>QR o capitán marcan Presente. No vino (cobra) genera cargo reglamentario. No embarca (sin cargo) es decisión del capitán.</span>{% endif %}
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada</b><span>Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
 </section>
 <section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
 
@@ -207,7 +207,7 @@
     <div class="captainDecisionGrid">
       {% if closed or outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar / reabrir salida</button></form>{% endif %}
       {% if not closed and not outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Cancelada"><button class="captainDecisionBtn cancelBtn">Cancelar por capitán <span class="helpDot" data-tip="Cancelar por capitán suspende la salida y no genera cargos mientras permanezca cancelada.">ⓘ</span></button></form>{% endif %}
-      {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="preflightBoardingForm" method="get" action="/captain/preflight"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar y liquidar <span class="helpDot" data-tip="Cerrar consolida estados y genera cargos finales según presentes, no vino con cargo y no embarca sin cargo.">ⓘ</span></button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
+      {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="preflightBoardingForm" method="get" action="/captain/preflight"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar salida y generar ficha <span class="helpDot" data-tip="Cerrar consolida el embarque y genera la ficha definitiva de cierre.">ⓘ</span></button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
     </div>
   {% endif %}
 </section>
@@ -222,13 +222,10 @@
         <div class="captainPersonName"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span></div>
         <div class="captainStatusLine">
           {% if v.waitlisted %}<span class="captainStateChip wait">Lista de espera</span>{% elif r.attendance == 'Presente' %}<span class="captainStateChip present">Presente</span>{% elif r.attendance == 'Ausente' %}<span class="captainStateChip absent">No vino (cobra)</span>{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="captainStateChip noboard">No embarca (sin cargo)</span>{% elif outing_cancelled %}<span class="captainStateChip neutral">Sin cargo</span>{% else %}<span class="captainStateChip pending">Sin marcar</span>{% endif %}
-          {% if v.charge > 0 %}<span class="captainChargeChip">$ {{v.charge_label}}</span>{% elif v.charge_is_preliminary %}<span class="captainChargeChip soft">Estim. $ {{v.charge_preview_label}}</span>{% endif %}
         </div>
         {% if v.show_responsible %}<div class="captainResponsibleLine">Invitado de: <b>{{v.responsible_name}}</b> <span class="helpDot" data-tip="El invitado depende del socio responsable. Si el socio no embarca, el invitado no puede quedar presente.">ⓘ</span></div>{% endif %}
         {% set reason_text = '' %}
-        {% if v.charge > 0 %}{% set reason_text = 'Cargo firme · ' ~ v.motivo %}
-        {% elif v.charge_is_preliminary %}{% set reason_text = v.motivo %}
-        {% elif v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
+        {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
         {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
         {% if reason_text %}<div class="personState captainReason">{{reason_text}}</div>{% endif %}
       </div>
@@ -247,13 +244,11 @@
               <span class="captainDonePill">✓ Presente</span>
             {% endif %}
           </div>
-          <div class="captainQuickOps">
-            {% if r.attendance != 'Ausente' %}<form class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="capAction danger">No vino <small>cobra</small> <span class="helpDot" data-tip="No vino genera cargo reglamentario cuando corresponde. Se usa para quien tenía lugar reservado y no se presentó.">ⓘ</span></button></form>{% endif %}
-            {% if r.attendance != 'No embarca' and r.attendance != 'No embarcable' %}<form class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction neutralAction">No embarca <small>sin cargo</small> <span class="helpDot" data-tip="No embarca no genera cargo. Es decisión del capitán por seguridad, aptitud, estado físico o criterio operativo.">ⓘ</span></button></form>{% endif %}
-          </div>
           <details class="captainMoreOps">
             <summary>Más acciones</summary>
             <div class="captainMoreOpsBody">
+              {% if r.attendance != 'Ausente' %}<form class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="capAction danger">No vino <small>con cargo</small> <span class="helpDot" data-tip="No vino con cargo se usa para quien tenía lugar reservado y no se presentó.">ⓘ</span></button></form>{% endif %}
+              {% if r.attendance != 'No embarca' and r.attendance != 'No embarcable' %}<form class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction neutralAction">No embarca <small>sin cargo</small> <span class="helpDot" data-tip="No embarca sin cargo es decisión del capitán por seguridad, aptitud, estado físico o criterio operativo.">ⓘ</span></button></form>{% endif %}
               {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar</button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
@@ -276,10 +271,10 @@
   {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
 </section>
 
-<section class="card premiumCard" id="cargos"><div class="cardTitle"><div><span class="eyebrow">Liquidación</span><h2>Resumen de cargos</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial fichas</a>{% endif %}</div><div class="chargeTotal"><span>Total firme</span><b>$ {{charge_summary.total_label}}</b></div>{% if charge_summary.total == 0 %}<div class="empty">Sin cargos.</div>{% endif %}{% for c in charge_summary.invitados %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.socios %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}{% for c in charge_summary.menores %}<div class="chargeItem"><b>{{c.name}}</b><span>$ {{c.amount_label}}</span><small>{{c.reason}}</small></div>{% endfor %}</section>
+<section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">La salida tiene ficha de cierre vigente. La liquidación completa queda en la ficha.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
 {% endif %}
 </main>
-<nav class="bottom captainBottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#cargos">Cargos</a></nav>
+<nav class="bottom captainBottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#fichas">Ficha</a></nav>
 {% if outing %}
 <div id="captainSummaryOverlay" class="captainSummaryOverlay hidden" onclick="if(event.target===this) captainCloseSummary()">
   <div class="captainSummaryBox">
@@ -304,6 +299,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
-<script src="/static/app.js?v=v61.1"></script>
+<script src="/static/app.js?v=v62.1"></script>
 </body>
 </html>
