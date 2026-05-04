@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v60.0"
+VERSION = "v61.1"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1114,14 +1114,14 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         elif cancelled:
             motivo = motivo or "Cancelación tardía con cargo firme"
         elif raw_attendance == "Ausente":
-            motivo = motivo or "Ausencia / plaza no utilizada"
+            motivo = motivo or "No vino: plaza reservada no utilizada"
         else:
             motivo = motivo or "Cargo reglamentario"
     elif preliminary:
         if cancelled:
             motivo = motivo or "Preliquidación por baja tardía, no firme hasta cierre"
         elif raw_attendance in ("Ausente", "No embarcable"):
-            motivo = motivo or "Preliquidación por ausencia/no embarque, no firme hasta cierre"
+            motivo = motivo or "Preliquidación por no vino/no embarque, no firme hasta cierre"
         else:
             motivo = "Tarifa de invitado pendiente de cierre"
     elif cancelled:
@@ -1129,7 +1129,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     elif raw_attendance == "No embarcable":
         motivo = motivo or "No embarcado: socio responsable ausente"
     elif raw_attendance == "Ausente":
-        motivo = motivo or "Ausente sin cargo registrado"
+        motivo = motivo or "No vino sin cargo registrado"
     elif raw_attendance == "Presente":
         if k == "socio":
             motivo = "Socio embarcado sin cargo"
@@ -2143,7 +2143,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
             if not r.cancel_reason:
-                r.cancel_reason = "Ausencia / plaza no utilizada"
+                r.cancel_reason = "No vino: plaza reservada no utilizada"
         elif r.attendance == "Presente":
             if k == "invitado":
                 r.charge_amount = guest_fee
@@ -2205,7 +2205,7 @@ def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reserva
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r) if late else 0
             if r.charge_amount and not r.cancel_reason:
-                r.cancel_reason = "Ausencia / plaza no utilizada"
+                r.cancel_reason = "No vino: plaza reservada no utilizada"
             continue
 
         r.charge_amount = 0
