@@ -5562,3 +5562,9 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .helpDotTiny{width:14px!important;height:14px!important;font-size:9px!important;}
   .captainMoreOpsV65>summary[data-tip]:after{right:-3px;top:-4px;}
 }
+
+/* V65.1: al actualizar una fila, se vuelve al mismo lugar y se marca suavemente */
+.captainJustUpdatedV65{
+  outline: 2px solid rgba(14, 116, 144, .28);
+  box-shadow: 0 0 0 4px rgba(14, 116, 144, .10), 0 8px 22px rgba(15,23,42,.08);
+}
