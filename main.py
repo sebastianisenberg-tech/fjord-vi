@@ -1962,6 +1962,43 @@ def dni_format_warning(dni: str) -> bool:
     return bool(raw) and not bool(__import__('re').match(r"^[0-9]{7,9}$", raw))
 
 
+def present_guest_without_present_responsible_errors(db: Session, outing: Outing, reservations=None) -> list:
+    """Validación dura de embarque.
+
+    Un invitado presente solo puede navegar si su socio responsable también figura
+    Presente y activo en la misma salida. Si el socio no vino, fue bajado, está
+    cancelado, en espera o no embarca por capitán, el invitado debe reasignarse
+    a otro socio presente o marcarse No embarca / No vino antes del cierre.
+    """
+    if reservations is None:
+        reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
+    users = {u.id: u for u in db.query(User).all()}
+    present_socio_ids = {
+        r.responsible_user_id for r in reservations
+        if canonical_kind(r.kind) == "socio"
+        and r.attendance == "Presente"
+        and reservation_is_active(r)
+        and not is_captain_cancelled(r)
+        and not is_no_board_by_captain(r)
+    }
+    errors = []
+    for r in reservations:
+        k = canonical_kind(r.kind)
+        if k not in ("invitado", "hijo_menor"):
+            continue
+        if r.attendance != "Presente":
+            continue
+        if is_waitlisted(r) or r.cancelled_at is not None or r.status == "Cancelado" or is_captain_cancelled(r) or is_no_board_by_captain(r):
+            continue
+        if r.responsible_user_id not in present_socio_ids:
+            resp = users.get(r.responsible_user_id)
+            resp_name = resp.name if resp else "sin responsable"
+            errors.append(
+                f"{r.person_name}: figura presente pero su socio responsable no está presente ({resp_name}). "
+                "Reasignar a un socio presente o marcar No embarca / No vino antes de cerrar."
+            )
+    return errors
+
 def close_preflight_analysis(db: Session, outing: Outing) -> dict:
     """Análisis previo al cierre: detecta errores bloqueantes y sugiere correcciones.
 
@@ -2001,6 +2038,10 @@ def close_preflight_analysis(db: Session, outing: Outing) -> dict:
         if canonical_kind(r.kind) == "socio" and r.attendance == "Presente" and reservation_is_active(r)
     }
 
+    for e in present_guest_without_present_responsible_errors(db, outing, reservations):
+        if e not in errors:
+            errors.append(e)
+
     estimated_navigation_total = 0.0
     estimated_noshow_total = 0.0
     invited_present_count = 0
@@ -2021,9 +2062,6 @@ def close_preflight_analysis(db: Session, outing: Outing) -> dict:
                 warnings.append(f"{r.person_name}: DNI/documento con formato atípico ({r.dni}). Revisar si es un dato de prueba o un documento real.")
 
             if simulated_att == "Presente" and r.responsible_user_id not in present_socio_ids:
-                resp = users.get(r.responsible_user_id)
-                resp_name = resp.name if resp else "sin responsable"
-                errors.append(f"{r.person_name}: figura presente pero su socio responsable no está presente ({resp_name}). Reasignar o marcar No embarca/Ausente.")
                 suggestions.append(f"Corregir {r.person_name}: reasignar a un socio presente o marcar No embarca si no sube.")
 
             if simulated_att == "Presente":
@@ -2459,6 +2497,13 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
     auto_confirm_active_for_close(db, outing, active)
+    # Validación final después de convertir pendientes a Ausente: evita que un invitado
+    # navegado quede cargado a un socio que finalmente no embarcó.
+    final_errors = present_guest_without_present_responsible_errors(db, outing, reservations)
+    if final_errors:
+        db.rollback()
+        return RedirectResponse(f"/captain/preflight?outing_id={outing.id}&msg=preflight_error", status_code=303)
+
     liquidate_and_close_boarding(db, outing, reservations, active)
     # Releer después de liquidar para que la ficha se arme con los estados finales.
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()

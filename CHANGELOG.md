@@ -1,3 +1,9 @@
+# v65.7 - Preflight socio responsable + ficha total label
+
+- Agrega validación bloqueante: invitado presente no puede quedar asociado a socio no presente.
+- Revalida la regla justo antes de cerrar, después de convertir pendientes a ausentes.
+- Cambia el rótulo final de ficha de "por invitados" a "TOTAL GENERAL A LIQUIDAR".
+
 # v65.6 - Estado final limpio y liquidación reglamentaria
 
 - La liquidación queda basada exclusivamente en el estado final de cada persona.
