@@ -1,3 +1,1 @@
-# FJORD VI v65.2
-
-Versión Capitán TAP LISTA con menú `⋯` funcional para acciones excepcionales.
+Fjord VI v65.3: capitán tap lista con menú real fijo para acciones excepcionales.
