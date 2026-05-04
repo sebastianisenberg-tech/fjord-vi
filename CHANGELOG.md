@@ -1,22 +1,16 @@
-# v61.0 - Capitán: estados inequívocos
+# Changelog
 
-- Renombra en Capitán el estado ambiguo “Ausente” como “No vino (cobra)”.
-- Renombra “No embarca” como “No embarca (sin cargo)” en chips, botones, resumen y paneles.
-- Mantiene intacta la lógica interna existente: Presente cobra si corresponde, Ausente genera cargo reglamentario, No embarca no genera cargo.
-- Refuerza textos de ayuda y resumen para evitar confusión del capitán.
-- Actualiza preflight y ficha para usar terminología más clara.
+## v65 - Capitán ultra rápido
 
-# Fjord VI v59.0 - Pre-cierre inteligente
+Base consolidada sobre v64.1.
 
-- Revisión previa antes de cerrar y liquidar.
-- Detecta errores bloqueantes: cupo excedido, documento duplicado, invitado sin DNI/documento, invitado presente sin socio responsable presente.
-- Advierte DNI con formato atípico para revisar datos históricos o de prueba.
-- Muestra resumen estimado: presentes, invitados navegados, no-show con cargo, subtotal navegación, subtotal no-show y total.
-- Sugiere correcciones operativas antes del cierre.
-- El cierre definitivo vuelve a validar para evitar inconsistencias.
-- No toca Socio ni Fichas salvo calidad de datos del cierre.
+Cambios principales:
+- Rediseño completo de la pantalla de Capitán en modo ultra rápido.
+- Cada tripulante queda en una fila compacta.
+- Tap sobre la fila cicla estado: Presente → No vino → No embarca → Presente.
+- Botones compactos directos por persona: Presente, No vino, No embarca.
+- Confirmación solo para “No vino”, porque genera cargo reglamentario.
+- Eliminación de textos redundantes y tarjetas largas en Capitán.
+- Se mantiene intacta la lógica existente de cargos, ficha, reapertura, administración, socios y validaciones.
 
-
-## v63.0
-- Capitán ultra compacto: tarjetas más bajas, relación/detalles ocultos en pantalla principal, Más acciones contextual tipo menú.
-- Misma lógica de asistencia, preflight, fichas y administración.
+No se modificaron reglas de liquidación ni generación de ficha.

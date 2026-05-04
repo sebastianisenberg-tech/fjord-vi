@@ -1,7 +1,19 @@
-FJORD VI v46.8 ADMIN v2 DESKTOP BACKOFFICE
+# Fjord VI - Sistema de Embarque
 
-- Administración rediseñada como backoffice de escritorio.
-- Menú lateral con pantallas separadas: Dashboard, Navegaciones, Reservas, Liquidación, Socios, Auditoría, Estadísticas, Exportar y Configuración.
-- Estadísticas queda prevista como módulo en desarrollo.
-- Administración ingresa solo navegaciones y socios/usuarios; lo demás es lectura/exportación.
-- No se modifica Capitán, QR, cierre, cargos, 48h ni suplentes.
+Versión: v65
+
+Base: v64.1 CAPITAN_DECISION_DIRECTA_FIX
+
+Esta versión incorpora el modo Capitán ultra rápido:
+- Fila compacta por persona.
+- Tap sobre fila para cambiar estado.
+- Botones rápidos Presente / No vino / No embarca.
+- Confirmación solo para No vino.
+
+Se mantienen sin cambios conceptuales:
+- Socios.
+- Administración.
+- Fichas PDF e historial.
+- Reapertura de salidas.
+- Validaciones de DNI, cupo y dependencias socio/invitado.
+- Reglas de cargos.
