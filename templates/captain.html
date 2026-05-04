@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v59.0">
+  <link rel="stylesheet" href="/static/style.css?v=v60.0">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -232,29 +232,42 @@
         {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
         {% if reason_text %}<div class="personState captainReason">{{reason_text}}</div>{% endif %}
       </div>
-      <div class="captainActions captainActionsPro">
+      <div class="captainActions captainActionsPro captainOpsV60">
         {% if closed or outing_cancelled %}
-          <span class="pill neutral">{% if closed %}Cerrado{% else %}Bloqueado{% endif %}</span>
+          <span class="captainLockedPill">{% if closed %}Cerrado{% else %}Bloqueado{% endif %}</span>
         {% elif user.role == 'captain' and control_window.expired %}
-          <span class="pill neutral">Bloqueado</span>
+          <span class="captainLockedPill">Bloqueado</span>
         {% elif v.waitlisted %}
-          <span class="pill neutral">En espera</span>
+          <span class="captainLockedPill wait">En espera</span>
         {% else %}
-          {% if r.attendance != 'Presente' %}<form class="primaryForm" method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="capAction primary">Marcar presente</button></form>{% endif %}
-          {% if r.attendance != 'Ausente' %}<form class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="capAction danger">Ausente <span class="helpDot" data-tip="Ausente genera cargo reglamentario cuando corresponde. Se usa para quien no se presentó.">ⓘ</span></button></form>{% endif %}
-          {% if r.attendance != 'No embarca' and r.attendance != 'No embarcable' %}<form class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction neutralAction">No embarca <span class="helpDot" data-tip="No embarca no genera cargo. Es decisión del capitán por seguridad, aptitud o criterio operativo.">ⓘ</span></button></form>{% endif %}
-          {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar</button></form>{% endif %}
-          {% if v.show_responsible and captain_responsible_options|length > 0 %}
-          <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
-            <select name="new_responsible_user_id" class="capReassignSelect" aria-label="Nuevo socio responsable">
-              <option value="">Reasignar a socio presente</option>
-              {% for opt in captain_responsible_options %}
-                {% if opt.id != r.responsible_user_id %}<option value="{{opt.id}}">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</option>{% endif %}
-              {% endfor %}
-            </select>
-            <button class="capAction reassignAction">Reasignar</button>
-          </form>
-          {% endif %}
+          <div class="captainPrimarySlot">
+            {% if r.attendance != 'Presente' %}
+              <form class="primaryForm" method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="capAction primary">Marcar presente</button></form>
+            {% else %}
+              <span class="captainDonePill">✓ Presente</span>
+            {% endif %}
+          </div>
+          <div class="captainQuickOps">
+            {% if r.attendance != 'Ausente' %}<form class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="capAction danger">Ausente <span class="helpDot" data-tip="Ausente genera cargo reglamentario cuando corresponde. Se usa para quien no se presentó.">ⓘ</span></button></form>{% endif %}
+            {% if r.attendance != 'No embarca' and r.attendance != 'No embarcable' %}<form class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction neutralAction">No embarca <small>sin cargo</small> <span class="helpDot" data-tip="No embarca no genera cargo. Es decisión del capitán por seguridad, aptitud o criterio operativo.">ⓘ</span></button></form>{% endif %}
+          </div>
+          <details class="captainMoreOps">
+            <summary>Más acciones</summary>
+            <div class="captainMoreOpsBody">
+              {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar</button></form>{% endif %}
+              {% if v.show_responsible and captain_responsible_options|length > 0 %}
+              <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+                <select name="new_responsible_user_id" class="capReassignSelect" aria-label="Nuevo socio responsable">
+                  <option value="">Reasignar a socio presente</option>
+                  {% for opt in captain_responsible_options %}
+                    {% if opt.id != r.responsible_user_id %}<option value="{{opt.id}}">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</option>{% endif %}
+                  {% endfor %}
+                </select>
+                <button class="capAction reassignAction">Reasignar</button>
+              </form>
+              {% endif %}
+            </div>
+          </details>
         {% endif %}
       </div>
     </div>
@@ -291,6 +304,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
-<script src="/static/app.js?v=v59.0"></script>
+<script src="/static/app.js?v=v60.0"></script>
 </body>
 </html>
