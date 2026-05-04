@@ -15,3 +15,8 @@
 - Sugiere correcciones operativas antes del cierre.
 - El cierre definitivo vuelve a validar para evitar inconsistencias.
 - No toca Socio ni Fichas salvo calidad de datos del cierre.
+
+
+## v63.0
+- Capitán ultra compacto: tarjetas más bajas, relación/detalles ocultos en pantalla principal, Más acciones contextual tipo menú.
+- Misma lógica de asistencia, preflight, fichas y administración.
