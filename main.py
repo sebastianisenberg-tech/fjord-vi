@@ -11,6 +11,8 @@ import secrets
 import shutil
 import subprocess
 import tempfile
+import smtplib
+from email.message import EmailMessage
 from urllib.parse import urlparse
 from typing import Optional
 
@@ -45,8 +47,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v66.7.1"
-APP_BUILD = "v66-smart-guidance-final-clean-audit-fix"
+VERSION = "v67.0"
+APP_BUILD = "v67-communications-base"
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -151,6 +153,193 @@ class ActivityLog(Base):
     ip = Column(String, default="")
     user_agent = Column(Text, default="")
 
+
+class NotificationTemplate(Base):
+    __tablename__ = "notification_templates"
+    id = Column(Integer, primary_key=True)
+    key = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    subject = Column(Text, default="")
+    body = Column(Text, default="")
+    enabled = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=now_local)
+
+class NotificationEventSetting(Base):
+    __tablename__ = "notification_event_settings"
+    key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    enabled = Column(Boolean, default=False)
+    channel_email = Column(Boolean, default=True)
+    description = Column(Text, default="")
+    updated_at = Column(DateTime, default=now_local)
+
+class NotificationQueue(Base):
+    __tablename__ = "notification_queue"
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=now_local)
+    sent_at = Column(DateTime, nullable=True)
+    event_key = Column(String, nullable=False)
+    recipient_email = Column(String, nullable=False)
+    recipient_name = Column(String, default="")
+    subject = Column(Text, default="")
+    body = Column(Text, default="")
+    status = Column(String, default="pending")  # pending / sent / failed / cancelled
+    attempts = Column(Integer, default=0)
+    error = Column(Text, default="")
+    payload = Column(Text, default="{}")
+
+class NotificationLog(Base):
+    __tablename__ = "notification_log"
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=now_local)
+    queue_id = Column(Integer, nullable=True)
+    event_key = Column(String, default="")
+    recipient_email = Column(String, default="")
+    status = Column(String, default="")
+    detail = Column(Text, default="")
+
+
+COMMUNICATION_EVENTS = {
+    "reserva_confirmada_socio": {
+        "name": "Reserva confirmada al socio",
+        "description": "Email al socio cuando confirma o reactiva su lugar.",
+        "subject": "Reserva confirmada - {{salida_nombre}} - {{fecha}}",
+        "body": "Hola {{socio_nombre}},\n\nTu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}} quedó registrada.\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "invitado_agregado_socio": {
+        "name": "Invitado agregado",
+        "description": "Email al socio cuando agrega o reactiva un invitado.",
+        "subject": "Invitado registrado - {{salida_nombre}}",
+        "body": "Hola {{socio_nombre}},\n\nSe registró el invitado {{invitado_nombre}} para {{salida_nombre}}.\n\nFecha: {{fecha}} {{hora}}\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "cancelacion_socio": {
+        "name": "Cancelación registrada",
+        "description": "Email al socio cuando cancela una reserva propia o de un invitado.",
+        "subject": "Cancelación registrada - {{salida_nombre}}",
+        "body": "Hola {{socio_nombre}},\n\nQuedó registrada la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n\nCargo informado: {{importe}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "salida_cerrada_admin": {
+        "name": "Salida cerrada para administración",
+        "description": "Email a Administración cuando el capitán cierra la salida y genera ficha.",
+        "subject": "Salida cerrada - {{salida_nombre}} - Ficha N° {{ficha_numero}}",
+        "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: N° {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "email_prueba": {
+        "name": "Email de prueba",
+        "description": "Prueba manual de SMTP desde Administración.",
+        "subject": "Prueba de comunicaciones - {{app_name}} {{version}}",
+        "body": "Este es un email de prueba enviado desde {{app_name}} {{version}}.\n\nSi recibiste este mensaje, SMTP está funcionando.",
+    },
+}
+
+def render_comm_template(text_value: str, payload: dict) -> str:
+    result = text_value or ""
+    safe_payload = {k: ("" if v is None else str(v)) for k, v in (payload or {}).items()}
+    safe_payload.setdefault("club_nombre", CLUB_NAME)
+    safe_payload.setdefault("app_name", APP_NAME)
+    safe_payload.setdefault("version", VERSION)
+    for key, value in safe_payload.items():
+        result = result.replace("{{" + key + "}}", value)
+    return result
+
+def ensure_communications_seed(db: Session):
+    for key, info in COMMUNICATION_EVENTS.items():
+        ev = db.get(NotificationEventSetting, key)
+        if not ev:
+            ev = NotificationEventSetting(key=key, name=info["name"], enabled=False, channel_email=True, description=info.get("description", ""), updated_at=now_local())
+            db.add(ev)
+        tpl = db.query(NotificationTemplate).filter_by(key=key).first()
+        if not tpl:
+            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=False, updated_at=now_local())
+            db.add(tpl)
+    db.commit()
+
+def smtp_settings(db: Session) -> dict:
+    return {
+        "host": get_system_meta(db, "smtp_host", os.getenv("SMTP_HOST", "")),
+        "port": get_system_meta(db, "smtp_port", os.getenv("SMTP_PORT", "587")),
+        "username": get_system_meta(db, "smtp_username", os.getenv("SMTP_USERNAME", "")),
+        "password": get_system_meta(db, "smtp_password", os.getenv("SMTP_PASSWORD", "")),
+        "from_email": get_system_meta(db, "smtp_from_email", os.getenv("SMTP_FROM_EMAIL", "")),
+        "from_name": get_system_meta(db, "smtp_from_name", os.getenv("SMTP_FROM_NAME", f"{CLUB_NAME} · {APP_NAME}")),
+        "tls": get_system_meta(db, "smtp_tls", os.getenv("SMTP_TLS", "1")),
+        "admin_email": get_system_meta(db, "communications_admin_email", os.getenv("COMMUNICATIONS_ADMIN_EMAIL", "")),
+    }
+
+def smtp_configured(settings: dict) -> bool:
+    return bool(settings.get("host") and settings.get("from_email"))
+
+def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str) -> tuple[bool, str]:
+    settings = smtp_settings(db)
+    if not smtp_configured(settings):
+        return False, "SMTP no configurado"
+    try:
+        port = int(settings.get("port") or 587)
+        msg = EmailMessage()
+        from_name = settings.get("from_name") or f"{CLUB_NAME} · {APP_NAME}"
+        from_email = settings.get("from_email")
+        msg["From"] = f"{from_name} <{from_email}>"
+        msg["To"] = f"{recipient_name} <{recipient_email}>" if recipient_name else recipient_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+        with smtplib.SMTP(settings["host"], port, timeout=20) as server:
+            if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
+                server.starttls()
+            if settings.get("username"):
+                server.login(settings.get("username"), settings.get("password") or "")
+            server.send_message(msg)
+        return True, "enviado"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {str(e)[:300]}"
+
+def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False) -> Optional[NotificationQueue]:
+    ensure_communications_seed(db)
+    recipient_email = (recipient_email or "").strip()
+    if not recipient_email:
+        return None
+    ev = db.get(NotificationEventSetting, event_key)
+    tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
+    if not ev or not tpl:
+        return None
+    if not force and (not ev.enabled or not tpl.enabled or not ev.channel_email):
+        return None
+    subject = render_comm_template(tpl.subject, payload)
+    body = render_comm_template(tpl.body, payload)
+    q = NotificationQueue(event_key=event_key, recipient_email=recipient_email, recipient_name=recipient_name or "", subject=subject, body=body, status="pending", attempts=0, payload=json.dumps(payload or {}, ensure_ascii=False))
+    db.add(q)
+    db.commit()
+    return q
+
+def process_notification_queue(db: Session, limit: int = 25) -> dict:
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
+    sent = failed = 0
+    for row in rows:
+        row.attempts = int(row.attempts or 0) + 1
+        ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body)
+        if ok:
+            row.status = "sent"
+            row.sent_at = now_local()
+            row.error = ""
+            sent += 1
+        else:
+            row.status = "failed"
+            row.error = detail
+            failed += 1
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
+    db.commit()
+    return {"processed": len(rows), "sent": sent, "failed": failed}
+
+def communications_context(db: Session) -> dict:
+    ensure_communications_seed(db)
+    settings = smtp_settings(db)
+    events = db.query(NotificationEventSetting).order_by(NotificationEventSetting.name.asc()).all()
+    templates_rows = db.query(NotificationTemplate).order_by(NotificationTemplate.name.asc()).all()
+    queue = db.query(NotificationQueue).order_by(NotificationQueue.created_at.desc()).limit(100).all()
+    pending = db.query(NotificationQueue).filter_by(status="pending").count()
+    failed = db.query(NotificationQueue).filter_by(status="failed").count()
+    sent_today = db.query(NotificationQueue).filter(NotificationQueue.status == "sent", NotificationQueue.sent_at >= now_local().replace(hour=0, minute=0, second=0, microsecond=0)).count()
+    return {"settings": settings, "smtp_configured": smtp_configured(settings), "events": events, "templates": templates_rows, "queue": queue, "pending": pending, "failed": failed, "sent_today": sent_today}
+
 Base.metadata.create_all(engine)
 
 def ensure_schema():
@@ -204,6 +393,11 @@ def get_system_meta(db: Session, key: str, default: str = "") -> str:
 ensure_schema()
 set_system_meta("schema_version", "1")
 set_system_meta("last_schema_check", now_local().isoformat())
+try:
+    with SessionLocal() as _comm_db:
+        ensure_communications_seed(_comm_db)
+except Exception:
+    pass
 app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
 
 STATIC_DIR = APP_DIR / "static"
@@ -1948,7 +2142,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v}
+    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "email_queue": True}
 
 @app.head("/")
 def head_index():
@@ -2038,12 +2232,14 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
+        queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
+    queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
@@ -2133,6 +2329,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not full_capacity else "lista de espera invitado", f"{person_name} / {outing.title}")
+    queue_email(db, "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado"})
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
 
@@ -2859,6 +3056,10 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     sheet = create_closing_sheet(db, outing, reservations, user.name)
     db.commit()
     log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}")
+    admin_email = smtp_settings(db).get("admin_email")
+    if admin_email:
+        total_label = sheet_payload(sheet).get("summary", {}).get("total_label", "0")
+        queue_email(db, "salida_cerrada_admin", admin_email, "Administración", {"salida_nombre": outing.title, "capitan_nombre": user.name, "presentes": str(present), "total": "$ " + str(total_label), "ficha_numero": str(sheet.sequence), "link_ficha": f"/cierre/{sheet.id}"})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
 
@@ -3206,7 +3407,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             "socios": (payload.get("summary") or {}).get("socios", ""),
             "invitados": (payload.get("summary") or {}).get("invitados", ""),
         })
-    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema", "actividad"}
+    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema", "actividad", "comunicaciones"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
@@ -3245,6 +3446,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "all_closing_sheets": all_closing_sheets,
         "all_closing_sheet_rows": all_closing_sheet_rows,
         "system_console": system_console_context(db, request) if admin_page == "sistema" else {},
+        "communications": communications_context(db) if admin_page == "comunicaciones" else {},
         "activity_rows": activity_rows,
         "activity_page": activity_page,
         "activity_pages": activity_pages,
@@ -3698,6 +3900,92 @@ def export_data_json(db: Session = Depends(db_session), user: User = Depends(req
     data = json.dumps(export_state(db), ensure_ascii=False, indent=2)
     return Response(data, media_type="application/json", headers={"Content-Disposition": "attachment; filename=fjord_vi_backup.json"})
 
+
+
+@app.post("/admin/communications/settings")
+def admin_communications_settings(
+    smtp_host: str = Form(""), smtp_port: str = Form("587"), smtp_username: str = Form(""), smtp_password: str = Form(""),
+    smtp_from_email: str = Form(""), smtp_from_name: str = Form(""), smtp_tls: str = Form("0"), communications_admin_email: str = Form(""),
+    db: Session = Depends(db_session), user: User = Depends(require_role("admin"))
+):
+    set_system_meta("smtp_host", smtp_host.strip())
+    set_system_meta("smtp_port", smtp_port.strip() or "587")
+    set_system_meta("smtp_username", smtp_username.strip())
+    if smtp_password.strip():
+        set_system_meta("smtp_password", smtp_password.strip())
+    set_system_meta("smtp_from_email", smtp_from_email.strip())
+    set_system_meta("smtp_from_name", smtp_from_name.strip() or f"{CLUB_NAME} · {APP_NAME}")
+    set_system_meta("smtp_tls", "1" if smtp_tls == "1" else "0")
+    set_system_meta("communications_admin_email", communications_admin_email.strip())
+    log(db, user.name, "communications settings", "Configuración SMTP/comunicaciones actualizada")
+    return RedirectResponse("/admin?page=comunicaciones&msg=smtp_guardado", status_code=303)
+
+@app.post("/admin/communications/event/{event_key}")
+def admin_communications_event(event_key: str, enabled: str = Form("0"), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ensure_communications_seed(db)
+    ev = db.get(NotificationEventSetting, event_key)
+    tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
+    if not ev or not tpl:
+        raise HTTPException(404, "Evento inexistente")
+    ev.enabled = enabled == "1"
+    ev.channel_email = True
+    ev.updated_at = now_local()
+    tpl.enabled = ev.enabled
+    tpl.updated_at = now_local()
+    db.commit()
+    log(db, user.name, "communications event", f"{event_key}: {'ON' if ev.enabled else 'OFF'}")
+    return RedirectResponse("/admin?page=comunicaciones&msg=evento_actualizado", status_code=303)
+
+@app.post("/admin/communications/template/{template_key}")
+def admin_communications_template(template_key: str, subject: str = Form(""), body: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ensure_communications_seed(db)
+    tpl = db.query(NotificationTemplate).filter_by(key=template_key).first()
+    if not tpl:
+        raise HTTPException(404, "Plantilla inexistente")
+    tpl.subject = subject
+    tpl.body = body
+    tpl.updated_at = now_local()
+    db.commit()
+    log(db, user.name, "communications template", f"Plantilla actualizada: {template_key}")
+    return RedirectResponse("/admin?page=comunicaciones&msg=plantilla_actualizada", status_code=303)
+
+@app.post("/admin/communications/test")
+def admin_communications_test(test_email: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ensure_communications_seed(db)
+    payload = {"app_name": APP_NAME, "version": VERSION, "club_nombre": CLUB_NAME}
+    q = queue_email(db, "email_prueba", test_email.strip(), "Prueba", payload, force=True)
+    if not q:
+        return RedirectResponse("/admin?page=comunicaciones&msg=email_prueba_no_generado", status_code=303)
+    result = process_notification_queue(db, limit=5)
+    log(db, user.name, "communications test", f"email={test_email}; resultado={result}")
+    return RedirectResponse(f"/admin?page=comunicaciones&msg=email_prueba_{result.get('sent',0)}_{result.get('failed',0)}", status_code=303)
+
+@app.post("/admin/communications/process")
+def admin_communications_process(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    result = process_notification_queue(db, limit=50)
+    log(db, user.name, "communications process", json.dumps(result, ensure_ascii=False))
+    return RedirectResponse(f"/admin?page=comunicaciones&msg=cola_{result.get('sent',0)}_{result.get('failed',0)}", status_code=303)
+
+@app.post("/admin/communications/retry/{qid}")
+def admin_communications_retry(qid: int, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    q = db.get(NotificationQueue, qid)
+    if not q:
+        raise HTTPException(404, "Email inexistente")
+    q.status = "pending"
+    q.error = ""
+    db.commit()
+    result = process_notification_queue(db, limit=1)
+    log(db, user.name, "communications retry", f"queue_id={qid}; {result}")
+    return RedirectResponse("/admin?page=comunicaciones&msg=reintento", status_code=303)
+
+@app.get("/admin/communications/log.csv")
+def admin_communications_log_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow(["id", "fecha", "evento", "destinatario", "estado", "intentos", "error", "asunto"])
+    for q in db.query(NotificationQueue).order_by(NotificationQueue.created_at.desc()).all():
+        writer.writerow([q.id, q.created_at.isoformat() if q.created_at else "", q.event_key, q.recipient_email, q.status, q.attempts, q.error, q.subject])
+    return csv_response_excel(output, "fjord_vi_comunicaciones.csv")
 
 @app.post("/admin/restore")
 async def admin_restore_disabled(user: User = Depends(require_role("admin"))):

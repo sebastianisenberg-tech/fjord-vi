@@ -1,8 +1,11 @@
-# Fjord VI v66.7.1 - Final Clean Audit Fix
+# Fjord VI v67.0 - Comunicaciones Base
 
-- Corrige punto crítico de producción: datos demo ya no se crean automáticamente cuando APP_ENV=production.
-- Reset Producción ahora queda realmente limpio aun después de redeploy/restart.
-- Mantiene PostgreSQL como única fuente de verdad.
-- JSON continúa solo como exportación técnica, sin restauración desde UI.
-- Mantiene Sistema compacto, tooltips, toasts, actividad paginada y Reset Producción protegido.
-- README actualizado para evitar confusión de versión.
+- Nuevo módulo Administración > Comunicaciones.
+- Configuración SMTP desde UI.
+- Email de prueba.
+- Eventos activables: reserva confirmada, invitado agregado, cancelación, salida cerrada para administración.
+- Plantillas editables con variables.
+- Cola de envío con estados pending/sent/failed.
+- Registro exportable CSV.
+- Health informa communications/email_queue.
+- No modifica capitán, socio, liquidación ni fichas.

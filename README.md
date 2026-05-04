@@ -1,1 +1,2 @@
-FJORD VI v66.7.1: producción limpia, Sistema guiado, PostgreSQL fuente única y seed demo desactivado en producción.
+Fjord VI v67.0 - Comunicaciones Base.
+Sistema con PostgreSQL como fuente única y módulo de email transaccional administrable.

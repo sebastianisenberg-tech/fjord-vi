@@ -1,4 +1,5 @@
-Fjord VI Software
-Version: v66.7.1
-Build: v66-smart-guidance-final-clean-audit-fix
-Sistema limpio final: PostgreSQL fuente única; JSON solo exportación avanzada; Sistema compacto con tooltips, toasts, actividad paginada, reset producción protegido y datos demo desactivados en producción.
+FJORD_VI v67.0 COMUNICACIONES BASE
+
+Base: v66.7.1 SMART UI FINAL AUDIT FIX.
+Agrega módulo de Comunicaciones: SMTP, eventos, plantillas, cola de emails, prueba de envío y registro exportable.
+PostgreSQL sigue como fuente única; JSON solo exportación técnica.
