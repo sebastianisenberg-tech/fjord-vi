@@ -47,8 +47,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v67.1.1"
-APP_BUILD = "v67-1-1-comunicaciones-audit-fix"
+VERSION = "v68.0"
+APP_BUILD = "v68-usuarios-padron-pro"
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -1522,6 +1522,116 @@ def human_money(value) -> str:
 
 templates.env.filters["money"] = human_money
 templates.env.globals.update({"user_age_label": user_age_label})
+
+
+def valid_email_syntax(email: str) -> bool:
+    e = (email or "").strip()
+    return bool(e and "@" in e and "." in e.split("@")[-1] and " " not in e)
+
+
+def build_padron_context(db: Session) -> dict:
+    """Resumen profesional del padrón: calidad de datos, duplicados y métricas por persona.
+
+    No cambia datos. Solo prepara información para Administración.
+    """
+    users = db.query(User).order_by(User.name.asc()).all()
+    reservations = db.query(Reservation).all()
+    outings_by_id = {o.id: o for o in db.query(Outing).all()}
+    users_by_dni = {norm_dni(u.dni): u for u in users if norm_dni(u.dni)}
+
+    email_map = {}
+    member_map = {}
+    for u in users:
+        em = (u.email or "").strip().lower()
+        if em:
+            email_map.setdefault(em, []).append(u)
+        mem = (u.member_no or "").strip().lower()
+        if mem:
+            member_map.setdefault(mem, []).append(u)
+
+    duplicate_email_ids = {u.id for group in email_map.values() if len(group) > 1 for u in group}
+    duplicate_member_ids = {u.id for group in member_map.values() if len(group) > 1 for u in group}
+    missing_email_ids = {u.id for u in users if u.role == "socio" and not (u.email or "").strip()}
+    invalid_email_ids = {u.id for u in users if (u.email or "").strip() and not valid_email_syntax(u.email)}
+
+    metrics = {u.id: {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []} for u in users}
+
+    for r in reservations:
+        nd = norm_dni(r.dni)
+        person_user = users_by_dni.get(nd)
+        outing = outings_by_id.get(r.outing_id)
+        dt = outing.departure_at if outing else r.created_at
+        last_label = fmt_admin_datetime_short(dt) if dt else ""
+
+        # Historial personal por documento.
+        if person_user:
+            m = metrics.setdefault(person_user.id, {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []})
+            if r.attendance == "Presente" or str(r.status).lower() == "embarcado":
+                m["navigations"] += 1
+            if r.attendance == "No vino":
+                m["no_show"] += 1
+            m["charges"] += float(r.charge_amount or 0)
+            if last_label and (not m["last"]):
+                m["last"] = last_label
+
+        # Historial de responsabilidad del socio.
+        if r.responsible_user_id and canonical_kind(r.kind) != "socio":
+            m = metrics.setdefault(r.responsible_user_id, {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []})
+            if r.attendance == "Presente" or str(r.status).lower() == "embarcado":
+                m["responsible_guests"] += 1
+            m["charges"] += float(r.charge_amount or 0)
+            if last_label and (not m["last"]):
+                m["last"] = last_label
+
+    for u in users:
+        flags = []
+        if u.id in missing_email_ids:
+            flags.append("sin_email")
+        if u.id in invalid_email_ids:
+            flags.append("email_invalido")
+        if u.id in duplicate_email_ids:
+            flags.append("email_duplicado")
+        if u.id in duplicate_member_ids:
+            flags.append("socio_duplicado")
+        metrics.setdefault(u.id, {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []})["flags"] = flags
+        metrics[u.id]["charges_label"] = human_money(metrics[u.id].get("charges", 0))
+
+    # Invitados no convertidos en usuarios: candidatos a ficha/conversión.
+    guest_groups = {}
+    for r in reservations:
+        if canonical_kind(r.kind) == "socio":
+            continue
+        nd = norm_dni(r.dni)
+        if not nd or nd in users_by_dni:
+            continue
+        g = guest_groups.setdefault(nd, {"dni": nd, "name": r.person_name, "count": 0, "present": 0, "no_show": 0, "last": "", "responsible": "", "reservation_id": r.id})
+        g["count"] += 1
+        if r.attendance == "Presente" or str(r.status).lower() == "embarcado":
+            g["present"] += 1
+        if r.attendance == "No vino":
+            g["no_show"] += 1
+        resp = db.get(User, r.responsible_user_id) if r.responsible_user_id else None
+        if resp:
+            g["responsible"] = resp.name
+        outing = outings_by_id.get(r.outing_id)
+        if outing and not g["last"]:
+            g["last"] = fmt_admin_datetime_short(outing.departure_at)
+    guest_candidates = sorted(guest_groups.values(), key=lambda x: (-x["present"], -x["count"], x["name"]))[:25]
+
+    return {
+        "total": len(users),
+        "active": sum(1 for u in users if u.active),
+        "socios": sum(1 for u in users if u.role == "socio"),
+        "captains": sum(1 for u in users if u.role == "captain"),
+        "admins": sum(1 for u in users if u.role == "admin"),
+        "missing_email_count": len(missing_email_ids),
+        "invalid_email_count": len(invalid_email_ids),
+        "duplicate_email_count": len(duplicate_email_ids),
+        "duplicate_member_count": len(duplicate_member_ids),
+        "metrics": metrics,
+        "guest_candidates": guest_candidates,
+    }
+
 
 
 
@@ -3580,6 +3690,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "present": present, "pending": pending, "charges": charges,
         "total_charges": total_charges, "logs": logs, "readiness": ready,
         "users": db.query(User).order_by(User.name.asc()).all(),
+        "padron": build_padron_context(db) if admin_page == "socios" else {},
         "msg": request.query_params.get("msg"), "reservation_views": views,
         "final_summary": final_summary, "charge_summary": summary, "acta": acta,
         "closed": is_closed_outing(outing) if outing else False,
@@ -3722,6 +3833,43 @@ def update_user(
     log(db, user.name, "edita usuario", f"{target.name} / {target.dni} / {target.role}")
     return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
 
+
+
+@app.post("/admin/convert_guest_to_user")
+def convert_guest_to_user(
+    reservation_id: int = Form(...),
+    member_no: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    r = db.get(Reservation, reservation_id)
+    if not r:
+        return RedirectResponse("/admin?page=socios&msg=invitado_inexistente", status_code=303)
+    dni_clean = norm_dni(r.dni)
+    if not dni_clean:
+        return RedirectResponse("/admin?page=socios&msg=dni_invalido", status_code=303)
+    existing = db.query(User).filter_by(dni=dni_clean).first()
+    if existing:
+        return RedirectResponse(f"/admin?page=socios&msg=usuario_existente", status_code=303)
+    new_user = User(
+        name=(r.person_name or "").strip() or "Socio sin nombre",
+        dni=dni_clean,
+        member_no=member_no.strip() or None,
+        email=email.strip() or None,
+        phone=phone.strip() or None,
+        birth_date=(r.birth_date or None),
+        role="socio",
+        password_hash=hash_password("demo1234"),
+        active=True,
+    )
+    db.add(new_user)
+    db.flush()
+    # Si existían reservas históricas con ese DNI como socio, quedarán asociadas visualmente por DNI.
+    log(db, user.name, "convierte invitado a socio", f"{new_user.name} / DNI {new_user.dni} / socio {new_user.member_no or '-'}")
+    db.commit()
+    return RedirectResponse("/admin?page=socios&msg=invitado_convertido", status_code=303)
 
 @app.get("/admin/users.json")
 def users_json(

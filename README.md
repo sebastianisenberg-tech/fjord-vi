@@ -1,5 +1,11 @@
-# FJORD VI v67.1.1
+Fjord VI v68.0 - Usuarios / Padrón Pro
 
-Comunicaciones auditadas: eventos, plantillas, SMTP, cola, recordatorios 24h y no-show/cargo.
+Sistema web FastAPI/Jinja para gestión de reservas, embarque, administración, fichas, comunicaciones y padrón.
 
-Corrección: las plantillas quedan activas al activar eventos y también pueden activarse manualmente. Cancelaciones integradas a la cola de email.
+Cambios de esta versión:
+- Padrón operativo profesional en Administración > Usuarios.
+- Ficha rápida de persona.
+- Alertas de emails y duplicados.
+- Conversión invitado -> socio.
+
+PostgreSQL sigue siendo la fuente única de verdad cuando DATABASE_URL está configurada.

@@ -1,4 +1,4 @@
-FJORD VI - v67.1.1
-Build: v67-1-1-comunicaciones-audit-fix
-Base: v67.1 comunicaciones auto + recordatorios.
-Fix: plantillas activables y cancelación integrada.
+FJORD VI - v68.0
+Build: v68-usuarios-padron-pro
+Base: v67.1.1 comunicaciones audit fix
+Foco: Usuarios / Padrón Pro, calidad de datos, ficha de persona, invitados convertibles.
