@@ -1,4 +1,4 @@
-FJORD VI SOFTWARE
-VERSION=v66.4.1
-BUILD=v66-hardening-system-console-audit-fix
-NOTES=Auditoría: pg_dump 18 para PostgreSQL 18 y chequeo de compatibilidad de backup.
+Fjord VI Software
+Version: v66.6.1
+Build: v66-production-ready-postgres-audit-fix
+PostgreSQL fuente única; JSON export-only; rutas heredadas de restore/import/demo desactivadas.

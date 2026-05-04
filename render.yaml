@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fjord-vi-v46-4-socio-pro
+    name: fjord-vi
     env: docker
     plan: free
     autoDeploy: true
@@ -10,7 +10,7 @@ services:
       sizeGB: 1
     envVars:
       - key: APP_ENV
-        value: pilot
+        value: production
       - key: DATA_DIR
         value: /app/data
       - key: MAX_CREW

@@ -45,8 +45,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v66.4.1"
-APP_BUILD = "v66-hardening-system-console-audit-fix"
+VERSION = "v66.6.1"
+APP_BUILD = "v66-production-ready-postgres-audit-fix"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -743,13 +743,14 @@ def export_state(db: Session) -> dict:
     }
 
 def persist_json(db: Session):
-    try:
-        JSON_BACKUP_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = JSON_BACKUP_PATH.with_suffix(".tmp")
-        tmp.write_text(json.dumps(export_state(db), ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(JSON_BACKUP_PATH)
-    except Exception:
-        pass
+    """Compatibilidad: el sistema ya no persiste JSON automáticamente.
+
+    Desde v66.6, PostgreSQL es la única fuente de verdad en producción.
+    El JSON queda solo como exportación/backup manual desde Sistema, o como
+    respaldo puntual previo al Reset Producción. Esta función se conserva como
+    no-op para no romper llamadas heredadas en flujos ya estables.
+    """
+    return False
 
 def import_state(db: Session, data: dict):
     try:
@@ -811,8 +812,8 @@ def restore_json_if_db_empty():
     finally:
         db.close()
 
-# Restore JSON backup at startup only if the database is empty
-restore_json_if_db_empty()
+# v66.6: NO restaurar JSON automáticamente al iniciar. PostgreSQL es fuente única de verdad.
+# restore_json_if_db_empty()  # desactivado a propósito
 
 def log(db: Session, actor: str, action: str, detail: str = ""):
     db.add(AuditLog(actor=actor, action=action, detail=detail))
@@ -1939,7 +1940,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v}
+    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v}
 
 @app.head("/")
 def head_index():
@@ -3674,70 +3675,136 @@ def export_data_json(db: Session = Depends(db_session), user: User = Depends(req
 
 
 @app.post("/admin/restore")
-async def admin_restore(file: UploadFile = File(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    raw = await file.read()
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except Exception:
-        raise HTTPException(400, "Archivo JSON inválido")
-    import_state(db, data)
-    log(db, user.name, "restore json", "Datos restaurados desde backup JSON")
-    return RedirectResponse("/admin?msg=json_restaurado", status_code=303)
+async def admin_restore_disabled(user: User = Depends(require_role("admin"))):
+    """Restauración JSON desactivada en producción.
+
+    Desde v66.6.1 PostgreSQL es la única fuente de verdad. El JSON queda
+    solamente como exportación manual; no puede pisar la base real desde una
+    ruta heredada u oculta. La recuperación debe hacerse con backup SQL y
+    soporte técnico.
+    """
+    raise HTTPException(410, "Restauración JSON desactivada: PostgreSQL es la fuente única de verdad")
 
 @app.post("/admin/import_data")
-async def import_data_json(file: UploadFile = File(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    raw = await file.read()
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except Exception:
-        raise HTTPException(400, "Archivo JSON inválido")
-    import_state(db, data)
-    log(db, user.name, "import json", "Datos restaurados desde backup JSON")
-    return RedirectResponse("/admin?msg=json_importado", status_code=303)
+async def import_data_json_disabled(user: User = Depends(require_role("admin"))):
+    """Importación JSON desactivada en producción."""
+    raise HTTPException(410, "Importación JSON desactivada: usar recuperación SQL supervisada")
 
 @app.post("/admin/demo_reset")
-def demo_reset(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    db.query(AuditLog).delete()
-    db.query(Reservation).delete()
-    db.query(Outing).delete()
+def demo_reset_disabled(user: User = Depends(require_role("admin"))):
+    """Reset demo desactivado para evitar borrados accidentales en producción."""
+    raise HTTPException(410, "Reset demo desactivado en modo producción")
+
+
+
+
+PRODUCTION_RESET_PHRASE = "RESET PRODUCCION FJORD VI"
+
+
+def _safe_backup_filename(prefix: str, suffix: str) -> str:
+    return f"{prefix}_{now_local().strftime('%Y%m%d_%H%M%S')}{suffix}"
+
+
+def create_pre_reset_backups(db: Session) -> dict:
+    """Genera respaldos antes de un reset productivo.
+
+    Los archivos se guardan en DATA_DIR. En Render el filesystem puede ser efímero,
+    pero sirve como resguardo inmediato y deja trazabilidad. La descarga manual desde
+    Sistema sigue siendo la vía principal antes de ejecutar un reset real.
+    """
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    result = {"json": "", "postgres": "", "postgres_error": ""}
+
+    json_name = _safe_backup_filename("pre_reset_fjord_vi", ".json")
+    json_path = DATA_DIR / json_name
+    json_path.write_text(json.dumps(export_state(db), ensure_ascii=False, indent=2), encoding="utf-8")
+    result["json"] = str(json_path)
+
+    if DB_URL.startswith("postgres"):
+        pg_dump = shutil.which("pg_dump")
+        if pg_dump:
+            compatible, compat_detail = pg_dump_compatible_with_server(db)
+            if compatible:
+                sql_name = _safe_backup_filename("pre_reset_fjord_vi_postgres", ".sql")
+                sql_path = DATA_DIR / sql_name
+                try:
+                    with open(sql_path, "wb") as fh:
+                        proc = subprocess.run([pg_dump, DB_URL, "--no-owner", "--no-privileges"], stdout=fh, stderr=subprocess.PIPE, timeout=60)
+                    if proc.returncode == 0:
+                        result["postgres"] = str(sql_path)
+                    else:
+                        result["postgres_error"] = proc.stderr.decode("utf-8", errors="ignore")[:400]
+                        try:
+                            sql_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                except Exception as exc:
+                    result["postgres_error"] = f"{type(exc).__name__}: {exc}"
+            else:
+                result["postgres_error"] = compat_detail
+        else:
+            result["postgres_error"] = "pg_dump no disponible"
+    return result
+
+
+def reset_operational_sequences(db: Session):
+    """Resetea numeración operativa. Conserva usuarios y configuración."""
+    tables = ["closing_sheets", "reservations", "outings", "audit_logs", "activity_log"]
+    if DB_URL.startswith("postgres"):
+        # TRUNCATE reinicia IDs y respeta dependencias entre salidas, reservas y fichas.
+        db.execute(text("TRUNCATE TABLE closing_sheets, reservations, outings, audit_logs, activity_log RESTART IDENTITY CASCADE"))
+    else:
+        for model in (ClosingSheet, Reservation, Outing, AuditLog, ActivityLog):
+            db.query(model).delete()
+        try:
+            for t in tables:
+                db.execute(text("DELETE FROM sqlite_sequence WHERE name = :name"), {"name": t})
+        except Exception:
+            pass
     db.commit()
 
-    dep = now_local().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
-    o = Outing(
-        title="Paseo de domingo",
-        destination="Dársena Norte / Río de la Plata",
-        departure_at=dep,
-        status="En reservas",
-        guest_fee=INVITED_FEE,
-        notes="Piloto fin de semana. Mínimo 2, máximo 9 tripulantes sin contar capitán."
+
+@app.post("/admin/production_reset")
+def admin_production_reset(
+    reset_phrase: str = Form(""),
+    understood: Optional[str] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin")),
+):
+    phrase = (reset_phrase or "").strip().upper()
+    if phrase != PRODUCTION_RESET_PHRASE or understood != "on":
+        raise HTTPException(400, f"Confirmación inválida. Para resetear debe escribir exactamente: {PRODUCTION_RESET_PHRASE}")
+
+    # Backup previo obligatorio. Si el backup JSON falla, no se resetea.
+    backups = create_pre_reset_backups(db)
+
+    reset_operational_sequences(db)
+
+    # Registrar el reset después de reiniciar secuencias para que quede como primer evento operativo.
+    detail = (
+        "RESET PRODUCCIÓN ejecutado. Usuarios y configuración conservados. "
+        f"Backup JSON: {backups.get('json') or 'no generado'}. "
+        f"Backup PostgreSQL: {backups.get('postgres') or 'no generado'}. "
+        f"Error PostgreSQL backup: {backups.get('postgres_error') or '-'}"
     )
-    db.add(o)
+    log(db, user.name, "reset producción", detail)
+    db.add(ActivityLog(
+        user_id=user.id,
+        user_name=user.name,
+        role=user.role,
+        module="sistema",
+        action="reset_produccion",
+        path="/admin?page=sistema",
+        detail="Sistema reiniciado para uso comercial",
+    ))
     db.commit()
-    db.refresh(o)
-
-    socio = db.query(User).filter_by(role="socio").first()
-    db.add_all([
-        Reservation(outing_id=o.id, person_name=socio.name, dni=socio.dni, kind="socio", responsible_user_id=socio.id),
-        Reservation(outing_id=o.id, person_name="María Gómez", dni="35111222", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-        Reservation(outing_id=o.id, person_name="Carlos Rodríguez", dni="23452345", kind="socio", responsible_user_id=None),
-        Reservation(outing_id=o.id, person_name="Ana López", dni="32111333", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-        Reservation(outing_id=o.id, person_name="Pedro Martínez", dni="28456456", kind="socio", responsible_user_id=None),
-        Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
-    ])
-    db.commit()
-    log(db, user.name, "demo reset", "Datos demo reiniciados")
-    return RedirectResponse("/admin?msg=demo_reset", status_code=303)
-
-
-
-
-@app.post("/admin/reset_clean")
-def admin_reset_clean(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    db.query(AuditLog).delete()
-    db.query(Reservation).delete()
-    db.query(Outing).delete()
-    db.commit()
-    log(db, user.name, "sistema limpio", "Salidas, reservas, cargos y auditoría demo eliminados. Usuarios conservados.")
-    persist_json(db)
-    return RedirectResponse("/admin?msg=Sistema limpio creado", status_code=303)
+    set_system_meta("production_reset_at", now_local().isoformat())
+    set_system_meta("production_reset_by", user.name)
+    set_system_meta("last_pre_reset_json", backups.get("json", ""))
+    set_system_meta("last_pre_reset_postgres", backups.get("postgres", ""))
+    if backups.get("postgres_error"):
+        set_system_meta("last_pre_reset_postgres_error", backups.get("postgres_error", ""))
+    with SessionLocal() as fresh:
+        persist_json(fresh)
+    return RedirectResponse("/admin?page=sistema&msg=reset_produccion_ok", status_code=303)
 
