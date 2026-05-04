@@ -52,7 +52,7 @@
         const close = form.classList.contains('closeBoardingForm') || statusValue === 'Cerrar';
         const cancel = statusValue === 'Cancelada';
         const absent = form.classList.contains('attendanceAbsentForm');
-        const noBoard = form.classList.contains('attendanceNoBoardForm');
+        const noBoard = form.classList.contains('attendanceNoBoardForm') || form.classList.contains('attendanceNoBoardMenuForm');
         const reassign = form.classList.contains('reassignGuestForm');
         if (reassign) {
           const sel = form.querySelector('select[name="new_responsible_user_id"]');
@@ -62,6 +62,7 @@
         if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No vino (con cargo).')) { e.preventDefault(); return; }
         if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
         if (absent && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return; }
+        if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return; }
         form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
       });
     });
@@ -79,15 +80,15 @@
       });
     }
 
-    // V65: operación ultra rápida. Tap sobre la fila cicla estado; botones compactos marcan directo.
+    // V65 TAP LISTA OPS: tap rápido para flujo habitual; acciones excepcionales quedan en menú ⋯.
     document.querySelectorAll('.captainFastRowV65').forEach(function(row){
       row.addEventListener('click', function(e){
-        if(e.target.closest('button, a, summary, details, select, form')) return;
+        if(e.target.closest('button, a, summary, details, select, form, [data-tip]')) return;
         if(row.classList.contains('locked') || row.classList.contains('waitlisted')) return;
         const current = row.getAttribute('data-current') || 'Por confirmar';
         let next = 'Presente';
         if(current === 'Presente') next = 'Ausente';
-        else if(current === 'Ausente') next = 'No embarca';
+        else if(current === 'Ausente') next = 'Presente';
         else if(current === 'No embarca' || current === 'No embarcable') next = 'Presente';
         const form = row.querySelector('form[data-v65-status="' + next + '"]');
         if(!form) return;
@@ -231,13 +232,16 @@
 </section>
 
 <section class="card premiumCard captainV65Card" id="tripulacion">
-  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque V65</span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
-  <div class="captainV65Hint">Tap sobre el nombre: Presente → No vino → No embarca. Botones compactos para marcar directo.</div>
+  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque V65 <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No vino. Las acciones excepcionales quedan en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
+  <div class="captainV65Hint">Tap sobre la persona: Presente ↔ No vino. Acciones excepcionales en ⋯. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
   <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
   <div class="captainPeopleList captainPeopleListV65">
   {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
     {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
     {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
+    {% set reason_text = '' %}
+    {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
+    {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
     <div class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
         <b>{{r.person_name}}</b>
@@ -256,14 +260,17 @@
         {% if locked_v65 %}
           <span class="captainLockedPill">{% if closed %}Cerrado{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
         {% else %}
-          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="fastBtnV65 present {% if r.attendance == 'Presente' %}active{% endif %}" title="Presente">✓</button></form>
-          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="fastBtnV65 absent {% if r.attendance == 'Ausente' %}active{% endif %}" title="No vino">No vino</button></form>
-          <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="fastBtnV65 noboard {% if r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}active{% endif %}" title="No embarca">No emb.</button></form>
-          <details class="captainMoreOps captainMoreOpsV65">
-            <summary aria-label="Más acciones">⋯</summary>
+          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
+          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
+          <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
+          <span class="tapCueV65">TAP</span>
+          <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
+            <summary aria-label="Más acciones" data-tip="Acciones excepcionales: reasignar invitado, marcar No embarca sin cargo o reactivar. No forman parte del tap rápido.">⋯</summary>
             <div class="captainMoreOpsBody">
               {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
-              {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente</button></form>{% endif %}
+              {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
+              <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>
+              {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
                 <select name="new_responsible_user_id" class="capReassignSelect" aria-label="Nuevo socio responsable">
@@ -272,7 +279,7 @@
                     {% if opt.id != r.responsible_user_id %}<option value="{{opt.id}}">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</option>{% endif %}
                   {% endfor %}
                 </select>
-                <button class="capAction reassignAction">Reasignar</button>
+                <button class="capAction reassignAction">Reasignar <span class="helpDot helpDotTiny" data-tip="Pasa el invitado a otro socio presente para que pueda embarcar con responsable válido.">i</span></button>
               </form>
               {% endif %}
             </div>
@@ -312,7 +319,7 @@
   </div>
 </div>
 {% endif %}
-<footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
+<footer class="appFooter"><small>Embarque Fjord VI v65 TAP LISTA OPS3 · Tips/Toasts</small></footer></div>
 <script src="/static/app.js?v=v65"></script>
 </body>
 </html>
