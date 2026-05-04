@@ -35,6 +35,7 @@
     reapertura_ok: ['Salida reabierta. Se recalcularon preliquidaciones y suplentes.', 'success'],
     minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
     maximo_superado: ['No se puede cerrar: se supera el cupo máximo.', 'error'],
+    cupo_lleno: ['Cupo completo: no se puede marcar más de 9 presentes. Marcá a alguien como No vino o No embarca antes de sumar otro presente.', 'warning'],
     accion_invalida: ['Acción inválida o registro inexistente.', 'error'],
     reasignacion_ok: ['Invitado reasignado al nuevo socio responsable.', 'success'],
     reasignacion_invalida: ['Reasignación inválida.', 'error'],
@@ -104,7 +105,7 @@
         const reassign = form.classList.contains('reassignGuestForm');
         const tripRow = form.closest('.captainFastRowV65');
         if (reassign) {
-          const sel = form.querySelector('select[name="new_responsible_user_id"]');
+          const sel = form.querySelector('select[name="new_responsible_user_id"], input[name="new_responsible_user_id"]');
           if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return; }
           if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return; }
         }
@@ -140,6 +141,13 @@
         if(current === 'Presente') next = 'Ausente';
         else if(current === 'Ausente') next = 'Presente';
         else if(current === 'No embarca' || current === 'No embarcable') next = 'Presente';
+        if(next === 'Presente'){
+          const presentRows = document.querySelectorAll('#tripulacion .captainFastRowV65.statePresent:not(.waitlisted):not(.inactive)').length;
+          if(current !== 'Presente' && presentRows >= 9){
+            captainToast('Cupo completo: máximo 9 presentes. Primero sacá a alguien de Presente.', 'warning');
+            return;
+          }
+        }
         const form = row.querySelector('form[data-v65-status="' + next + '"]');
         if(!form) return;
         if(next === 'Ausente' && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) return;
@@ -191,7 +199,7 @@
     const reassign = form.classList.contains('reassignGuestForm');
     const tripRow = form.closest('.captainFastRowV65');
     if (reassign) {
-      const sel = form.querySelector('select[name="new_responsible_user_id"]');
+      const sel = form.querySelector('select[name="new_responsible_user_id"], input[name="new_responsible_user_id"]');
       if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return false; }
       if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return false; }
     }
@@ -374,15 +382,17 @@
               <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>
               {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
-              <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
-                <select name="new_responsible_user_id" class="capReassignSelect" aria-label="Nuevo socio responsable">
-                  <option value="">Reasignar a socio presente</option>
-                  {% for opt in captain_responsible_options %}
-                    {% if opt.id != r.responsible_user_id %}<option value="{{opt.id}}">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</option>{% endif %}
-                  {% endfor %}
-                </select>
-                <button class="capAction reassignAction">Reasignar <span class="helpDot helpDotTiny" data-tip="Pasa el invitado a otro socio presente para que pueda embarcar con responsable válido.">i</span></button>
-              </form>
+              <div class="captainReassignBlock">
+                <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b></div>
+                {% for opt in captain_responsible_options %}
+                  {% if opt.id != r.responsible_user_id %}
+                  <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+                    <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
+                    <button class="capAction reassignAction">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
+                  </form>
+                  {% endif %}
+                {% endfor %}
+              </div>
               {% endif %}
             </div>
           </details>
