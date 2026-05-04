@@ -5080,3 +5080,54 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 /* v53.6 ficha cierre */
 .btnSmall{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:12px;background:#0f5e87;color:white!important;text-decoration:none;font-weight:800;font-size:13px;box-shadow:0 6px 14px rgba(0,0,0,.12)}
 .statusPanel .btnSmall{margin-top:10px;align-self:flex-start}
+
+/* v60 - Capitán modo operativo simplificado */
+.captainProBody .captainWrap{max-width:1120px;}
+.captainProBody .captainStickyPanel{padding:10px 12px!important;border-radius:18px!important;margin:10px 0!important;}
+.captainProBody .captainStickyTop h1{font-size:18px!important;line-height:1.05!important;}
+.captainProBody .captainStickyKpis{gap:6px!important;margin-top:9px!important;}
+.captainProBody .captainStickyKpis div{padding:7px 8px!important;border-radius:13px!important;}
+.captainProBody .captainStickyKpis b{font-size:19px!important;}
+.captainProBody .captainMiniSummary{margin-top:8px!important;gap:6px!important;}
+.captainProBody .captainMiniSummary button{padding:7px 8px!important;border-radius:12px!important;}
+.captainProBody .captainPeopleList{display:flex;flex-direction:column;gap:7px;}
+.captainProBody .captainPersonPro{padding:10px 12px!important;border-radius:16px!important;box-shadow:0 5px 15px rgba(0,0,0,.035)!important;border-left-width:8px!important;}
+.captainProBody .captainPersonName b{font-size:16px!important;line-height:1.12!important;}
+.captainProBody .captainStatusLine{margin-top:5px!important;gap:5px!important;}
+.captainProBody .captainResponsibleLine,.captainProBody .captainReason{font-size:12px!important;line-height:1.25!important;margin-top:4px!important;}
+.captainProBody .captainStateChip{font-size:11px!important;padding:4px 8px!important;border-radius:999px!important;font-weight:850!important;}
+.captainProBody .badgeTipo{font-size:10px!important;padding:3px 7px!important;}
+.captainProBody .captainOpsV60{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;min-width:0!important;}
+.captainProBody .captainPrimarySlot{display:block;}
+.captainProBody .captainQuickOps{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.captainProBody .captainOpsV60 form{margin:0!important;}
+.captainProBody .capAction{min-height:34px!important;border-radius:10px!important;padding:7px 8px!important;font-size:12px!important;line-height:1.05!important;box-shadow:none!important;}
+.captainProBody .capAction.primary{background:#08763b!important;color:#fff!important;font-size:13px!important;min-height:38px!important;}
+.captainProBody .capAction.danger{background:#b42318!important;color:#fff!important;}
+.captainProBody .capAction.neutralAction{background:#f1f3f5!important;color:#334155!important;border:1px solid #cbd5e1!important;}
+.captainProBody .capAction.neutralAction small{display:block;font-size:10px;font-weight:850;opacity:.72;margin-top:1px;}
+.captainProBody .capAction.reactivate{background:#193b5b!important;color:#fff!important;}
+.captainProBody .capAction.reassignAction{background:#23415a!important;color:#fff!important;margin-top:6px;}
+.captainProBody .captainDonePill,.captainProBody .captainLockedPill{display:flex;align-items:center;justify-content:center;min-height:34px;border-radius:10px;font-weight:900;font-size:12px;padding:6px 8px;background:#e7f7ee;color:#096336;border:1px solid #b8e4c7;}
+.captainProBody .captainLockedPill{background:#eef2f6;color:#475569;border-color:#d5dde5;}
+.captainProBody .captainLockedPill.wait{background:#fff7e6;color:#8a5b00;border-color:#f0d391;}
+.captainProBody .captainMoreOps{border:1px solid #e0e7ef;border-radius:10px;background:#f8fafc;overflow:hidden;}
+.captainProBody .captainMoreOps summary{list-style:none;cursor:pointer;padding:7px 9px;font-size:12px;font-weight:900;color:#53606d;display:flex;justify-content:center;}
+.captainProBody .captainMoreOps summary::-webkit-details-marker{display:none;}
+.captainProBody .captainMoreOps[open] summary{border-bottom:1px solid #e0e7ef;background:#f1f5f9;}
+.captainProBody .captainMoreOpsBody{padding:7px;display:grid;gap:7px;}
+.captainProBody .capReassignSelect{width:100%;min-height:34px;border:1px solid #cbd5e1;border-radius:9px;padding:6px 8px;font-size:12px;background:#fff;}
+.captainProBody .captainDecisionGrid{gap:8px!important;}
+.captainProBody .captainDecisionBtn{min-height:42px!important;border-radius:13px!important;font-size:13px!important;}
+.captainProBody .premiumCard{border-radius:18px!important;}
+.captainProBody .cardTitle{margin-bottom:9px!important;}
+.captainProBody .captainFilterPro{gap:5px!important;margin-bottom:9px!important;}
+.captainProBody .captainFilterPro button{padding:7px 9px!important;border-radius:10px!important;font-size:12px!important;}
+@media(min-width:760px){
+  .captainProBody .captainPersonPro{grid-template-columns:minmax(0,1fr) 230px!important;align-items:center!important;}
+  .captainProBody .captainOpsV60{width:230px!important;}
+}
+@media(max-width:520px){
+  .captainProBody .captainPersonPro{grid-template-columns:1fr!important;}
+  .captainProBody .captainQuickOps{grid-template-columns:1fr 1fr;}
+}
