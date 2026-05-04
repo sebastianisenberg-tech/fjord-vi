@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v57.1">
+  <link rel="stylesheet" href="/static/style.css?v=v59.0">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -41,7 +41,8 @@
     socio_reasignacion_no_valido: ['El nuevo responsable no tiene reserva de socio activa en esta salida.', 'error'],
     socio_reasignacion_no_presente: ['El nuevo responsable debe estar presente para tomar invitados.', 'error'],
     reasignacion_sin_cambios: ['El invitado ya estaba a cargo de ese socio.', 'warning'],
-    salida_inexistente: ['Salida inexistente.', 'error']
+    salida_inexistente: ['Salida inexistente.', 'error'],
+    preflight_error: ['No se pudo cerrar: hay errores en la revisión previa.', 'error']
   };
   document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('form').forEach(function(form){
@@ -206,7 +207,7 @@
     <div class="captainDecisionGrid">
       {% if closed or outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar / reabrir salida</button></form>{% endif %}
       {% if not closed and not outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Cancelada"><button class="captainDecisionBtn cancelBtn">Cancelar por capitán <span class="helpDot" data-tip="Cancelar por capitán suspende la salida y no genera cargos mientras permanezca cancelada.">ⓘ</span></button></form>{% endif %}
-      {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="closeBoardingForm" method="post" action="/captain/close"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar y liquidar <span class="helpDot" data-tip="Cerrar consolida estados y genera cargos finales según presentes, ausentes y no embarca.">ⓘ</span></button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
+      {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="preflightBoardingForm" method="get" action="/captain/preflight"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar y liquidar <span class="helpDot" data-tip="Cerrar consolida estados y genera cargos finales según presentes, ausentes y no embarca.">ⓘ</span></button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
     </div>
   {% endif %}
 </section>
@@ -290,6 +291,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
-<script src="/static/app.js?v=v57.1"></script>
+<script src="/static/app.js?v=v59.0"></script>
 </body>
 </html>
