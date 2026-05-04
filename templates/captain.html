@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v652">
+  <link rel="stylesheet" href="/static/style.css?v=v653">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -82,6 +82,17 @@
 
   document.addEventListener('DOMContentLoaded', function(){
     captainRestoreScroll();
+    document.querySelectorAll('.captainMoreOpsV65 > summary').forEach(function(summary){
+      summary.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        captainOpenOpsSheetFromDetails(summary.closest('.captainMoreOpsV65'));
+      });
+    });
+    document.addEventListener('submit', function(e){
+      var f = e.target;
+      if(f && f.closest && f.closest('#captainOpsSheet')){ captainHandleOperationalSubmit(e, f); }
+    }, true);
     document.querySelectorAll('form').forEach(function(form){
       form.addEventListener('submit', function(e){
         const statusField = form.querySelector('input[name="status"], select[name="status"]');
@@ -141,6 +152,57 @@
     var msgCode = document.body.getAttribute('data-msg');
     if(msgCode && CAPTAIN_MSGS[msgCode]){ captainToast(CAPTAIN_MSGS[msgCode][0], CAPTAIN_MSGS[msgCode][1]); }
   });
+
+
+  function captainOpenOpsSheetFromDetails(details){
+    if(!details) return;
+    var sheet = document.getElementById('captainOpsSheet');
+    var content = document.getElementById('captainOpsSheetContent');
+    var title = document.getElementById('captainOpsSheetTitle');
+    if(!sheet || !content) return;
+    var row = details.closest('.captainFastRowV65');
+    var nameEl = row ? row.querySelector('.captainFastIdentityV65 b') : null;
+    if(title && nameEl) title.textContent = nameEl.textContent.trim();
+    var body = details.querySelector('.captainMoreOpsBody');
+    content.innerHTML = '';
+    if(body){
+      content.appendChild(body.cloneNode(true));
+    } else {
+      content.innerHTML = '<div class="empty">No hay acciones disponibles.</div>';
+    }
+    sheet.classList.remove('hidden');
+    sheet.setAttribute('aria-hidden','false');
+    document.body.classList.add('captainSheetOpen');
+  }
+
+  function captainCloseOpsSheet(){
+    var sheet = document.getElementById('captainOpsSheet');
+    if(sheet){ sheet.classList.add('hidden'); sheet.setAttribute('aria-hidden','true'); }
+    document.body.classList.remove('captainSheetOpen');
+  }
+
+  function captainHandleOperationalSubmit(e, form){
+    const statusField = form.querySelector('input[name="status"], select[name="status"]');
+    const statusValue = statusField ? statusField.value : '';
+    const close = form.classList.contains('closeBoardingForm') || statusValue === 'Cerrar';
+    const cancel = statusValue === 'Cancelada';
+    const absent = form.classList.contains('attendanceAbsentForm');
+    const noBoard = form.classList.contains('attendanceNoBoardForm') || form.classList.contains('attendanceNoBoardMenuForm');
+    const reassign = form.classList.contains('reassignGuestForm');
+    const tripRow = form.closest('.captainFastRowV65');
+    if (reassign) {
+      const sel = form.querySelector('select[name="new_responsible_user_id"]');
+      if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return false; }
+      if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return false; }
+    }
+    if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No vino (con cargo).')) { e.preventDefault(); return false; }
+    if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return false; }
+    if (absent && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return false; }
+    if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return false; }
+    if (tripRow) { captainRememberScroll(tripRow); }
+    form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
+    return true;
+  }
 
   function mostrarQRCapitan(){
     var el = document.getElementById('qrCapitanOverlay');
@@ -348,6 +410,18 @@
 </div>
 {% endif %}
 {% if outing and qr_url %}
+
+<div id="captainOpsSheet" class="captainOpsSheet hidden" aria-hidden="true">
+  <div class="captainOpsSheetBackdrop" onclick="captainCloseOpsSheet()"></div>
+  <div class="captainOpsSheetPanel" role="dialog" aria-modal="true" aria-label="Acciones de tripulante">
+    <div class="captainOpsSheetHandle"></div>
+    <div class="captainOpsSheetHeader">
+      <div><span class="eyebrow">Acciones</span><h3 id="captainOpsSheetTitle">Tripulante</h3></div>
+      <button type="button" class="captainOpsSheetClose" onclick="captainCloseOpsSheet()">Cerrar</button>
+    </div>
+    <div id="captainOpsSheetContent" class="captainOpsSheetContent"></div>
+  </div>
+</div>
 <div id="qrCapitanOverlay" class="qrCapitanOverlay hidden" onclick="if(event.target===this) cerrarQRCapitan()">
   <div class="qrCapitanBox">
     <h2>Check-in Fjord VI</h2>
@@ -360,6 +434,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI v65.2 TAP LISTA · Menú real</small></footer></div>
-<script src="/static/app.js?v=v652"></script>
+<script src="/static/app.js?v=v653"></script>
 </body>
 </html>
