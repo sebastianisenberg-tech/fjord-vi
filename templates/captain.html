@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v64.1">
+  <link rel="stylesheet" href="/static/style.css?v=v65">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -61,8 +61,7 @@
         }
         if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No vino (con cargo).')) { e.preventDefault(); return; }
         if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
-        if (absent && !confirm('Marcar AUSENTE? Esta acción puede generar cargo reglamentario.')) { e.preventDefault(); return; }
-        if (noBoard && !confirm('Marcar NO EMBARCA por decisión del capitán? No genera cargo.')) { e.preventDefault(); return; }
+        if (absent && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return; }
         form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
       });
     });
@@ -79,6 +78,25 @@
         people.forEach(p => { p.classList.toggle('is-hidden-v43', !(f === 'all' || p.classList.contains(f))); });
       });
     }
+
+    // V65: operación ultra rápida. Tap sobre la fila cicla estado; botones compactos marcan directo.
+    document.querySelectorAll('.captainFastRowV65').forEach(function(row){
+      row.addEventListener('click', function(e){
+        if(e.target.closest('button, a, summary, details, select, form')) return;
+        if(row.classList.contains('locked') || row.classList.contains('waitlisted')) return;
+        const current = row.getAttribute('data-current') || 'Por confirmar';
+        let next = 'Presente';
+        if(current === 'Presente') next = 'Ausente';
+        else if(current === 'Ausente') next = 'No embarca';
+        else if(current === 'No embarca' || current === 'No embarcable') next = 'Presente';
+        const form = row.querySelector('form[data-v65-status="' + next + '"]');
+        if(!form) return;
+        if(next === 'Ausente' && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) return;
+        row.classList.add('isSubmittingV65');
+        form.submit();
+      });
+    });
+
     var msgCode = document.body.getAttribute('data-msg');
     if(msgCode && CAPTAIN_MSGS[msgCode]){ captainToast(CAPTAIN_MSGS[msgCode][0], CAPTAIN_MSGS[msgCode][1]); }
   });
@@ -212,41 +230,39 @@
   {% endif %}
 </section>
 
-<section class="card premiumCard" id="tripulacion">
-  <div class="cardTitle captainTripTitle"><div><span class="eyebrow">Embarque</span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
-  <div class="captainFilterV43 captainFilterPro" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo / bajas</button></div>
-  <div class="captainPeopleList">
+<section class="card premiumCard captainV65Card" id="tripulacion">
+  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque V65</span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
+  <div class="captainV65Hint">Tap sobre el nombre: Presente → No vino → No embarca. Botones compactos para marcar directo.</div>
+  <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
+  <div class="captainPeopleList captainPeopleListV65">
   {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
-    <div class="premiumPerson captainPerson captainPersonPro {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %}">
-      <div class="personMain captainPersonMain">
-        <div class="captainPersonName"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span></div>
-        <div class="captainStatusLine">
-          {% if v.waitlisted %}<span class="captainStateChip wait">Lista de espera</span>{% elif r.attendance == 'Presente' %}<span class="captainStateChip present">Presente</span>{% elif r.attendance == 'Ausente' %}<span class="captainStateChip absent">No vino (cobra)</span>{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="captainStateChip noboard">No embarca (sin cargo)</span>{% elif outing_cancelled %}<span class="captainStateChip neutral">Sin cargo</span>{% else %}<span class="captainStateChip pending">Sin marcar</span>{% endif %}
-        </div>
-        {% if v.show_responsible %}<div class="captainResponsibleLine">Invitado de: <b>{{v.responsible_name}}</b> <span class="helpDot" data-tip="El invitado depende del socio responsable. Si el socio no embarca, el invitado no puede quedar presente.">ⓘ</span></div>{% endif %}
-        {% set reason_text = '' %}
-        {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
-        {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
-        {% if reason_text %}<div class="personState captainReason">{{reason_text}}</div>{% endif %}
+    {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
+    {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
+    <div class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
+      <div class="captainFastIdentityV65">
+        <b>{{r.person_name}}</b>
+        <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
+        {% if v.show_responsible %}<small>de {{v.responsible_name}}</small>{% endif %}
       </div>
-      <div class="captainActions captainActionsPro captainOpsV64">
-        {% if closed or outing_cancelled %}
-          <span class="captainLockedPill">{% if closed %}Cerrado{% else %}Bloqueado{% endif %}</span>
-        {% elif user.role == 'captain' and control_window.expired %}
-          <span class="captainLockedPill">Bloqueado</span>
-        {% elif v.waitlisted %}
-          <span class="captainLockedPill wait">En espera</span>
+      <div class="captainFastStateV65">
+        {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
+        {% elif outing_cancelled %}<span class="fastStateChipV65 neutral">Sin cargo</span>
+        {% elif r.attendance == 'Presente' %}<span class="fastStateChipV65 present">Presente</span>
+        {% elif r.attendance == 'Ausente' %}<span class="fastStateChipV65 absent">No vino</span>
+        {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
+        {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
+      </div>
+      <div class="captainFastActionsV65" aria-label="Estados operativos">
+        {% if locked_v65 %}
+          <span class="captainLockedPill">{% if closed %}Cerrado{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
         {% else %}
-          <div class="captainStateActionsV64" aria-label="Estados operativos">
-            <form method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="stateBtnV64 present {% if r.attendance == 'Presente' %}active{% endif %}">✓ Presente</button></form>
-            <form class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="stateBtnV64 absent {% if r.attendance == 'Ausente' %}active{% endif %}">No vino <small>con cargo</small></button></form>
-            <form class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="stateBtnV64 noboard {% if r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}active{% endif %}">No embarca <small>sin cargo</small></button></form>
-          </div>
-          <details class="captainMoreOps captainMoreOpsV64">
+          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente"><button class="fastBtnV65 present {% if r.attendance == 'Presente' %}active{% endif %}" title="Presente">✓</button></form>
+          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente"><button class="fastBtnV65 absent {% if r.attendance == 'Ausente' %}active{% endif %}" title="No vino">No vino</button></form>
+          <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="fastBtnV65 noboard {% if r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}active{% endif %}" title="No embarca">No emb.</button></form>
+          <details class="captainMoreOps captainMoreOpsV65">
             <summary aria-label="Más acciones">⋯</summary>
             <div class="captainMoreOpsBody">
               {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
-              {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
               {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente</button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
@@ -297,6 +313,6 @@
 </div>
 {% endif %}
 <footer class="appFooter"><small>Embarque Fjord VI {{version}}</small></footer></div>
-<script src="/static/app.js?v=v64.1"></script>
+<script src="/static/app.js?v=v65"></script>
 </body>
 </html>

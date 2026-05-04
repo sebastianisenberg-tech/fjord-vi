@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v64.1">
+  <link rel="stylesheet" href="/static/style.css?v=v65">
   <title>Fjord VI · Administración</title>
   <style>
     :root{
@@ -277,6 +277,6 @@
   document.getElementById('calPrev')?.addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderCal();});document.getElementById('calNext')?.addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);renderCal();});document.querySelectorAll('[data-hour]').forEach(b=>{if(b.dataset.hour===selectedHour)b.classList.add('selected');b.addEventListener('click',()=>{selectedHour=b.dataset.hour;document.querySelectorAll('[data-hour]').forEach(x=>x.classList.toggle('selected',x===b));setInputDate(selected);});});renderCal();
 })();
 </script>
-<script src="/static/app.js?v=v64.1"></script>
+<script src="/static/app.js?v=v65"></script>
 </body>
 </html>
