@@ -45,8 +45,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v66.3.1"
-APP_BUILD = "v66-system-console-audit-fix"
+VERSION = "v66.4.1"
+APP_BUILD = "v66-hardening-system-console-audit-fix"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -332,11 +332,48 @@ def safe_db_url_summary() -> dict:
     parsed = urlparse(DB_URL)
     return {
         "engine": "postgres",
-        "host": parsed.hostname or "",
+        "host": "PostgreSQL gestionado (host oculto)",
         "database": (parsed.path or "").lstrip("/"),
         "port": parsed.port or "",
         "url_configured": bool(os.getenv("DATABASE_URL")),
     }
+
+def pg_dump_version_label() -> str:
+    exe = shutil.which("pg_dump")
+    if not exe:
+        return "no disponible"
+    try:
+        r = subprocess.run([exe, "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+        out = (r.stdout or r.stderr).decode("utf-8", errors="ignore").strip()
+        return out or exe
+    except Exception as e:
+        return f"disponible, sin versión ({type(e).__name__})"
+
+def postgres_server_version(db: Session) -> str:
+    if not DB_URL.startswith("postgres"):
+        return ""
+    try:
+        return str(db.execute(text("SHOW server_version")).scalar() or "")
+    except Exception:
+        return ""
+
+def _major_from_version_text(v: str) -> Optional[int]:
+    import re
+    m = re.search(r"(\d+)", v or "")
+    return int(m.group(1)) if m else None
+
+def pg_dump_compatible_with_server(db: Session) -> tuple[bool, str]:
+    if not DB_URL.startswith("postgres"):
+        return True, "no aplica"
+    client_v = pg_dump_version_label()
+    server_v = postgres_server_version(db)
+    if client_v == "no disponible":
+        return False, "pg_dump no disponible"
+    cmaj = _major_from_version_text(client_v)
+    smaj = _major_from_version_text(server_v)
+    if cmaj and smaj and cmaj < smaj:
+        return False, f"pg_dump {cmaj} es anterior al servidor PostgreSQL {smaj}"
+    return True, f"cliente {client_v}; servidor {server_v or 'desconocido'}"
 
 def table_count(db: Session, model) -> int:
     try:
@@ -404,17 +441,66 @@ def integrity_checks(db: Session) -> list:
     except Exception as e:
         checks.append({"name": "Invitado presente con socio ausente", "ok": False, "detail": type(e).__name__})
     try:
-        closed = db.query(Outing).filter(Outing.status.in_(["Embarque cerrado", "Realizada"])).all()
-        without = sum(1 for o in closed if not closing_sheet_current(db, o.id))
-        checks.append({"name": "Salidas cerradas sin ficha vigente", "ok": without == 0, "detail": "OK" if without == 0 else f"{without} salidas"})
+        missing_sheets = closed_outings_without_current_sheet(db)
+        without = len(missing_sheets)
+        detail = "OK" if without == 0 else f"{without} salidas"
+        checks.append({"name": "Salidas cerradas sin ficha vigente", "ok": without == 0, "detail": detail})
     except Exception as e:
         checks.append({"name": "Salidas cerradas sin ficha vigente", "ok": False, "detail": type(e).__name__})
+    try:
+        dup_sheets = current_sheet_duplicates_count(db)
+        checks.append({"name": "Fichas vigentes duplicadas", "ok": dup_sheets == 0, "detail": "OK" if dup_sheets == 0 else f"{dup_sheets} salidas"})
+    except Exception as e:
+        checks.append({"name": "Fichas vigentes duplicadas", "ok": False, "detail": type(e).__name__})
+    try:
+        bad_payload = 0
+        for sh in db.query(ClosingSheet).all():
+            try:
+                json.loads(sh.payload or "{}")
+            except Exception:
+                bad_payload += 1
+        checks.append({"name": "Fichas con payload inválido", "ok": bad_payload == 0, "detail": "OK" if bad_payload == 0 else f"{bad_payload} fichas"})
+    except Exception as e:
+        checks.append({"name": "Fichas con payload inválido", "ok": False, "detail": type(e).__name__})
     try:
         no_member_no = db.query(User).filter(User.role == "socio", User.active == True).filter((User.member_no == None) | (User.member_no == "")).count()
         checks.append({"name": "Socios sin Nº socio", "ok": no_member_no == 0, "detail": "OK" if no_member_no == 0 else f"{no_member_no} socios"})
     except Exception as e:
         checks.append({"name": "Socios sin Nº socio", "ok": False, "detail": type(e).__name__})
     return checks
+
+
+def closed_outings_without_current_sheet(db: Session) -> list:
+    """Salidas cerradas o realizadas que no tienen ficha vigente.
+
+    Es un estado heredado/inconsistente: una salida cerrada debe tener una ficha
+    vigente que respalde la liquidación. No se repara automáticamente para evitar
+    cambios silenciosos; el administrador puede generar las fichas faltantes desde
+    Sistema con doble confirmación visual.
+    """
+    rows = []
+    try:
+        closed = db.query(Outing).filter(Outing.status.in_(["Embarque cerrado", "Realizada"])).order_by(Outing.departure_at.desc()).all()
+        for o in closed:
+            if not closing_sheet_current(db, o.id):
+                rows.append(o)
+    except Exception:
+        return []
+    return rows
+
+
+def current_sheet_duplicates_count(db: Session) -> int:
+    """Cuenta fichas vigentes duplicadas por salida."""
+    bad = 0
+    try:
+        outing_ids = [x[0] for x in db.query(ClosingSheet.outing_id).distinct().all()]
+        for oid in outing_ids:
+            n = db.query(ClosingSheet).filter_by(outing_id=oid, status="VIGENTE").count()
+            if n > 1:
+                bad += 1
+    except Exception:
+        return -1
+    return bad
 
 def activity_summary(db: Session) -> dict:
     now = now_local()
@@ -454,6 +540,8 @@ def system_console_context(db: Session, request: Request) -> dict:
         "server_time": now_local().isoformat(timespec="seconds"),
         "db": db_engine_label(),
         "db_ok": db_ok,
+        "postgres_server_version": postgres_server_version(db),
+        "pg_dump_version": pg_dump_version_label(),
         "schema_version": get_system_meta(db, "schema_version", "1"),
         "users": table_count(db, User),
         "outings": table_count(db, Outing),
@@ -468,7 +556,8 @@ def system_console_context(db: Session, request: Request) -> dict:
         "counts_system": diag,
         "schema_rows": schema_required_status(),
         "integrity_rows": integrity_checks(db),
-        "backup_info": {"exists": backup_exists, "path": str(JSON_BACKUP_PATH), "size": backup_size, "mtime": fmt_admin_datetime(backup_mtime) if backup_mtime else "", "pg_dump_available": bool(pg_dump_path), "pg_dump_path": pg_dump_path or ""},
+        "backup_info": {"exists": backup_exists, "path": str(JSON_BACKUP_PATH), "size": backup_size, "mtime": fmt_admin_datetime(backup_mtime) if backup_mtime else "", "pg_dump_available": bool(pg_dump_path), "pg_dump_path": pg_dump_path or "", "pg_dump_version": pg_dump_version_label(), "postgres_server_version": postgres_server_version(db), "pg_dump_compat": pg_dump_compatible_with_server(db)[1]},
+        "missing_sheet_count": len(closed_outings_without_current_sheet(db)),
         "activity": activity_summary(db),
         "diagnostic_text": "\n".join([f"{k}: {v}" for k, v in diag.items()]),
         "public_url": str(request.base_url).rstrip("/"),
@@ -1844,7 +1933,13 @@ def health():
     except Exception as e:
         db_ok = False
         db_error = f"{type(e).__name__}: {e}"
-    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True}
+    server_v = ""
+    try:
+        with SessionLocal() as _db:
+            server_v = postgres_server_version(_db)
+    except Exception:
+        server_v = ""
+    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v}
 
 @app.head("/")
 def head_index():
@@ -3469,6 +3564,7 @@ def audit_csv(db: Session = Depends(db_session), user: User = Depends(require_ro
 def admin_schema_check(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     ensure_schema()
     set_system_meta("schema_version", "1")
+    set_system_meta("app_version", VERSION)
     set_system_meta("last_schema_check", now_local().isoformat())
     log(db, user.name, "schema check", "Revisión técnica de esquema ejecutada desde Sistema")
     return RedirectResponse("/admin?page=sistema&msg=schema_ok", status_code=303)
@@ -3487,6 +3583,38 @@ def admin_diagnostic_txt(request: Request, db: Session = Depends(db_session), us
         lines.append(f"{'OK' if row['ok'] else 'ERROR'} - {row['name']}: {row['detail']}")
     return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_diagnostico.txt"})
 
+
+@app.post("/admin/system/repair_missing_sheets")
+def admin_repair_missing_sheets(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Genera fichas vigentes faltantes para salidas ya cerradas.
+
+    No altera tripulación ni estados; usa el estado final actualmente guardado.
+    Está pensado para reparar datos heredados de versiones anteriores donde la
+    salida quedó cerrada sin closing_sheet vigente.
+    """
+    missing = closed_outings_without_current_sheet(db)
+    fixed = 0
+    skipped = 0
+    for outing in missing:
+        try:
+            reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
+            # Validación dura: no generar ficha si la salida está inconsistentemente cerrada.
+            errors = present_guest_without_present_responsible_errors(db, outing, reservations)
+            present_count = len([r for r in reservations if r.attendance == "Presente" and reservation_is_active(r)])
+            if errors or present_count > int(outing.max_crew or MAX_CREW):
+                skipped += 1
+                continue
+            create_closing_sheet(db, outing, reservations, user.name)
+            fixed += 1
+        except Exception as e:
+            skipped += 1
+            try:
+                log(db, user.name, "repair missing sheet error", f"{outing.title}: {type(e).__name__}")
+            except Exception:
+                pass
+    log(db, user.name, "repair missing sheets", f"fichas generadas: {fixed}; omitidas: {skipped}")
+    return RedirectResponse(f"/admin?page=sistema&msg=repair_sheets_{fixed}_{skipped}", status_code=303)
+
 @app.get("/admin/postgres_backup")
 def admin_postgres_backup(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     if not DB_URL.startswith("postgres"):
@@ -3498,6 +3626,9 @@ def admin_postgres_backup(db: Session = Depends(db_session), user: User = Depend
         payload = json.dumps(export_state(db), ensure_ascii=False, indent=2)
         filename = f"fjord_vi_postgres_logical_fallback_{now_local().strftime('%Y%m%d_%H%M')}.json"
         return Response(payload, media_type="application/json; charset=utf-8", headers={"Content-Disposition": f"attachment; filename={filename}"})
+    compatible, compat_detail = pg_dump_compatible_with_server(db)
+    if not compatible:
+        raise HTTPException(500, f"Backup PostgreSQL no ejecutado: {compat_detail}. Actualizar cliente pg_dump en Dockerfile.")
     with tempfile.NamedTemporaryFile(suffix=".sql") as tmp:
         result = subprocess.run([pg_dump, DB_URL, "--no-owner", "--no-privileges"], stdout=tmp, stderr=subprocess.PIPE, timeout=45)
         if result.returncode != 0:

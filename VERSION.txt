@@ -1,4 +1,4 @@
-FJORD VI · v66.3.1
-Build: v66-system-console-audit-fix
-Base: v66.3 SYSTEM CONSOLE ACTIVITY
-Fecha: 2026-05-04
+FJORD VI SOFTWARE
+VERSION=v66.4.1
+BUILD=v66-hardening-system-console-audit-fix
+NOTES=Auditoría: pg_dump 18 para PostgreSQL 18 y chequeo de compatibilidad de backup.
