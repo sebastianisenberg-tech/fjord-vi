@@ -5149,3 +5149,261 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .captainProBody .captainDonePill{background:#e7f7ee;color:#096336;border-color:#b8e4c7;}
 .captainProBody .captainStateChip.absent{background:#ffe4e1!important;color:#8f1d14!important;border-color:#f3aaa3!important;}
 .captainProBody .captainStateChip.noboard{background:#f1f5f9!important;color:#334155!important;border-color:#cbd5e1!important;}
+
+
+/* v63.0 - Capitán ultra compacto: menos scroll, detalles bajo demanda */
+.captainPeopleList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.captainPersonPro{
+  padding:10px 12px !important;
+  border-radius:16px !important;
+  display:grid !important;
+  grid-template-columns: 1fr !important;
+  gap:8px !important;
+  min-height:0 !important;
+}
+.captainPersonPro .personMain,
+.captainPersonPro .captainPersonMain{
+  gap:4px !important;
+}
+.captainPersonPro .captainPersonName{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+  margin:0 !important;
+}
+.captainPersonPro .captainPersonName b{
+  font-size:15px !important;
+  line-height:1.15 !important;
+}
+.captainPersonPro .badgeTipo{
+  font-size:10px !important;
+  padding:3px 7px !important;
+  white-space:nowrap !important;
+}
+.captainPersonPro .captainStatusLine{
+  margin:0 !important;
+}
+.captainPersonPro .captainStateChip{
+  font-size:11px !important;
+  padding:4px 9px !important;
+  border-radius:999px !important;
+}
+/* La relación con el socio y las explicaciones pasan a Más acciones para evitar chorizo visual */
+.captainPersonPro .captainResponsibleLine,
+.captainPersonPro .captainReason{
+  display:none !important;
+}
+.captainActionsPro,
+.captainOpsV60{
+  display:grid !important;
+  grid-template-columns: 1fr auto !important;
+  align-items:center !important;
+  gap:8px !important;
+  margin-top:0 !important;
+}
+.captainPrimarySlot{
+  width:100% !important;
+}
+.captainPrimarySlot form,
+.captainPrimarySlot .primaryForm{
+  width:100% !important;
+}
+.capAction,
+.captainDecisionBtn,
+.qrCaptainBtn{
+  min-height:34px !important;
+}
+.captainPersonPro .capAction.primary,
+.captainDonePill,
+.captainLockedPill{
+  width:100% !important;
+  min-height:32px !important;
+  padding:7px 10px !important;
+  font-size:12px !important;
+  border-radius:10px !important;
+}
+.captainMoreOps{
+  position:relative !important;
+  width:auto !important;
+  margin:0 !important;
+}
+.captainMoreOps > summary{
+  list-style:none !important;
+  cursor:pointer !important;
+  border:1px solid #dbe7ef !important;
+  background:#f7fbfe !important;
+  color:#0d3551 !important;
+  border-radius:10px !important;
+  min-height:32px !important;
+  padding:8px 10px !important;
+  font-size:0 !important;
+  white-space:nowrap !important;
+}
+.captainMoreOps > summary::-webkit-details-marker{display:none !important;}
+.captainMoreOps > summary:before{
+  content:'Más';
+  font-size:12px !important;
+  font-weight:800 !important;
+}
+.captainMoreOps[open] > summary:before{ content:'Cerrar'; }
+.captainMoreOpsBody{
+  position:absolute !important;
+  right:0 !important;
+  top:calc(100% + 6px) !important;
+  z-index:30 !important;
+  min-width:235px !important;
+  padding:10px !important;
+  border-radius:14px !important;
+  background:#fff !important;
+  border:1px solid #dbe7ef !important;
+  box-shadow:0 18px 36px rgba(15,35,52,.18) !important;
+  display:grid !important;
+  gap:8px !important;
+}
+.captainMoreOps:not([open]) .captainMoreOpsBody{display:none !important;}
+.captainMoreOpsBody .capAction{
+  width:100% !important;
+  min-height:34px !important;
+  padding:8px 10px !important;
+  font-size:12px !important;
+}
+.capReassignSelect{
+  width:100% !important;
+  min-height:34px !important;
+  font-size:12px !important;
+}
+.captainFilterPro{
+  position:sticky;
+  top:0;
+  z-index:5;
+  padding:4px !important;
+  gap:4px !important;
+  background:rgba(237,249,255,.96) !important;
+  backdrop-filter:blur(6px);
+}
+.captainFilterPro button{
+  min-height:30px !important;
+  font-size:11px !important;
+  padding:6px 8px !important;
+}
+.captainTripTitle{
+  margin-bottom:8px !important;
+}
+.captainTripTitle h2{
+  font-size:20px !important;
+}
+.captainTripCount{
+  font-size:12px !important;
+  padding:5px 9px !important;
+}
+.captainMiniSummary{
+  gap:5px !important;
+}
+.captainMiniSummary button{
+  min-height:36px !important;
+  padding:6px 8px !important;
+}
+.captainMiniSummary button span{
+  font-size:9px !important;
+}
+.captainMiniSummary button b{
+  font-size:17px !important;
+}
+@media (min-width: 720px){
+  .captainPersonPro{
+    grid-template-columns: 1fr 235px !important;
+    align-items:center !important;
+  }
+  .captainActionsPro,
+  .captainOpsV60{
+    grid-template-columns: 1fr auto !important;
+  }
+}
+@media (max-width: 420px){
+  .captainWrap{padding-left:8px !important;padding-right:8px !important;}
+  .captainPersonPro{padding:9px 10px !important;border-radius:14px !important;}
+  .captainPersonPro .captainPersonName b{font-size:14px !important;}
+  .captainMoreOpsBody{right:-2px !important;min-width:220px !important;}
+}
+
+/* v64.1 Capitán: decisión directa, tres estados claros */
+.captainProBody .captainOpsV64{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  align-items:center!important;
+  gap:8px!important;
+  width:100%!important;
+}
+.captainProBody .captainStateActionsV64{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:6px!important;
+  width:100%!important;
+}
+.captainProBody .captainStateActionsV64 form{margin:0!important;min-width:0!important;}
+.captainProBody .stateBtnV64{
+  width:100%!important;
+  min-height:36px!important;
+  border-radius:11px!important;
+  border:1px solid #d9e2ea!important;
+  background:#f8fafc!important;
+  color:#334155!important;
+  font-size:12px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  padding:7px 6px!important;
+  box-shadow:none!important;
+  white-space:normal!important;
+}
+.captainProBody .stateBtnV64 small{display:block;font-size:9.5px!important;font-weight:850!important;opacity:.75;margin-top:1px!important;}
+.captainProBody .stateBtnV64.present.active{background:#08763b!important;border-color:#08763b!important;color:#fff!important;}
+.captainProBody .stateBtnV64.absent.active{background:#b42318!important;border-color:#b42318!important;color:#fff!important;}
+.captainProBody .stateBtnV64.noboard.active{background:#475569!important;border-color:#475569!important;color:#fff!important;}
+.captainProBody .stateBtnV64:not(.active){opacity:.78!important;}
+.captainProBody .stateBtnV64:active{transform:scale(.98);}
+.captainProBody .captainMoreOpsV64{width:42px!important;justify-self:end!important;}
+.captainProBody .captainMoreOpsV64>summary{
+  width:42px!important;
+  min-height:36px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+  font-size:20px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  border-radius:11px!important;
+}
+.captainProBody .captainMoreOpsV64>summary:before{content:''!important;display:none!important;}
+.captainProBody .captainMoreOpsV64[open]>summary{background:#eaf2f7!important;color:#0d3551!important;}
+.captainProBody .captainMoreInfo{
+  font-size:12px!important;
+  color:#475569!important;
+  background:#f8fafc!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:9px!important;
+  padding:7px 8px!important;
+  line-height:1.25!important;
+}
+.captainProBody .captainResponsibleLine,
+.captainProBody .captainReason{display:none!important;}
+.captainProBody .captainPersonPro{padding:9px 10px!important;gap:6px!important;border-radius:14px!important;}
+.captainProBody .captainPersonPro .captainPersonName b{font-size:14.5px!important;}
+.captainProBody .captainPersonPro .captainStateChip{font-size:10.5px!important;padding:3px 8px!important;}
+@media (min-width:680px){
+  .captainProBody .captainPersonPro{grid-template-columns:minmax(0,1fr) 390px!important;align-items:center!important;}
+  .captainProBody .captainOpsV64{width:390px!important;}
+}
+@media (max-width:430px){
+  .captainProBody .captainOpsV64{grid-template-columns:1fr 38px!important;gap:6px!important;}
+  .captainProBody .captainStateActionsV64{gap:4px!important;}
+  .captainProBody .stateBtnV64{font-size:11px!important;min-height:34px!important;padding:6px 4px!important;}
+  .captainProBody .stateBtnV64 small{font-size:8.5px!important;}
+  .captainProBody .captainMoreOpsV64,.captainProBody .captainMoreOpsV64>summary{width:38px!important;min-height:34px!important;}
+  .captainProBody .captainMoreOpsBody{right:0!important;min-width:230px!important;}
+}
