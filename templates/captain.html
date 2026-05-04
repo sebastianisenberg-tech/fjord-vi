@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v65">
+  <link rel="stylesheet" href="/static/style.css?v=v652">
   <title>Capitán · {{app_name}}</title>
   <script>
   function captainToast(message, type){
@@ -44,7 +44,44 @@
     salida_inexistente: ['Salida inexistente.', 'error'],
     preflight_error: ['No se pudo cerrar: hay errores en la revisión previa.', 'error']
   };
+  function captainRememberScroll(row){
+    try {
+      var payload = {
+        y: window.scrollY || window.pageYOffset || 0,
+        rowId: row && row.id ? row.id : '',
+        t: Date.now()
+      };
+      sessionStorage.setItem('captainV65ScrollRestore', JSON.stringify(payload));
+    } catch(e) {}
+  }
+
+  function captainRestoreScroll(){
+    try {
+      var raw = sessionStorage.getItem('captainV65ScrollRestore');
+      if(!raw) return;
+      sessionStorage.removeItem('captainV65ScrollRestore');
+      var payload = JSON.parse(raw);
+      if(!payload || Date.now() - (payload.t || 0) > 15000) return;
+
+      // Primero intentamos volver a la misma fila; si no existe, restauramos el scroll exacto.
+      var done = false;
+      if(payload.rowId){
+        var row = document.getElementById(payload.rowId);
+        if(row){
+          row.scrollIntoView({block:'center', inline:'nearest'});
+          row.classList.add('captainJustUpdatedV65');
+          setTimeout(function(){ row.classList.remove('captainJustUpdatedV65'); }, 1100);
+          done = true;
+        }
+      }
+      if(!done && typeof payload.y === 'number'){
+        window.scrollTo(0, payload.y);
+      }
+    } catch(e) {}
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
+    captainRestoreScroll();
     document.querySelectorAll('form').forEach(function(form){
       form.addEventListener('submit', function(e){
         const statusField = form.querySelector('input[name="status"], select[name="status"]');
@@ -54,6 +91,7 @@
         const absent = form.classList.contains('attendanceAbsentForm');
         const noBoard = form.classList.contains('attendanceNoBoardForm') || form.classList.contains('attendanceNoBoardMenuForm');
         const reassign = form.classList.contains('reassignGuestForm');
+        const tripRow = form.closest('.captainFastRowV65');
         if (reassign) {
           const sel = form.querySelector('select[name="new_responsible_user_id"]');
           if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return; }
@@ -63,6 +101,7 @@
         if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
         if (absent && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return; }
         if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return; }
+        if (tripRow) { captainRememberScroll(tripRow); }
         form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
       });
     });
@@ -93,6 +132,7 @@
         const form = row.querySelector('form[data-v65-status="' + next + '"]');
         if(!form) return;
         if(next === 'Ausente' && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) return;
+        captainRememberScroll(row);
         row.classList.add('isSubmittingV65');
         form.submit();
       });
@@ -242,7 +282,7 @@
     {% set reason_text = '' %}
     {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
-    <div class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
+    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
         <b>{{r.person_name}}</b>
         <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
@@ -265,7 +305,7 @@
           <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
           <span class="tapCueV65">TAP</span>
           <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
-            <summary aria-label="Más acciones" data-tip="Acciones excepcionales: reasignar invitado, marcar No embarca sin cargo o reactivar. No forman parte del tap rápido.">⋯</summary>
+            <summary aria-label="Abrir menú de acciones">⋯</summary>
             <div class="captainMoreOpsBody">
               {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
               {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
@@ -319,7 +359,7 @@
   </div>
 </div>
 {% endif %}
-<footer class="appFooter"><small>Embarque Fjord VI v65 TAP LISTA OPS3 · Tips/Toasts</small></footer></div>
-<script src="/static/app.js?v=v65"></script>
+<footer class="appFooter"><small>Embarque Fjord VI v65.2 TAP LISTA · Menú real</small></footer></div>
+<script src="/static/app.js?v=v652"></script>
 </body>
 </html>
