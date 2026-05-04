@@ -267,11 +267,14 @@
       </article>
 
       <article class="erpCard"><h3>Backups</h3>
-        <p>Backup JSON completo y backup lógico de PostgreSQL. Si <b>pg_dump</b> no está disponible, el sistema entrega fallback JSON.</p>
+        <p>Backup JSON completo y backup lógico de PostgreSQL. En producción debe aparecer <b>pg_dump disponible</b> para descargar backup SQL real.</p>
         <div class="systemKv"><span>JSON existe</span><b>{% if system_console.backup_info.exists %}sí{% else %}no{% endif %}</b></div>
         <div class="systemKv"><span>Último JSON</span><b>{{system_console.backup_info.mtime or '-'}}</b></div>
         <div class="systemKv"><span>Tamaño JSON</span><b>{{system_console.backup_info.size}} bytes</b></div>
         <div class="systemKv"><span>pg_dump</span><b>{% if system_console.backup_info.pg_dump_available %}disponible{% else %}no disponible / fallback{% endif %}</b></div>
+        <div class="systemKv"><span>Versión pg_dump</span><b>{{system_console.backup_info.pg_dump_version}}</b></div>
+        <div class="systemKv"><span>Servidor PostgreSQL</span><b>{{system_console.backup_info.postgres_server_version or "-"}}</b></div>
+        <div class="systemKv"><span>Compatibilidad backup</span><b>{{system_console.backup_info.pg_dump_compat}}</b></div>
         <div class="actions"><a class="erpBtn erpPrimary" href="/admin/backup" target="_blank" download>Descargar JSON</a><a class="erpBtn" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a></div>
         <form method="post" action="/admin/restore" enctype="multipart/form-data" class="drawerForm" onsubmit="return confirm('Restaurar un JSON reemplaza datos actuales. ¿Continuar?') && confirm('Confirmación final: restaurar backup?');"><input type="file" name="file" accept="application/json"><button>Restaurar JSON</button></form>
       </article>
@@ -285,6 +288,11 @@
       <article class="erpCard"><h3>Integridad de datos</h3>
         <p>Controles críticos antes de soporte o producción.</p>
         <div class="systemCheckList">{% for row in system_console.integrity_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
+        {% if system_console.missing_sheet_count and system_console.missing_sheet_count > 0 %}
+        <form method="post" action="/admin/system/repair_missing_sheets" onsubmit="return confirm('Esto generará fichas vigentes faltantes usando el estado final actual de cada salida cerrada. ¿Continuar?') && confirm('Confirmación final: reparar salidas cerradas sin ficha vigente?');">
+          <button class="erpBtn erpPrimary">Reparar salidas cerradas sin ficha</button>
+        </form>
+        {% endif %}
       </article>
 
       <article class="erpCard"><h3>Actividad y uso</h3>
