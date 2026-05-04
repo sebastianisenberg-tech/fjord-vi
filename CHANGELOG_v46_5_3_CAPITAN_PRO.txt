@@ -1,7 +1,0 @@
-FJORD VI v46.5.3 CAPITAN PRO
-
-- Agrega feedback operativo tipo toast para acciones exitosas, advertencias y errores.
-- Muestra en cada invitado/menor el socio responsable: "Invitado de: ...".
-- Blindaje visible para el caso de invitado cuyo socio responsable no está presente.
-- Bloqueo defensivo de asistencia si la salida está cancelada por capitán.
-- No modifica la lógica central de cargos, cierre, QR, suplentes ni ventana de 48h.
