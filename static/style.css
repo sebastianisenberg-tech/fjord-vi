@@ -5458,3 +5458,107 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .captainFastIdentityV65 small{display:none;}
   .captainV65Hint{font-size:11.5px;padding:7px 9px;}
 }
+
+/* =========================================================
+   V65 CAPITAN TAP LISTA - paradigma real de operación
+   ========================================================= */
+.captainV65Card{padding-top:12px!important;}
+.captainV65Hint{display:none!important;}
+.captainFilterV65{margin-bottom:8px!important;}
+.captainPeopleListV65{gap:6px!important;}
+.captainFastRowV65{
+  grid-template-columns:minmax(0,1fr) auto auto!important;
+  min-height:42px!important;
+  padding:6px 8px 6px 10px!important;
+  border-radius:14px!important;
+  gap:7px!important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.captainFastIdentityV65{gap:6px!important;min-width:0!important;}
+.captainFastIdentityV65 b{
+  font-size:13.6px!important;
+  line-height:1!important;
+  max-width:52vw!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.captainFastIdentityV65 .badgeTipo{
+  font-size:8.8px!important;
+  padding:2px 5px!important;
+  letter-spacing:.02em!important;
+  opacity:.78!important;
+}
+.captainFastIdentityV65 small{display:none!important;}
+.captainFastStateV65{display:flex!important;align-items:center!important;justify-content:flex-end!important;}
+.fastStateChipV65{
+  min-width:74px!important;
+  text-align:center!important;
+  font-size:10.8px!important;
+  padding:5px 7px!important;
+  border-radius:999px!important;
+}
+.fastStateChipV65.present::before{content:'● ';}
+.fastStateChipV65.absent::before{content:'● ';}
+.fastStateChipV65.noboard::before,.fastStateChipV65.neutral::before{content:'● ';}
+.fastStateChipV65.pending::before{content:'○ ';}
+.captainFastActionsV65{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:0!important;}
+.captainFastActionsV65 form{display:none!important;}
+.tapCueV65{
+  font-size:8.8px!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+  color:rgba(255,255,255,.36)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:999px!important;
+  padding:4px 5px!important;
+  background:rgba(255,255,255,.035)!important;
+}
+.captainFastRowV65.locked .tapCueV65{display:none!important;}
+.captainFastRowV65.statePresent{border-left:4px solid #22c55e!important;}
+.captainFastRowV65.stateAbsent{border-left:4px solid #ef4444!important;}
+.captainFastRowV65.stateNoBoard{border-left:4px solid #94a3b8!important;}
+.captainFastRowV65.statePending{border-left:4px solid rgba(250,204,21,.55)!important;}
+@media (max-width:420px){
+  .captainFastRowV65{grid-template-columns:minmax(0,1fr) auto auto!important;min-height:40px!important;padding:6px 7px 6px 9px!important;}
+  .captainFastIdentityV65 b{max-width:43vw!important;font-size:13.2px!important;}
+  .fastStateChipV65{min-width:66px!important;font-size:10px!important;padding:4px 6px!important;}
+  .tapCueV65{font-size:8px!important;padding:3px 4px!important;}
+}
+
+/* V65 TAP LISTA OPS: acciones secundarias sin ensuciar el tablero */
+.captainMoreOpsV65{display:inline-flex;align-items:center;margin-left:6px;position:relative;z-index:5;}
+.captainMoreOpsV65>summary{width:34px;height:34px;border-radius:14px;display:grid;place-items:center;background:rgba(15,23,42,.06);border:1px solid rgba(15,23,42,.10);font-weight:900;list-style:none;cursor:pointer;}
+.captainMoreOpsV65>summary::-webkit-details-marker{display:none;}
+.captainMoreOpsV65[open] .captainMoreOpsBody{right:0;left:auto;min-width:260px;}
+.captainFastActionsV65{display:flex;align-items:center;gap:6px;}
+.captainFastRowV65 .captainMoreOpsBody form{display:block;}
+
+
+/* =========================================================
+   V65 OPS3 · Tips discretos y toasts operativos
+   ========================================================= */
+.helpDotTiny{
+  width:15px!important;height:15px!important;font-size:10px!important;
+  margin-left:4px!important;opacity:.86!important;text-transform:none!important;
+}
+.captainV65Card .helpDotTiny{
+  background:rgba(255,255,255,.10)!important;color:rgba(255,255,255,.82)!important;
+  border-color:rgba(255,255,255,.16)!important;
+}
+.captainMoreOpsV65>summary[data-tip]{position:relative;}
+.captainMoreOpsV65>summary[data-tip]:after{
+  content:'i';position:absolute;right:-4px;top:-5px;width:13px;height:13px;border-radius:50%;
+  display:grid;place-items:center;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);
+  color:rgba(255,255,255,.82);font-size:8px;font-weight:950;line-height:1;
+}
+.captainMoreOpsBody .helpDotTiny{
+  background:rgba(15,23,42,.08)!important;color:#0f172a!important;border-color:rgba(15,23,42,.14)!important;
+}
+.captainToastStack{top:72px!important;}
+.captainToast{border-radius:15px!important;padding:11px 13px!important;}
+@media (max-width:420px){
+  .helpDotTiny{width:14px!important;height:14px!important;font-size:9px!important;}
+  .captainMoreOpsV65>summary[data-tip]:after{right:-3px;top:-4px;}
+}
