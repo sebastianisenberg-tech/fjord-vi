@@ -65,7 +65,7 @@
     <div class="peopleGrid">
     {% for g in data.groups %}{% if g.navegaron %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li>{{ p.name }} <small>({{ p.tipo }})</small>{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal navegación: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
     </div>
-    <h2>Ausentes / No-show con cargo</h2>
+    <h2>No vino / No-show con cargo</h2>
     <div class="peopleGrid">
     {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li>{{ p.name }} <small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small></li>{% endfor %}</ul><div class="amount">Subtotal no-show: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
     </div>
