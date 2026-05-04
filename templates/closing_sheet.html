@@ -60,16 +60,16 @@
     {% if sheet.status == 'ANULADA' %}<div class="notice annul"><strong>ANULADA</strong>{% if replacement %}: reemplazada por Ficha N° {{ replacement.sequence }}{% endif %}. {{ sheet.annul_reason }}</div>{% elif replaced_sheets %}<div class="notice vigente"><strong>VIGENTE.</strong> Reemplaza a fichas anuladas: {% for rs in replaced_sheets|sort(attribute='sequence') %}N° {{ rs.sequence }}{% if not loop.last %}, {% endif %}{% endfor %}.</div>{% endif %}
     <div class="data"><div>Salida: <b>{{ data.outing_title }}</b></div><div>Fecha: <b>{{ data.departure_label }}</b></div><div>Capitán: <b>{{ data.captain }}</b></div><div>Generada: <b>{{ data.generated_at }}</b></div></div>
     <div class="summary"><div class="metric"><span>Navegaron</span><b>{{ data.summary.navegaron }}</b></div><div class="metric"><span>Socios</span><b>{{ data.summary.socios }}</b></div><div class="metric"><span>Invitados</span><b>{{ data.summary.invitados }}</b></div><div class="metric"><span>Total</span><b>$ {{ data.summary.total_label }}</b></div></div>
-    <div class="moneybox"><div class="moneyitem"><span>Subtotal navegación</span><b>$ {{ data.summary.subtotal_navegacion_label or '0' }}</b></div><div class="moneyitem"><span>Subtotal no-show</span><b>$ {{ data.summary.subtotal_no_show_label or '0' }}</b></div><div class="moneyitem total"><span>Total general</span><b>$ {{ data.summary.total_label }}</b></div></div>
+    <div class="moneybox"><div class="moneyitem"><span>Invitados navegados</span><b>$ {{ data.summary.subtotal_navegacion_label or '0' }}</b></div><div class="moneyitem"><span>No-show con cargo</span><b>$ {{ data.summary.subtotal_no_show_label or '0' }}</b></div><div class="moneyitem total"><span>Total general</span><b>$ {{ data.summary.total_label }}</b></div></div>
     <h2>Navegaron</h2>
     <div class="peopleGrid">
-    {% for g in data.groups %}{% if g.navegaron %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li>{{ p.name }} <small>({{ p.tipo }})</small>{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal navegación: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
+    {% for g in data.groups %}{% if g.navegaron %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li>{{ p.name }} <small>({{ p.tipo }})</small>{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal invitados navegados a cargo del socio responsable: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
     </div>
-    <h2>No vino / No-show con cargo</h2>
+    <h2>Invitados no vino / No-show con cargo</h2>
     <div class="peopleGrid">
-    {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li>{{ p.name }} <small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small></li>{% endfor %}</ul><div class="amount">Subtotal no-show: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
+    {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li>{{ p.name }} <small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small></li>{% endfor %}</ul><div class="amount">Subtotal no-show con cargo a cargo del socio responsable: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
     </div>
-    <div class="finalTotal">TOTAL GENERAL A COBRAR: $ {{ data.summary.total_label }}</div>
+    <div class="finalTotal">TOTAL GENERAL A COBRAR POR INVITADOS: $ {{ data.summary.total_label }}</div>
     <div class="foot">Documento generado automáticamente por el sistema Fjord VI.</div>
   </main>
 </body>
