@@ -836,18 +836,21 @@ def late_window_passed(outing: Outing) -> bool:
 def reservation_charge(outing: Outing, r: Reservation) -> float:
     """Cargo reglamentario por plaza perdida.
 
-    Esta función se usa para cancelación tardía, ausencia o no embarcable.
-    No se usa para cobrar navegación normal.
+    Regla operativa vigente para paseos Fjord VI:
+    - Socio presente: no paga.
+    - Socio no vino / ausente: paga 70% de la tarifa de invitado.
+    - Invitado / hijo menor no socio presente: paga tarifa completa por navegación
+      (eso se liquida aparte, no en esta función).
+    - Invitado / hijo menor no socio no vino: paga tarifa completa de invitado.
+    - No embarca por decisión del capitán: se filtra antes y siempre queda sin cargo.
 
-    Socio, incluido socio menor: 70% de tarifa invitado.
-    Invitado, de cualquier edad: 100% de tarifa invitado.
-    Hijo menor de socio no socio: navega sin cargo, pero si no embarca
-    o cancela tarde paga 100% de tarifa invitado por plaza perdida.
+    Esta función NO se usa para navegación normal; solo para ausencias/cancelaciones
+    tardías con cargo.
     """
     fee = float(outing.guest_fee or 0)
     k = canonical_kind(r.kind)
     if k == "socio":
-        return round(fee * LATE_SOCIO_RATE, 2)
+        return fee * LATE_SOCIO_RATE
     if k in ("invitado", "hijo_menor"):
         return fee
     return 0.0
@@ -2088,7 +2091,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     Reglas acordadas:
     - Socio presente: sin cargo.
     - Invitado presente: paga tarifa completa de invitado al socio responsable.
-    - Socio ausente/no-show: paga 70% de tarifa invitado.
+    - Socio ausente/no-show: paga 70% de la tarifa de invitado.
     - Invitados de socio ausente: no embarcan, pero se cobran al socio ausente
       salvo que el capitán los haya reasignado a otro socio presente antes del cierre.
     - No embarca por decisión del capitán: sin cargo.
@@ -2140,11 +2143,13 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
                 r.cancel_reason = "No embarcó por ausencia del socio responsable"
                 r.charge_amount = reservation_charge(outing, r)
 
+        # Liquidación por ESTADO FINAL único. No se arrastran cargos de estados anteriores.
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
             if not r.cancel_reason:
                 r.cancel_reason = "No vino: plaza reservada no utilizada"
         elif r.attendance == "Presente":
+            # Presente pisa cualquier no-show previo.
             if k == "invitado":
                 r.charge_amount = guest_fee
                 r.cancel_reason = "Tarifa de invitado embarcado"
@@ -2153,7 +2158,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
                 r.cancel_reason = "Hijo menor de socio embarcado sin cargo"
             else:
                 r.charge_amount = 0
-                r.cancel_reason = ""
+                r.cancel_reason = "Socio embarcado sin cargo"
 
     outing.status = "Embarque cerrado"
 
