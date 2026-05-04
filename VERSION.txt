@@ -1,5 +1,4 @@
-FJORD_VI v67.0 COMUNICACIONES BASE
-
-Base: v66.7.1 SMART UI FINAL AUDIT FIX.
-Agrega módulo de Comunicaciones: SMTP, eventos, plantillas, cola de emails, prueba de envío y registro exportable.
-PostgreSQL sigue como fuente única; JSON solo exportación técnica.
+FJORD VI - v67.1.1
+Build: v67-1-1-comunicaciones-audit-fix
+Base: v67.1 comunicaciones auto + recordatorios.
+Fix: plantillas activables y cancelación integrada.

@@ -47,8 +47,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v67.0"
-APP_BUILD = "v67-communications-base"
+VERSION = "v67.1.1"
+APP_BUILD = "v67-1-1-comunicaciones-audit-fix"
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -224,6 +224,18 @@ COMMUNICATION_EVENTS = {
         "subject": "Salida cerrada - {{salida_nombre}} - Ficha N° {{ficha_numero}}",
         "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: N° {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
+    "recordatorio_24h_socio": {
+        "name": "Recordatorio 24h al socio",
+        "description": "Email automático al socio responsable 24 horas antes de la salida.",
+        "subject": "Recordatorio Fjord VI - {{salida_nombre}} - {{fecha}} {{hora}}",
+        "body": "Hola {{socio_nombre}},\n\nTe recordamos tu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}}.\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "no_show_cargo_socio": {
+        "name": "No-show / cargo al socio",
+        "description": "Email al socio responsable cuando el cierre genera cargo por no-show propio o de invitados.",
+        "subject": "Liquidación Fjord VI - {{salida_nombre}} - {{fecha}}",
+        "body": "Hola {{socio_nombre}},\n\nEl cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\n\nFicha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
+    },
     "email_prueba": {
         "name": "Email de prueba",
         "description": "Prueba manual de SMTP desde Administración.",
@@ -252,6 +264,10 @@ def ensure_communications_seed(db: Session):
         if not tpl:
             tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=False, updated_at=now_local())
             db.add(tpl)
+        elif ev.enabled and not tpl.enabled:
+            # Si el evento ya fue activado en una versión anterior, la plantilla debe quedar activa también.
+            tpl.enabled = True
+            tpl.updated_at = now_local()
     db.commit()
 
 def smtp_settings(db: Session) -> dict:
@@ -340,6 +356,111 @@ def communications_context(db: Session) -> dict:
     sent_today = db.query(NotificationQueue).filter(NotificationQueue.status == "sent", NotificationQueue.sent_at >= now_local().replace(hour=0, minute=0, second=0, microsecond=0)).count()
     return {"settings": settings, "smtp_configured": smtp_configured(settings), "events": events, "templates": templates_rows, "queue": queue, "pending": pending, "failed": failed, "sent_today": sent_today}
 
+def auto_process_notifications(db: Session, limit: int = 5) -> dict:
+    """Procesamiento liviano de cola en cada uso del sistema.
+
+    Evita depender de un worker externo en Render. Si SMTP no está configurado,
+    no marca fallidos: la cola queda pendiente hasta que Administración configure
+    el servicio y procese o entre alguien al sistema.
+    """
+    try:
+        if not smtp_configured(smtp_settings(db)):
+            return {"processed": 0, "sent": 0, "failed": 0, "skipped": "smtp_pending"}
+        pending = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").count()
+        if pending <= 0:
+            return {"processed": 0, "sent": 0, "failed": 0}
+        return process_notification_queue(db, limit=limit)
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return {"processed": 0, "sent": 0, "failed": 0, "error": str(e)[:200]}
+
+def queue_due_24h_reminders(db: Session) -> int:
+    """Encola recordatorios para salidas dentro de las próximas 24 horas.
+
+    Usa SystemMeta por salida+socio para no duplicar correos. Es deliberadamente
+    conservador: solo socios con email y reservas activas asociadas.
+    """
+    ensure_communications_seed(db)
+    ev = db.get(NotificationEventSetting, "recordatorio_24h_socio")
+    tpl = db.query(NotificationTemplate).filter_by(key="recordatorio_24h_socio").first()
+    if not ev or not tpl or not ev.enabled or not tpl.enabled:
+        return 0
+    now = now_local()
+    start = now + timedelta(hours=20)
+    end = now + timedelta(hours=28)
+    outings = db.query(Outing).filter(Outing.departure_at >= start, Outing.departure_at <= end).all()
+    queued = 0
+    for outing in outings:
+        if is_closed_outing(outing) or is_outing_cancelled_by_captain(outing):
+            continue
+        rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        active = [r for r in rows if reservation_is_active(r) and not is_waitlisted(r)]
+        responsible_ids = sorted({r.responsible_user_id for r in active if r.responsible_user_id})
+        for uid in responsible_ids:
+            marker = f"reminder24_sent:{outing.id}:{uid}"
+            if db.get(SystemMeta, marker):
+                continue
+            u = db.get(User, uid)
+            if not u or not (u.email or "").strip():
+                continue
+            people = [r.person_name for r in active if r.responsible_user_id == uid]
+            q = queue_email(db, "recordatorio_24h_socio", u.email, u.name, {
+                "socio_nombre": u.name,
+                "salida_nombre": outing.title,
+                "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+                "hora": outing.departure_at.strftime("%H:%M"),
+                "lista_personas": "\n".join(f"- {name}" for name in people) or "- Sin personas asociadas",
+                "punto_encuentro": get_system_meta(db, "meeting_point", "Dársena Norte / punto de embarque informado por el club"),
+            })
+            if q:
+                db.add(SystemMeta(key=marker, value=now.isoformat(), updated_at=now))
+                queued += 1
+    db.commit()
+    return queued
+
+def queue_no_show_charge_emails(db: Session, outing: Outing, reservations: list, sheet: ClosingSheet) -> int:
+    """Encola un email consolidado por socio responsable con cargos generados al cierre."""
+    ensure_communications_seed(db)
+    ev = db.get(NotificationEventSetting, "no_show_cargo_socio")
+    tpl = db.query(NotificationTemplate).filter_by(key="no_show_cargo_socio").first()
+    if not ev or not tpl or not ev.enabled or not tpl.enabled:
+        return 0
+    by_user = {}
+    for r in reservations:
+        charge = actual_charge(outing, r)
+        if charge <= 0:
+            continue
+        # Invitado presente paga tarifa normal; este evento se reserva para no-show/cargo por ausencia/cancelación.
+        if r.attendance == "Presente" and canonical_kind(r.kind) == "invitado":
+            continue
+        uid = r.responsible_user_id
+        if not uid:
+            continue
+        by_user.setdefault(uid, []).append((r, charge))
+    queued = 0
+    for uid, items in by_user.items():
+        u = db.get(User, uid)
+        if not u or not (u.email or "").strip():
+            continue
+        total = sum(c for _, c in items)
+        detail = "\n".join(f"- {r.person_name} ({display_kind(r.kind)}): $ {human_money(c)}" for r, c in items)
+        q = queue_email(db, "no_show_cargo_socio", u.email, u.name, {
+            "socio_nombre": u.name,
+            "salida_nombre": outing.title,
+            "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+            "hora": outing.departure_at.strftime("%H:%M"),
+            "detalle_cargos": detail,
+            "total_socio": "$ " + fmt_money(total),
+            "link_ficha": f"/cierre/{sheet.id}",
+        })
+        if q:
+            queued += 1
+    db.commit()
+    return queued
+
 Base.metadata.create_all(engine)
 
 def ensure_schema():
@@ -404,6 +525,25 @@ STATIC_DIR = APP_DIR / "static"
 if not STATIC_DIR.exists():
     STATIC_DIR = APP_DIR
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+@app.middleware("http")
+async def communications_auto_worker(request: Request, call_next):
+    """Procesa recordatorios y una pequeña tanda de emails pendientes sin worker externo.
+
+    Se ejecuta de forma liviana al recibir tráfico real. No toca archivos estáticos
+    ni health checks para evitar ruido y mantener baja latencia.
+    """
+    response = await call_next(request)
+    try:
+        path = request.url.path or ""
+        if path.startswith("/static") or path.startswith("/health") or path.endswith(".csv"):
+            return response
+        with SessionLocal() as db:
+            queue_due_24h_reminders(db)
+            auto_process_notifications(db, limit=5)
+    except Exception:
+        pass
+    return response
 
 # Estructura estándar: HTML en /templates y estáticos en /static.
 # Fallback defensivo a raíz para compatibilidad con versiones planas anteriores.
@@ -2142,7 +2282,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "email_queue": True}
+    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "email_queue": True, "auto_queue_processing": True, "reminders_24h": True}
 
 @app.head("/")
 def head_index():
@@ -2367,6 +2507,14 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     promoted = promote_waitlist(db, outing)
     db.commit()
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
+    queue_email(db, "cancelacion_socio", user.email or "", user.name, {
+        "socio_nombre": user.name,
+        "persona_nombre": r.person_name,
+        "salida_nombre": outing.title,
+        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+        "hora": outing.departure_at.strftime("%H:%M"),
+        "importe": "$ " + fmt_money(r.charge_amount or 0),
+    })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")
@@ -3060,6 +3208,8 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     if admin_email:
         total_label = sheet_payload(sheet).get("summary", {}).get("total_label", "0")
         queue_email(db, "salida_cerrada_admin", admin_email, "Administración", {"salida_nombre": outing.title, "capitan_nombre": user.name, "presentes": str(present), "total": "$ " + str(total_label), "ficha_numero": str(sheet.sequence), "link_ficha": f"/cierre/{sheet.id}"})
+    queue_no_show_charge_emails(db, outing, reservations, sheet)
+    auto_process_notifications(db, limit=10)
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
 
@@ -3937,16 +4087,17 @@ def admin_communications_event(event_key: str, enabled: str = Form("0"), db: Ses
     return RedirectResponse("/admin?page=comunicaciones&msg=evento_actualizado", status_code=303)
 
 @app.post("/admin/communications/template/{template_key}")
-def admin_communications_template(template_key: str, subject: str = Form(""), body: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+def admin_communications_template(template_key: str, subject: str = Form(""), body: str = Form(""), template_enabled: str = Form("0"), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     ensure_communications_seed(db)
     tpl = db.query(NotificationTemplate).filter_by(key=template_key).first()
     if not tpl:
         raise HTTPException(404, "Plantilla inexistente")
     tpl.subject = subject
     tpl.body = body
+    tpl.enabled = template_enabled == "1"
     tpl.updated_at = now_local()
     db.commit()
-    log(db, user.name, "communications template", f"Plantilla actualizada: {template_key}")
+    log(db, user.name, "communications template", f"Plantilla actualizada: {template_key}; {'activa' if tpl.enabled else 'inactiva'}")
     return RedirectResponse("/admin?page=comunicaciones&msg=plantilla_actualizada", status_code=303)
 
 @app.post("/admin/communications/test")
@@ -3962,9 +4113,17 @@ def admin_communications_test(test_email: str = Form(...), db: Session = Depends
 
 @app.post("/admin/communications/process")
 def admin_communications_process(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    queued = queue_due_24h_reminders(db)
     result = process_notification_queue(db, limit=50)
-    log(db, user.name, "communications process", json.dumps(result, ensure_ascii=False))
-    return RedirectResponse(f"/admin?page=comunicaciones&msg=cola_{result.get('sent',0)}_{result.get('failed',0)}", status_code=303)
+    log(db, user.name, "communications process", f"recordatorios={queued}; " + json.dumps(result, ensure_ascii=False))
+    return RedirectResponse(f"/admin?page=comunicaciones&msg=cola_{result.get('sent',0)}_{result.get('failed',0)}&queued={queued}", status_code=303)
+
+@app.post("/admin/communications/reminders")
+def admin_communications_reminders(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    queued = queue_due_24h_reminders(db)
+    result = auto_process_notifications(db, limit=25)
+    log(db, user.name, "communications reminders", f"recordatorios={queued}; " + json.dumps(result, ensure_ascii=False))
+    return RedirectResponse(f"/admin?page=comunicaciones&msg=recordatorios_{queued}", status_code=303)
 
 @app.post("/admin/communications/retry/{qid}")
 def admin_communications_retry(qid: int, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):

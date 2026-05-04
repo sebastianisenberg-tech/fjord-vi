@@ -1,11 +1,6 @@
-# Fjord VI v67.0 - Comunicaciones Base
+# v67.1.1
 
-- Nuevo módulo Administración > Comunicaciones.
-- Configuración SMTP desde UI.
-- Email de prueba.
-- Eventos activables: reserva confirmada, invitado agregado, cancelación, salida cerrada para administración.
-- Plantillas editables con variables.
-- Cola de envío con estados pending/sent/failed.
-- Registro exportable CSV.
-- Health informa communications/email_queue.
-- No modifica capitán, socio, liquidación ni fichas.
+- Corrección crítica: activar un evento activa también su plantilla asociada.
+- Plantillas ahora tienen checkbox de activación explícita.
+- Cancelación de reserva encola email si el evento está activo.
+- Versionado actualizado.
