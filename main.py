@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v58.0"
+VERSION = "v59.0"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1952,6 +1952,118 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "current_sheet": current_sheet
     })
 
+
+def dni_format_warning(dni: str) -> bool:
+    """Devuelve True si el DNI luce raro, pero no bloquea por compatibilidad con datos históricos."""
+    raw = (dni or "").strip()
+    return bool(raw) and not bool(__import__('re').match(r"^[0-9]{7,9}$", raw))
+
+
+def close_preflight_analysis(db: Session, outing: Outing) -> dict:
+    """Análisis previo al cierre: detecta errores bloqueantes y sugiere correcciones.
+
+    No modifica datos. El cierre real vuelve a validar para que no haya una carrera
+    entre la revisión previa y la confirmación final.
+    """
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
+    users = {u.id: u for u in db.query(User).all()}
+    active = active_reservations(reservations)
+    present_rows = [r for r in reservations if r.attendance == "Presente" and reservation_is_active(r)]
+    present_count = len(present_rows)
+    waitlist_count = sum(1 for r in reservations if is_waitlisted(r))
+    pending_rows = [r for r in active if (r.attendance or "Por confirmar") == "Por confirmar"]
+
+    errors = []
+    warnings = []
+    suggestions = []
+
+    if present_count > outing.max_crew:
+        errors.append(f"Hay {present_count} presentes para cupo {outing.max_crew}. Bajá personas a No embarca/Ausente antes de cerrar.")
+
+    # Duplicados de documento dentro de la misma salida, excluyendo lista de espera/cancelados.
+    seen = {}
+    for r in reservations:
+        if is_waitlisted(r) or r.cancelled_at is not None or r.status == "Cancelado":
+            continue
+        nd = norm_dni(r.dni)
+        if not nd:
+            continue
+        if nd in seen:
+            errors.append(f"Documento duplicado en la salida: {r.dni} figura en {seen[nd]} y {r.person_name}.")
+        else:
+            seen[nd] = r.person_name
+
+    present_socio_ids = {
+        r.responsible_user_id for r in reservations
+        if canonical_kind(r.kind) == "socio" and r.attendance == "Presente" and reservation_is_active(r)
+    }
+
+    estimated_navigation_total = 0.0
+    estimated_noshow_total = 0.0
+    invited_present_count = 0
+    noshow_count = 0
+
+    for r in reservations:
+        k = canonical_kind(r.kind)
+        if is_waitlisted(r) or r.cancelled_at is not None or r.status == "Cancelado" or is_captain_cancelled(r) or is_no_board_by_captain(r):
+            continue
+
+        att = r.attendance or "Por confirmar"
+        simulated_att = "Ausente" if att == "Por confirmar" else att
+
+        if k in ("invitado", "hijo_menor"):
+            if not norm_dni(r.dni):
+                errors.append(f"{r.person_name}: invitado sin DNI/documento. Cargalo antes de cerrar.")
+            elif dni_format_warning(r.dni):
+                warnings.append(f"{r.person_name}: DNI/documento con formato atípico ({r.dni}). Revisar si es un dato de prueba o un documento real.")
+
+            if simulated_att == "Presente" and r.responsible_user_id not in present_socio_ids:
+                resp = users.get(r.responsible_user_id)
+                resp_name = resp.name if resp else "sin responsable"
+                errors.append(f"{r.person_name}: figura presente pero su socio responsable no está presente ({resp_name}). Reasignar o marcar No embarca/Ausente.")
+                suggestions.append(f"Corregir {r.person_name}: reasignar a un socio presente o marcar No embarca si no sube.")
+
+            if simulated_att == "Presente":
+                if k == "invitado":
+                    invited_present_count += 1
+                    estimated_navigation_total += float(outing.guest_fee or 0)
+            elif simulated_att in ("Ausente", "No embarcable"):
+                noshow_count += 1
+                estimated_noshow_total += reservation_charge(outing, r)
+
+        elif k == "socio":
+            if simulated_att in ("Ausente", "No embarcable"):
+                noshow_count += 1
+                estimated_noshow_total += reservation_charge(outing, r)
+
+    if pending_rows:
+        names = ", ".join(r.person_name for r in pending_rows[:5])
+        extra = "..." if len(pending_rows) > 5 else ""
+        warnings.append(f"Hay {len(pending_rows)} pendientes. Si confirmás el cierre, pasan a Ausente con cargo si corresponde: {names}{extra}")
+        suggestions.append("Antes de cerrar, revisá si los pendientes realmente están ausentes o si corresponde marcarlos No embarca.")
+
+    if present_count < outing.max_crew and waitlist_count:
+        suggestions.append(f"Hay {outing.max_crew - present_count} lugar(es) operativos y {waitlist_count} en espera. Podés promover/embarcar suplentes antes de cerrar si están presentes.")
+
+    return {
+        "errors": errors,
+        "warnings": warnings,
+        "suggestions": suggestions,
+        "present_count": present_count,
+        "max_crew": outing.max_crew,
+        "pending_count": len(pending_rows),
+        "waitlist_count": waitlist_count,
+        "invited_present_count": invited_present_count,
+        "noshow_count": noshow_count,
+        "estimated_navigation_total": estimated_navigation_total,
+        "estimated_noshow_total": estimated_noshow_total,
+        "estimated_total": estimated_navigation_total + estimated_noshow_total,
+        "estimated_navigation_total_label": human_money(estimated_navigation_total),
+        "estimated_noshow_total_label": human_money(estimated_noshow_total),
+        "estimated_total_label": human_money(estimated_navigation_total + estimated_noshow_total),
+        "ok": not errors,
+    }
+
 def auto_confirm_active_for_close(db: Session, outing: Outing, active):
     """Cierre operativo: al cerrar, quien no figura Presente queda Ausente/no-show.
 
@@ -2282,6 +2394,23 @@ def captain_reassign_guest(
     log(db, user.name, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name} / {outing.title}")
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
+
+@app.get("/captain/preflight", response_class=HTMLResponse)
+def captain_preflight(outing_id: Optional[int] = None, request: Request = None, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+    outing, reservations, active, present, *_ = outing_context(db, outing_id)
+    if not outing:
+        return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
+    if user.role != "admin":
+        w = captain_control_window(outing)
+        if w["expired"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
+        if w["before_departure"]:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_anticipado", status_code=303)
+    if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
+    analysis = close_preflight_analysis(db, outing)
+    return templates.TemplateResponse(request, "captain_preflight.html", {"request": request, "user": user, "outing": outing, "analysis": analysis})
+
 @app.post("/captain/close")
 def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing, reservations, active, present, *_ = outing_context(db, outing_id)
@@ -2297,6 +2426,9 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
     enforce_capacity(db, outing)
+    preflight = close_preflight_analysis(db, outing)
+    if preflight["errors"]:
+        return RedirectResponse(f"/captain/preflight?outing_id={outing.id}&msg=preflight_error", status_code=303)
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all()
     active = active_reservations(reservations)
     active_count = len(active)

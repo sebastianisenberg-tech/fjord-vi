@@ -1,16 +1,9 @@
-# Fjord VI v58.0 - Usuarios / Padrón operativo
+# Fjord VI v59.0 - Pre-cierre inteligente
 
-Cambios enfocados solo en el módulo Usuarios de Administración:
-
-- Rediseño de tabla de usuarios para aprovechar mejor el ancho en escritorio.
-- Botones de acciones corregidos: Editar, Reset, Desactivar/Activar ya no se cortan.
-- Editar abre panel lateral funcional, no desplegable incompleto.
-- Edición completa de usuario: nombre, documento, fecha de nacimiento, Nº socio, email, teléfono, rol y estado.
-- Fecha de nacimiento incorporada al padrón para identificar menores.
-- Edad calculada automáticamente en la grilla según fecha actual.
-- Alta de usuario incluye fecha de nacimiento.
-- CSV de usuarios incluye fecha de nacimiento y edad calculada.
-- El sistema mantiene la regla de no eliminar personas: se desactivan para preservar historial, fichas y auditoría.
-- Migración liviana: agrega users.birth_date si falta, sin borrar datos.
-
-No se modificó la lógica de fichas, cierre, socio ni capitán.
+- Revisión previa antes de cerrar y liquidar.
+- Detecta errores bloqueantes: cupo excedido, documento duplicado, invitado sin DNI/documento, invitado presente sin socio responsable presente.
+- Advierte DNI con formato atípico para revisar datos históricos o de prueba.
+- Muestra resumen estimado: presentes, invitados navegados, no-show con cargo, subtotal navegación, subtotal no-show y total.
+- Sugiere correcciones operativas antes del cierre.
+- El cierre definitivo vuelve a validar para evitar inconsistencias.
+- No toca Socio ni Fichas salvo calidad de datos del cierre.
