@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=v65">
+  <link rel="stylesheet" href="/static/style.css?v={{version}}">
   <title>Revisión previa · Fjord VI</title>
   <style>
     .preflightWrap{max-width:860px;margin:0 auto;padding:18px}.preflightCard{background:#fff;border:1px solid #d9e5ec;border-radius:22px;padding:18px;box-shadow:0 16px 42px rgba(15,35,55,.08);margin:14px 0}.preflightGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.preflightBox{border:1px solid #dbe8ef;border-radius:16px;padding:12px;background:#f8fbfd}.preflightBox span{display:block;text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:900;color:#64748b}.preflightBox b{font-size:24px;color:#0f2233}.preflightList{margin:10px 0 0;padding-left:18px;line-height:1.45}.preflightList li{margin:6px 0}.preflightError{background:#fff1f2;border-color:#fecdd3;color:#7f1d1d}.preflightWarn{background:#fffbeb;border-color:#fde68a;color:#78350f}.preflightOk{background:#ecfdf5;border-color:#bbf7d0;color:#14532d}.preflightActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.pfBtn{border:0;border-radius:14px;padding:13px 16px;font-weight:900;text-decoration:none;display:inline-block}.pfBtn.primary{background:#0f4f78;color:#fff}.pfBtn.secondary{background:#eef6fb;color:#0f2233}.pfBtn.disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}@media(max-width:640px){.preflightGrid{grid-template-columns:1fr 1fr}.preflightBox b{font-size:20px}}
-  </style>
+  .preflightVersion{text-align:center;color:#94a3b8;font-size:12px;margin:20px 0 8px}
+</style>
 </head>
 <body class="captainBody"><main class="preflightWrap">
   <section class="preflightCard">
@@ -34,4 +35,4 @@
   {% if analysis.suggestions %}<section class="preflightCard"><h2>Sugerencias operativas</h2><ul class="preflightList">{% for s in analysis.suggestions %}<li>{{ s }}</li>{% endfor %}</ul></section>{% endif %}
 
   <section class="preflightCard"><div class="preflightActions"><a class="pfBtn secondary" href="/captain?outing_id={{ outing.id }}#decision">Volver a corregir</a>{% if analysis.ok %}<form method="post" action="/captain/close" onsubmit="return confirm('Confirmar cierre definitivo y generación de ficha?');"><input type="hidden" name="outing_id" value="{{ outing.id }}"><button class="pfBtn primary">Confirmar cierre y generar ficha</button></form>{% else %}<button class="pfBtn disabled" disabled>Corregir errores antes de cerrar</button>{% endif %}</div></section>
-</main></body></html>
+<div class="preflightVersion">Sistema Fjord VI {{version}}</div></main></body></html>
