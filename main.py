@@ -2293,6 +2293,18 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     if is_waitlisted(r):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
 
+    # Blindaje de cupo en operación: no permite superar el máximo de presentes.
+    # Antes el preflight lo frenaba al cierre; ahora también se bloquea al tocar.
+    if value == "Presente" and r.attendance != "Presente":
+        present_count = db.query(Reservation).filter(
+            Reservation.outing_id == outing.id,
+            Reservation.attendance == "Presente",
+            Reservation.cancelled_at.is_(None),
+            Reservation.id != r.id,
+        ).count()
+        if present_count >= (outing.max_crew or MAX_CREW):
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cupo_lleno", status_code=303)
+
     if value in ("Presente", "Por confirmar"):
         # Blindaje: un invitado/menor no socio no puede ser marcado presente
         # si su socio responsable no está presente y activo.

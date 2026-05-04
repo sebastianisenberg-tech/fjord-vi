@@ -1,6 +1,3 @@
-# v65.3
-
-- Corrige botón de tres puntos del Capitán.
-- Ahora abre un menú real fijo tipo bottom sheet.
-- Mantiene reasignar invitado, No embarca/sin cargo y reactivar.
-- Conserva scroll fijo, tap rápido, tips y toasts.
+- v65.4: Reasignación como botones directos en menú ⋯.
+- v65.4: Bloqueo frontend/backend para no superar 9 presentes.
+- Mantiene scroll fijo, tap rápido, no embarca y toasts.
