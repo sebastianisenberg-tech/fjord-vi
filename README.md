@@ -1,1 +1,1 @@
-FJORD VI v65.4: corrige reasignar invitado y bloquea superar 9 presentes desde Capitán.
+FJORD VI v66.7.1: producción limpia, Sistema guiado, PostgreSQL fuente única y seed demo desactivado en producción.

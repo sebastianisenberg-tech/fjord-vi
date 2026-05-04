@@ -45,8 +45,10 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v66.6.1"
-APP_BUILD = "v66-production-ready-postgres-audit-fix"
+VERSION = "v66.7.1"
+APP_BUILD = "v66-smart-guidance-final-clean-audit-fix"
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
@@ -512,7 +514,7 @@ def activity_summary(db: Session) -> dict:
     module_counts = {}
     for r in db.query(ActivityLog).filter(ActivityLog.created_at >= today_start).all():
         module_counts[r.module or "-"] = module_counts.get(r.module or "-", 0) + 1
-    recent = db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(30).all()
+    recent = db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(10).all()
     return {
         "active_5m": active_since(5),
         "active_30m": active_since(30),
@@ -1770,6 +1772,12 @@ def final_status_summary(outing: Outing, reservations, active_count: int, presen
     return {"closed": False, "label": "Estado operativo: Abierto", "detail": f"Activos: {active_count} / {outing.max_crew} · pendientes: {pending}", "liquidacion": "Preliquidación no firme hasta cierre del capitán"}
 
 def seed():
+    # Producción: no crear datos demo automáticamente.
+    # Esto es crítico para que Reset Producción deje el sistema realmente en cero
+    # (sin Paseo de domingo ni reservas ficticias después de un redeploy).
+    # Para demos/local, activar DEMO_SEED=1 explícitamente.
+    if APP_ENV == "production" and not DEMO_SEED:
+        return
     db = SessionLocal()
     try:
         if db.query(User).count() == 0:
@@ -3198,10 +3206,23 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             "socios": (payload.get("summary") or {}).get("socios", ""),
             "invitados": (payload.get("summary") or {}).get("invitados", ""),
         })
-    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema"}
+    allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema", "actividad"}
     admin_page = request.query_params.get("page", "dashboard")
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
+
+    activity_page = 1
+    try:
+        activity_page = max(1, int(request.query_params.get("p", "1")))
+    except Exception:
+        activity_page = 1
+    activity_per_page = 50
+    activity_total = db.query(ActivityLog).count()
+    activity_pages = max(1, (activity_total + activity_per_page - 1) // activity_per_page)
+    if activity_page > activity_pages:
+        activity_page = activity_pages
+    activity_rows = db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).offset((activity_page - 1) * activity_per_page).limit(activity_per_page).all()
+
     return templates.TemplateResponse(request, "admin.html", base_template_context(**{
         "request": request, "user": user, "admin_page": admin_page, "outing": outing, "outings": outings, "history_groups": history_groups, "counts": counts, "active_counts": active_counts,
         "reservations": reservations, "active": active, "active_count": len(active),
@@ -3224,6 +3245,10 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "all_closing_sheets": all_closing_sheets,
         "all_closing_sheet_rows": all_closing_sheet_rows,
         "system_console": system_console_context(db, request) if admin_page == "sistema" else {},
+        "activity_rows": activity_rows,
+        "activity_page": activity_page,
+        "activity_pages": activity_pages,
+        "activity_total": activity_total,
     }))
 
 

@@ -1,7 +1,8 @@
-# v66.6.1 - Production Ready Audit Fix
+# Fjord VI v66.7.1 - Final Clean Audit Fix
 
-- Revisión completa de cierre técnico.
-- Desactivadas rutas heredadas `/admin/restore`, `/admin/import_data` y `/admin/demo_reset`.
-- PostgreSQL queda como única fuente de verdad operativa.
-- JSON queda solo como exportación manual/backup previo a reset.
-- Se mantiene Backup PostgreSQL, Reset Producción protegido y consola Sistema.
+- Corrige punto crítico de producción: datos demo ya no se crean automáticamente cuando APP_ENV=production.
+- Reset Producción ahora queda realmente limpio aun después de redeploy/restart.
+- Mantiene PostgreSQL como única fuente de verdad.
+- JSON continúa solo como exportación técnica, sin restauración desde UI.
+- Mantiene Sistema compacto, tooltips, toasts, actividad paginada y Reset Producción protegido.
+- README actualizado para evitar confusión de versión.

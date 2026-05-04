@@ -1,4 +1,4 @@
 Fjord VI Software
-Version: v66.6.1
-Build: v66-production-ready-postgres-audit-fix
-PostgreSQL fuente única; JSON export-only; rutas heredadas de restore/import/demo desactivadas.
+Version: v66.7.1
+Build: v66-smart-guidance-final-clean-audit-fix
+Sistema limpio final: PostgreSQL fuente única; JSON solo exportación avanzada; Sistema compacto con tooltips, toasts, actividad paginada, reset producción protegido y datos demo desactivados en producción.
