@@ -41,7 +41,7 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v57.1"
+VERSION = "v58.0"
 APP_BUILD = "v47.7-hero-fjord-responsive"
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -64,6 +64,7 @@ class User(Base):
     member_no = Column(String, nullable=True)
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    birth_date = Column(String, nullable=True)
     role = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     active = Column(Boolean, default=True)
@@ -152,6 +153,8 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
         if "phone" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
+        if "birth_date" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN birth_date VARCHAR"))
 
 ensure_schema()
 app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
@@ -372,6 +375,17 @@ def is_under_18_on(birth_value: Optional[str], on_dt: datetime) -> bool:
         return False
     return age_on(birth, on_dt.date()) < 18
 
+def user_age_label(birth_value: Optional[str]) -> str:
+    birth = parse_birth_date(birth_value)
+    if not birth:
+        return ""
+    years = age_on(birth, now_local().date())
+    if years < 13:
+        return f"{years} años · menor 13"
+    if years < 18:
+        return f"{years} años · menor"
+    return f"{years} años"
+
 
 def hash_password(password: str, salt: Optional[str] = None) -> str:
     salt = salt or secrets.token_hex(16)
@@ -411,7 +425,7 @@ def export_state(db: Session) -> dict:
         "exported_at": now_local().isoformat(),
         "users": [
             {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no,
-             "email": u.email or "", "phone": u.phone or "", "role": u.role,
+             "email": u.email or "", "phone": u.phone or "", "birth_date": u.birth_date or "", "role": u.role,
              "password_hash": u.password_hash, "active": bool(u.active)}
             for u in db.query(User).order_by(User.id).all()
         ],
@@ -463,7 +477,7 @@ def import_state(db: Session, data: dict):
     for u in data.get("users", []):
         db.add(User(id=u.get("id"), name=u.get("name") or "", dni=norm_dni(u.get("dni") or ""),
                     member_no=u.get("member_no"), email=u.get("email") or None, phone=u.get("phone") or None,
-                    role=u.get("role") or "socio",
+                    birth_date=u.get("birth_date") or None, role=u.get("role") or "socio",
                     password_hash=u.get("password_hash") or hash_password("demo1234"), active=bool(u.get("active", True))))
     db.commit()
     for o in data.get("outings", []):
@@ -842,6 +856,7 @@ def human_money(value) -> str:
     return f"{float(value or 0):,.0f}".replace(",", ".")
 
 templates.env.filters["money"] = human_money
+templates.env.globals.update({"user_age_label": user_age_label})
 
 
 
@@ -2684,6 +2699,7 @@ def create_user(
     member_no: str = Form(""),
     email: str = Form(""),
     phone: str = Form(""),
+    birth_date: str = Form(""),
     role: str = Form("socio"),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
@@ -2705,6 +2721,7 @@ def create_user(
         member_no=member_no.strip() or None,
         email=email.strip() or None,
         phone=phone.strip() or None,
+        birth_date=birth_date.strip() or None,
         role=role,
         password_hash=hash_password("demo1234"),
         active=True
@@ -2758,7 +2775,9 @@ def update_user(
     member_no: str = Form(""),
     email: str = Form(""),
     phone: str = Form(""),
+    birth_date: str = Form(""),
     role: str = Form("socio"),
+    active: str = Form("activo"),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -2782,7 +2801,11 @@ def update_user(
     target.member_no = member_no.strip() or None
     target.email = email.strip() or None
     target.phone = phone.strip() or None
+    target.birth_date = birth_date.strip() or None
     target.role = role
+    if target.id == user.id and active != "activo":
+        return RedirectResponse("/admin?page=socios&msg=no_puede_desactivarse", status_code=303)
+    target.active = (active == "activo")
     db.commit()
     log(db, user.name, "edita usuario", f"{target.name} / {target.dni} / {target.role}")
     return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
@@ -2802,6 +2825,7 @@ def users_json(
             "member_no": u.member_no or "",
             "email": u.email or "",
             "phone": u.phone or "",
+            "birth_date": u.birth_date or "",
             "role": u.role,
             "active": bool(u.active)
         }
@@ -2986,9 +3010,9 @@ def outings_csv(db: Session = Depends(db_session), user: User = Depends(require_
 def users_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     output = io.StringIO()
     writer = csv.writer(output, delimiter=';')
-    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "email", "telefono", "rol", "activo"])
+    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "fecha_nacimiento", "edad", "email", "telefono", "rol", "activo"])
     for u in db.query(User).order_by(User.name.asc()).all():
-        writer.writerow([u.id, u.name, u.dni, u.member_no or "", u.email or "", u.phone or "", u.role, "si" if u.active else "no"])
+        writer.writerow([u.id, u.name, u.dni, u.member_no or "", u.birth_date or "", user_age_label(u.birth_date), u.email or "", u.phone or "", u.role, "si" if u.active else "no"])
     return csv_response_excel(output, "fjord_vi_usuarios.csv")
 
 

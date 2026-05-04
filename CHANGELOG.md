@@ -1,20 +1,16 @@
-# v55.1
+# Fjord VI v58.0 - Usuarios / Padrón operativo
 
-- Fichas A4 finales: lectura lineal en una sola columna para Navegaron y No-show.
-- Tipografía de PDF/impresión agrandada y más legible.
-- Mantiene A4 en una hoja en casos normales.
-- Conserva selector de fichas, anuladas, DNI de invitados y subtotales.
+Cambios enfocados solo en el módulo Usuarios de Administración:
 
-# FJORD VI v46.4
+- Rediseño de tabla de usuarios para aprovechar mejor el ancho en escritorio.
+- Botones de acciones corregidos: Editar, Reset, Desactivar/Activar ya no se cortan.
+- Editar abre panel lateral funcional, no desplegable incompleto.
+- Edición completa de usuario: nombre, documento, fecha de nacimiento, Nº socio, email, teléfono, rol y estado.
+- Fecha de nacimiento incorporada al padrón para identificar menores.
+- Edad calculada automáticamente en la grilla según fecha actual.
+- Alta de usuario incluye fecha de nacimiento.
+- CSV de usuarios incluye fecha de nacimiento y edad calculada.
+- El sistema mantiene la regla de no eliminar personas: se desactivan para preservar historial, fichas y auditoría.
+- Migración liviana: agrega users.birth_date si falta, sin borrar datos.
 
-- Base funcional v46.2 preservada.
-- Rediseño real de pantalla socio: boarding pass, header app, contraste, cards, progreso de ocupación y bottom nav refinado.
-- Sin cambios en backend, capitán ni administración.
-
-
-## v54.0 - Fichas Pro
-- Refuerzo visual de fichas ANULADAS: badge y banner con contraste fuerte.
-- Aviso de trazabilidad en ficha vigente: fichas anuladas que reemplaza.
-- Resumen económico separado: subtotal navegación, subtotal no-show y total general.
-- Mantiene socios por N° de socio e invitados con DNI en la ficha.
-- Sin cambios en lógica operativa de Socio/Capitán/Admin, salvo visualización documental de fichas.
+No se modificó la lógica de fichas, cierre, socio ni capitán.
