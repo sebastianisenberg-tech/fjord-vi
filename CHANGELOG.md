@@ -1,3 +1,10 @@
+
+## v65.8 - Versión centralizada
+- La versión visible sale de una única constante `VERSION` en `main.py`.
+- Se reemplazaron textos hardcodeados de versión en templates.
+- CSS/JS usan `?v={{version}}` para evitar mezcla de caché.
+- Ficha, preflight y listados muestran la versión del sistema.
+
 # v65.7 - Preflight socio responsable + ficha total label
 
 - Agrega validación bloqueante: invitado presente no puede quedar asociado a socio no presente.
