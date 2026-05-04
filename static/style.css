@@ -5131,3 +5131,10 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
   .captainProBody .captainPersonPro{grid-template-columns:1fr!important;}
   .captainProBody .captainQuickOps{grid-template-columns:1fr 1fr;}
 }
+
+
+/* v61 - Capitán: estados inequívocos */
+.captainProBody .capAction.danger small{display:block;font-size:10px;font-weight:900;opacity:.86;margin-top:1px;}
+.captainProBody .captainStateChip.absent{background:#ffe4e1!important;color:#8f1d14!important;border:1px solid #f3aaa3!important;}
+.captainProBody .captainStateChip.noboard{background:#f1f5f9!important;color:#334155!important;border:1px solid #cbd5e1!important;}
+.captainProBody .captainMiniSummary button span{white-space:normal;line-height:1.05;}
