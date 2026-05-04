@@ -152,7 +152,13 @@
 
     /* v66.3 System Console */
     .systemHero{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:10px;margin:8px 0 12px}.systemStatusCard{background:#fff;border:1px solid var(--erp-line);border-radius:13px;padding:14px;box-shadow:0 8px 22px rgba(20,40,55,.05)}.systemStatusCard span{display:block;color:#607080;font-size:11px;text-transform:uppercase;font-weight:950;letter-spacing:.5px}.systemStatusCard b{display:block;font-size:24px;margin:4px 0;color:#173f5f}.systemStatusCard small{color:#607080;font-weight:800}.systemGrid{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:12px}.systemWide{grid-column:1/-1}.systemKv{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #edf3f6;padding:7px 0}.systemKv span{color:#607080;font-weight:850}.systemKv b{font-weight:950;text-align:right}.systemMiniGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.systemMiniGrid div{background:#f5f9fc;border:1px solid #dfeaf1;border-radius:10px;padding:10px}.systemMiniGrid span{display:block;color:#607080;font-size:10px;text-transform:uppercase;font-weight:950}.systemMiniGrid b{font-size:20px;color:#173f5f}.systemCheckList{display:grid;gap:6px;margin-top:10px}.checkRow{display:flex;justify-content:space-between;gap:10px;border-radius:9px;padding:8px 10px;border:1px solid #dfeaf1;background:#f8fbfd}.checkRow.ok{background:#eef8f1;border-color:#cfe9d5}.checkRow.bad{background:#fff1f1;border-color:#f0c8c8}.checkRow b{font-weight:950}.checkRow span{color:#607080;text-align:right}.checkRow.bad span{color:#8a3a3a}.compact .checkRow{padding:6px 8px}.okText{color:#27663a!important}.badText{color:#8a3a3a!important}.dangerNote{border:1px solid #f0c8c8;background:#fff1f1;color:#8a3a3a;border-radius:10px;padding:9px;font-weight:800}.dangerZone{border-color:#ecc4c4!important;background:#fffafa!important}.erpTableBox.small{max-height:330px;overflow:auto}@media(max-width:1100px){.systemHero,.systemGrid{grid-template-columns:1fr}.systemWide{grid-column:auto}.systemMiniGrid{grid-template-columns:repeat(2,1fr)}}
-  </style>
+  
+    .productionResetCard .muted{color:#6b7280;font-size:13px;line-height:1.4}
+    .productionResetForm input[name="reset_phrase"]{border:1px solid #f0b4b4;background:#fff;padding:10px 12px;border-radius:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+    .resetPhraseBox{display:inline-block;margin:4px 0 8px;padding:8px 10px;border:1px dashed #b91c1c;border-radius:10px;background:#fff5f5;color:#7f1d1d;font-weight:900;font-size:13px;letter-spacing:.5px}
+    .checkLine{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:#7f1d1d;font-weight:700;line-height:1.35}
+    .checkLine input{margin-top:2px}
+</style>
 </head>
 <body class="adminERPBody">
 <div class="erpShell">
@@ -267,16 +273,15 @@
       </article>
 
       <article class="erpCard"><h3>Backups</h3>
-        <p>Backup JSON completo y backup lógico de PostgreSQL. En producción debe aparecer <b>pg_dump disponible</b> para descargar backup SQL real.</p>
-        <div class="systemKv"><span>JSON existe</span><b>{% if system_console.backup_info.exists %}sí{% else %}no{% endif %}</b></div>
-        <div class="systemKv"><span>Último JSON</span><b>{{system_console.backup_info.mtime or '-'}}</b></div>
+        <p>Backup PostgreSQL real y exportación JSON manual. En producción PostgreSQL es la fuente única de verdad; el JSON no se restaura automáticamente ni se usa como fallback operativo.</p>
+        <div class="systemKv"><span>Modo JSON</span><b>solo exportación</b></div>
+        <div class="systemKv"><span>JSON en disco</span><b>{{system_console.backup_info.mtime or 'no generado'}}</b></div>
         <div class="systemKv"><span>Tamaño JSON</span><b>{{system_console.backup_info.size}} bytes</b></div>
         <div class="systemKv"><span>pg_dump</span><b>{% if system_console.backup_info.pg_dump_available %}disponible{% else %}no disponible / fallback{% endif %}</b></div>
         <div class="systemKv"><span>Versión pg_dump</span><b>{{system_console.backup_info.pg_dump_version}}</b></div>
         <div class="systemKv"><span>Servidor PostgreSQL</span><b>{{system_console.backup_info.postgres_server_version or "-"}}</b></div>
         <div class="systemKv"><span>Compatibilidad backup</span><b>{{system_console.backup_info.pg_dump_compat}}</b></div>
-        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/backup" target="_blank" download>Descargar JSON</a><a class="erpBtn" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a></div>
-        <form method="post" action="/admin/restore" enctype="multipart/form-data" class="drawerForm" onsubmit="return confirm('Restaurar un JSON reemplaza datos actuales. ¿Continuar?') && confirm('Confirmación final: restaurar backup?');"><input type="file" name="file" accept="application/json"><button>Restaurar JSON</button></form>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/postgres_backup" target="_blank" download>Backup PostgreSQL</a><a class="erpBtn" href="/admin/backup" target="_blank" download>Exportar JSON manual</a></div><p class="mutedHint"><b>Producción:</b> no hay restauración JSON desde esta pantalla para evitar pisar PostgreSQL por error. La recuperación debe hacerse con backup SQL y soporte técnico.</p>
       </article>
 
       <article class="erpCard"><h3>Esquema / migraciones</h3>
@@ -308,7 +313,7 @@
 
       <article class="erpCard"><h3>Comunicaciones</h3><p>Módulo previsto para v67. Estado actual: no configurado.</p><div class="systemKv"><span>SMTP</span><b>pendiente</b></div><div class="systemKv"><span>Plantillas</span><b>pendiente</b></div><div class="systemKv"><span>Eventos</span><b>pendiente</b></div></article>
 
-      <article class="erpCard dangerZone"><h3>Sistema limpio</h3><p>Borra salidas, reservas, cargos y auditoría. Conserva usuarios. Solo pruebas o reinstalación controlada.</p><form method="post" action="/admin/reset_clean" onsubmit="return confirm('ATENCIÓN: esto borra salidas, reservas, cargos y auditoría. ¿Continuar?') && confirm('Confirmación final: ¿limpiar sistema?');"><button class="erpBtn erpDanger">Sistema limpio</button></form></article>
+      <article class="erpCard dangerZone productionResetCard"><h3>Reset Producción</h3><p><b>Reinicio total operativo para comenzar el uso comercial.</b> Borra salidas, reservas, fichas, cargos, auditoría y actividad. Conserva usuarios, configuración y conexión PostgreSQL.</p><p class="muted">Antes de borrar genera backup JSON y, si está disponible, backup PostgreSQL. Después reinicia numeración: salida Nº 1 y ficha Nº 1.</p><form method="post" action="/admin/production_reset" class="drawerForm productionResetForm" onsubmit="return confirm('ATENCIÓN: esto reinicia todo lo operativo y no se puede deshacer sin backup. ¿Continuar?') && confirm('Confirmación final: ¿ejecutar RESET PRODUCCIÓN?');"><label>Para confirmar escribí exactamente:</label><div class="resetPhraseBox">RESET PRODUCCION FJORD VI</div><input name="reset_phrase" autocomplete="off" placeholder="Escribir frase exacta"><label class="checkLine"><input type="checkbox" name="understood"> Entiendo que se borran todos los datos operativos y se reinicia la numeración.</label><button class="erpBtn erpDanger">Ejecutar Reset Producción</button></form></article>
     </div>
     {% endif %}
   </main>
