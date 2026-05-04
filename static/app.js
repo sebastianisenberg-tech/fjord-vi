@@ -113,7 +113,7 @@
     setTimeout(function(){t.classList.remove('show'); setTimeout(function(){t.remove();},220);},4200);
   };
   var adminMsgs={
-    usuario_creado:['Usuario creado correctamente.','ok'], usuario_existente:['Ya existe un usuario con ese documento.','err'], datos_usuario_invalidos:['Revisá nombre, documento y rol.','err'], rol_invalido:['Rol inválido.','err'], clave_reseteada:['Clave reseteada a demo1234.','ok'], usuario_actualizado:['Usuario actualizado.','ok'], salida_creada:['Navegación creada correctamente.','ok'], salida_actualizada:['Salida actualizada.','ok'], estado_actualizado:['Estado actualizado.','ok'], estado_invalido:['Estado inválido.','err'], json_restaurado:['Backup restaurado.','ok'], json_importado:['Datos importados.','ok'], demo_reset:['Datos demo recargados.','warn']
+    usuario_creado:['Usuario creado correctamente.','ok'], usuario_existente:['Ya existe un usuario con ese documento.','err'], datos_usuario_invalidos:['Revisá nombre, documento y rol.','err'], rol_invalido:['Rol inválido.','err'], clave_reseteada:['Clave reseteada a demo1234.','ok'], usuario_actualizado:['Usuario actualizado.','ok'], salida_creada:['Navegación creada correctamente.','ok'], salida_actualizada:['Salida actualizada.','ok'], estado_actualizado:['Estado actualizado.','ok'], estado_invalido:['Estado inválido.','err'], json_restaurado:['Restauración JSON desactivada en producción.','err'], json_importado:['Importación JSON desactivada en producción.','err'], demo_reset:['Reset demo desactivado en producción.','err']
   };
   document.addEventListener('click',function(e){
     var h=e.target.closest('[data-tip]');
