@@ -5589,3 +5589,29 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .captainSheetOpen{overflow:hidden!important;}
 .captainMoreOpsV65[open] .captainMoreOpsBody{display:none!important;}
 .captainMoreOpsV65>summary{touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;}
+
+/* v68.1 - Padrón: candidatos a socio controlados */
+.ghostBtn{
+  background:#f4f7fa !important;
+  color:#234357 !important;
+  border:1px solid #d9e3ea !important;
+  box-shadow:none !important;
+}
+.ghostBtn:hover{background:#e8f0f6 !important;}
+.linkBtn{
+  border:0 !important;
+  background:transparent !important;
+  color:#0f5f8f !important;
+  text-decoration:underline;
+  padding:0 4px !important;
+  box-shadow:none !important;
+  cursor:pointer;
+}
+.softWarn{
+  background:#fff7df;
+  border:1px solid #f0d98b;
+  color:#5d4918;
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:13px;
+}
