@@ -47,8 +47,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.3"
-APP_BUILD = "v68-importador-padron-integrado-auditado"
+VERSION = "v68.4"
+APP_BUILD = "v68-login-identidad-blindada"
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -2523,13 +2523,30 @@ def login(dni: str = Form(...), password: str = Form(...), db: Session = Depends
     ident_dni = norm_dni(ident_raw)
     ident_member = member_key(ident_raw)
     user = None
-    if ident_dni:
+
+    # Identidad blindada:
+    # 1) si el dato coincide con Nº de socio, se prioriza Nº de socio;
+    # 2) si no hay socio con ese número, se busca por DNI;
+    # 3) si hay duplicados de Nº de socio, se bloquea el login para no entrar en una cuenta equivocada.
+    member_matches = []
+    if ident_member:
+        member_matches = db.query(User).filter(User.member_no == ident_member, User.active == True).all()
+        if len(member_matches) > 1:
+            log(db, "Sistema", "login bloqueado", f"Nº socio duplicado: {ident_member}")
+            return RedirectResponse("/?error=duplicado_socio", status_code=303)
+        if member_matches:
+            user = member_matches[0]
+
+    if not user and ident_dni:
         user = db.query(User).filter(User.dni == ident_dni, User.active == True).first()
-    if not user and ident_member:
-        # Login alternativo por Nº de socio. Es clave cuando el padrón oficial no trae DNI.
-        user = db.query(User).filter(User.member_no == ident_member, User.active == True).first()
-        if not user:
-            user = db.query(User).filter(User.member_no == ident_raw, User.active == True).first()
+
+    # Si el mismo input numérico coincide con DNI de otra persona pero también con Nº de socio,
+    # se mantiene la prioridad por Nº de socio y queda auditado.
+    if user and ident_dni and ident_member and user.member_no == ident_member:
+        dni_user = db.query(User).filter(User.dni == ident_dni, User.active == True).first()
+        if dni_user and dni_user.id != user.id:
+            log(db, "Sistema", "login ambiguo resuelto", f"input {ident_raw}: prioridad Nº socio {user.member_no} sobre DNI de {dni_user.name}")
+
     if not user or not verify_password(password, user.password_hash):
         return RedirectResponse("/?error=1", status_code=303)
     log(db, user.name, "login", user.role)
@@ -3992,10 +4009,13 @@ def convert_guest_to_user(
     existing = db.query(User).filter_by(dni=dni_clean).first()
     if existing:
         return RedirectResponse(f"/admin?page=socios&msg=usuario_existente", status_code=303)
+    member_clean = member_key(member_no)
+    if member_clean and db.query(User).filter(User.member_no == member_clean).first():
+        return RedirectResponse(f"/admin?page=socios&msg=socio_existente", status_code=303)
     new_user = User(
         name=(r.person_name or "").strip() or "Socio sin nombre",
         dni=dni_clean,
-        member_no=member_key(member_no) or None,
+        member_no=member_clean or None,
         email=email.strip() or None,
         whatsapp=whatsapp.strip() or None,
         phone=phone.strip() or None,
@@ -4069,6 +4089,7 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
     existing_by_member = {member_key(u.member_no): u for u in db.query(User).filter(User.member_no != None).all() if member_key(u.member_no)}
     existing_by_dni = {norm_dni(u.dni): u for u in db.query(User).all() if norm_dni(u.dni) and not is_synthetic_member_dni(u.dni)}
     seen_members = set()
+    seen_dnis = set()
     preview = []
     stats = {"read": len(rows), "create": 0, "update": 0, "errors": 0, "warnings": 0}
     cats = {}
@@ -4101,12 +4122,20 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
             warnings.append("email dudoso")
         if member_no and member_no in seen_members:
             errors.append("nro_socio duplicado en archivo")
-        seen_members.add(member_no)
-        existing = existing_by_member.get(member_no) if member_no else None
-        if not existing and dni_clean:
-            existing = existing_by_dni.get(dni_clean)
-            if existing:
-                warnings.append("coincide por DNI, no por nro_socio")
+        if member_no:
+            seen_members.add(member_no)
+        if dni_clean and not is_synthetic_member_dni(dni_clean):
+            if dni_clean in seen_dnis:
+                errors.append("DNI duplicado en archivo")
+            seen_dnis.add(dni_clean)
+
+        existing_member = existing_by_member.get(member_no) if member_no else None
+        existing_dni = existing_by_dni.get(dni_clean) if dni_clean else None
+        existing = existing_member or existing_dni
+        if existing_member and existing_dni and existing_member.id != existing_dni.id:
+            errors.append("conflicto: Nº socio y DNI pertenecen a personas distintas")
+        elif not existing_member and existing_dni:
+            warnings.append("coincide por DNI, no por nro_socio")
         action = "error" if errors else ("actualizar" if existing else "crear")
         if action == "crear": stats["create"] += 1
         elif action == "actualizar": stats["update"] += 1
@@ -4170,10 +4199,23 @@ def padron_import_confirm(
             continue
         member_no = row.get("member_no") or ""
         dni_clean = row.get("dni") or ""
-        target = db.query(User).filter(User.member_no == member_no).first() if member_no else None
-        if not target and dni_clean:
-            target = db.query(User).filter(User.dni == dni_clean).first()
+        target_by_member = db.query(User).filter(User.member_no == member_no).first() if member_no else None
+        target_by_dni = db.query(User).filter(User.dni == dni_clean).first() if dni_clean else None
+        if target_by_member and target_by_dni and target_by_member.id != target_by_dni.id:
+            skipped += 1
+            continue
+        target = target_by_member or target_by_dni
         final_dni = dni_clean or synthetic_dni_for_member(member_no)
+        if final_dni:
+            dni_owner = db.query(User).filter(User.dni == final_dni).first()
+            if dni_owner and (not target or dni_owner.id != target.id):
+                skipped += 1
+                continue
+        if member_no:
+            member_owner = db.query(User).filter(User.member_no == member_no).first()
+            if member_owner and (not target or member_owner.id != target.id):
+                skipped += 1
+                continue
         if target:
             target.name = row.get("name") or target.name
             target.member_no = member_no or target.member_no

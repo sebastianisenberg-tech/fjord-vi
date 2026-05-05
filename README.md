@@ -1,16 +1,17 @@
-# Fjord VI v68.3
+# Fjord VI v68.4
 
-Importador de padrón oficial integrado en Administración → Usuarios.
+Versión con padrón oficial e identidad blindada.
 
-# Fjord VI v68.2
+## Cambios clave
 
-Sistema de embarque Fjord VI. Esta versión amplía Usuarios / Padrón Pro:
+- Login por Nº de socio o DNI.
+- Si un número coincide con Nº de socio y con DNI de otra persona, se prioriza Nº de socio.
+- Si hay Nº de socio duplicado, se bloquea login y queda auditado.
+- Importador de padrón con previsualización y validación de conflictos.
+- Importador no pisa un usuario cuando Nº socio y DNI apuntan a personas distintas.
+- WhatsApp separado de teléfono.
+- Categorías YCA normalizadas.
 
-- Importación de padrón oficial en CSV.
-- Formato estándar recomendado:
-  `nro_socio;nombre_completo;categoria;email;whatsapp;telefono;dni;estado`
-- El DNI es opcional para socios si existe Nº de socio.
-- El Nº de socio es la identidad principal del socio.
-- El invitado se sigue identificando principalmente por DNI.
-- WhatsApp queda separado de teléfono común.
-- Login preparado para Nº de socio o DNI.
+## Base de datos
+
+PostgreSQL como fuente principal; JSON solo exportación técnica según versiones previas.
