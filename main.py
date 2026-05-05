@@ -47,8 +47,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.2"
-APP_BUILD = "v68-importar-padron-login-id-fix"
+VERSION = "v68.3"
+APP_BUILD = "v68-importador-padron-integrado-auditado"
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -1615,7 +1615,7 @@ def normalize_import_header(h: str) -> str:
     v = "_".join(v.split())
     aliases = {
         "nro_socio": "nro_socio", "numero_de_socio": "nro_socio", "numero_socio": "nro_socio", "no_socio": "nro_socio", "socio": "nro_socio", "n_socio": "nro_socio",
-        "nombre": "nombre_completo", "nombre_completo": "nombre_completo", "apellido_nombre": "nombre_completo", "apellido_y_nombre": "nombre_completo", "apellidonombre": "nombre_completo", "socio_nombre": "nombre_completo",
+        "nombre": "nombre", "nombres": "nombre", "nombre_completo": "nombre_completo", "apellido_nombre": "nombre_completo", "apellido_y_nombre": "nombre_completo", "apellidonombre": "nombre_completo", "apellidos_nombres": "nombre_completo", "socio_nombre": "nombre_completo", "apellido": "apellido", "apellidos": "apellido",
         "tipo": "categoria", "tipo_de_socio": "categoria", "categoria": "categoria", "categoria_socio": "categoria",
         "mail": "email", "e_mail": "email", "email": "email", "correo": "email", "correo_electronico": "email",
         "whatsapp": "whatsapp", "wapp": "whatsapp", "celular": "whatsapp", "movil": "whatsapp",
@@ -4075,7 +4075,15 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
     clean_rows = []
     for i, row in enumerate(rows, start=2):
         member_no = member_key(row.get("nro_socio", ""))
-        name = (row.get("nombre_completo") or row.get("nombre") or "").strip()
+        raw_full_name = (row.get("nombre_completo") or "").strip()
+        raw_nombre = (row.get("nombre") or "").strip()
+        raw_apellido = (row.get("apellido") or "").strip()
+        if raw_full_name:
+            name = raw_full_name
+        elif raw_apellido and raw_nombre:
+            name = f"{raw_apellido}, {raw_nombre}"
+        else:
+            name = raw_nombre or raw_apellido
         dni_clean = norm_dni(row.get("dni", ""))
         category = normalize_category(row.get("categoria", ""))
         email = (row.get("email") or "").strip()
@@ -4116,6 +4124,17 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
     stats["categories"] = cats
     return {"stats": stats, "preview": preview, "rows": clean_rows}
 
+@app.get("/admin/padron/import", response_class=HTMLResponse)
+def padron_import_page(
+    request: Request,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    return templates.TemplateResponse(request, "padron_import.html", {
+        "request": request, "version": VERSION, "app_build": APP_BUILD,
+        "headers": padron_standard_headers(), "categories": SOCIO_CATEGORIES
+    })
+
 @app.post("/admin/padron/import/preview", response_class=HTMLResponse)
 async def padron_import_preview(
     request: Request,
@@ -4129,10 +4148,10 @@ async def padron_import_preview(
     token = secrets.token_urlsafe(16)
     set_system_meta(f"pending_padron_import:{token}", json.dumps(analysis["rows"], ensure_ascii=False))
     db.commit()
-    html = templates.get_template("padron_import_preview.html").render(
-        request=request, version=VERSION, token=token, stats=analysis["stats"], preview=analysis["preview"]
-    )
-    return HTMLResponse(html)
+    return templates.TemplateResponse(request, "padron_import_preview.html", {
+        "request": request, "version": VERSION, "token": token,
+        "stats": analysis["stats"], "preview": analysis["preview"]
+    })
 
 @app.post("/admin/padron/import/confirm")
 def padron_import_confirm(

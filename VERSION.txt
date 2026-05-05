@@ -1,11 +1,1 @@
-Fjord VI - v68.2
-Build: v68-importar-padron-login-id-fix
-Fecha: 2026-05-04
-
-- Importación de padrón oficial CSV con previsualización.
-- Campos estándar: nro_socio, nombre_completo, categoria, email, whatsapp, telefono, dni, estado.
-- WhatsApp separado de teléfono de línea.
-- Categorías YCA normalizadas.
-- Login por Nº de socio o DNI.
-- DNI opcional para socios si hay Nº de socio.
-- Controles anti-duplicados por Nº de socio y DNI.
+v68.3

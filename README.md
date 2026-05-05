@@ -1,3 +1,7 @@
+# Fjord VI v68.3
+
+Importador de padrón oficial integrado en Administración → Usuarios.
+
 # Fjord VI v68.2
 
 Sistema de embarque Fjord VI. Esta versión amplía Usuarios / Padrón Pro:
