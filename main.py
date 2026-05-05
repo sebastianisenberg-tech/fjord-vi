@@ -47,8 +47,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.0"
-APP_BUILD = "v68-usuarios-padron-pro"
+VERSION = "v68.2"
+APP_BUILD = "v68-importar-padron-login-id-fix"
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -71,7 +71,9 @@ class User(Base):
     dni = Column(String, unique=True, nullable=False)
     member_no = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    whatsapp = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    category = Column(String, nullable=True)
     birth_date = Column(String, nullable=True)
     role = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -487,8 +489,12 @@ def ensure_schema():
     with engine.begin() as conn:
         if "email" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
+        if "whatsapp" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN whatsapp VARCHAR"))
         if "phone" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR"))
+        if "category" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN category VARCHAR"))
         if "birth_date" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN birth_date VARCHAR"))
 
@@ -510,6 +516,27 @@ def set_system_meta(key: str, value: str):
 def get_system_meta(db: Session, key: str, default: str = "") -> str:
     row = db.get(SystemMeta, key)
     return row.value if row and row.value is not None else default
+
+
+def get_hidden_guest_candidate_dnis(db: Session) -> set[str]:
+    """DNI de invitados ocultados de las sugerencias de conversión a socio."""
+    raw = get_system_meta(db, "hidden_guest_candidate_dnis", "[]")
+    try:
+        data = json.loads(raw or "[]")
+        return {norm_dni(str(x)) for x in data if norm_dni(str(x))}
+    except Exception:
+        return set()
+
+
+def set_hidden_guest_candidate_dnis(db: Session, dnis: set[str]):
+    payload = json.dumps(sorted({norm_dni(x) for x in dnis if norm_dni(x)}))
+    row = db.get(SystemMeta, "hidden_guest_candidate_dnis")
+    if not row:
+        row = SystemMeta(key="hidden_guest_candidate_dnis", value=payload, updated_at=now_local())
+        db.add(row)
+    else:
+        row.value = payload
+        row.updated_at = now_local()
 
 ensure_schema()
 set_system_meta("schema_version", "1")
@@ -719,7 +746,7 @@ def table_count(db: Session, model) -> int:
 
 def schema_required_status() -> list:
     required = {
-        "users": ["id", "name", "dni", "member_no", "email", "phone", "birth_date", "role", "active"],
+        "users": ["id", "name", "dni", "member_no", "email", "whatsapp", "phone", "category", "birth_date", "role", "active"],
         "outings": ["id", "title", "destination", "departure_at", "status", "max_crew", "min_crew", "guest_fee"],
         "reservations": ["id", "outing_id", "person_name", "dni", "kind", "responsible_user_id", "status", "attendance", "charge_amount", "birth_date"],
         "audit_logs": ["id", "created_at", "actor", "action", "detail"],
@@ -1529,6 +1556,78 @@ def valid_email_syntax(email: str) -> bool:
     return bool(e and "@" in e and "." in e.split("@")[-1] and " " not in e)
 
 
+SOCIO_CATEGORIES = [
+    "activo", "activo_marino", "vitalicio", "previtalicio", "preactivo",
+    "suscriptora", "suscriptora_vitalicia", "suscriptora_previtalicia",
+    "cadete", "menor", "honorario", "diplomatico", "adherente", "otro"
+]
+
+def normalize_category(value: str) -> str:
+    raw = (value or "").strip().lower()
+    if not raw:
+        return ""
+    trans = str.maketrans("áéíóúüñ", "aeiouun")
+    v = raw.translate(trans).replace("/", " ").replace("-", " ").replace(".", " ")
+    v = "_".join(v.split())
+    aliases = {
+        "activo": "activo", "activa": "activo", "socio_activo": "activo",
+        "activo_marino": "activo_marino", "activa_marina": "activo_marino", "marino": "activo_marino",
+        "vitalicio": "vitalicio", "vitalicia": "vitalicio",
+        "previtalicio": "previtalicio", "previtalicia": "previtalicio", "pre_vitalicio": "previtalicio",
+        "preactivo": "preactivo", "preactiva": "preactivo", "pre_activo": "preactivo",
+        "suscriptora": "suscriptora", "suscriptor": "suscriptora",
+        "suscriptora_vitalicia": "suscriptora_vitalicia", "suscriptor_vitalicio": "suscriptora_vitalicia",
+        "suscriptora_previtalicia": "suscriptora_previtalicia", "suscriptor_previtalicio": "suscriptora_previtalicia",
+        "cadete": "cadete", "menor": "menor", "menores": "menor",
+        "honorario": "honorario", "honoraria": "honorario",
+        "diplomatico": "diplomatico", "diplomatica": "diplomatico",
+        "adherente": "adherente",
+    }
+    return aliases.get(v, "otro")
+
+def category_label(value: str) -> str:
+    labels = {
+        "activo": "Activo", "activo_marino": "Activo marino", "vitalicio": "Vitalicio",
+        "previtalicio": "Previtalicio", "preactivo": "Preactivo", "suscriptora": "Suscriptora",
+        "suscriptora_vitalicia": "Suscriptora vitalicia", "suscriptora_previtalicia": "Suscriptora previtalicia",
+        "cadete": "Cadete", "menor": "Menor", "honorario": "Honorario",
+        "diplomatico": "Diplomático", "adherente": "Adherente", "otro": "Otro"
+    }
+    return labels.get((value or "").strip(), value or "-")
+
+def member_key(value: str) -> str:
+    return ''.join(ch for ch in str(value or '').strip() if ch.isalnum()).upper()
+
+def synthetic_dni_for_member(member_no: str) -> str:
+    mk = member_key(member_no)
+    return f"SOCIO-{mk}" if mk else ""
+
+def is_synthetic_member_dni(dni: str) -> bool:
+    return str(dni or "").upper().startswith("SOCIO-")
+
+def padron_standard_headers() -> list[str]:
+    return ["nro_socio", "nombre_completo", "categoria", "email", "whatsapp", "telefono", "dni", "estado"]
+
+def normalize_import_header(h: str) -> str:
+    raw = (h or "").strip().lower()
+    trans = str.maketrans("áéíóúüñº°", "aeiouunoo")
+    v = raw.translate(trans).replace("/", " ").replace("-", " ").replace(".", " ")
+    v = "_".join(v.split())
+    aliases = {
+        "nro_socio": "nro_socio", "numero_de_socio": "nro_socio", "numero_socio": "nro_socio", "no_socio": "nro_socio", "socio": "nro_socio", "n_socio": "nro_socio",
+        "nombre": "nombre_completo", "nombre_completo": "nombre_completo", "apellido_nombre": "nombre_completo", "apellido_y_nombre": "nombre_completo", "apellidonombre": "nombre_completo", "socio_nombre": "nombre_completo",
+        "tipo": "categoria", "tipo_de_socio": "categoria", "categoria": "categoria", "categoria_socio": "categoria",
+        "mail": "email", "e_mail": "email", "email": "email", "correo": "email", "correo_electronico": "email",
+        "whatsapp": "whatsapp", "wapp": "whatsapp", "celular": "whatsapp", "movil": "whatsapp",
+        "telefono": "telefono", "tel": "telefono", "telefono_linea": "telefono",
+        "dni": "dni", "documento": "dni", "numero_documento": "dni",
+        "estado": "estado", "activo": "estado",
+    }
+    return aliases.get(v, v)
+
+templates.env.globals.update({"category_label": category_label, "socio_categories": SOCIO_CATEGORIES})
+
+
 def build_padron_context(db: Session) -> dict:
     """Resumen profesional del padrón: calidad de datos, duplicados y métricas por persona.
 
@@ -1552,6 +1651,7 @@ def build_padron_context(db: Session) -> dict:
     duplicate_email_ids = {u.id for group in email_map.values() if len(group) > 1 for u in group}
     duplicate_member_ids = {u.id for group in member_map.values() if len(group) > 1 for u in group}
     missing_email_ids = {u.id for u in users if u.role == "socio" and not (u.email or "").strip()}
+    missing_whatsapp_ids = {u.id for u in users if u.role == "socio" and not (getattr(u, "whatsapp", None) or "").strip()}
     invalid_email_ids = {u.id for u in users if (u.email or "").strip() and not valid_email_syntax(u.email)}
 
     metrics = {u.id: {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []} for u in users}
@@ -1596,13 +1696,16 @@ def build_padron_context(db: Session) -> dict:
         metrics.setdefault(u.id, {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []})["flags"] = flags
         metrics[u.id]["charges_label"] = human_money(metrics[u.id].get("charges", 0))
 
-    # Invitados no convertidos en usuarios: candidatos a ficha/conversión.
+    # Invitados no convertidos en usuarios: candidatos reales a socio.
+    # No mostramos todo invitado ocasional: solo quienes tuvieron al menos 2 embarques
+    # o 3 registros. Administración puede ocultarlos sin borrar historial.
+    hidden_candidate_dnis = get_hidden_guest_candidate_dnis(db)
     guest_groups = {}
     for r in reservations:
         if canonical_kind(r.kind) == "socio":
             continue
         nd = norm_dni(r.dni)
-        if not nd or nd in users_by_dni:
+        if not nd or nd in users_by_dni or nd in hidden_candidate_dnis:
             continue
         g = guest_groups.setdefault(nd, {"dni": nd, "name": r.person_name, "count": 0, "present": 0, "no_show": 0, "last": "", "responsible": "", "reservation_id": r.id})
         g["count"] += 1
@@ -1616,7 +1719,8 @@ def build_padron_context(db: Session) -> dict:
         outing = outings_by_id.get(r.outing_id)
         if outing and not g["last"]:
             g["last"] = fmt_admin_datetime_short(outing.departure_at)
-    guest_candidates = sorted(guest_groups.values(), key=lambda x: (-x["present"], -x["count"], x["name"]))[:25]
+    guest_candidates_all = [g for g in guest_groups.values() if g["present"] >= 2 or g["count"] >= 3]
+    guest_candidates = sorted(guest_candidates_all, key=lambda x: (-x["present"], -x["count"], x["name"]))[:25]
 
     return {
         "total": len(users),
@@ -1625,11 +1729,14 @@ def build_padron_context(db: Session) -> dict:
         "captains": sum(1 for u in users if u.role == "captain"),
         "admins": sum(1 for u in users if u.role == "admin"),
         "missing_email_count": len(missing_email_ids),
+        "missing_whatsapp_count": len(missing_whatsapp_ids),
         "invalid_email_count": len(invalid_email_ids),
+        "categories": {c: sum(1 for u in users if getattr(u, "category", None) == c and u.role == "socio") for c in SOCIO_CATEGORIES},
         "duplicate_email_count": len(duplicate_email_ids),
         "duplicate_member_count": len(duplicate_member_ids),
         "metrics": metrics,
         "guest_candidates": guest_candidates,
+        "hidden_guest_candidate_count": len(hidden_candidate_dnis),
     }
 
 
@@ -2412,7 +2519,17 @@ def index(request: Request, db: Session = Depends(db_session), user: Optional[Us
 
 @app.post("/login")
 def login(dni: str = Form(...), password: str = Form(...), db: Session = Depends(db_session)):
-    user = db.query(User).filter_by(dni=norm_dni(dni), active=True).first()
+    ident_raw = (dni or "").strip()
+    ident_dni = norm_dni(ident_raw)
+    ident_member = member_key(ident_raw)
+    user = None
+    if ident_dni:
+        user = db.query(User).filter(User.dni == ident_dni, User.active == True).first()
+    if not user and ident_member:
+        # Login alternativo por Nº de socio. Es clave cuando el padrón oficial no trae DNI.
+        user = db.query(User).filter(User.member_no == ident_member, User.active == True).first()
+        if not user:
+            user = db.query(User).filter(User.member_no == ident_raw, User.active == True).first()
     if not user or not verify_password(password, user.password_hash):
         return RedirectResponse("/?error=1", status_code=303)
     log(db, user.name, "login", user.role)
@@ -3721,29 +3838,39 @@ def create_user(
     dni: str = Form(...),
     member_no: str = Form(""),
     email: str = Form(""),
+    whatsapp: str = Form(""),
     phone: str = Form(""),
+    category: str = Form(""),
     birth_date: str = Form(""),
     role: str = Form("socio"),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
     dni_clean = norm_dni(dni)
-    if not name.strip() or not dni_clean:
+    member_clean = member_key(member_no)
+    if not name.strip() or (role == "socio" and not (dni_clean or member_clean)) or (role != "socio" and not dni_clean):
         return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
 
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
 
-    existing = db.query(User).filter_by(dni=dni_clean).first()
+    if not dni_clean and member_clean:
+        dni_clean = synthetic_dni_for_member(member_clean)
+
+    existing = db.query(User).filter_by(dni=dni_clean).first() if dni_clean else None
     if existing:
         return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
+    if member_clean and db.query(User).filter(User.member_no == member_clean).first():
+        return RedirectResponse("/admin?msg=socio_existente", status_code=303)
 
     new_user = User(
         name=name.strip(),
         dni=dni_clean,
-        member_no=member_no.strip() or None,
+        member_no=member_clean or None,
         email=email.strip() or None,
+        whatsapp=whatsapp.strip() or None,
         phone=phone.strip() or None,
+        category=normalize_category(category) or None,
         birth_date=birth_date.strip() or None,
         role=role,
         password_hash=hash_password("demo1234"),
@@ -3797,7 +3924,9 @@ def update_user(
     dni: str = Form(...),
     member_no: str = Form(""),
     email: str = Form(""),
+    whatsapp: str = Form(""),
     phone: str = Form(""),
+    category: str = Form(""),
     birth_date: str = Form(""),
     role: str = Form("socio"),
     active: str = Form("activo"),
@@ -3809,21 +3938,29 @@ def update_user(
         raise HTTPException(404, "Usuario inexistente")
 
     dni_clean = norm_dni(dni)
-    if not name.strip() or not dni_clean:
+    member_clean = member_key(member_no)
+    if not name.strip() or (role == "socio" and not (dni_clean or member_clean)) or (role != "socio" and not dni_clean):
         return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
 
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
 
-    existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first()
+    if not dni_clean and member_clean:
+        dni_clean = synthetic_dni_for_member(member_clean)
+
+    existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first() if dni_clean else None
     if existing:
         return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
+    if member_clean and db.query(User).filter(User.member_no == member_clean, User.id != uid).first():
+        return RedirectResponse("/admin?msg=socio_existente", status_code=303)
 
     target.name = name.strip()
     target.dni = dni_clean
-    target.member_no = member_no.strip() or None
+    target.member_no = member_clean or None
     target.email = email.strip() or None
+    target.whatsapp = whatsapp.strip() or None
     target.phone = phone.strip() or None
+    target.category = normalize_category(category) or None
     target.birth_date = birth_date.strip() or None
     target.role = role
     if target.id == user.id and active != "activo":
@@ -3840,7 +3977,9 @@ def convert_guest_to_user(
     reservation_id: int = Form(...),
     member_no: str = Form(""),
     email: str = Form(""),
+    whatsapp: str = Form(""),
     phone: str = Form(""),
+    category: str = Form(""),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -3856,9 +3995,11 @@ def convert_guest_to_user(
     new_user = User(
         name=(r.person_name or "").strip() or "Socio sin nombre",
         dni=dni_clean,
-        member_no=member_no.strip() or None,
+        member_no=member_key(member_no) or None,
         email=email.strip() or None,
+        whatsapp=whatsapp.strip() or None,
         phone=phone.strip() or None,
+        category=normalize_category(category) or None,
         birth_date=(r.birth_date or None),
         role="socio",
         password_hash=hash_password("demo1234"),
@@ -3870,6 +4011,182 @@ def convert_guest_to_user(
     log(db, user.name, "convierte invitado a socio", f"{new_user.name} / DNI {new_user.dni} / socio {new_user.member_no or '-'}")
     db.commit()
     return RedirectResponse("/admin?page=socios&msg=invitado_convertido", status_code=303)
+
+
+@app.post("/admin/hide_guest_candidate")
+def hide_guest_candidate(
+    dni: str = Form(...),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    nd = norm_dni(dni)
+    if not nd:
+        return RedirectResponse("/admin?page=socios&msg=dni_invalido", status_code=303)
+    hidden = get_hidden_guest_candidate_dnis(db)
+    hidden.add(nd)
+    set_hidden_guest_candidate_dnis(db, hidden)
+    log(db, user.name, "oculta candidato a socio", f"DNI {nd}")
+    db.commit()
+    return RedirectResponse("/admin?page=socios&msg=candidato_oculto", status_code=303)
+
+
+@app.post("/admin/unhide_guest_candidates")
+def unhide_guest_candidates(
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    set_hidden_guest_candidate_dnis(db, set())
+    log(db, user.name, "restaura candidatos ocultos", "Padrón")
+    db.commit()
+    return RedirectResponse("/admin?page=socios&msg=candidatos_restaurados", status_code=303)
+
+
+def parse_padron_csv_bytes(content: bytes) -> list[dict]:
+    try:
+        text_data = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text_data = content.decode("latin-1")
+    sample = text_data[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=";,	,")
+    except Exception:
+        dialect = csv.excel
+        dialect.delimiter = ";"
+    reader = csv.DictReader(io.StringIO(text_data), dialect=dialect)
+    out = []
+    for raw in reader:
+        if not raw:
+            continue
+        row = {}
+        for k, v in raw.items():
+            nk = normalize_import_header(k or "")
+            row[nk] = (v or "").strip()
+        if any(row.get(h, "") for h in padron_standard_headers()):
+            out.append(row)
+    return out
+
+def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
+    existing_by_member = {member_key(u.member_no): u for u in db.query(User).filter(User.member_no != None).all() if member_key(u.member_no)}
+    existing_by_dni = {norm_dni(u.dni): u for u in db.query(User).all() if norm_dni(u.dni) and not is_synthetic_member_dni(u.dni)}
+    seen_members = set()
+    preview = []
+    stats = {"read": len(rows), "create": 0, "update": 0, "errors": 0, "warnings": 0}
+    cats = {}
+    clean_rows = []
+    for i, row in enumerate(rows, start=2):
+        member_no = member_key(row.get("nro_socio", ""))
+        name = (row.get("nombre_completo") or row.get("nombre") or "").strip()
+        dni_clean = norm_dni(row.get("dni", ""))
+        category = normalize_category(row.get("categoria", ""))
+        email = (row.get("email") or "").strip()
+        whatsapp = (row.get("whatsapp") or "").strip()
+        phone = (row.get("telefono") or row.get("phone") or "").strip()
+        estado_raw = (row.get("estado") or "activo").strip().lower()
+        active = not any(x in estado_raw for x in ("inactivo", "baja", "suspend"))
+        errors = []
+        warnings = []
+        if not member_no:
+            errors.append("falta nro_socio")
+        if not name:
+            errors.append("falta nombre_completo")
+        if email and not valid_email_syntax(email):
+            warnings.append("email dudoso")
+        if member_no and member_no in seen_members:
+            errors.append("nro_socio duplicado en archivo")
+        seen_members.add(member_no)
+        existing = existing_by_member.get(member_no) if member_no else None
+        if not existing and dni_clean:
+            existing = existing_by_dni.get(dni_clean)
+            if existing:
+                warnings.append("coincide por DNI, no por nro_socio")
+        action = "error" if errors else ("actualizar" if existing else "crear")
+        if action == "crear": stats["create"] += 1
+        elif action == "actualizar": stats["update"] += 1
+        else: stats["errors"] += 1
+        if warnings: stats["warnings"] += 1
+        if category: cats[category_label(category)] = cats.get(category_label(category), 0) + 1
+        clean = {
+            "line": i, "member_no": member_no, "name": name, "dni": dni_clean,
+            "category": category, "email": email, "whatsapp": whatsapp, "phone": phone,
+            "active": active, "action": action, "errors": errors, "warnings": warnings,
+        }
+        clean_rows.append(clean)
+        if len(preview) < 80:
+            preview.append(clean)
+    stats["categories"] = cats
+    return {"stats": stats, "preview": preview, "rows": clean_rows}
+
+@app.post("/admin/padron/import/preview", response_class=HTMLResponse)
+async def padron_import_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    content = await file.read()
+    rows = parse_padron_csv_bytes(content)
+    analysis = analyze_padron_rows(db, rows)
+    token = secrets.token_urlsafe(16)
+    set_system_meta(f"pending_padron_import:{token}", json.dumps(analysis["rows"], ensure_ascii=False))
+    db.commit()
+    html = templates.get_template("padron_import_preview.html").render(
+        request=request, version=VERSION, token=token, stats=analysis["stats"], preview=analysis["preview"]
+    )
+    return HTMLResponse(html)
+
+@app.post("/admin/padron/import/confirm")
+def padron_import_confirm(
+    token: str = Form(...),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    payload = get_system_meta(db, f"pending_padron_import:{token}", "")
+    if not payload:
+        return RedirectResponse("/admin?page=socios&msg=importacion_expirada", status_code=303)
+    rows = json.loads(payload)
+    created = updated = skipped = 0
+    for row in rows:
+        if row.get("action") == "error":
+            skipped += 1
+            continue
+        member_no = row.get("member_no") or ""
+        dni_clean = row.get("dni") or ""
+        target = db.query(User).filter(User.member_no == member_no).first() if member_no else None
+        if not target and dni_clean:
+            target = db.query(User).filter(User.dni == dni_clean).first()
+        final_dni = dni_clean or synthetic_dni_for_member(member_no)
+        if target:
+            target.name = row.get("name") or target.name
+            target.member_no = member_no or target.member_no
+            target.dni = final_dni or target.dni
+            target.category = row.get("category") or target.category
+            target.email = row.get("email") or target.email
+            target.whatsapp = row.get("whatsapp") or target.whatsapp
+            target.phone = row.get("phone") or target.phone
+            target.role = "socio"
+            target.active = bool(row.get("active", True))
+            updated += 1
+        else:
+            db.add(User(
+                name=row.get("name") or "Socio sin nombre",
+                dni=final_dni,
+                member_no=member_no or None,
+                category=row.get("category") or None,
+                email=row.get("email") or None,
+                whatsapp=row.get("whatsapp") or None,
+                phone=row.get("phone") or None,
+                role="socio",
+                password_hash=hash_password("demo1234"),
+                active=bool(row.get("active", True)),
+            ))
+            created += 1
+    # Limpia token usado.
+    meta = db.get(SystemMeta, f"pending_padron_import:{token}")
+    if meta:
+        db.delete(meta)
+    log(db, user.name, "importa padrón oficial", f"creados {created}, actualizados {updated}, omitidos {skipped}")
+    db.commit()
+    return RedirectResponse(f"/admin?page=socios&msg=padron_importado&created={created}&updated={updated}&skipped={skipped}", status_code=303)
 
 @app.get("/admin/users.json")
 def users_json(
@@ -3884,7 +4201,9 @@ def users_json(
             "dni": u.dni,
             "member_no": u.member_no or "",
             "email": u.email or "",
+            "whatsapp": getattr(u, "whatsapp", None) or "",
             "phone": u.phone or "",
+            "category": getattr(u, "category", None) or "",
             "birth_date": u.birth_date or "",
             "role": u.role,
             "active": bool(u.active)
@@ -4070,9 +4389,9 @@ def outings_csv(db: Session = Depends(db_session), user: User = Depends(require_
 def users_csv(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     output = io.StringIO()
     writer = csv.writer(output, delimiter=';')
-    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "fecha_nacimiento", "edad", "email", "telefono", "rol", "activo"])
+    writer.writerow(["usuario_id", "nombre", "dni", "nro_socio", "categoria", "fecha_nacimiento", "edad", "email", "whatsapp", "telefono", "rol", "activo"])
     for u in db.query(User).order_by(User.name.asc()).all():
-        writer.writerow([u.id, u.name, u.dni, u.member_no or "", u.birth_date or "", user_age_label(u.birth_date), u.email or "", u.phone or "", u.role, "si" if u.active else "no"])
+        writer.writerow([u.id, u.name, u.dni, u.member_no or "", category_label(getattr(u, "category", None)), u.birth_date or "", user_age_label(u.birth_date), u.email or "", getattr(u, "whatsapp", None) or "", u.phone or "", u.role, "si" if u.active else "no"])
     return csv_response_excel(output, "fjord_vi_usuarios.csv")
 
 

@@ -1,10 +1,9 @@
-# v68.0 - Usuarios / Padrón Pro
+# v68.2 - Importar padrón oficial / Login por Nº socio
 
-- Evoluciona Administración > Usuarios a padrón operativo profesional.
-- KPIs de padrón: usuarios, socios, socios sin email y duplicados.
-- Alertas de calidad de datos: sin email, email inválido, email duplicado, Nº de socio duplicado.
-- Ficha rápida por persona con historial operativo básico: navegaciones, invitados a cargo, no-show, cargos vinculados y última actividad.
-- Detección de invitados frecuentes no convertidos en usuario.
-- Conversión de invitado a socio desde el padrón, conservando historial por DNI.
-- Filtros nuevos: socios sin email, email inválido y duplicados.
-- No toca capitán, socio, liquidación, fichas ni comunicaciones.
+- Agrega importador CSV de padrón oficial con previsualización y confirmación.
+- Importa/actualiza socios por Nº de socio, sin borrar existentes.
+- Soporta categorías: activo, activo_marino, vitalicio, previtalicio, preactivo, suscriptora, suscriptora_vitalicia, suscriptora_previtalicia, cadete, menor, honorario, diplomatico, adherente, otro.
+- Agrega campos `whatsapp` y `category` a usuarios.
+- Mantiene `telefono` como teléfono de línea o alternativo.
+- Permite login por Nº de socio o DNI.
+- Para socios sin DNI genera identificador técnico interno basado en Nº de socio.

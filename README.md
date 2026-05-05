@@ -1,11 +1,12 @@
-Fjord VI v68.0 - Usuarios / Padrón Pro
+# Fjord VI v68.2
 
-Sistema web FastAPI/Jinja para gestión de reservas, embarque, administración, fichas, comunicaciones y padrón.
+Sistema de embarque Fjord VI. Esta versión amplía Usuarios / Padrón Pro:
 
-Cambios de esta versión:
-- Padrón operativo profesional en Administración > Usuarios.
-- Ficha rápida de persona.
-- Alertas de emails y duplicados.
-- Conversión invitado -> socio.
-
-PostgreSQL sigue siendo la fuente única de verdad cuando DATABASE_URL está configurada.
+- Importación de padrón oficial en CSV.
+- Formato estándar recomendado:
+  `nro_socio;nombre_completo;categoria;email;whatsapp;telefono;dni;estado`
+- El DNI es opcional para socios si existe Nº de socio.
+- El Nº de socio es la identidad principal del socio.
+- El invitado se sigue identificando principalmente por DNI.
+- WhatsApp queda separado de teléfono común.
+- Login preparado para Nº de socio o DNI.
