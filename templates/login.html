@@ -14,9 +14,9 @@
         <div class="boatName">FJORD VI</div>
         <div class="systemName">EMBARQUE</div>
       </div>
-      {% if error %}<div class="alert bad">Documento o clave incorrectos</div>{% endif %}
+      {% if error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
       <form method="post" action="/login" class="loginForm">
-        <label>Documento</label>
+        <label>Nº de socio o documento</label>
         <input name="dni" autocomplete="username" inputmode="text" required>
         <label>Clave</label>
         <input type="password" name="password" autocomplete="current-password" required>
