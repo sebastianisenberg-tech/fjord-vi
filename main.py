@@ -42,14 +42,19 @@ DATA_DIR = Path(os.getenv("DATA_DIR", APP_DIR))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR/'fjord_v18_pilot.db'}")
 JSON_BACKUP_PATH = Path(os.getenv("JSON_BACKUP_PATH", DATA_DIR / "fjord_vi_data.json"))
-SECRET_KEY = os.getenv("SECRET_KEY", "pilot-secret-change-me")
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if APP_ENV in ("prod", "production"):
+    if not SECRET_KEY or SECRET_KEY == "pilot-secret-change-me" or len(SECRET_KEY) < 32:
+        raise RuntimeError("SECRET_KEY obligatorio en producción: configurar una clave secreta aleatoria de al menos 32 caracteres.")
+if not SECRET_KEY:
+    SECRET_KEY = "pilot-secret-change-me"
 MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.4"
-APP_BUILD = "v68-login-identidad-blindada"
-APP_ENV = os.getenv("APP_ENV", "development").lower()
+VERSION = "v68.5"
+APP_BUILD = "v68-5-fmt-money-secret-key"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1546,6 +1551,10 @@ def reservation_charge(outing: Outing, r: Reservation) -> float:
 
 def human_money(value) -> str:
     return f"{float(value or 0):,.0f}".replace(",", ".")
+
+# Alias de compatibilidad: varias rutinas de emails/cierre usan fmt_money.
+def fmt_money(value) -> str:
+    return human_money(value)
 
 templates.env.filters["money"] = human_money
 templates.env.globals.update({"user_age_label": user_age_label})
