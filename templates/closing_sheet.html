@@ -63,11 +63,11 @@
     <div class="moneybox"><div class="moneyitem"><span>Invitados navegados</span><b>$ {{ data.summary.subtotal_navegacion_label or '0' }}</b></div><div class="moneyitem"><span>No-show con cargo</span><b>$ {{ data.summary.subtotal_no_show_label or '0' }}</b></div><div class="moneyitem total"><span>Total general</span><b>$ {{ data.summary.total_label }}</b></div></div>
     <h2>Navegaron</h2>
     <div class="peopleGrid">
-    {% for g in data.groups %}{% if g.navegaron %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li>{{ p.name }} <small>({{ p.tipo }})</small>{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal invitados navegados a cargo del socio responsable: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
+    {% for g in data.groups %}{% if g.navegaron %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li>{{ p.name }} <small>({{ p.tipo }})</small>{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}{% if p.reason and "Reasignado" in p.reason %}<br><small class="guestDni">{{ p.reason }}</small>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal invitados navegados a cargo del socio responsable: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
     </div>
-    <h2>Invitados no vino / No-show con cargo</h2>
+    <h2>No vino / No-show con cargo</h2>
     <div class="peopleGrid">
-    {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li>{{ p.name }} <small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small></li>{% endfor %}</ul><div class="amount">Subtotal no-show con cargo a cargo del socio responsable: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
+    {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li>{{ p.name }} <small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small>{% if p.reason %}<br><small class="guestDni">{{ p.reason }}</small>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal no-show con cargo a cargo del socio responsable: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
     </div>
     <div class="finalTotal">TOTAL GENERAL A LIQUIDAR: $ {{ data.summary.total_label }}</div>
     <div class="foot">Documento generado automáticamente por el sistema Fjord VI {{version}}.</div>
