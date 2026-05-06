@@ -5630,3 +5630,44 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 /* v68.10 · Identidad institucional, versión visible y reasignación blindada */
 .sheetVersionBadge{display:inline-flex;align-items:center;border:1px solid rgba(15,79,120,.24);background:#eef7fb;color:#0f4f78;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;margin:0 6px;}
 .versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px;}
+
+
+/* ===== Fjord VI 1.0.3 Premium Refinements ===== */
+
+.version-footer,
+.version-watermark,
+.footer-version{
+    opacity:0.42 !important;
+    font-size:11px !important;
+    letter-spacing:0.08em;
+    color:#7d8793 !important;
+}
+
+.status-badge,
+.badge,
+.chip,
+.state-chip{
+    border-radius:14px !important;
+    padding:5px 10px !important;
+    font-weight:600 !important;
+    letter-spacing:0.01em;
+}
+
+.qr-button,
+.btn-qr{
+    border-radius:16px !important;
+    box-shadow:0 4px 10px rgba(0,0,0,0.12) !important;
+}
+
+.tripulacion-card .menu-button,
+.crew-card .menu-button,
+.card-menu{
+    border:1px solid rgba(0,0,0,0.08) !important;
+    box-shadow:none !important;
+}
+
+.stats-chip,
+.counter-chip{
+    box-shadow:none !important;
+    filter:saturate(0.9);
+}
