@@ -35,4 +35,4 @@
   {% if analysis.suggestions %}<section class="preflightCard"><h2>Sugerencias operativas</h2><ul class="preflightList">{% for s in analysis.suggestions %}<li>{{ s }}</li>{% endfor %}</ul></section>{% endif %}
 
   <section class="preflightCard"><div class="preflightActions"><a class="pfBtn secondary" href="/captain?outing_id={{ outing.id }}#decision">Volver a corregir</a>{% if analysis.ok %}<form method="post" action="/captain/close" onsubmit="return confirm('Confirmar cierre definitivo y generación de ficha?');"><input type="hidden" name="outing_id" value="{{ outing.id }}"><button class="pfBtn primary">Confirmar cierre y generar ficha <span class="helpDot helpDotTiny" data-tip="Genera la ficha vigente, congela cargos y deja trazabilidad para administración.">i</span></button></form>{% else %}<button class="pfBtn disabled" disabled>Corregir errores antes de cerrar</button>{% endif %}</div></section>
-<div class="preflightVersion">Sistema Fjord VI {{version}}</div></main></body></html>
+<div class="preflightVersion">{{ release_label or ("Fjord VI " ~ version) }}</div></main></body></html>
