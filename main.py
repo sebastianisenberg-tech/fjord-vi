@@ -53,8 +53,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.5"
-APP_BUILD = "v68-5-fmt-money-secret-key"
+VERSION = "v68.7"
+APP_BUILD = "v68-7-reopen-reassignment-audit"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2229,7 +2229,7 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
             "member_no": (responsible.member_no if k == "socio" and responsible else "") or "",
             "dni": (r.dni or "") if k in ("invitado", "hijo_menor") else "",
             "responsible_member_no": (responsible.member_no if responsible else "") or "",
-            "reason": v.get("motivo") or "",
+            "reason": (r.cancel_reason or v.get("motivo") or ""),
             "amount": charge,
             "amount_label": human_money(charge),
         }
@@ -3133,19 +3133,45 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             if not r.cancel_reason:
                 r.cancel_reason = "No vino: plaza reservada no utilizada"
         elif r.attendance == "Presente":
-            # Presente pisa cualquier no-show previo.
+            # Presente pisa cualquier no-show previo. El cargo se imputa una sola vez,
+            # al socio responsable final. Si hubo reasignación, se preserva la nota
+            # para que la ficha explique de dónde venía ese invitado.
+            previous_reason = (r.cancel_reason or "").strip()
+            reassignment_trace = reassignment_trace_only(previous_reason)
             if k == "invitado":
                 r.charge_amount = guest_fee
-                r.cancel_reason = "Tarifa de invitado embarcado"
+                if reassignment_trace:
+                    r.cancel_reason = reassignment_trace + " · Tarifa de invitado embarcado"
+                else:
+                    r.cancel_reason = "Tarifa de invitado embarcado"
             elif k == "hijo_menor":
                 r.charge_amount = 0
-                r.cancel_reason = "Hijo menor de socio embarcado sin cargo"
+                if reassignment_trace:
+                    r.cancel_reason = reassignment_trace + " · Hijo menor de socio embarcado sin cargo"
+                else:
+                    r.cancel_reason = "Hijo menor de socio embarcado sin cargo"
             else:
                 r.charge_amount = 0
                 r.cancel_reason = "Socio embarcado sin cargo"
 
     outing.status = "Embarque cerrado"
 
+
+
+
+def reassignment_trace_only(reason: str) -> str:
+    """Devuelve solo la trazabilidad de reasignación, sin arrastrar cargos de cierres anteriores.
+
+    Al reabrir una salida y volver a cerrarla, la ficha anterior queda anulada.
+    La reasignación debe sobrevivir como dato histórico operativo, pero no deben
+    duplicarse textos como "Tarifa de invitado embarcado" ni motivos de no-show.
+    """
+    txt = (reason or "").strip()
+    if "reasignado" not in txt.lower():
+        return ""
+    # La convención del sistema agrega detalles contables con separador medio.
+    # Nos quedamos con la traza original: "Reasignado por capitán: A -> B".
+    return txt.split("·", 1)[0].strip()
 
 def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reservations):
     """Reconstruye la preliquidación al reabrir una salida.
@@ -3199,7 +3225,9 @@ def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reserva
 
         r.charge_amount = 0
         if r.attendance in ("Presente", "Por confirmar") and not is_captain_cancelled(r):
-            r.cancel_reason = ""
+            # Al reabrir, se limpian cargos firmes del cierre anterior, pero se conserva
+            # la traza de reasignación para que el segundo cierre mantenga el relato operativo.
+            r.cancel_reason = reassignment_trace_only(r.cancel_reason)
 
 @app.post("/captain/outing_status")
 def outing_status(
@@ -3388,7 +3416,11 @@ def captain_reassign_guest(
     if r.attendance in ("No embarca", "No embarcable") or "socio responsable" in ((r.cancel_reason or "").lower()):
         r.attendance = "Por confirmar"
         r.charge_amount = 0
-    r.cancel_reason = f"Reasignado por capitán a {new_responsible.name}"
+    # Trazabilidad operativa: el cargo sigue a la persona y al socio responsable final,
+    # pero la ficha deja constancia de la reasignación para evitar doble imputación
+    # o discusiones administrativas posteriores.
+    old_name = old_responsible.name if old_responsible else "sin responsable anterior"
+    r.cancel_reason = f"Reasignado por capitán: {old_name} -> {new_responsible.name}"
 
     enforce_capacity(db, outing)
     db.commit()
