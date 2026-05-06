@@ -56,14 +56,15 @@ function showSocioNotice(text){
 <section class="miEmbarqueCard socioProBoarding socioV51HeroCard" id="inicio">
   <div class="miEmbTop">
     <div>
-      <span class="eyebrow">Próximo embarque</span>
+      <span class="eyebrow">{% if closed %}Salida cerrada{% else %}Próximo embarque{% endif %}</span>
       <h2>{{outing.title}}</h2>
       <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
     </div>
     {% if outing_cancelled %}<span class="miEmbState stateBad">Cancelada</span>
     {% elif self_view and self_view.waitlisted %}<span class="miEmbState stateWait">En espera</span>
+    {% elif self_reservation and not has_self %}<span class="miEmbState stateBad">Cancelado</span>
+    {% elif closed %}<span class="miEmbState stateNeutral">Cerrada</span>
     {% elif has_self %}<span class="miEmbState stateOk">Activo</span>
-    {% elif self_reservation %}<span class="miEmbState stateBad">Cancelado</span>
     {% else %}<span class="miEmbState stateWarn">Sin reserva</span>{% endif %}
   </div>
   <div class="miEmbGrid socioProStats">
