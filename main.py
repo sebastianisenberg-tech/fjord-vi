@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.0.2"
-APP_BUILD = "build-69-premium-operativo-1"
-RELEASE_LABEL = "Fjord VI 1.0.2"
+VERSION = "1.0.3"
+APP_BUILD = "build-69-premium-operativo-1.0.3"
+RELEASE_LABEL = "Fjord VI 1.0.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -3047,7 +3047,7 @@ def close_preflight_analysis(db: Session, outing: Outing) -> dict:
             if not norm_dni(r.dni):
                 errors.append(f"{r.person_name}: invitado sin DNI/documento. Cargalo antes de cerrar.")
             elif dni_format_warning(r.dni):
-                warnings.append(f"{r.person_name}: DNI/documento con formato atípico ({r.dni}). Revisar si es un dato de prueba o un documento real.")
+                warnings.append(f"{r.person_name}: documento corto o incompleto ({r.dni}). Revisar si es dato de prueba o documento real.")
 
             if simulated_att == "Presente" and r.responsible_user_id not in present_socio_ids:
                 suggestions.append(f"Corregir {r.person_name}: reasignar a un socio presente o marcar No embarca si no sube.")
