@@ -1,3 +1,27 @@
+# v68.10 - Reasignación blindada
+
+- Corrige un caso crítico detectado en auditoría: al marcar Presente/Por confirmar/Ausente/No embarca después de una reasignación, ya no se borra la traza de reasignación.
+- Mantiene la regla de una sola reasignación por invitado/salida incluso si se reabre la salida y se cambia el estado varias veces.
+- Conserva identidad visible: socios por N° de socio, invitados/menores no socios por DNI.
+- No modifica cálculos de cargos, QR, base de datos ni flujo central de cierre/reapertura.
+
+## v68.10
+
+- Identidad visible institucional: socios por N° de socio; invitados/menores no socios por DNI.
+- Capitán muestra DNI de invitados abreviado para no ensuciar la pantalla móvil.
+- Reasignación blindada: un invitado solo puede reasignarse una vez por salida.
+- Fichas con versión visible (Ficha V1, V2, V3) en ficha e historial.
+- Tooltips y textos existentes preservados; sin cambios en cálculo de cargos, QR ni PostgreSQL.
+
+## v68.8
+- Pulido de trazabilidad y UX sin tocar la lógica de cargos ni el flujo central.
+- Watermark ANULADA reforzado para pantalla e impresión.
+- Fichas anuladas con bloque temporal: generada, anulada, motivo y reemplazo.
+- Fichas vigentes con aviso de liquidación congelada.
+- DNI visible de invitados/menores en ficha final y ayuda visual en tripulación del capitán.
+- Tooltips y toasts operativos reforzados en cierre, reapertura, reasignación y preflight.
+- Etiquetas más claras para No vino / cargo.
+
 ## v68.7
 - Auditoría de reapertura: conserva la trazabilidad de invitados reasignados al reabrir y volver a cerrar.
 - Evita duplicar textos de cargo en cierres sucesivos.

@@ -15,3 +15,6 @@ Versión con padrón oficial e identidad blindada.
 ## Base de datos
 
 PostgreSQL como fuente principal; JSON solo exportación técnica según versiones previas.
+
+### v68.10
+Versión de consolidación: identidad visible correcta, reasignación única por salida y versionado más explícito de fichas. No modifica el motor de cargos ni el flujo de cierre/reapertura.

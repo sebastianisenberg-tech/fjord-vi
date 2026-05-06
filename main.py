@@ -53,8 +53,8 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.7"
-APP_BUILD = "v68-7-reopen-reassignment-audit"
+VERSION = "v68.10"
+APP_BUILD = "v68-10-reasignacion-blindada"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1556,7 +1556,21 @@ def human_money(value) -> str:
 def fmt_money(value) -> str:
     return human_money(value)
 
+def mask_document(value) -> str:
+    """Documento abreviado para pantallas móviles/operativas.
+
+    En fichas y administración el DNI de invitados puede verse completo;
+    en Capitán conviene evitar ruido visual y exponer solo la terminación.
+    """
+    raw = norm_dni(value or "")
+    if not raw:
+        return ""
+    if len(raw) <= 4:
+        return raw
+    return "***" + raw[-4:]
+
 templates.env.filters["money"] = human_money
+templates.env.filters["mask_doc"] = mask_document
 templates.env.globals.update({"user_age_label": user_age_label})
 
 
@@ -3322,6 +3336,8 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         if present_count >= (outing.max_crew or MAX_CREW):
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cupo_lleno", status_code=303)
 
+    previous_trace = reassignment_trace_only(r.cancel_reason or "")
+
     if value in ("Presente", "Por confirmar"):
         # Blindaje: un invitado/menor no socio no puede ser marcado presente
         # si su socio responsable no está presente y activo.
@@ -3333,21 +3349,23 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
                 return RedirectResponse(f"/captain?outing_id={outing.id}&msg=socio_responsable_no_presente", status_code=303)
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
-        r.cancel_reason = ""
+        # No borrar la traza de reasignación: es el candado que impide una segunda
+        # reasignación y además explica la imputación en ficha tras reabrir/corregir.
+        r.cancel_reason = previous_trace
         r.charge_amount = 0
         r.attendance = value
     elif value == "Ausente":
         # Ausente verdadero: no vino y queda como plaza perdida con cargo reglamentario.
-        # Normalmente se genera automáticamente al cerrar embarque si quedó Por confirmar.
+        # Si venía de una reasignación, se conserva la traza y se agrega el estado final.
         r.attendance = "Ausente"
-        r.cancel_reason = "Ausente / no se presentó"
+        r.cancel_reason = (previous_trace + " · Ausente / no se presentó") if previous_trace else "Ausente / no se presentó"
         r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
     elif value == "No embarca":
         # Decisión operativa del capitán: no es no-show y no genera cargo.
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
         r.attendance = "No embarca"
-        r.cancel_reason = "No embarcado por decisión del capitán"
+        r.cancel_reason = (previous_trace + " · No embarcado por decisión del capitán") if previous_trace else "No embarcado por decisión del capitán"
         r.charge_amount = 0
         # Si el titular no embarca, sus invitados/menores no pueden quedar a bordo.
         cascade_no_board_dependents(db, outing, r)
@@ -3408,6 +3426,11 @@ def captain_reassign_guest(
     old_responsible = db.get(User, old_responsible_id) if old_responsible_id else None
     if old_responsible_id == new_responsible.id:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_sin_cambios", status_code=303)
+
+    # Blindaje operativo: una reasignación por invitado y por salida.
+    # Evita cadenas A -> B -> C que complican la auditoría y la liquidación.
+    if reassignment_trace_only(r.cancel_reason or ""):
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_unica", status_code=303)
 
     r.responsible_user_id = new_responsible.id
     r.cancelled_at = None
