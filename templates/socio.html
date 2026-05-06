@@ -47,7 +47,7 @@ function showSocioNotice(text){
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="socioV51Dashboard" id="perfil" aria-label="Inicio del socio">
   <div class="socioV51Hello">
-    <div><span class="eyebrow">Inicio</span><h1>Hola, {{user.name}}</h1><small>{% if user.member_no %}Socio Nº {{user.member_no}} · {% endif %}Documento {{user.dni}}</small></div>
+    <div><span class="eyebrow">Inicio</span><h1>Hola, {{user.name}}</h1><small>{% if user.member_no %}Socio Nº {{user.member_no}}{% else %}Documento {{user.dni}}{% endif %}</small></div>
     <a class="socioV51Profile" href="#perfil" aria-label="Ver perfil">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
   </div>
 </section>
