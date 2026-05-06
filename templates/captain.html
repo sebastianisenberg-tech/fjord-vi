@@ -30,7 +30,7 @@
     ventana_finalizada: ['Fuera de plazo: el capitán solo puede corregir hasta 48 horas.', 'error'],
     cierre_anticipado: ['Todavía no se puede cerrar: el cierre se habilita desde la hora programada.', 'warning'],
     reserva_en_espera: ['No se puede marcar: la persona está en lista de espera.', 'warning'],
-    cierre_ok: ['🔒 Ficha generada. Liquidación congelada.', 'success'],
+    cierre_ok: ['🔒 Ficha generada. Liquidación consolidada.', 'success'],
     estado_actualizado: ['Estado de la salida actualizado.', 'success'],
     reapertura_ok: ['Salida reabierta. La ficha anterior quedó anulada y se conserva en historial.', 'success'],
     minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
@@ -253,7 +253,7 @@
   {% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}
   <div class="captainActiveOutings">
   {% if outing %}
-    {% set outing_display_status = 'Cancelada por capitán' if outing.status == 'Cancelada por capitán' else ('Liquidación congelada' if closed else outing.status) %}
+    {% set outing_display_status = 'Cancelada por capitán' if outing.status == 'Cancelada por capitán' else ('Liquidación consolidada' if closed else outing.status) %}
     <div class="captainOutingCard selected">
       <a class="outingMainLink" href="/captain?outing_id={{outing.id}}"><div><b>{{outing.title}}</b><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}} · {{outing_display_status}}</small></div></a>
       <div class="outingQuickActions">
@@ -326,7 +326,7 @@
 </section>
 
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>🔒 Salida cerrada</b><span>Liquidación congelada. Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><span class="sheetVersionBadge premiumLock">LIQ-{{ current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026' }}-{{ '%06d'|format(current_sheet.id) }}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>🔒 Salida cerrada</b><span>Liquidación consolidada. Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><span class="sheetVersionBadge premiumLock">LIQ-{{ current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026' }}-{{ '%06d'|format(current_sheet.id) }}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
 </section>
 <section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
 
@@ -364,7 +364,7 @@
         {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
         {% elif outing_cancelled %}<span class="fastStateChipV65 neutral">Sin cargo</span>
         {% elif r.attendance == 'Presente' %}<span class="fastStateChipV65 present">Presente</span>
-        {% elif r.attendance == 'Ausente' %}<span class="fastStateChipV65 absent">No vino</span>
+        {% elif r.attendance == 'Ausente' %}<span class="fastStateChipV65 absent">No embarcó</span>
         {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
         {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
       </div>
@@ -406,7 +406,7 @@
   {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
 </section>
 
-<section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">🔒 La salida tiene ficha de cierre vigente. Liquidación congelada en {{ 'LIQ-' ~ (current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026') ~ '-' ~ ('%06d'|format(current_sheet.id)) }}.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
+<section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">🔒 La salida tiene ficha de cierre vigente. Liquidación consolidada en {{ 'LIQ-' ~ (current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026') ~ '-' ~ ('%06d'|format(current_sheet.id)) }}.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
 {% endif %}
 </main>
 <nav class="bottom captainBottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#fichas">Ficha</a></nav>
