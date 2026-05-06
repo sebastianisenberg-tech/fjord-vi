@@ -35,7 +35,7 @@
     reapertura_ok: ['Salida reabierta. La ficha anterior quedó anulada y se conserva en historial.', 'success'],
     minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
     maximo_superado: ['No se puede cerrar: se supera el cupo máximo.', 'error'],
-    cupo_lleno: ['Cupo completo: no se puede marcar más de 9 presentes. Marcá a alguien como No vino o No embarca antes de sumar otro presente.', 'warning'],
+    cupo_lleno: ['Cupo completo: no se puede marcar más de 9 presentes. Marcá a alguien como No embarcó o No embarca antes de sumar otro presente.', 'warning'],
     accion_invalida: ['Acción inválida o registro inexistente.', 'error'],
     reasignacion_ok: ['Invitado reasignado. El cargo queda a cargo del nuevo socio responsable.', 'success'],
     reasignacion_invalida: ['Reasignación inválida.', 'error'],
@@ -110,9 +110,9 @@
           if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return; }
           if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return; }
         }
-        if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No vino (con cargo).')) { e.preventDefault(); return; }
+        if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No embarcó (con cargo).')) { e.preventDefault(); return; }
         if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
-        if (absent && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return; }
+        if (absent && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return; }
         if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return; }
         if (tripRow) { captainRememberScroll(tripRow); }
         form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
@@ -151,7 +151,7 @@
         }
         const form = row.querySelector('form[data-v65-status="' + next + '"]');
         if(!form) return;
-        if(next === 'Ausente' && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) return;
+        if(next === 'Ausente' && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) return;
         captainRememberScroll(row);
         row.classList.add('isSubmittingV65');
         form.submit();
@@ -204,9 +204,9 @@
       if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return false; }
       if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return false; }
     }
-    if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No vino (con cargo).')) { e.preventDefault(); return false; }
+    if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No embarcó (con cargo).')) { e.preventDefault(); return false; }
     if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return false; }
-    if (absent && !confirm('Confirmar NO VINO? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return false; }
+    if (absent && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return false; }
     if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return false; }
     if (tripRow) { captainRememberScroll(tripRow); }
     form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
@@ -317,7 +317,7 @@
   <div class="captainMiniSummary" aria-label="Resumen de asistencia">
     <button type="button" onclick="captainOpenSummary('presentes')"><span>Presentes</span><b>{{ns.presentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('pendientes')"><span>Pendientes</span><b>{{ns.pendientes|length}}</b></button>
-    <button type="button" onclick="captainOpenSummary('ausentes')"><span>No vino / cargo</span><b>{{ns.ausentes|length}}</b></button>
+    <button type="button" onclick="captainOpenSummary('ausentes')"><span>No embarcó / cargo</span><b>{{ns.ausentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('noembarca')"><span>Sin cargo</span><b>{{ns.noembarca|length}}</b></button>
   </div>
   {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_edit) %}
@@ -326,7 +326,7 @@
 </section>
 
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>🔒 Salida cerrada</b><span>Liquidación consolidada. Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><span class="sheetVersionBadge premiumLock">LIQ-{{ current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026' }}-{{ '%06d'|format(current_sheet.id) }}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>🔒 Embarque cerrado</b><span>Liquidación consolidada. Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><span class="sheetVersionBadge premiumLock">LIQ-{{ current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026' }}-{{ '%06d'|format(current_sheet.id) }}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
 </section>
 <section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
 
@@ -344,8 +344,8 @@
 </section>
 
 <section class="card premiumCard captainV65Card" id="tripulacion">
-  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No vino. Las acciones excepcionales quedan en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
-  <div class="captainV65Hint">Tap sobre la persona: Presente ↔ No vino. Acciones excepcionales en ⋯. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
+  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No embarcó. Las acciones excepcionales quedan en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
+  <div class="captainV65Hint">Tap sobre la persona: Presente ↔ No embarcó. Acciones excepcionales en ⋯. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
   <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
   <div class="captainPeopleList captainPeopleListV65">
   {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
@@ -416,7 +416,7 @@
     <button type="button" class="captainSummaryClose" onclick="captainCloseSummary()">Cerrar</button>
     <div class="summaryPanel hidden" data-summary-panel="presentes"><h3>Presentes</h3>{% if ns.presentes|length == 0 %}<p class="summaryEmpty">Sin presentes.</p>{% else %}<ul>{% for n in ns.presentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
     <div class="summaryPanel hidden" data-summary-panel="pendientes"><h3>Pendientes</h3>{% if ns.pendientes|length == 0 %}<p class="summaryEmpty">Sin pendientes.</p>{% else %}<ul>{% for n in ns.pendientes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
-    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>No vino / cargo</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin no-show con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>No embarcó / cargo</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin no-show con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
     <div class="summaryPanel hidden" data-summary-panel="noembarca"><h3>No embarca (sin cargo)</h3>{% if ns.noembarca|length == 0 %}<p class="summaryEmpty">Sin registros.</p>{% else %}<ul>{% for n in ns.noembarca %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
   </div>
 </div>

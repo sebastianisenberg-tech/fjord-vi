@@ -352,7 +352,7 @@
         <p>Controles críticos antes de soporte o producción.</p>
         <div class="systemCheckList">{% for row in system_console.integrity_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
         {% if system_console.get('missing_sheet_count') and system_console.get('missing_sheet_count') > 0 %}
-        <form method="post" action="/admin/system/repair_missing_sheets" onsubmit="return confirm('Esto generará fichas vigentes faltantes usando el estado final actual de cada salida cerrada. ¿Continuar?') && confirm('Confirmación final: reparar salidas cerradas sin ficha vigente?');">
+        <form method="post" action="/admin/system/repair_missing_sheets" onsubmit="return confirm('Esto generará fichas vigentes faltantes usando el estado final actual de cada embarque cerrado. ¿Continuar?') && confirm('Confirmación final: reparar salidas cerradas sin ficha vigente?');">
           <button class="erpBtn erpPrimary">Reparar salidas cerradas sin ficha</button>
         </form>
         {% endif %}

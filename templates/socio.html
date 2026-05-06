@@ -56,7 +56,7 @@ function showSocioNotice(text){
 <section class="miEmbarqueCard socioProBoarding socioV51HeroCard" id="inicio">
   <div class="miEmbTop">
     <div>
-      <span class="eyebrow">{% if closed %}Salida cerrada{% else %}Próximo embarque{% endif %}</span>
+      <span class="eyebrow">{% if closed %}Embarque cerrado{% else %}Próximo embarque{% endif %}</span>
       <h2>{{outing.title}}</h2>
       <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
     </div>
@@ -94,7 +94,7 @@ function showSocioNotice(text){
     {% if outing_cancelled %}
       <a class="miEmbCta soft" href="#inicio">Salida cancelada</a>
     {% elif closed %}
-      <a class="miEmbCta soft" href="#inicio">🔒 Salida cerrada</a>
+      <a class="miEmbCta soft" href="#inicio">🔒 Embarque cerrado</a>
     {% elif self_view and self_view.waitlisted %}
       <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Salir de espera</button></form>
     {% elif has_self %}
