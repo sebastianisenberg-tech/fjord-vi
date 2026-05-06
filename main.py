@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.0.3"
-APP_BUILD = "build-69-premium-operativo-1.0.3"
-RELEASE_LABEL = "Fjord VI 1.0.3"
+VERSION = "1.0.4"
+APP_BUILD = "build-69-premium-operativo-1.0.4"
+RELEASE_LABEL = "Fjord VI 1.0.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2051,6 +2051,38 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     is_embarked = estado_reglamentario == "Embarcado"
     is_not_embarked = estado_reglamentario == "No embarcado"
 
+    if closed:
+        if is_waitlisted(r):
+            status_label = "Espera"
+        elif cancelled or raw_attendance in ("Ausente", "No embarcable") or is_not_embarked:
+            status_label = "No vino" if charge > 0 else "No embarcado"
+        elif is_embarked:
+            status_label = "Embarcado"
+        else:
+            status_label = estado_reglamentario or alert
+    else:
+        if is_waitlisted(r):
+            status_label = "Espera"
+        elif cancelled:
+            status_label = "Cancelada"
+        elif raw_attendance == "Presente":
+            status_label = "Presente"
+        elif raw_attendance == "Ausente":
+            status_label = "No vino"
+        elif raw_attendance == "No embarcable":
+            status_label = "No embarca"
+        else:
+            status_label = "Activa" if reservation_is_active(r) else alert
+
+    if status_label in ("Embarcado", "Presente"):
+        status_class = "ok"
+    elif status_label in ("No vino", "No embarcado", "Cancelada", "No embarca"):
+        status_class = "cancel"
+    elif status_label == "Espera":
+        status_class = "warn"
+    else:
+        status_class = "neutral"
+
     return {
         "tipo": k,
         "tipo_label": display_kind(r.kind),
@@ -2071,6 +2103,8 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         "embarked": is_embarked,
         "not_embarked": is_not_embarked,
         "waitlisted": is_waitlisted(r),
+        "status_label": status_label,
+        "status_class": status_class,
         "charge_label": human_money(charge),
         "charge_preview_label": human_money(charge_preview),
     }
@@ -2904,7 +2938,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             "name": rr.person_name,
             "dni": rr.dni,
             "kind": vv.get("tipo_label", rr.kind),
-            "status": rr.status,
+            "status": vv.get("status_label", rr.status),
             "attendance": rr.attendance,
             "physical": vv.get("estado_fisico", ""),
             "regulatory": vv.get("estado_reglamentario", ""),
@@ -3856,7 +3890,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             "name": rr.person_name,
             "dni": rr.dni,
             "kind": vv.get("tipo_label", rr.kind),
-            "status": rr.status,
+            "status": vv.get("status_label", rr.status),
             "attendance": rr.attendance,
             "physical": vv.get("estado_fisico", ""),
             "regulatory": vv.get("estado_reglamentario", ""),
