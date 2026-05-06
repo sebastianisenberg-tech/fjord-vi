@@ -30,18 +30,19 @@
     ventana_finalizada: ['Fuera de plazo: el capitán solo puede corregir hasta 48 horas.', 'error'],
     cierre_anticipado: ['Todavía no se puede cerrar: el cierre se habilita desde la hora programada.', 'warning'],
     reserva_en_espera: ['No se puede marcar: la persona está en lista de espera.', 'warning'],
-    cierre_ok: ['Embarque cerrado y liquidado.', 'success'],
+    cierre_ok: ['Ficha generada. La liquidación quedó congelada.', 'success'],
     estado_actualizado: ['Estado de la salida actualizado.', 'success'],
-    reapertura_ok: ['Salida reabierta. Se recalcularon preliquidaciones y suplentes.', 'success'],
+    reapertura_ok: ['Salida reabierta. La ficha anterior quedó anulada y se conserva en historial.', 'success'],
     minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
     maximo_superado: ['No se puede cerrar: se supera el cupo máximo.', 'error'],
     cupo_lleno: ['Cupo completo: no se puede marcar más de 9 presentes. Marcá a alguien como No vino o No embarca antes de sumar otro presente.', 'warning'],
     accion_invalida: ['Acción inválida o registro inexistente.', 'error'],
-    reasignacion_ok: ['Invitado reasignado al nuevo socio responsable.', 'success'],
+    reasignacion_ok: ['Invitado reasignado. El cargo queda a cargo del nuevo socio responsable.', 'success'],
     reasignacion_invalida: ['Reasignación inválida.', 'error'],
     socio_reasignacion_no_valido: ['El nuevo responsable no tiene reserva de socio activa en esta salida.', 'error'],
     socio_reasignacion_no_presente: ['El nuevo responsable debe estar presente para tomar invitados.', 'error'],
     reasignacion_sin_cambios: ['El invitado ya estaba a cargo de ese socio.', 'warning'],
+    reasignacion_unica: ['Ese invitado ya fue reasignado una vez en esta salida. Para evitar errores de liquidación, no se permite una segunda reasignación.', 'warning'],
     salida_inexistente: ['Salida inexistente.', 'error'],
     preflight_error: ['No se pudo cerrar: hay errores en la revisión previa.', 'error']
   };
@@ -315,7 +316,7 @@
   <div class="captainMiniSummary" aria-label="Resumen de asistencia">
     <button type="button" onclick="captainOpenSummary('presentes')"><span>Presentes</span><b>{{ns.presentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('pendientes')"><span>Pendientes</span><b>{{ns.pendientes|length}}</b></button>
-    <button type="button" onclick="captainOpenSummary('ausentes')"><span>No vino</span><b>{{ns.ausentes|length}}</b></button>
+    <button type="button" onclick="captainOpenSummary('ausentes')"><span>No vino / cargo</span><b>{{ns.ausentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('noembarca')"><span>Sin cargo</span><b>{{ns.noembarca|length}}</b></button>
   </div>
   {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_edit) %}
@@ -324,7 +325,7 @@
 </section>
 
 <section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
-  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada</b><span>Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>Salida cerrada</b><span>Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
 </section>
 <section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
 
@@ -334,7 +335,7 @@
     <div class="empty">Período de edición del capitán finalizado. Para cambios, contactar Administración.</div>
   {% else %}
     <div class="captainDecisionGrid">
-      {% if closed or outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar / reabrir salida</button></form>{% endif %}
+      {% if closed or outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar / reabrir salida <span class="helpDot" data-tip="Reabrir anula la ficha vigente, conserva el historial y permite corregir embarque antes de generar una nueva ficha.">ⓘ</span></button></form>{% endif %}
       {% if not closed and not outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Cancelada"><button class="captainDecisionBtn cancelBtn">Cancelar por capitán <span class="helpDot" data-tip="Cancelar por capitán suspende la salida y no genera cargos mientras permanezca cancelada.">ⓘ</span></button></form>{% endif %}
       {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="preflightBoardingForm" method="get" action="/captain/preflight"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar salida y generar ficha <span class="helpDot" data-tip="Cerrar consolida el embarque y genera la ficha definitiva de cierre.">ⓘ</span></button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
     </div>
@@ -356,7 +357,7 @@
       <div class="captainFastIdentityV65">
         <b>{{r.person_name}}</b>
         <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        {% if v.show_responsible %}<small>de {{v.responsible_name}}</small>{% endif %}
+        {% if v.show_responsible %}<small>de {{v.responsible_name}}</small>{% endif %}{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>
       <div class="captainFastStateV65">
         {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
@@ -383,7 +384,7 @@
               {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <div class="captainReassignBlock">
-                <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b></div>
+                <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>
                 {% for opt in captain_responsible_options %}
                   {% if opt.id != r.responsible_user_id %}
                   <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
@@ -404,7 +405,7 @@
   {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
 </section>
 
-<section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">La salida tiene ficha de cierre vigente. La liquidación completa queda en la ficha.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
+<section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">La salida tiene ficha de cierre vigente. Liquidación congelada en la ficha vigente.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
 {% endif %}
 </main>
 <nav class="bottom captainBottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#fichas">Ficha</a></nav>
@@ -414,7 +415,7 @@
     <button type="button" class="captainSummaryClose" onclick="captainCloseSummary()">Cerrar</button>
     <div class="summaryPanel hidden" data-summary-panel="presentes"><h3>Presentes</h3>{% if ns.presentes|length == 0 %}<p class="summaryEmpty">Sin presentes.</p>{% else %}<ul>{% for n in ns.presentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
     <div class="summaryPanel hidden" data-summary-panel="pendientes"><h3>Pendientes</h3>{% if ns.pendientes|length == 0 %}<p class="summaryEmpty">Sin pendientes.</p>{% else %}<ul>{% for n in ns.pendientes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
-    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>No vino (cobra)</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin no-show con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>No vino / cargo</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin no-show con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
     <div class="summaryPanel hidden" data-summary-panel="noembarca"><h3>No embarca (sin cargo)</h3>{% if ns.noembarca|length == 0 %}<p class="summaryEmpty">Sin registros.</p>{% else %}<ul>{% for n in ns.noembarca %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
   </div>
 </div>
