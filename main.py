@@ -53,8 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "v68.10"
-APP_BUILD = "v68-10-reasignacion-blindada"
+VERSION = "1.0.1"
+APP_BUILD = "build-69-premium-operativo-1"
+RELEASE_LABEL = "Fjord VI 1.0.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -673,6 +674,7 @@ templates.env.globals.update({
     "club_name": CLUB_NAME,
     "app_name": APP_NAME,
     "app_model": APP_MODEL,
+    "release_label": RELEASE_LABEL,
     "fmt_admin_datetime": fmt_admin_datetime,
     "fmt_admin_datetime_short": fmt_admin_datetime_short,
 })
@@ -685,6 +687,7 @@ def base_template_context(**extra):
         "club_name": CLUB_NAME,
         "app_name": APP_NAME,
         "app_model": APP_MODEL,
+        "release_label": RELEASE_LABEL,
     }
     ctx.update(extra)
     return ctx
@@ -2192,6 +2195,22 @@ def annul_current_closing_sheet(db: Session, outing: Outing, actor: str, reason:
     return sheet
 
 
+def liquidation_id_for_sheet(sheet_or_id, created_at=None) -> str:
+    """ID administrativo estable para ficha/liquidación.
+
+    Formato visible: LIQ-YYYY-000023. Usa el id real de la ficha,
+    por lo que permanece estable aunque existan reaperturas y nuevas versiones.
+    """
+    sid = getattr(sheet_or_id, "id", None) if sheet_or_id is not None else None
+    if sid is None:
+        try:
+            sid = int(sheet_or_id)
+        except Exception:
+            sid = 0
+    dt = created_at or getattr(sheet_or_id, "created_at", None) or now_local()
+    year = int(getattr(dt, "year", now_local().year))
+    return f"LIQ-{year}-{int(sid or 0):06d}"
+
 def build_closing_payload(db: Session, outing: Outing, reservations, sequence: int, actor: str) -> dict:
     """Arma la ficha simple y contable: quién navegó y qué se cobra.
 
@@ -2277,6 +2296,9 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
         "departure_label": fmt_admin_datetime(outing.departure_at),
         "captain": actor,
         "sequence": sequence,
+        "version_label": f"Ficha V{sequence}",
+        "system_version": VERSION,
+        "release_label": RELEASE_LABEL,
         "status": "VIGENTE",
         "generated_at": now_local().strftime("%d/%m/%Y %H:%M"),
         "summary": {
@@ -2309,7 +2331,9 @@ def create_closing_sheet(db: Session, outing: Outing, reservations, actor: str) 
     )
     db.add(sheet)
     db.flush()
-    log(db, actor, "genera ficha de cierre", f"{outing.title} / ficha {sequence} / total ${payload['summary']['total_label']}")
+    payload["liquidation_id"] = liquidation_id_for_sheet(sheet)
+    sheet.payload = json.dumps(payload, ensure_ascii=False)
+    log(db, actor, "genera ficha de cierre", f"{outing.title} / ficha {sequence} / {payload['liquidation_id']} / total ${payload['summary']['total_label']}")
     return sheet
 
 
@@ -2319,6 +2343,10 @@ def sheet_payload(sheet: ClosingSheet) -> dict:
     except Exception:
         data = {}
     data.setdefault("sequence", sheet.sequence)
+    data.setdefault("version_label", f"Ficha V{sheet.sequence}")
+    data.setdefault("liquidation_id", liquidation_id_for_sheet(sheet))
+    data.setdefault("system_version", VERSION)
+    data.setdefault("release_label", RELEASE_LABEL)
     data.setdefault("status", sheet.status)
     data.setdefault("generated_at", sheet.created_at.strftime("%d/%m/%Y %H:%M") if sheet.created_at else "")
     return data
@@ -2522,7 +2550,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "email_queue": True, "auto_queue_processing": True, "reminders_24h": True}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "email_queue": True, "auto_queue_processing": True, "reminders_24h": True}
 
 @app.head("/")
 def head_index():
@@ -3316,9 +3344,12 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         w = captain_control_window(outing)
         if w["expired"]:
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
-    if outing and outing.status == "Cancelada por capitán" and user.role != "admin":
+    # Blindaje de ficha congelada: una vez cerrada la salida, nadie debe cambiar
+    # estados de embarque por este endpoint. Toda corrección debe hacerse reabriendo
+    # la salida, lo que anula la ficha vigente y genera una nueva versión al cerrar.
+    if outing and outing.status == "Cancelada por capitán":
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cancelada", status_code=303)
-    if outing and outing.status == "Embarque cerrado" and user.role != "admin":
+    if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
     if is_waitlisted(r):
@@ -3532,7 +3563,7 @@ def closing_sheet_view(sheet_id: int, request: Request, db: Session = Depends(db
     replacement = closing_sheet_replacement(db, sheet)
     replaced_sheets = [s for s in all_sheets if s.status == "ANULADA" and s.sequence < sheet.sequence] if sheet.status == "VIGENTE" else []
     return_url = f"/captain?outing_id={sheet.outing_id}" if user.role == "captain" else f"/admin?outing_id={sheet.outing_id}&page=fichas"
-    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url, "all_sheets": all_sheets, "replacement": replacement, "replaced_sheets": replaced_sheets})
+    return templates.TemplateResponse(request, "closing_sheet.html", {"request": request, "user": user, "sheet": sheet, "data": data, "return_url": return_url, "all_sheets": all_sheets, "replacement": replacement, "replaced_sheets": replaced_sheets, "version": VERSION, "release_label": RELEASE_LABEL})
 
 
 @app.get("/cierre/salida/{outing_id}", response_class=HTMLResponse)
@@ -3542,7 +3573,7 @@ def closing_sheet_index(outing_id: int, request: Request, db: Session = Depends(
         raise HTTPException(404, "Salida inexistente")
     sheets = closing_sheet_all(db, outing.id)
     return_url = f"/captain?outing_id={outing.id}" if user.role == "captain" else f"/admin?outing_id={outing.id}&page=fichas"
-    return templates.TemplateResponse(request, "closing_sheets.html", {"request": request, "user": user, "outing": outing, "sheets": sheets, "return_url": return_url})
+    return templates.TemplateResponse(request, "closing_sheets.html", {"request": request, "user": user, "outing": outing, "sheets": sheets, "return_url": return_url, "version": VERSION, "release_label": RELEASE_LABEL})
 
 
 @app.get("/cierre/{sheet_id}/csv")
@@ -3553,7 +3584,9 @@ def closing_sheet_csv(sheet_id: int, db: Session = Depends(db_session), user: Us
     data = sheet_payload(sheet)
     out = io.StringIO()
     w = csv.writer(out)
-    w.writerow(["Ficha", sheet.sequence, sheet.status])
+    w.writerow(["Liquidación", data.get("liquidation_id", liquidation_id_for_sheet(sheet))])
+    w.writerow(["Ficha", sheet.sequence, sheet.status, data.get("version_label", f"Ficha V{sheet.sequence}")])
+    w.writerow(["Sistema", data.get("release_label", RELEASE_LABEL)])
     w.writerow(["Salida", data.get("outing_title", "")])
     w.writerow(["Fecha", data.get("departure_label", "")])
     w.writerow(["Capitán", data.get("captain", "")])
@@ -3566,7 +3599,7 @@ def closing_sheet_csv(sheet_id: int, db: Session = Depends(db_session), user: Us
             w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "No-show", p.get("name", ""), p.get("tipo", ""), p.get("dni", ""), p.get("amount", 0)])
     w.writerow([])
     w.writerow(["TOTAL", "", "", "", "", "", data.get("summary", {}).get("total", 0)])
-    filename = f"fjord_ficha_cierre_{sheet.outing_id}_{sheet.sequence}.csv"
+    filename = f"{data.get('liquidation_id', liquidation_id_for_sheet(sheet)).lower()}_ficha_cierre.csv"
     return Response(out.getvalue().encode("utf-8-sig"), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
@@ -3853,6 +3886,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             "id": sh.id,
             "outing_id": sh.outing_id,
             "sequence": sh.sequence,
+            "liquidation_id": payload.get("liquidation_id") or liquidation_id_for_sheet(sh),
+            "version_label": payload.get("version_label") or f"Ficha V{sh.sequence}",
             "status": sh.status,
             "created_at": fmt_admin_datetime(sh.created_at) if sh.created_at else "",
             "created_sort": sh.created_at,

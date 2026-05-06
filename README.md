@@ -1,20 +1,12 @@
-# Fjord VI v68.4
+# Fjord VI 1.0
 
-Versión con padrón oficial e identidad blindada.
+Release operativa premium del Sistema Fjord VI.
 
-## Cambios clave
+Base operativa consolidada.
 
-- Login por Nº de socio o DNI.
-- Si un número coincide con Nº de socio y con DNI de otra persona, se prioriza Nº de socio.
-- Si hay Nº de socio duplicado, se bloquea login y queda auditado.
-- Importador de padrón con previsualización y validación de conflictos.
-- Importador no pisa un usuario cuando Nº socio y DNI apuntan a personas distintas.
-- WhatsApp separado de teléfono.
-- Categorías YCA normalizadas.
-
-## Base de datos
-
-PostgreSQL como fuente principal; JSON solo exportación técnica según versiones previas.
-
-### v68.10
-Versión de consolidación: identidad visible correcta, reasignación única por salida y versionado más explícito de fichas. No modifica el motor de cargos ni el flujo de cierre/reapertura.
+Cambios principales:
+- versión pública unificada como Fjord VI 1.0
+- ID administrativo de liquidación LIQ-YYYY-000000
+- candados visuales de cierre/liquidación congelada
+- ficha, historial y CSV con trazabilidad reforzada
+- preserva lógica de cargos, QR, reapertura y reasignación blindada

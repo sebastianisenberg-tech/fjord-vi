@@ -1,3 +1,14 @@
+# Fjord VI 1.0 - Release operativa premium
+
+- Versión pública unificada: Fjord VI 1.0.
+- ID único de liquidación en formato LIQ-YYYY-000000.
+- Candados visuales para salida cerrada y liquidación congelada.
+- Watermark ANULADA reforzado.
+- Ficha, historial, administración y CSV con trazabilidad más clara.
+- Se preservan cargos, QR, cierre/reapertura y reasignación blindada.
+
+---
+
 # v68.10 - Reasignación blindada
 
 - Corrige un caso crítico detectado en auditoría: al marcar Presente/Por confirmar/Ausente/No embarca después de una reasignación, ya no se borra la traza de reasignación.
