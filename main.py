@@ -55,7 +55,7 @@ INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = "1.0.4"
 APP_BUILD = "build-69-premium-operativo-1.0.4"
-RELEASE_LABEL = "Fjord VI 1.0.5"
+RELEASE_LABEL = "Fjord VI 1.0.6"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -227,9 +227,9 @@ COMMUNICATION_EVENTS = {
         "body": "Hola {{socio_nombre}},\n\nQuedó registrada la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n\nCargo informado: {{importe}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_cerrada_admin": {
-        "name": "Salida cerrada para administración",
+        "name": "Embarque cerrado para administración",
         "description": "Email a Administración cuando el capitán cierra la salida y genera ficha.",
-        "subject": "Salida cerrada - {{salida_nombre}} - Ficha N° {{ficha_numero}}",
+        "subject": "Embarque cerrado - {{salida_nombre}} - Ficha N° {{ficha_numero}}",
         "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: N° {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "recordatorio_24h_socio": {
@@ -844,7 +844,7 @@ def integrity_checks(db: Session) -> list:
 def closed_outings_without_current_sheet(db: Session) -> list:
     """Salidas cerradas o realizadas que no tienen ficha vigente.
 
-    Es un estado heredado/inconsistente: una salida cerrada debe tener una ficha
+    Es un estado heredado/inconsistente: una embarque cerrado debe tener una ficha
     vigente que respalde la liquidación. No se repara automáticamente para evitar
     cambios silenciosos; el administrador puede generar las fichas faltantes desde
     Sistema con doble confirmación visual.
@@ -1694,7 +1694,7 @@ def build_padron_context(db: Session) -> dict:
             m = metrics.setdefault(person_user.id, {"navigations": 0, "responsible_guests": 0, "no_show": 0, "charges": 0.0, "last": "", "flags": []})
             if r.attendance == "Presente" or str(r.status).lower() == "embarcado":
                 m["navigations"] += 1
-            if r.attendance == "No vino":
+            if r.attendance == "No embarcó":
                 m["no_show"] += 1
             m["charges"] += float(r.charge_amount or 0)
             if last_label and (not m["last"]):
@@ -1737,7 +1737,7 @@ def build_padron_context(db: Session) -> dict:
         g["count"] += 1
         if r.attendance == "Presente" or str(r.status).lower() == "embarcado":
             g["present"] += 1
-        if r.attendance == "No vino":
+        if r.attendance == "No embarcó":
             g["no_show"] += 1
         resp = db.get(User, r.responsible_user_id) if r.responsible_user_id else None
         if resp:
@@ -1859,7 +1859,7 @@ def actual_charge(outing: Outing, r: Reservation) -> float:
     - Antes del cierre del capitán no hay deuda firme: solo preliquidación.
     - Si el capitán cancela la salida, todos los cargos son $0.
     - Cancelado por capitán individual: siempre $0.
-    - Solo una salida cerrada por capitán puede producir cargo firme.
+    - Solo una embarque cerrado por capitán puede producir cargo firme.
     """
     if not outing or not r:
         return 0.0
@@ -2022,7 +2022,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         elif cancelled:
             motivo = motivo or "Cancelación tardía con cargo firme"
         elif raw_attendance == "Ausente":
-            motivo = motivo or "No vino: plaza reservada no utilizada"
+            motivo = motivo or "No embarcó: plaza reservada no utilizada"
         else:
             motivo = motivo or "Cargo reglamentario"
     elif preliminary:
@@ -2037,7 +2037,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     elif raw_attendance == "No embarcable":
         motivo = motivo or "No embarcado: socio responsable ausente"
     elif raw_attendance == "Ausente":
-        motivo = motivo or "No vino sin cargo registrado"
+        motivo = motivo or "No embarcó sin cargo registrado"
     elif raw_attendance == "Presente":
         if k == "socio":
             motivo = "Socio embarcado sin cargo"
@@ -2055,7 +2055,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         if is_waitlisted(r):
             status_label = "Espera"
         elif cancelled or raw_attendance in ("Ausente", "No embarcable") or is_not_embarked:
-            status_label = "No vino" if charge > 0 else "No embarcado"
+            status_label = "No embarcó" if charge > 0 else "No embarcado"
         elif is_embarked:
             status_label = "Embarcado"
         else:
@@ -2068,7 +2068,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         elif raw_attendance == "Presente":
             status_label = "Presente"
         elif raw_attendance == "Ausente":
-            status_label = "No vino"
+            status_label = "No embarcó"
         elif raw_attendance == "No embarcable":
             status_label = "No embarca"
         else:
@@ -2076,7 +2076,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
 
     if status_label in ("Embarcado", "Presente"):
         status_class = "ok"
-    elif status_label in ("No vino", "No embarcado", "Cancelada", "No embarca"):
+    elif status_label in ("No embarcó", "No embarcado", "Cancelada", "No embarca"):
         status_class = "cancel"
     elif status_label == "Espera":
         status_class = "warn"
@@ -2404,7 +2404,7 @@ def final_status_summary(outing: Outing, reservations, active_count: int, presen
     if is_outing_cancelled_by_captain(outing):
         return {"closed": True, "label": "Estado final: Cancelada", "detail": "Salida cancelada por capitán. No se generan cargos firmes ni preliquidaciones vigentes.", "liquidacion": "Sin cargos"}
     if is_closed_outing(outing):
-        return {"closed": True, "label": "Estado final: Confirmado", "detail": f"Salida cerrada y liquidada. Tripulación final: {present} / {outing.max_crew}", "liquidacion": "Liquidación completa"}
+        return {"closed": True, "label": "Estado final: Confirmado", "detail": f"Embarque cerrado y liquidada. Tripulación final: {present} / {outing.max_crew}", "liquidacion": "Liquidación completa"}
     return {"closed": False, "label": "Estado operativo: Abierto", "detail": f"Activos: {active_count} / {outing.max_crew} · pendientes: {pending}", "liquidacion": "Preliquidación no firme hasta cierre del capitán"}
 
 def seed():
@@ -2542,7 +2542,7 @@ def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict
     if outing.status == "Cancelada por capitán":
         return {"label": "Cancelada", "level": "bad", "detail": "La salida fue cancelada por capitán. No se generan cargos firmes ni preliquidaciones vigentes."}
     if outing.status == "Embarque cerrado":
-        return {"label": "Salida cerrada y liquidada", "level": "ok", "detail": "La salida ya fue cerrada y liquidada por capitán."}
+        return {"label": "Embarque cerrado y liquidada", "level": "ok", "detail": "La salida ya fue cerrada y liquidada por capitán."}
     if outing.status == "Realizada":
         return {"label": "Realizada", "level": "ok", "detail": "La salida fue marcada como realizada."}
     if outing.status == "Demorada":
@@ -2990,7 +2990,7 @@ def present_guest_without_present_responsible_errors(db: Session, outing: Outing
     Un invitado presente solo puede navegar si su socio responsable también figura
     Presente y activo en la misma salida. Si el socio no vino, fue bajado, está
     cancelado, en espera o no embarca por capitán, el invitado debe reasignarse
-    a otro socio presente o marcarse No embarca / No vino antes del cierre.
+    a otro socio presente o marcarse No embarca / No embarcó antes del cierre.
     """
     if reservations is None:
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
@@ -3017,7 +3017,7 @@ def present_guest_without_present_responsible_errors(db: Session, outing: Outing
             resp_name = resp.name if resp else "sin responsable"
             errors.append(
                 f"{r.person_name}: figura presente pero su socio responsable no está presente ({resp_name}). "
-                "Reasignar a un socio presente o marcar No embarca / No vino antes de cerrar."
+                "Reasignar a un socio presente o marcar No embarca / No embarcó antes de cerrar."
             )
     return errors
 
@@ -3207,7 +3207,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r)
             if not r.cancel_reason:
-                r.cancel_reason = "No vino: plaza reservada no utilizada"
+                r.cancel_reason = "No embarcó: plaza reservada no utilizada"
         elif r.attendance == "Presente":
             # Presente pisa cualquier no-show previo. El cargo se imputa una sola vez,
             # al socio responsable final. Si hubo reasignación, se preserva la nota
@@ -3296,7 +3296,7 @@ def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reserva
         if r.attendance in ("Ausente", "No embarcable"):
             r.charge_amount = reservation_charge(outing, r) if late else 0
             if r.charge_amount and not r.cancel_reason:
-                r.cancel_reason = "No vino: plaza reservada no utilizada"
+                r.cancel_reason = "No embarcó: plaza reservada no utilizada"
             continue
 
         r.charge_amount = 0

@@ -2,7 +2,7 @@
 
 - Versión pública unificada: Fjord VI 1.0.
 - ID único de liquidación en formato LIQ-YYYY-000000.
-- Candados visuales para salida cerrada y liquidación congelada.
+- Candados visuales para embarque cerrado y liquidación consolidada.
 - Watermark ANULADA reforzado.
 - Ficha, historial, administración y CSV con trazabilidad más clara.
 - Se preservan cargos, QR, cierre/reapertura y reasignación blindada.
@@ -28,10 +28,10 @@
 - Pulido de trazabilidad y UX sin tocar la lógica de cargos ni el flujo central.
 - Watermark ANULADA reforzado para pantalla e impresión.
 - Fichas anuladas con bloque temporal: generada, anulada, motivo y reemplazo.
-- Fichas vigentes con aviso de liquidación congelada.
+- Fichas vigentes con aviso de liquidación consolidada.
 - DNI visible de invitados/menores en ficha final y ayuda visual en tripulación del capitán.
 - Tooltips y toasts operativos reforzados en cierre, reapertura, reasignación y preflight.
-- Etiquetas más claras para No vino / cargo.
+- Etiquetas más claras para No embarcó / cargo.
 
 ## v68.7
 - Auditoría de reapertura: conserva la trazabilidad de invitados reasignados al reabrir y volver a cerrar.
@@ -50,5 +50,5 @@
 
 ## v68.6
 - Preserva trazabilidad de invitados reasignados en la ficha de cierre.
-- La ficha distingue mejor No vino / No-show con cargo e incluye motivo operativo.
+- La ficha distingue mejor No embarcó / No-show con cargo e incluye motivo operativo.
 - Mantiene la regla de cargo único: el invitado reasignado se cobra al socio responsable final, no al socio original.
