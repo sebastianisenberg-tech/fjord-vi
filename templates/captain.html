@@ -257,7 +257,7 @@
     <div class="captainOutingCard selected">
       <a class="outingMainLink" href="/captain?outing_id={{outing.id}}"><div><b>{{outing.title}}</b><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}} · {{outing_display_status}}</small></div></a>
       <div class="outingQuickActions">
-        <span class="pill selectedPill">Activa</span>
+        <span class="pill selectedPill">{% if closed %}Vigente{% else %}Activa{% endif %}</span>
         {% if outing.status != 'Embarque cerrado' and outing.status != 'Cancelada por capitán' %}<button type="button" class="pill qrQuick" onclick="mostrarQRCapitan()">QR</button>{% endif %}
       </div>
     </div>

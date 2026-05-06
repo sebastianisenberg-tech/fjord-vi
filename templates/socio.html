@@ -143,7 +143,7 @@ function showSocioNotice(text){
 {% if outing %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="card premiumCard socioProCard socioProGuests" id="invitados">
-  <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados y menores</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
+  <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Acompañantes</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
   {% set ns = namespace(count=0) %}
   {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}{% set v = reservation_views.get(r.id) %}
     <div class="premiumPerson boardingPass {{v.level}} {{v.tipo_class}} {% if v.waitlisted %}bpWait{% elif v.active %}bpActive{% else %}bpCancelled{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %}">
