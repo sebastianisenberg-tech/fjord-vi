@@ -17,13 +17,11 @@
       {% if error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
       <form method="post" action="/login" class="loginForm" id="loginForm">
         <label for="loginDni">Nº de socio o documento</label>
-        <input id="loginDni" name="dni" autocomplete="username" inputmode="text" enterkeyhint="next" required autofocus>
+        <input id="loginDni" name="dni" autocomplete="username" inputmode="text" enterkeyhint="next" required autofocus onkeydown="return fjordPasswordEnterFlow(event, \'loginPassword\')">
         <label for="loginPassword">Clave</label>
         <div class="passwordWrap">
-          <input id="loginPassword" type="password" name="password" autocomplete="current-password" enterkeyhint="go" required>
-          <button type="button" class="passwordToggle" id="passwordToggle" aria-label="Mostrar clave" aria-pressed="false">
-            <span class="eyeIcon eyeOpen" aria-hidden="true"></span>
-          </button>
+          <input id="loginPassword" type="password" name="password" autocomplete="current-password" enterkeyhint="go" required onkeydown="return fjordPasswordEnterFlow(event, \'submit\')">
+          <button type="button" class="passwordToggle" aria-label="Mostrar clave" aria-pressed="false" onclick="return fjordTogglePassword(\'loginPassword\', this)"><span class="eyeIcon" aria-hidden="true"></span></button>
         </div>
         <button type="submit">Ingresar</button>
       </form>
@@ -36,33 +34,43 @@
     </div>
   </div>
 
-<script>
-(function(){
-  const dni = document.getElementById('loginDni');
-  const password = document.getElementById('loginPassword');
-  const toggle = document.getElementById('passwordToggle');
-  if (dni) {
-    setTimeout(function(){ try { dni.focus({preventScroll:true}); } catch(e) { dni.focus(); } }, 120);
-    dni.addEventListener('keydown', function(e){
-      if (e.key === 'Enter' && password) {
-        e.preventDefault();
-        password.focus();
-      }
-    });
-  }
-  if (toggle && password) {
-    toggle.addEventListener('click', function(){
-      const showing = password.type === 'text';
-      password.type = showing ? 'password' : 'text';
-      toggle.classList.toggle('isShowing', !showing);
-      toggle.setAttribute('aria-label', showing ? 'Mostrar clave' : 'Ocultar clave');
-      toggle.setAttribute('aria-pressed', showing ? 'false' : 'true');
-      try { password.focus({preventScroll:true}); } catch(e) { password.focus(); }
-    });
-  }
-})();
-</script>
+
 
 <script src="/static/app.js?v={{version}}"></script>
+
+<script>
+function fjordTogglePassword(inputId, btn){
+  var input = document.getElementById(inputId);
+  if(!input){ return false; }
+  var isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  if(btn){
+    if(isText){
+      btn.classList.remove('isShowing');
+      btn.setAttribute('aria-label','Mostrar clave');
+      btn.setAttribute('aria-pressed','false');
+    }else{
+      btn.classList.add('isShowing');
+      btn.setAttribute('aria-label','Ocultar clave');
+      btn.setAttribute('aria-pressed','true');
+    }
+  }
+  try { input.focus({preventScroll:true}); } catch(e) { input.focus(); }
+  return false;
+}
+function fjordPasswordEnterFlow(e, nextId){
+  if(e.key !== 'Enter'){ return true; }
+  e.preventDefault();
+  if(nextId === 'submit'){
+    var form = e.target.closest('form');
+    if(form){ form.requestSubmit ? form.requestSubmit() : form.submit(); }
+    return false;
+  }
+  var next = document.getElementById(nextId);
+  if(next){ try { next.focus({preventScroll:true}); } catch(err) { next.focus(); } }
+  return false;
+}
+</script>
+
 </body>
 </html>
