@@ -1,16 +1,11 @@
-
 # Changelog
 
-## 1.6.0
+## 1.6.1
 
-- Compactación vertical integral.
-- Header superior más limpio.
-- Perfil más compacto.
-- Reemplazo visual de dots de plazas.
-- Botones menos pesados.
-- Quick actions refinadas.
-- Invitados más compactos.
-- Bottom navigation rehecha.
-- Reducción de badges invasivos.
-- Ajuste premium general mobile.
-
+- Cirugía UX real del bloque Próximas navegaciones.
+- Reemplaza “Elegí una salida” por “Próximas navegaciones”.
+- Muestra solo 3 salidas iniciales.
+- El resto queda colapsado en “+ Más salidas”.
+- “Ver salidas anteriores” pasa a “Historial”.
+- Compacta tarjetas de salidas y reduce scroll.
+- Mantiene todos los controles y rutas existentes.
