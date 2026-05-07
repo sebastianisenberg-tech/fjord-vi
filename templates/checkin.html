@@ -12,7 +12,7 @@
 <div class="top checkinTop"><span class="headerBrand"><img src="/static/logo_yca_trans.png" class="headerLogo" alt="YCA"><span>{{club_name}} · {{app_name}} · Check-in</span></span></div>
 <div class="wrap"><div class="card">
   {% if outing %}
-  <div class="eyebrow">Salida</div><h1>{{outing.title}}</h1><div class="meta">{{outing.departure_at.strftime('%d/%m/%Y %H:%M')}} · {{outing.destination}}</div>
+  <div class="eyebrow">Salida</div><h1>{{outing.title}}</h1><div class="meta">{{ fjord_date_short(outing.departure_at) }} · {{outing.destination}}</div>
   {% else %}<h1>Check-in Fjord VI</h1>{% endif %}  {% if error %}<div class="msg err">{{error}}</div>{% endif %}
   {% if msg %}<div class="msg ok">{{msg}}</div>{% endif %}
   {% if outing and not msg %}

@@ -19,10 +19,10 @@
   <div class="wrap"><div class="card">
     <div class="eyebrow">QR fijo del barco</div>
     <h1>Registrar llegada</h1>
-    {% if outing %}<div class="meta">{{outing.title}} · {{outing.departure_at.strftime('%d/%m %H:%M')}} · {{outing.destination}}</div>{% endif %}
+    {% if outing %}<div class="meta">{{outing.title}} · {{ fjord_date_short(outing.departure_at) }} · {{outing.destination}}</div>{% endif %}
     {% if outings|length > 1 %}
       <div class="todayBox"><strong>Salidas activas hoy</strong><p>Ingresá tu documento. El sistema busca automáticamente en cuál figurás.</p></div>
-      <ul class="list">{% for o in outings %}<li><strong>{{o.title}}</strong><br>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.destination}}</li>{% endfor %}</ul>
+      <ul class="list">{% for o in outings %}<li><strong>{{o.title}}</strong><br>{{ fjord_date_short(o.departure_at) }} · {{o.destination}}</li>{% endfor %}</ul>
     {% elif outings|length == 1 %}
       <div class="todayBox"><strong>Navegación de hoy</strong><p>Solo se registra si tu documento figura en la lista de esta salida.</p></div>
     {% else %}

@@ -58,7 +58,7 @@ function showSocioNotice(text){
     <div>
       <span class="eyebrow">{% if closed %}Embarque cerrado{% else %}Próximo embarque{% endif %}</span>
       <h2>{{outing.title}}</h2>
-      <p>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
+      <p>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }}</p>
     </div>
     {% if outing_cancelled %}<span class="miEmbState stateBad">Cancelada</span>
     {% elif self_view and self_view.waitlisted %}<span class="miEmbState stateWait">En espera</span>
@@ -120,7 +120,7 @@ function showSocioNotice(text){
   <div class="selectorList">
   {% for o in outings %}
     <a class="selectRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
-      <div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}}</small></div>
+      <div><b>{{o.title}}</b><small>{{o.destination}} · {{ fjord_date_short(o.departure_at) }}</small></div>
       <span class="pill {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
     </a>
   {% endfor %}
@@ -132,7 +132,7 @@ function showSocioNotice(text){
       <div class="historyMonth">{{g.label}}</div>
       {% for o in g["items"] %}
       <a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
-        <span>{{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.title}}</span><small>{{o.status}}</small>
+        <span>{{ fjord_date_short(o.departure_at) }} · {{o.title}}</span><small>{{o.status}}</small>
       </a>
       {% endfor %}
     {% endfor %}

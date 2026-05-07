@@ -255,7 +255,7 @@
   {% if outing %}
     {% set outing_display_status = 'Cancelada por capitán' if outing.status == 'Cancelada por capitán' else ('Liquidación consolidada' if closed else outing.status) %}
     <div class="captainOutingCard selected">
-      <a class="outingMainLink" href="/captain?outing_id={{outing.id}}"><div><b>{{outing.title}}</b><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}} · {{outing_display_status}}</small></div></a>
+      <a class="outingMainLink" href="/captain?outing_id={{outing.id}}"><div><b>{{outing.title}}</b><small>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }} · {{outing_display_status}}</small></div></a>
       <div class="outingQuickActions">
         <span class="pill selectedPill">{% if closed %}Vigente{% else %}Activa{% endif %}</span>
         {% if outing.status != 'Embarque cerrado' and outing.status != 'Cancelada por capitán' %}<button type="button" class="pill qrQuick" onclick="mostrarQRCapitan()">QR</button>{% endif %}
@@ -265,14 +265,14 @@
       <summary>Cambiar salida</summary>
       <div class="captainHistoryScroll compact">
         {% for o in outings %}{% if o.id != outing.id %}
-        <a class="historyRow" href="/captain?outing_id={{o.id}}"><span>{{o.title}} · {{o.departure_at.strftime('%d/%m %H:%M')}}</span><small>{{o.status}}</small></a>
+        <a class="historyRow" href="/captain?outing_id={{o.id}}"><span>{{o.title}} · {{ fjord_date_short(o.departure_at) }}</span><small>{{o.status}}</small></a>
         {% endif %}{% endfor %}
       </div>
     </details>
   {% else %}
     {% for o in outings %}
     <div class="captainOutingCard">
-      <a class="outingMainLink" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{o.departure_at.strftime('%d/%m %H:%M')}} · {{o.status}}</small></div></a>
+      <a class="outingMainLink" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{ fjord_date_short(o.departure_at) }} · {{o.status}}</small></div></a>
       <div class="outingQuickActions"><a class="pill" href="/captain?outing_id={{o.id}}">Ver</a></div>
     </div>
     {% endfor %}
@@ -282,7 +282,7 @@
   <details class="historyFold captainHistoryFold">
     <summary>Ver salidas anteriores</summary>
     <div class="captainHistoryScroll">
-      {% for g in history_groups %}<div class="historyMonth">{{g.label}}</div>{% for o in g["items"] %}<div class="historyRowWrap"><a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><span>{{o.departure_at.strftime("%d/%m %H:%M")}} · {{o.title}}</span><small>{{o.status}}</small></a></div>{% endfor %}{% endfor %}
+      {% for g in history_groups %}<div class="historyMonth">{{g.label}}</div>{% for o in g["items"] %}<div class="historyRowWrap"><a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><span>{{ fjord_date_short(o.departure_at) }} · {{o.title}}</span><small>{{o.status}}</small></a></div>{% endfor %}{% endfor %}
     </div>
   </details>
   {% endif %}
@@ -291,7 +291,7 @@
 {% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="captainStickyPanel {% if outing_cancelled %}isCancelled{% elif closed %}isClosed{% else %}isOpen{% endif %}">
   <div class="captainStickyTop">
-    <div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</small></div>
+    <div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }}</small></div>
     <span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}locked{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}🔒 Cerrada{% else %}Operativa{% endif %}</span>
   </div>
   <div class="captainStickyKpis">
@@ -437,7 +437,7 @@
 <div id="qrCapitanOverlay" class="qrCapitanOverlay hidden" onclick="if(event.target===this) cerrarQRCapitan()">
   <div class="qrCapitanBox">
     <h2>Check-in Fjord VI</h2>
-    <p><b>{{outing.title}}</b><br>{{outing.destination}} · {{outing.departure_at.strftime('%d/%m %H:%M')}}</p>
+    <p><b>{{outing.title}}</b><br>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }}</p>
     <img class="qrCapitanQR" src="{{qr_url}}" alt="QR check-in">
     <input id="qrCapitanLink" class="qrLinkInput" value="{{checkin_url}}" readonly>
     <p class="qrCapitanNote">Escaneá para registrar presencia. Si alguien no figura en la lista, no queda habilitado. El capitán puede corregir manualmente.</p>

@@ -14,7 +14,7 @@
   <section class="preflightCard">
     <div class="eyebrow">Revisión previa</div>
     <h1>Cierre y liquidación</h1>
-    <p class="muted"><b>{{ outing.title }}</b> · {{ outing.departure_at.strftime('%d/%m/%Y %H:%M') if outing.departure_at else '' }}</p>
+    <p class="muted"><b>{{ outing.title }}</b> · {{ fjord_date_short(outing.departure_at) if outing.departure_at else '' }}</p>
     <div class="preflightGrid">
       <div class="preflightBox"><span>Presentes</span><b>{{ analysis.present_count }}/{{ analysis.max_crew }}</b></div>
       <div class="preflightBox"><span>Invitados navegados</span><b>{{ analysis.invited_present_count }}</b></div>
