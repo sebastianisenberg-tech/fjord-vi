@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.0.4"
+VERSION = "1.1.7"
 APP_BUILD = "build-69-premium-operativo-1.0.4"
-RELEASE_LABEL = "Fjord VI 1.1.5"
+RELEASE_LABEL = "Fjord VI 1.1.7"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -659,6 +659,14 @@ def fmt_admin_datetime_short(dt: datetime) -> str:
         return ""
     return f"{WEEKDAY_ES[dt.weekday()]} {dt.strftime('%d/%m %H:%M')}"
 
+def fjord_date_short(dt: datetime) -> str:
+    return fmt_admin_datetime_short(dt)
+
+def fjord_weekday_short(dt: datetime) -> str:
+    if not dt:
+        return ""
+    return WEEKDAY_ES[dt.weekday()]
+
 def default_new_outing_datetime() -> datetime:
     base = now_local().date()
     # Próximo sábado como sugerencia inicial para paseos de fin de semana.
@@ -677,6 +685,8 @@ templates.env.globals.update({
     "release_label": RELEASE_LABEL,
     "fmt_admin_datetime": fmt_admin_datetime,
     "fmt_admin_datetime_short": fmt_admin_datetime_short,
+    "fjord_date_short": fjord_date_short,
+    "fjord_weekday_short": fjord_weekday_short,
 })
 
 def base_template_context(**extra):
@@ -688,6 +698,8 @@ def base_template_context(**extra):
         "app_name": APP_NAME,
         "app_model": APP_MODEL,
         "release_label": RELEASE_LABEL,
+        "fjord_date_short": fjord_date_short,
+        "fjord_weekday_short": fjord_weekday_short,
     }
     ctx.update(extra)
     return ctx
