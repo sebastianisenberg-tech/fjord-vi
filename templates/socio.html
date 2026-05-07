@@ -45,10 +45,13 @@ function showSocioNotice(text){
 
 {% if outing %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-<section class="socioV51Dashboard" id="perfil" aria-label="Inicio del socio">
+<section class="socioV51Dashboard" id="perfil" aria-label="Perfil del socio">
   <div class="socioV51Hello">
-    <div><span class="eyebrow">Inicio</span><h1>Hola, {{user.name}}</h1><small>{% if user.member_no %}Socio Nº {{user.member_no}}{% else %}Documento {{user.dni}}{% endif %}</small></div>
-    <a class="socioV51Profile" href="#perfil" aria-label="Ver perfil">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
+    <div><span class="eyebrow">Perfil</span><h1>Hola, {{user.name}}</h1><small>{% if user.member_no %}Socio Nº {{user.member_no}}{% else %}Documento {{user.dni}}{% endif %}</small></div>
+    <a class="socioV51Profile" href="/account/password" aria-label="Cambiar clave">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
+  </div>
+  <div class="profileActions">
+    <a class="accountPasswordLink" href="/account/password"><span>Cuenta</span><b>Cambiar mi clave</b><small>Actualizar contraseña personal</small></a>
   </div>
 </section>
 {% set guest_ns = namespace(count=0) %}
@@ -196,5 +199,3 @@ function showSocioNotice(text){
 <footer class="appFooter socioFooter"><span>Fjord VI</span><b>{{ release_label or ('Fjord VI ' ~ version) }}</b></footer>
 </div><script src="/static/app.js?v={{version}}"></script>
 </body></html>
-
-<a class="accountPasswordLink" href="/account/password">Cambiar mi clave</a>
