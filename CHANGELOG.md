@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.7
+
+- Corrige `onclick` mal escapado en ojos de contraseña.
+- Coloca función de toggle antes del body para ejecución segura.
+- Mantiene Enter fluido y retorno al sistema.
+
+
 ## 1.3.6
 
 - Corrección definitiva del ojo mostrar/ocultar clave con `onclick` directo por campo.

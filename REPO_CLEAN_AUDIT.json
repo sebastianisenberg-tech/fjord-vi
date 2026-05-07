@@ -1,12 +1,10 @@
 {
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "version": "Fjord VI 1.3.6",
-  "account_inline_toggle": true,
-  "change_inline_toggle": true,
-  "login_inline_toggle": true,
-  "function_present_account": true,
-  "function_present_change": true,
-  "function_present_login": true,
-  "enter_inline": true
+  "version": "Fjord VI 1.3.7",
+  "account_clean_onclick": true,
+  "account_no_bad_escape": true,
+  "change_clean_onclick": true,
+  "login_clean_onclick": true,
+  "toggle_function_in_head_account": true
 }
