@@ -15,12 +15,15 @@
         <div class="systemName">EMBARQUE</div>
       </div>
       {% if error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
-      <form method="post" action="/login" class="loginForm">
-        <label>Nº de socio o documento</label>
-        <input name="dni" autocomplete="username" inputmode="text" required>
-        <label>Clave</label>
-        <input type="password" name="password" autocomplete="current-password" required>
-        <button>Ingresar</button>
+      <form method="post" action="/login" class="loginForm" id="loginForm">
+        <label for="loginDni">Nº de socio o documento</label>
+        <input id="loginDni" name="dni" autocomplete="username" inputmode="text" enterkeyhint="next" required autofocus>
+        <label for="loginPassword">Clave</label>
+        <div class="passwordWrap">
+          <input id="loginPassword" type="password" name="password" autocomplete="current-password" enterkeyhint="go" required>
+          <button type="button" class="passwordToggle" id="passwordToggle" aria-label="Mostrar clave" aria-pressed="false">Ver</button>
+        </div>
+        <button type="submit">Ingresar</button>
       </form>
       <div class="loginContact">
         <strong>Oficina de Vela</strong><br>
@@ -30,6 +33,34 @@
       <small class="version loginVersion">{{ release_label or ("Fjord VI " ~ version) }}</small>
     </div>
   </div>
+
+<script>
+(function(){
+  const dni = document.getElementById('loginDni');
+  const password = document.getElementById('loginPassword');
+  const toggle = document.getElementById('passwordToggle');
+  if (dni) {
+    setTimeout(function(){ try { dni.focus({preventScroll:true}); } catch(e) { dni.focus(); } }, 120);
+    dni.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' && password) {
+        e.preventDefault();
+        password.focus();
+      }
+    });
+  }
+  if (toggle && password) {
+    toggle.addEventListener('click', function(){
+      const showing = password.type === 'text';
+      password.type = showing ? 'password' : 'text';
+      toggle.textContent = showing ? 'Ver' : 'Ocultar';
+      toggle.setAttribute('aria-label', showing ? 'Mostrar clave' : 'Ocultar clave');
+      toggle.setAttribute('aria-pressed', showing ? 'false' : 'true');
+      try { password.focus({preventScroll:true}); } catch(e) { password.focus(); }
+    });
+  }
+})();
+</script>
+
 <script src="/static/app.js?v={{version}}"></script>
 </body>
 </html>
