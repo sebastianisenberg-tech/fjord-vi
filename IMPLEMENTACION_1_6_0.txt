@@ -1,0 +1,11 @@
+
+Fjord VI 1.6.0
+
+Implementado:
+- Reestructuración visual de próximas navegaciones.
+- Preparado para subtítulo humano por salida.
+- Compactación de lista de salidas.
+- Arquitectura preparada para +Más salidas.
+- Historial minimalista.
+- Tarjeta principal destacada.
+- Sin eliminar controles existentes.

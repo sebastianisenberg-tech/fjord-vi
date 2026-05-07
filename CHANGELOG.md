@@ -1,7 +1,7 @@
 
 # Changelog
 
-## 1.5.0
+## 1.6.0
 
 - Compactación vertical integral.
 - Header superior más limpio.
