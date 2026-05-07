@@ -5631,7 +5631,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .sheetVersionBadge{display:inline-flex;align-items:center;border:1px solid rgba(15,79,120,.24);background:#eef7fb;color:#0f4f78;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;margin:0 6px;}
 .versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px;}
 
-/* Fjord VI 1.1.4 · corrección quirúrgica premium */
+/* Fjord VI 1.1.5 · corrección quirúrgica premium */
 .appFooter,.socioFooter,.preflightVersion,.loginVersion{opacity:.42!important;color:#7d8793!important;font-size:11px!important;letter-spacing:.04em!important;}
 .captainOutingCard .qrQuick{min-width:54px!important;height:42px!important;border-radius:16px!important;box-shadow:0 6px 14px rgba(8,50,78,.16)!important;align-self:center!important;}
 .captainStickyTabs button,.captainStickyTabs .tabBtn{box-shadow:none!important;filter:saturate(.92)!important;}
@@ -5641,7 +5641,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .erpTop b + span,.erpVersion,.adminVersion{opacity:.72!important;}
 
 
-/* ===== Fjord VI 1.1.4 · coherencia premium fina ===== */
+/* ===== Fjord VI 1.1.5 · coherencia premium fina ===== */
 .socioApp.socioV51 .socioProProgress{
   margin-left:0!important;
   margin-right:0!important;
@@ -5680,7 +5680,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.1.4 · fix bottom nav activo visible ===== */
+/* ===== Fjord VI 1.1.5 · fix bottom nav activo visible ===== */
 /* Corrige la pastilla azul vacía del primer tab activo sin tocar lógica ni navegación. */
 .bottom a,
 .socioV51Bottom a,
@@ -5732,7 +5732,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.1.4 · bottom nav sin pastilla fantasma ===== */
+/* ===== Fjord VI 1.1.5 · bottom nav sin pastilla fantasma ===== */
 /* La barra inferior vuelve a mostrar el texto del tab activo.
    Se elimina cualquier pseudo-indicador o fondo oscuro heredado. */
 
@@ -5806,15 +5806,15 @@ html body .socioV51Bottom a[href="#inicio"].on{
   text-indent:0!important;
 }
 
-/* Fjord VI 1.1.4 alta usuario feedback */
+/* Fjord VI 1.1.5 alta usuario feedback */
 .formHint{margin:6px 0 0;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 #createUserForm button[type="submit"]{min-height:42px;font-weight:900}
 
-/* Fjord VI 1.1.4 identidad socio DNI */
+/* Fjord VI 1.1.5 identidad socio DNI */
 .formHint{margin:6px 0 10px;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 
 
-/* ===== Fjord VI 1.1.4 · refinamiento UX conservador ===== */
+/* ===== Fjord VI 1.1.5 · refinamiento UX conservador ===== */
 /* Corrige el tab azul vacío de la barra inferior y conserva el look premium. */
 
 html body .bottom,
@@ -5907,3 +5907,16 @@ html body .socioV51Bottom a[href="#inicio"].on{
   font-size:11px!important;
   letter-spacing:.04em!important;
 }
+
+
+/* 1.1.5 UX refinements */
+.bottom a[href="#inicio"],
+.socioV51Bottom a[href="#inicio"]{
+  text-indent:0!important;
+  opacity:1!important;
+  visibility:visible!important;
+  color:#0b5f8f!important;
+  font-size:11px!important;
+  font-weight:850!important;
+}
+
