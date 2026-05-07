@@ -44,14 +44,15 @@ function showSocioNotice(text){
 {% endif %}
 
 {% if outing %}
+{% set display_name = (user.name.split()[0] ~ ' ' ~ user.name.split()[1]) if user.name and user.name.split()|length > 1 else user.name %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="socioV51Dashboard" id="perfil" aria-label="Perfil del socio">
   <div class="socioV51Hello">
-    <div><span class="eyebrow">Perfil</span><h1>Hola, {{user.name}}</h1><small>{% if user.member_no %}Socio Nº {{user.member_no}}{% else %}Documento {{user.dni}}{% endif %}</small></div>
+    <div><span class="eyebrow">Perfil</span><h1>{{display_name}}</h1><small>{% if user.member_no %}Socio · {{user.member_no}}{% else %}Documento · {{user.dni}}{% endif %}</small></div>
     <a class="socioV51Profile" href="/account/password" aria-label="Cambiar clave">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
   </div>
   <div class="profileActions">
-    <a class="accountPasswordLink" href="/account/password"><span>Cuenta</span><b>Cambiar mi clave</b><small>Actualizar contraseña personal</small></a>
+    <a class="accountPasswordLink" href="/account/password"><span>Cuenta</span><b>Cambiar mi clave</b><small>Actualizar contraseña personal</small><i aria-hidden="true">›</i></a>
   </div>
 </section>
 {% set guest_ns = namespace(count=0) %}
@@ -154,6 +155,7 @@ function showSocioNotice(text){
 </section>
 
 {% if outing %}
+{% set display_name = (user.name.split()[0] ~ ' ' ~ user.name.split()[1]) if user.name and user.name.split()|length > 1 else user.name %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="card premiumCard socioProCard socioProGuests" id="invitados">
   <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
@@ -175,9 +177,9 @@ function showSocioNotice(text){
 
 
 {% if user.can_manage_protocolar and outing and not closed and not outing_cancelled %}
-<section class="card premiumCard socioProCard socioProtocolarPanel" id="protocolar">
-  <div class="cardTitle"><div><span class="eyebrow">Comisión Fjord VI</span><h2>Participaciones protocolares</h2></div><span class="pill neutral">Sin cargo</span></div>
-  <p class="formHint">Permite agregar socios o personas externas como participación protocolar. Ocupan plaza institucional, no generan cargo y no dependen del socio anfitrión para embarcar.</p>
+<details class="card premiumCard socioProCard socioProtocolarPanel protocolarCompact" id="protocolar">
+  <summary class="protocolarSummary"><div><span class="eyebrow">Comisión Fjord VI</span><h2>Participaciones protocolares</h2></div><span class="pill neutral">Sin cargo</span><i aria-hidden="true">⌄</i></summary>
+  <p class="formHint">Agrega socios o externos como protocolar. Ocupan plaza institucional, no generan cargo y pueden embarcar sin socio anfitrión.</p>
   
   {% set proto_ns = namespace(count=0) %}
   {% for r in reservations %}{% set pv = reservation_views.get(r.id) %}{% if pv and pv.protocolar and pv.active %}{% set proto_ns.count = proto_ns.count + 1 %}<div class="premiumPerson boardingPass bpActive"><div class="personMain"><b class="personNameAlways">{{r.person_name}}</b><span class="protoBadge">PROTOCOLAR</span><div class="personState">Participación protocolar · Sin cargo</div></div></div>{% endif %}{% endfor %}
@@ -190,12 +192,12 @@ function showSocioNotice(text){
     <input class="input" name="protocolar_reason" placeholder="Motivo protocolar" value="Autorizado por Comisión Fjord VI">
     <button class="btn light">Agregar participación protocolar</button>
   </form>
-</section>
+</details>
 {% endif %}
 
 <details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
 {% endif %}
-</main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio" aria-label="Inicio">Inicio</a><a href="#invitados" aria-label="Reservas">Reservas</a><a href="#salidas" aria-label="Calendario">Calendario</a><a href="#perfil" aria-label="Perfil">Perfil</a></nav>
-<footer class="appFooter socioFooter"><span>Fjord VI</span><b>{{ release_label or ('Fjord VI ' ~ version) }}</b></footer>
+</main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio" aria-label="Inicio">Inicio</a><a href="#invitados" aria-label="Invitados">Invitados</a><a href="#salidas" aria-label="Calendario">Calendario</a><a href="#perfil" aria-label="Perfil">Perfil</a></nav>
+<footer class="appFooter socioFooter"><b>Fjord VI · v{{version}}</b></footer>
 </div><script src="/static/app.js?v={{version}}"></script>
 </body></html>
