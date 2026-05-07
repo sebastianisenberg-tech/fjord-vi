@@ -128,20 +128,40 @@ function showSocioNotice(text){
   <a href="#inicio"><b>Estado</b><small>Cupo y salida</small></a>
 </section>
 
-<section class="card premiumCard socioProCard socioProCalendar socioV51Calendar" id="salidas">
-  <div class="cardTitle"><div><span class="eyebrow">Calendario</span><h2>Elegí una salida</h2></div></div>
+<section class="card premiumCard socioProCard socioProCalendar socioV51Calendar navCompactV161" id="salidas">
+  <div class="cardTitle navTitleV161"><div><span class="eyebrow">Calendario</span><h2>Próximas navegaciones</h2><p>Tus próximas salidas Fjord VI</p></div></div>
   {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
-  <div class="selectorList">
+  <div class="selectorList compactSelectorV161">
   {% for o in outings %}
-    <a class="selectRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
-      <div><b>{{o.title}}</b><small>{{o.destination}} · {{ fjord_date_short(o.departure_at) }}</small></div>
-      <span class="pill {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
+    {% if loop.index <= 3 %}
+    <a class="selectRow compactTripV161 {% if outing and o.id == outing.id %}selected mainTrip{% endif %}" href="/socio?outing_id={{o.id}}">
+      <div class="tripTextV161">
+        <b>{{o.title}}</b>
+        <small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small>
+      </div>
+      <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
     </a>
+    {% endif %}
   {% endfor %}
   </div>
+  {% if outings|length > 3 %}
+  <details class="moreTripsV161">
+    <summary>+ Más salidas</summary>
+    <div class="selectorList compactSelectorV161 moreListV161">
+    {% for o in outings %}
+      {% if loop.index > 3 %}
+      <a class="selectRow compactTripV161 {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
+        <div class="tripTextV161"><b>{{o.title}}</b><small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small></div>
+        <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
+      </a>
+      {% endif %}
+    {% endfor %}
+    </div>
+  </details>
+  {% endif %}
   {% if history_groups and history_groups|length > 0 %}
-  <details class="historyFold">
-    <summary>Ver salidas anteriores</summary>
+  <details class="historyFold historyMiniV161">
+    <summary>Historial</summary>
     {% for g in history_groups %}
       <div class="historyMonth">{{g.label}}</div>
       {% for o in g["items"] %}
