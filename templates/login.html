@@ -21,7 +21,9 @@
         <label for="loginPassword">Clave</label>
         <div class="passwordWrap">
           <input id="loginPassword" type="password" name="password" autocomplete="current-password" enterkeyhint="go" required>
-          <button type="button" class="passwordToggle" id="passwordToggle" aria-label="Mostrar clave" aria-pressed="false">Ver</button>
+          <button type="button" class="passwordToggle" id="passwordToggle" aria-label="Mostrar clave" aria-pressed="false">
+            <span class="eyeIcon eyeOpen" aria-hidden="true"></span>
+          </button>
         </div>
         <button type="submit">Ingresar</button>
       </form>
@@ -52,7 +54,7 @@
     toggle.addEventListener('click', function(){
       const showing = password.type === 'text';
       password.type = showing ? 'password' : 'text';
-      toggle.textContent = showing ? 'Ver' : 'Ocultar';
+      toggle.classList.toggle('isShowing', !showing);
       toggle.setAttribute('aria-label', showing ? 'Mostrar clave' : 'Ocultar clave');
       toggle.setAttribute('aria-pressed', showing ? 'false' : 'true');
       try { password.focus({preventScroll:true}); } catch(e) { password.focus(); }
