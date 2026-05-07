@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.8
+
+- Corrige error de Administración `UndefinedError: 'u' is undefined`.
+- Elimina formulario suelto de reset de clave que había quedado fuera del HTML.
+- Mantiene el reset correcto dentro de la grilla de usuarios.
+
+
 ## 1.3.7
 
 - Corrige `onclick` mal escapado en ojos de contraseña.
