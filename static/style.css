@@ -7112,3 +7112,67 @@ cursor:pointer;
   font-weight:850!important;
   color:#6d7f8d!important;
 }
+
+
+/* ===== V1.6.3 PREMIUM POLISH ===== */
+
+.section-title{
+    letter-spacing:-0.4px;
+}
+
+.quick-actions{
+    gap:8px!important;
+    margin-top:8px!important;
+}
+
+.quick-actions .action-card{
+    min-height:72px!important;
+    align-items:flex-start!important;
+    justify-content:flex-start!important;
+}
+
+.trip-card{
+    padding:10px 12px!important;
+    border-radius:16px!important;
+}
+
+.trip-card .trip-title{
+    font-size:14px!important;
+    font-weight:700!important;
+    line-height:1.15!important;
+}
+
+.trip-card .trip-meta{
+    font-size:11px!important;
+    opacity:.82;
+}
+
+.trip-more{
+    font-size:13px!important;
+    font-weight:700!important;
+    opacity:.82;
+}
+
+.trip-history{
+    font-size:12px!important;
+    opacity:.58;
+}
+
+.protocol-section{
+    margin-top:8px!important;
+}
+
+.footer-version{
+    margin-top:12px!important;
+    opacity:.62;
+    font-size:11px!important;
+}
+
+button, .btn{
+    border-radius:14px!important;
+}
+
+.card{
+    border-radius:20px!important;
+}
+
