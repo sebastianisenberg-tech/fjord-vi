@@ -1,6 +1,6 @@
 {
   "software": "Fjord VI Embarque",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "author": "Sebastián Isenberg",
   "institution": "Yacht Club Argentino",
   "boat": "Fjord VI",
@@ -46,8 +46,8 @@
     "hash_pbkdf2_sha256"
   ],
   "fixes": [
-    "toggle_clave_directo_por_wrapper",
-    "ojos_funcionales_account_change_password",
-    "eventos_click_captura"
+    "toggle_clave_inline_directo",
+    "ojos_funcionales_sin_eventos_globales",
+    "enter_inline"
   ]
 }

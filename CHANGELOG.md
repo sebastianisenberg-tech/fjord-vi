@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.6
+
+- Corrección definitiva del ojo mostrar/ocultar clave con `onclick` directo por campo.
+- Se elimina dependencia de listeners globales para el toggle.
+- Enter fluido también queda inline por campo.
+
+
 ## 1.3.5
 
 - Corrección robusta de ojos mostrar/ocultar en pantallas de clave.

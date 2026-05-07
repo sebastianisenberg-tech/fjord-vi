@@ -1,9 +1,12 @@
 {
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "version": "Fjord VI 1.3.5",
-  "account_direct_toggle": true,
-  "change_direct_toggle": true,
-  "capture_click": true,
-  "enter_flow": true
+  "version": "Fjord VI 1.3.6",
+  "account_inline_toggle": true,
+  "change_inline_toggle": true,
+  "login_inline_toggle": true,
+  "function_present_account": true,
+  "function_present_change": true,
+  "function_present_login": true,
+  "enter_inline": true
 }
