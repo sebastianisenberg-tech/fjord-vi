@@ -5631,7 +5631,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .sheetVersionBadge{display:inline-flex;align-items:center;border:1px solid rgba(15,79,120,.24);background:#eef7fb;color:#0f4f78;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;margin:0 6px;}
 .versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px;}
 
-/* Fjord VI 1.1.3 · corrección quirúrgica premium */
+/* Fjord VI 1.1.4 · corrección quirúrgica premium */
 .appFooter,.socioFooter,.preflightVersion,.loginVersion{opacity:.42!important;color:#7d8793!important;font-size:11px!important;letter-spacing:.04em!important;}
 .captainOutingCard .qrQuick{min-width:54px!important;height:42px!important;border-radius:16px!important;box-shadow:0 6px 14px rgba(8,50,78,.16)!important;align-self:center!important;}
 .captainStickyTabs button,.captainStickyTabs .tabBtn{box-shadow:none!important;filter:saturate(.92)!important;}
@@ -5641,7 +5641,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .erpTop b + span,.erpVersion,.adminVersion{opacity:.72!important;}
 
 
-/* ===== Fjord VI 1.1.3 · coherencia premium fina ===== */
+/* ===== Fjord VI 1.1.4 · coherencia premium fina ===== */
 .socioApp.socioV51 .socioProProgress{
   margin-left:0!important;
   margin-right:0!important;
@@ -5680,7 +5680,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.1.3 · fix bottom nav activo visible ===== */
+/* ===== Fjord VI 1.1.4 · fix bottom nav activo visible ===== */
 /* Corrige la pastilla azul vacía del primer tab activo sin tocar lógica ni navegación. */
 .bottom a,
 .socioV51Bottom a,
@@ -5732,7 +5732,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.1.3 · bottom nav sin pastilla fantasma ===== */
+/* ===== Fjord VI 1.1.4 · bottom nav sin pastilla fantasma ===== */
 /* La barra inferior vuelve a mostrar el texto del tab activo.
    Se elimina cualquier pseudo-indicador o fondo oscuro heredado. */
 
@@ -5806,9 +5806,104 @@ html body .socioV51Bottom a[href="#inicio"].on{
   text-indent:0!important;
 }
 
-/* Fjord VI 1.1.3 alta usuario feedback */
+/* Fjord VI 1.1.4 alta usuario feedback */
 .formHint{margin:6px 0 0;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 #createUserForm button[type="submit"]{min-height:42px;font-weight:900}
 
-/* Fjord VI 1.1.3 identidad socio DNI */
+/* Fjord VI 1.1.4 identidad socio DNI */
 .formHint{margin:6px 0 10px;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
+
+
+/* ===== Fjord VI 1.1.4 · refinamiento UX conservador ===== */
+/* Corrige el tab azul vacío de la barra inferior y conserva el look premium. */
+
+html body .bottom,
+html body .socioV51Bottom,
+html body .captainBottom{
+  display:grid!important;
+  grid-template-columns:repeat(4,1fr)!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+
+html body .bottom a,
+html body .socioV51Bottom a,
+html body .captainBottom a{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:0!important;
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 4px!important;
+  border-radius:16px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:850!important;
+  text-align:center!important;
+  text-indent:0!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  opacity:1!important;
+  visibility:visible!important;
+  color:#5f7283!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-decoration:none!important;
+  text-shadow:none!important;
+}
+
+/* Tab activo visible, con texto legible. */
+html body .bottom a.on,
+html body .socioV51Bottom a.on,
+html body .captainBottom a.on{
+  color:#0b5f8f!important;
+  background:linear-gradient(180deg,#e8f4fb,#dceff8)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.86), 0 4px 12px rgba(11,95,143,.10)!important;
+  text-shadow:none!important;
+}
+
+/* Elimina barras/píldoras pseudo-elemento heredadas que podían tapar el texto. */
+html body .bottom a.on::before,
+html body .bottom a.on::after,
+html body .socioV51Bottom a.on::before,
+html body .socioV51Bottom a.on::after,
+html body .captainBottom a.on::before,
+html body .captainBottom a.on::after{
+  content:none!important;
+  display:none!important;
+  width:0!important;
+  height:0!important;
+  background:none!important;
+  box-shadow:none!important;
+}
+
+/* Refuerzo puntual: si Inicio está activo, siempre debe verse el texto. */
+html body .socioV51Bottom a[href="#inicio"],
+html body .socioV51Bottom a[href="#inicio"].on{
+  font-size:11px!important;
+  text-indent:0!important;
+  color:#0b5f8f!important;
+}
+
+/* Mensajes y ayudas: legibles, humanos, sin saturar pantalla. */
+.formHint{
+  margin:6px 0 10px!important;
+  color:#607181!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  line-height:1.35!important;
+}
+
+/* Versión visible pero discreta. */
+.appFooter,
+.socioFooter,
+.preflightVersion,
+.loginVersion,
+.versionMark,
+.qrFooter{
+  opacity:.42!important;
+  color:#7d8793!important;
+  font-size:11px!important;
+  letter-spacing:.04em!important;
+}
