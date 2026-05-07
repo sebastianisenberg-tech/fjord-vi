@@ -356,7 +356,7 @@
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
     <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
-        <b>{{r.person_name}}</b>
+        <b>{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% endif %}
         <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
         {% if v.show_responsible %}<small>de {{v.responsible_name}}</small>{% endif %}{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>
