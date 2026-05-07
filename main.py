@@ -55,7 +55,7 @@ INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = "1.0.4"
 APP_BUILD = "build-69-premium-operativo-1.0.4"
-RELEASE_LABEL = "Fjord VI 1.0.9"
+RELEASE_LABEL = "Fjord VI 1.1.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -4375,9 +4375,6 @@ def create_user(
     member_clean = member_key(member_no)
     role = (role or "socio").strip()
 
-    # Alta flexible:
-    # - Socio: alcanza con nombre + Nº de socio. El DNI real NO es obligatorio.
-    # - Capitán/Admin: se mantiene DNI obligatorio porque no tienen Nº de socio operativo.
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?page=socios&msg=rol_invalido", status_code=303)
     if not name.strip():
@@ -4387,8 +4384,6 @@ def create_user(
     if role != "socio" and not dni_clean:
         return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
 
-    # Si el socio no trae DNI, se guarda un identificador técnico interno basado en Nº de socio.
-    # En fichas/pantallas públicas el socio se identifica por Nº de socio, no por este valor técnico.
     if role == "socio" and not dni_clean and member_clean:
         dni_clean = synthetic_dni_for_member(member_clean)
 
@@ -4474,20 +4469,24 @@ def update_user(
 
     dni_clean = norm_dni(dni)
     member_clean = member_key(member_no)
-    if not name.strip() or (role == "socio" and not (dni_clean or member_clean)) or (role != "socio" and not dni_clean):
-        return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
+    if not name.strip():
+        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
+    if role == "socio" and not (dni_clean or member_clean):
+        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
+    if role != "socio" and not dni_clean:
+        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
 
     if role not in ("socio", "captain", "admin"):
-        return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
+        return RedirectResponse("/admin?page=socios&msg=rol_invalido", status_code=303)
 
-    if not dni_clean and member_clean:
+    if role == "socio" and not dni_clean and member_clean:
         dni_clean = synthetic_dni_for_member(member_clean)
 
     existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first() if dni_clean else None
     if existing:
-        return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
+        return RedirectResponse("/admin?page=socios&msg=usuario_existente", status_code=303)
     if member_clean and db.query(User).filter(User.member_no == member_clean, User.id != uid).first():
-        return RedirectResponse("/admin?msg=socio_existente", status_code=303)
+        return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
 
     target.name = name.strip()
     target.dni = dni_clean
