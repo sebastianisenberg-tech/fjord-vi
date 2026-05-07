@@ -5631,7 +5631,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .sheetVersionBadge{display:inline-flex;align-items:center;border:1px solid rgba(15,79,120,.24);background:#eef7fb;color:#0f4f78;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;margin:0 6px;}
 .versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px;}
 
-/* Fjord VI 1.0.7 · corrección quirúrgica premium */
+/* Fjord VI 1.0.9 · corrección quirúrgica premium */
 .appFooter,.socioFooter,.preflightVersion,.loginVersion{opacity:.42!important;color:#7d8793!important;font-size:11px!important;letter-spacing:.04em!important;}
 .captainOutingCard .qrQuick{min-width:54px!important;height:42px!important;border-radius:16px!important;box-shadow:0 6px 14px rgba(8,50,78,.16)!important;align-self:center!important;}
 .captainStickyTabs button,.captainStickyTabs .tabBtn{box-shadow:none!important;filter:saturate(.92)!important;}
@@ -5641,7 +5641,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .erpTop b + span,.erpVersion,.adminVersion{opacity:.72!important;}
 
 
-/* ===== Fjord VI 1.0.7 · coherencia premium fina ===== */
+/* ===== Fjord VI 1.0.9 · coherencia premium fina ===== */
 .socioApp.socioV51 .socioProProgress{
   margin-left:0!important;
   margin-right:0!important;
@@ -5680,7 +5680,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.0.7 · fix bottom nav activo visible ===== */
+/* ===== Fjord VI 1.0.9 · fix bottom nav activo visible ===== */
 /* Corrige la pastilla azul vacía del primer tab activo sin tocar lógica ni navegación. */
 .bottom a,
 .socioV51Bottom a,
@@ -5732,7 +5732,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.0.7 · bottom nav sin pastilla fantasma ===== */
+/* ===== Fjord VI 1.0.9 · bottom nav sin pastilla fantasma ===== */
 /* La barra inferior vuelve a mostrar el texto del tab activo.
    Se elimina cualquier pseudo-indicador o fondo oscuro heredado. */
 
@@ -5805,3 +5805,33 @@ html body .socioV51Bottom a[href="#inicio"].on{
   font-size:11px!important;
   text-indent:0!important;
 }
+
+
+/* ===== Fjord VI 1.0.9 · Estadísticas operativas ===== */
+.statsHero h1{letter-spacing:-.03em}
+.statsKpis .kpi em{display:block;margin-top:5px;font-size:11px;color:#718292;font-style:normal;font-weight:750}
+.statsGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.statsCard{overflow:hidden}
+.statsCard h3{margin-bottom:5px}
+.statsCard p{color:#667789;margin:0 0 12px}
+.donutWrap{display:flex;align-items:center;gap:18px}
+.donut{width:124px;height:124px;border-radius:50%;background:conic-gradient(#0f638d 0 calc(var(--a)*1%), #70b7d8 calc(var(--a)*1%) calc((var(--a) + var(--b))*1%), #9bd6b2 calc((var(--a) + var(--b))*1%) 100%);box-shadow:inset 0 0 0 24px #fff,0 10px 28px rgba(15,99,141,.12);border:1px solid rgba(15,99,141,.14)}
+.donutLegend{display:grid;gap:8px;font-weight:850;color:#102236}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px}
+.dot.member{background:#0f638d}.dot.guest{background:#70b7d8}.dot.minor{background:#9bd6b2}
+.bigGauge b{font-size:42px;letter-spacing:-.04em;color:#102236}.bigGauge span{display:block;color:#607181;font-weight:750;margin:2px 0 12px}
+.rankList{display:grid;gap:10px}
+.rankItem{padding:10px 11px;border:1px solid rgba(15,99,141,.12);border-radius:14px;background:linear-gradient(180deg,#fff,#f7fbfd)}
+.rankItem b{display:block;color:#102236}.rankItem span{font-size:12px;color:#617284;font-weight:760}
+.chartBar.thin{height:7px;margin-top:8px}
+.miniFacts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.miniFacts span{display:block;padding:12px;border-radius:14px;background:#f5fafc;border:1px solid rgba(15,99,141,.10);color:#657687;font-weight:800}
+.miniFacts b{display:block;font-size:22px;color:#102236;margin-top:2px}
+@media(max-width:900px){.statsGrid{grid-template-columns:1fr}.donutWrap{align-items:flex-start}.donut{width:104px;height:104px;box-shadow:inset 0 0 0 20px #fff,0 10px 22px rgba(15,99,141,.10)}.miniFacts{grid-template-columns:1fr}}
+
+
+/* ===== Fjord VI 1.0.9 · feedback alta de socio ===== */
+.adminNotice{margin:10px 0 14px;padding:13px 16px;border-radius:14px;font-weight:850;border:1px solid rgba(15,99,141,.16);box-shadow:0 8px 22px rgba(12,33,52,.06)}
+.adminNotice.ok{background:#ecfbf2;color:#12613b;border-color:#bfeccc}
+.adminNotice.warn{background:#fff7df;color:#7a3b12;border-color:#efd990}
+.formHint{margin:6px 0 0;color:#607181;font-size:12px;font-weight:750}
