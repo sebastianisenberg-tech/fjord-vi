@@ -20,5 +20,5 @@
   "socio_uses_weekday": true,
   "bottom_inicio_visible": true,
   "metadata_author_ok": true,
-  "version_txt": "Fjord VI 1.2.4"
+  "version_txt": "Fjord VI 1.2.5"
 }
