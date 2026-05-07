@@ -204,13 +204,29 @@
   </nav>
 
   <main class="erpMain">
+  {% if msg %}
+  {% set msgMapAdminV109 = {
+    'usuario_creado':'Usuario creado correctamente.',
+    'datos_usuario_invalidos':'No se pudo crear el usuario: faltan datos obligatorios.',
+    'falta_nombre':'No se pudo crear el usuario: falta el nombre.',
+    'falta_socio_o_documento':'No se pudo crear el socio: cargá Nº de socio o documento.',
+    'falta_documento':'No se pudo crear el usuario: falta documento.',
+    'usuario_existente':'No se pudo crear: ya existe un usuario con ese documento.',
+    'socio_existente':'No se pudo crear: ya existe un socio con ese Nº de socio.',
+    'rol_invalido':'No se pudo crear: rol inválido.'
+  } %}
+  <div class="adminNotice {% if msg in ['usuario_creado'] %}ok{% else %}warn{% endif %}">
+    {{ msgMapAdminV109.get(msg, msg) }}
+  </div>
+  {% endif %}
+
     {% if msg %}<div class="msg">Operación registrada: {{msg}}</div>{% endif %}
     {% if admin_page == 'sistema' and system_console.get('missing_sheet_count') and system_console.get('missing_sheet_count') > 0 %}<div class="smartAlert warn"><b>Atención técnica:</b><span>{{system_console.get('missing_sheet_count')}} salidas cerradas no tienen ficha vigente.</span><a href="#integridad">Revisar integridad</a></div>{% endif %}
 
     {% if admin_page == 'dashboard' %}
     <section class="erpTitle"><div><h1>Inicio operativo</h1><p>Escritorio de administración: cargas principales, salida seleccionada y accesos frecuentes.</p></div><div class="erpTitleActions"><button class="erpBtn erpPrimary" data-open-drawer="outingDrawer">+ Nueva salida</button><button class="erpBtn erpSoft" data-open-drawer="userDrawer">+ Nuevo usuario</button>{% if outing %}<a class="erpBtn" href="/admin?page=reservas&outing_id={{outing.id}}">Ver reservas</a>{% endif %}</div></section>
     <div class="adminTopRibbon"><span class="miniPill">Versión <b>{{version}}</b></span><span class="miniPill">Base de trabajo: salidas + usuarios</span><span class="miniPill">Comunicaciones preparadas</span></div>
-    <div class="erpWorkGrid"><article class="erpWorkCard"><h3>Cargar salida</h3><p>Alta de viajes/paseos con fecha, hora, cupo y tarifa. Es la agenda operativa que después ve socio y capitán.</p><div class="actions"><button class="erpBtn erpPrimary" data-open-drawer="outingDrawer">Nueva salida</button><a class="erpBtn" href="/admin?page=navegaciones{% if outing %}&outing_id={{outing.id}}{% endif %}">Gestionar salidas</a></div></article><article class="erpWorkCard"><h3>Cargar usuario</h3><p>Alta y mantenimiento de socios, invitados convertibles, capitanes y administradores. No se elimina: se desactiva.</p><div class="actions"><button class="erpBtn erpPrimary" data-open-drawer="userDrawer">Nuevo usuario</button><a class="erpBtn" href="/admin?page=socios{% if outing %}&outing_id={{outing.id}}{% endif %}">Ver padrón</a></div></article><article class="erpWorkCard"><h3>Comunicaciones</h3><p>Email transaccional: eventos, plantillas, cola de envío, SMTP y registro auditable.</p><div class="actions"><a class="erpBtn erpPrimary" href="/admin?page=comunicaciones{% if outing %}&outing_id={{outing.id}}{% endif %}">Abrir comunicaciones</a></div></article></div>
+    <div class="erpWorkGrid"><article class="erpWorkCard"><h3>Cargar salida</h3><p>Alta de viajes/paseos con fecha, hora, cupo y tarifa. Es la agenda operativa que después ve socio y capitán.</p><div class="actions"><button class="erpBtn erpPrimary" data-open-drawer="outingDrawer">Nueva salida</button><a class="erpBtn" href="/admin?page=navegaciones{% if outing %}&outing_id={{outing.id}}{% endif %}">Gestionar salidas</a></div></article><article class="erpWorkCard"><h3>Cargar usuario</h3><p>Alta y mantenimiento de socios, invitados convertibles, capitanes y administradores. Para socio alcanza con nombre + Nº de socio; el DNI real puede cargarse después. No se elimina: se desactiva.</p><div class="actions"><button class="erpBtn erpPrimary" data-open-drawer="userDrawer">Nuevo usuario</button><a class="erpBtn" href="/admin?page=socios{% if outing %}&outing_id={{outing.id}}{% endif %}">Ver padrón</a></div></article><article class="erpWorkCard"><h3>Comunicaciones</h3><p>Email transaccional: eventos, plantillas, cola de envío, SMTP y registro auditable.</p><div class="actions"><a class="erpBtn erpPrimary" href="/admin?page=comunicaciones{% if outing %}&outing_id={{outing.id}}{% endif %}">Abrir comunicaciones</a></div></article></div>
     <div class="kpiRow"><div class="kpi"><span>Salida seleccionada</span><b>{% if outing %}{{outing.title}}{% else %}-{% endif %}</b></div><div class="kpi"><span>Activos</span><b>{{active_count}}</b></div><div class="kpi"><span>Presentes</span><b>{{present}}</b></div><div class="kpi"><span>Pendientes</span><b>{{pending}}</b></div><div class="kpi"><span>Cargos</span><b>$ {{charge_summary.total_label}}</b></div></div>
     <div class="twoCols"><article class="erpGridWrap"><div class="erpGridMeta"><b>Reservas de la salida seleccionada</b><span>{% if outing %}{{fmt_admin_datetime(outing.departure_at)}} · {{outing.status}}{% else %}Sin salida{% endif %}</span></div><div class="erpTableBox"><table class="erpTable" id="dashReservas"><thead><tr><th class="colName sticky1">Nombre</th><th class="colDoc">Socio/Doc.</th><th class="colTipo">Tipo</th><th class="colEstado">Estado</th><th class="colCargo">Cargo</th></tr></thead><tbody>{% for r in reservations %}{% set v=reservation_views.get(r.id) %}<tr><td class="colName sticky1"><b>{{r.person_name}}</b></td><td class="colDoc">{{r.dni}}</td><td class="colTipo">{{v.tipo_label}}</td><td class="colEstado"><span class="badge {{v.status_class}}">{{v.status_label}}</span></td><td class="colCargo">{% if v.charge>0 %}$ {{v.charge_label}}{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></div></article><aside class="sideStatic"><h3>Seleccionar salida</h3><form method="get" action="/admin" class="drawerForm"><input type="hidden" name="page" value="dashboard"><label>Salida<select name="outing_id" onchange="this.form.submit()">{% for o in outings %}<option value="{{o.id}}" {% if outing and o.id==outing.id %}selected{% endif %}>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}}</option>{% endfor %}{% for g in history_groups %}{% for o in g['items'] %}<option value="{{o.id}}" {% if outing and o.id==outing.id %}selected{% endif %}>{{fmt_admin_datetime_short(o.departure_at)}} · {{o.title}}</option>{% endfor %}{% endfor %}</select></label></form><p class="miniNote">El trabajo diario arranca desde acá: elegir salida, revisar reservas, exportar o cargar una nueva navegación.</p></aside></div>
     {% endif %}
@@ -258,12 +274,123 @@
     {% endif %}
 
     {% if admin_page == 'estadisticas' %}
-    <section class="erpTitle"><div><h1>Estadísticas</h1><p>Tablero inicial para evaluar ocupación, cancelaciones, cargos y uso.</p></div><div class="erpTitleActions"><button class="erpBtn" data-export-table="statsTable" data-export-name="fjord_vi_estadisticas_vista.csv">Exportar resumen</button></div></section>
-    {% set total_activos = all_reservation_rows|selectattr('status','equalto','Activa')|list|length %}
-    {% set total_cancelados = all_reservation_rows|selectattr('status','equalto','Cancelada')|list|length %}
-    {% set total_cargos = all_reservation_rows|selectattr('charge','gt',0)|list|length %}
-    <div class="kpiRow"><div class="kpi"><span>Registros históricos</span><b>{{all_reservation_count}}</b></div><div class="kpi"><span>Activos</span><b>{{total_activos}}</b></div><div class="kpi"><span>Cancelados</span><b>{{total_cancelados}}</b></div><div class="kpi"><span>Con cargo</span><b>{{total_cargos}}</b></div><div class="kpi"><span>Salidas</span><b>{{all_outings|length}}</b></div></div>
-    <article class="erpCard"><h3>Indicadores iniciales</h3><p>Este módulo queda preparado como tablero de gestión. La versión actual muestra KPIs básicos; el próximo paso puede ser ranking de uso por socio, ocupación por mes, no-shows y facturación por período.</p><div class="chartGrid"><div class="chartLine"><b>Registros</b><div class="chartBar"><i style="width:100%"></i></div><span>{{all_reservation_count}}</span></div><div class="chartLine"><b>Cancelados</b><div class="chartBar"><i style="width:{% if all_reservation_count>0 %}{{(total_cancelados*100/all_reservation_count)|round(0)}}{% else %}0{% endif %}%"></i></div><span>{{total_cancelados}}</span></div><div class="chartLine"><b>Con cargo</b><div class="chartBar"><i style="width:{% if all_reservation_count>0 %}{{(total_cargos*100/all_reservation_count)|round(0)}}{% else %}0{% endif %}%"></i></div><span>{{total_cargos}}</span></div></div><table class="erpTable" id="statsTable" style="margin-top:12px"><thead><tr><th>Indicador</th><th>Valor</th></tr></thead><tbody><tr><td>Registros históricos</td><td>{{all_reservation_count}}</td></tr><tr><td>Activos</td><td>{{total_activos}}</td></tr><tr><td>Cancelados</td><td>{{total_cancelados}}</td></tr><tr><td>Con cargo</td><td>{{total_cargos}}</td></tr><tr><td>Salidas</td><td>{{all_outings|length}}</td></tr></tbody></table></article>
+    <section class="erpTitle statsHero">
+      <div>
+        <h1>Estadísticas de uso</h1>
+        <p>Quiénes usan el barco, composición de la tripulación, acompañantes, cargos y tendencias operativas.</p>
+      </div>
+      <div class="erpTitleActions">
+        <button class="erpBtn" data-export-table="statsTable" data-export-name="fjord_vi_estadisticas_vista.csv">Exportar resumen</button>
+      </div>
+    </section>
+
+    <div class="kpiRow statsKpis">
+      <div class="kpi"><span>Navegaron</span><b>{{usage_stats.sailed_count}}</b><em>personas registradas</em></div>
+      <div class="kpi"><span>Socios</span><b>{{usage_stats.member_pct}}%</b><em>{{usage_stats.members_sailed}} navegados</em></div>
+      <div class="kpi"><span>Invitados</span><b>{{usage_stats.guest_pct}}%</b><em>{{usage_stats.guests_sailed}} navegados</em></div>
+      <div class="kpi"><span>No embarcó</span><b>{{usage_stats.not_embarked_count}}</b><em>{{usage_stats.not_embarked_pct}}% del historial</em></div>
+      <div class="kpi"><span>Cargos</span><b>$ {{usage_stats.total_charges_label}}</b><em>{{usage_stats.charge_count}} registros</em></div>
+    </div>
+
+    <section class="statsGrid">
+      <article class="erpCard statsCard">
+        <h3>Composición de uso</h3>
+        <p>Relación entre socios, invitados y menores que efectivamente navegaron.</p>
+        <div class="donutWrap">
+          <div class="donut" style="--a:{{usage_stats.member_pct}};--b:{{usage_stats.guest_pct}}"></div>
+          <div class="donutLegend">
+            <span><i class="dot member"></i> Socios: {{usage_stats.members_sailed}} · {{usage_stats.member_pct}}%</span>
+            <span><i class="dot guest"></i> Invitados: {{usage_stats.guests_sailed}} · {{usage_stats.guest_pct}}%</span>
+            <span><i class="dot minor"></i> Menores: {{usage_stats.minors_sailed}} · {{usage_stats.minor_pct}}%</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="erpCard statsCard">
+        <h3>Ocupación teórica</h3>
+        <p>Uso acumulado contra la capacidad total de las salidas cargadas.</p>
+        <div class="bigGauge">
+          <b>{{usage_stats.occupancy_pct}}%</b>
+          <span>{{usage_stats.sailed_count}} / {{usage_stats.capacity_total}} plazas teóricas</span>
+          <div class="chartBar"><i style="width:{{usage_stats.occupancy_pct}}%"></i></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="statsGrid">
+      <article class="erpCard statsCard">
+        <h3>Ranking de uso</h3>
+        <p>Personas que más aparecen como embarcadas en el historial.</p>
+        <div class="rankList">
+          {% for p in usage_stats.ranking %}
+          <div class="rankItem">
+            <b>{{loop.index}}. {{p.name}}</b>
+            <span>{{p.kind}} · {{p.uses}} navegación{% if p.uses != 1 %}es{% endif %}</span>
+            <div class="chartBar thin"><i style="width:{{(p.uses*100/usage_stats.ranking[0].uses)|round(0) if usage_stats.ranking and usage_stats.ranking[0].uses else 0}}%"></i></div>
+          </div>
+          {% else %}
+          <p class="muted">Todavía no hay navegación histórica suficiente.</p>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="erpCard statsCard">
+        <h3>Socios responsables</h3>
+        <p>Socios que más llevaron acompañantes navegados.</p>
+        <div class="rankList">
+          {% for r in usage_stats.responsible_rank %}
+          <div class="rankItem">
+            <b>{{r.name}}</b>
+            <span>{{r.guests}} acompañante{% if r.guests != 1 %}s{% endif %} · $ {{r.charges_label}}</span>
+            <div class="chartBar thin"><i style="width:{{(r.guests*100/usage_stats.responsible_rank[0].guests)|round(0) if usage_stats.responsible_rank and usage_stats.responsible_rank[0].guests else 0}}%"></i></div>
+          </div>
+          {% else %}
+          <p class="muted">Sin acompañantes navegados todavía.</p>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+
+    <section class="statsGrid">
+      <article class="erpCard statsCard">
+        <h3>Rangos de edad</h3>
+        <p>Estimación inicial. Mejorará cuando el padrón tenga fecha de nacimiento.</p>
+        <div class="chartGrid">
+          {% for b in usage_stats.age_buckets %}
+          <div class="chartLine"><b>{{b.label}}</b><div class="chartBar"><i style="width:{{b.pct}}%"></i></div><span>{{b.count}} · {{b.pct}}%</span></div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="erpCard statsCard">
+        <h3>Calidad de datos</h3>
+        <p>{{usage_stats.data_note}}</p>
+        <div class="miniFacts">
+          <span>Salidas cargadas <b>{{usage_stats.outings}}</b></span>
+          <span>Fichas emitidas <b>{{usage_stats.sheets}}</b></span>
+          <span>Registros históricos <b>{{usage_stats.total_records}}</b></span>
+          <span>Con cargo <b>{{usage_stats.charge_pct}}%</b></span>
+        </div>
+      </article>
+    </section>
+
+    <article class="erpCard statsCard">
+      <h3>Resumen exportable</h3>
+      <table class="erpTable" id="statsTable" style="margin-top:12px">
+        <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td>Personas navegadas</td><td>{{usage_stats.sailed_count}}</td></tr>
+          <tr><td>Socios navegados</td><td>{{usage_stats.members_sailed}} · {{usage_stats.member_pct}}%</td></tr>
+          <tr><td>Invitados navegados</td><td>{{usage_stats.guests_sailed}} · {{usage_stats.guest_pct}}%</td></tr>
+          <tr><td>Menores navegados</td><td>{{usage_stats.minors_sailed}} · {{usage_stats.minor_pct}}%</td></tr>
+          <tr><td>No embarcó / cargo</td><td>{{usage_stats.not_embarked_count}} · {{usage_stats.not_embarked_pct}}%</td></tr>
+          <tr><td>Total de cargos</td><td>$ {{usage_stats.total_charges_label}}</td></tr>
+          <tr><td>Ocupación teórica</td><td>{{usage_stats.occupancy_pct}}%</td></tr>
+          <tr><td>Salidas cargadas</td><td>{{usage_stats.outings}}</td></tr>
+          <tr><td>Fichas emitidas</td><td>{{usage_stats.sheets}}</td></tr>
+        </tbody>
+      </table>
+    </article>
     {% endif %}
 
     {% if admin_page == 'auditoria' %}
@@ -298,7 +425,8 @@
 
     <div class="erpWorkGrid">
       <article class="erpCard"><h3>Estado <span class="infoTip" title="La cola se procesa automáticamente en pequeñas tandas cuando hay uso del sistema. El botón Procesar cola sirve para forzar el envío manualmente.">i</span></h3><div class="systemKv"><span>SMTP</span><b>{% if communications.smtp_configured %}configurado{% else %}pendiente{% endif %}</b></div><div class="systemKv"><span>Procesamiento</span><b>automático + manual</b></div><div class="systemKv"><span>Pendientes</span><b>{{communications.pending}}</b></div><div class="systemKv"><span>Fallidos</span><b>{{communications.failed}}</b></div><div class="systemKv"><span>Enviados hoy</span><b>{{communications.sent_today}}</b></div></article>
-      <article class="erpCard"><h3>Email de prueba <span class="infoTip" title="Envía un correo real usando la configuración SMTP actual. Sirve para validar remitente, puerto, TLS y credenciales.">i</span></h3><form method="post" action="/admin/communications/test" class="drawerForm"><label>Enviar a<input name="test_email" type="email" required placeholder="correo@dominio.com"></label><button class="erpBtn erpPrimary" type="submit">Enviar prueba</button></form></article>
+      <article class="erpCard"><h3>Email de prueba <span class="infoTip" title="Envía un correo real usando la configuración SMTP actual. Sirve para validar remitente, puerto, TLS y credenciales.">i</span></h3><form method="post" action="/admin/communications/test" class="drawerForm"><label>Enviar a<input name="test_email" type="email" required placeholder="correo@dominio.com"></label>
+<p class="formHint">Para socios, el Nº de socio alcanza para el alta. El DNI real no es obligatorio.</p><button class="erpBtn erpPrimary" type="submit">Enviar prueba</button></form></article>
     </div>
 
     <article class="erpCard"><h3>Configuración SMTP <span class="infoTip" title="Usar preferentemente un proveedor transaccional: Brevo, SendGrid, Mailgun, SES o cuenta institucional del club.">i</span></h3><form method="post" action="/admin/communications/settings" class="drawerForm commGrid"><label>SMTP host<input name="smtp_host" value="{{communications.settings.host}}" placeholder="smtp.sendgrid.net"></label><label>Puerto<input name="smtp_port" value="{{communications.settings.port}}" placeholder="587"></label><label>Usuario<input name="smtp_username" value="{{communications.settings.username}}"></label><label>Password<input name="smtp_password" type="password" placeholder="Dejar vacío para conservar"></label><label>Remitente email<input name="smtp_from_email" type="email" value="{{communications.settings.from_email}}" placeholder="fjord@club.org"></label><label>Nombre remitente<input name="smtp_from_name" value="{{communications.settings.from_name}}"></label><label>Email administración<input name="communications_admin_email" type="email" value="{{communications.settings.admin_email}}" placeholder="administracion@club.org"></label><label><input type="checkbox" name="smtp_tls" value="1" {% if communications.settings.tls in ['1','true','True','yes','on'] %}checked{% endif %}> Usar TLS</label><button class="erpBtn erpPrimary" type="submit">Guardar configuración</button></form></article>
