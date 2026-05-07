@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.5
+
+- Corrección robusta de ojos mostrar/ocultar en pantallas de clave.
+- Toggle directo por contenedor `.passwordWrap`, sin depender de IDs frágiles.
+- Captura de evento para evitar que el foco o el browser bloqueen el click.
+
+
 ## 1.3.4
 
 - Corrección de ojos mostrar/ocultar en pantalla Cambiar mi clave.

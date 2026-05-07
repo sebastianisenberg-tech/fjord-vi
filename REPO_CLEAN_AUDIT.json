@@ -1,11 +1,9 @@
 {
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "version": "Fjord VI 1.3.4",
-  "account_eye_toggle_js": true,
-  "change_eye_toggle_js": true,
-  "enter_flow": true,
-  "back_button_account": true,
-  "no_back_button_mandatory": true,
-  "redirect_after_success": true
+  "version": "Fjord VI 1.3.5",
+  "account_direct_toggle": true,
+  "change_direct_toggle": true,
+  "capture_click": true,
+  "enter_flow": true
 }
