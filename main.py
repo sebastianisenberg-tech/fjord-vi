@@ -55,7 +55,7 @@ INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = "1.0.4"
 APP_BUILD = "build-69-premium-operativo-1.0.4"
-RELEASE_LABEL = "Fjord VI 1.1.1"
+RELEASE_LABEL = "Fjord VI 1.1.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2603,7 +2603,7 @@ def index(request: Request, db: Session = Depends(db_session), user: Optional[Us
     return RedirectResponse("/socio", status_code=303)
 
 @app.post("/login")
-def login(dni: str = Form(...), password: str = Form(...), db: Session = Depends(db_session)):
+def login(dni: str = Form(""), password: str = Form(...), db: Session = Depends(db_session)):
     ident_raw = (dni or "").strip()
     ident_dni = norm_dni(ident_raw)
     ident_member = member_key(ident_raw)
@@ -3984,8 +3984,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
 
 @app.post("/admin/create_user")
 def create_user(
-    name: str = Form(...),
-    dni: str = Form(...),
+    name: str = Form(""),
+    dni: str = Form(""),
     member_no: str = Form(""),
     email: str = Form(""),
     whatsapp: str = Form(""),
@@ -3996,49 +3996,57 @@ def create_user(
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
+    name_clean = (name or "").strip()
     dni_clean = norm_dni(dni)
     member_clean = member_key(member_no)
-    if not name.strip():
-        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
-
-    # Para socios alcanza con nombre + Nº de socio.
-    # El DNI real puede completarse más adelante.
-    if role == "socio" and not (dni_clean or member_clean):
-        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
-
-    # Capitanes/Admin sí requieren documento.
-    if role != "socio" and not dni_clean:
-        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
+    role = (role or "socio").strip()
 
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?page=socios&msg=rol_invalido", status_code=303)
 
+    if not name_clean:
+        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
+
+    # Socio: alcanza con nombre + Nº de socio. El DNI real es opcional.
+    if role == "socio" and not (dni_clean or member_clean):
+        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
+
+    # Capitán/Admin: mantener documento obligatorio.
+    if role != "socio" and not dni_clean:
+        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
+
+    if role == "socio" and member_clean and db.query(User).filter(User.member_no == member_clean).first():
+        return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
+
     if role == "socio" and not dni_clean and member_clean:
         dni_clean = synthetic_dni_for_member(member_clean)
 
-    existing = db.query(User).filter_by(dni=dni_clean).first() if dni_clean else None
-    if existing:
+    if dni_clean and db.query(User).filter_by(dni=dni_clean).first():
         return RedirectResponse("/admin?page=socios&msg=usuario_existente", status_code=303)
-    if member_clean and db.query(User).filter(User.member_no == member_clean).first():
-        return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
 
-    new_user = User(
-        name=name.strip(),
-        dni=dni_clean,
-        member_no=member_clean or None,
-        email=email.strip() or None,
-        whatsapp=whatsapp.strip() or None,
-        phone=phone.strip() or None,
-        category=normalize_category(category) or None,
-        birth_date=birth_date.strip() or None,
-        role=role,
-        password_hash=hash_password("demo1234"),
-        active=True
-    )
-    db.add(new_user)
-    db.commit()
-    log(db, user.name, "alta usuario", f"{new_user.name} / {new_user.dni} / {new_user.role}")
-    return RedirectResponse("/admin?page=socios&msg=usuario_creado", status_code=303)
+    try:
+        new_user = User(
+            name=name_clean,
+            dni=dni_clean,
+            member_no=member_clean or None,
+            email=(email or "").strip() or None,
+            whatsapp=(whatsapp or "").strip() or None,
+            phone=(phone or "").strip() or None,
+            category=normalize_category(category) or None,
+            birth_date=(birth_date or "").strip() or None,
+            role=role,
+            password_hash=hash_password("demo1234"),
+            active=True
+        )
+        db.add(new_user)
+        db.commit()
+        log(db, user.name, "alta usuario", f"{new_user.name} / {new_user.dni} / {new_user.role}")
+        return RedirectResponse("/admin?page=socios&msg=usuario_creado", status_code=303)
+    except Exception as e:
+        db.rollback()
+        return RedirectResponse("/admin?page=socios&msg=error_alta_usuario", status_code=303)
+
+
 
 
 @app.post("/admin/reset_password/{uid}")
@@ -4079,8 +4087,8 @@ def toggle_user(
 @app.post("/admin/update_user/{uid}")
 def update_user(
     uid: int,
-    name: str = Form(...),
-    dni: str = Form(...),
+    name: str = Form(""),
+    dni: str = Form(""),
     member_no: str = Form(""),
     email: str = Form(""),
     whatsapp: str = Form(""),
@@ -4096,47 +4104,65 @@ def update_user(
     if not target:
         raise HTTPException(404, "Usuario inexistente")
 
+    name_clean = (name or "").strip()
     dni_clean = norm_dni(dni)
     member_clean = member_key(member_no)
-    if not name.strip():
-        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
-
-    # Para socios alcanza con nombre + Nº de socio.
-    # El DNI real puede completarse más adelante.
-    if role == "socio" and not (dni_clean or member_clean):
-        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
-
-    # Capitanes/Admin sí requieren documento.
-    if role != "socio" and not dni_clean:
-        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
+    role = (role or "socio").strip()
 
     if role not in ("socio", "captain", "admin"):
         return RedirectResponse("/admin?page=socios&msg=rol_invalido", status_code=303)
 
+    if not name_clean:
+        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
+
+    # Socio: identidad institucional por Nº de socio. DNI real puede agregarse después.
+    if role == "socio" and not (dni_clean or member_clean):
+        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
+
+    # Capitán/Admin: documento obligatorio.
+    if role != "socio" and not dni_clean:
+        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
+
+    old_dni = target.dni or ""
+    old_member = target.member_no or ""
+    old_synthetic = is_synthetic_member_dni(old_dni)
+
+    # Nº de socio único, excepto el mismo usuario.
+    if role == "socio" and member_clean:
+        existing_member = db.query(User).filter(User.member_no == member_clean, User.id != uid).first()
+        if existing_member:
+            return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
+
+    # Si sigue sin DNI real, conservar/generar identificador técnico por Nº de socio.
     if role == "socio" and not dni_clean and member_clean:
-        dni_clean = synthetic_dni_for_member(member_clean)
+        dni_clean = old_dni if old_synthetic and member_key(old_member) == member_clean else synthetic_dni_for_member(member_clean)
 
-    existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first() if dni_clean else None
-    if existing:
-        return RedirectResponse("/admin?page=socios&msg=usuario_existente", status_code=303)
-    if member_clean and db.query(User).filter(User.member_no == member_clean, User.id != uid).first():
-        return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
+    # Si se carga DNI real sobre un socio provisorio, se reemplaza el identificador técnico
+    # en el mismo usuario. El historial no se pierde porque reservas/cierres apuntan al user.id.
+    existing_dni = db.query(User).filter(User.dni == dni_clean, User.id != uid).first() if dni_clean else None
+    if existing_dni:
+        return RedirectResponse("/admin?page=socios&msg=dni_ya_asignado", status_code=303)
 
-    target.name = name.strip()
-    target.dni = dni_clean
-    target.member_no = member_clean or None
-    target.email = email.strip() or None
-    target.whatsapp = whatsapp.strip() or None
-    target.phone = phone.strip() or None
-    target.category = normalize_category(category) or None
-    target.birth_date = birth_date.strip() or None
-    target.role = role
-    if target.id == user.id and active != "activo":
-        return RedirectResponse("/admin?page=socios&msg=no_puede_desactivarse", status_code=303)
-    target.active = (active == "activo")
-    db.commit()
-    log(db, user.name, "edita usuario", f"{target.name} / {target.dni} / {target.role}")
-    return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
+    try:
+        target.name = name_clean
+        target.dni = dni_clean
+        target.member_no = member_clean or None
+        target.email = (email or "").strip() or None
+        target.whatsapp = (whatsapp or "").strip() or None
+        target.phone = (phone or "").strip() or None
+        target.category = normalize_category(category) or None
+        target.birth_date = (birth_date or "").strip() or None
+        target.role = role
+        if target.id == user.id and active != "activo":
+            return RedirectResponse("/admin?page=socios&msg=no_puede_desactivarse", status_code=303)
+        target.active = (active == "activo")
+        db.commit()
+        detail = f"{target.name} / {old_dni} -> {target.dni} / socio {old_member} -> {target.member_no or ''} / {target.role}"
+        log(db, user.name, "edita usuario", detail)
+        return RedirectResponse("/admin?page=socios&msg=usuario_actualizado", status_code=303)
+    except Exception:
+        db.rollback()
+        return RedirectResponse("/admin?page=socios&msg=error_actualizar_usuario", status_code=303)
 
 
 
@@ -4186,7 +4212,7 @@ def convert_guest_to_user(
 
 @app.post("/admin/hide_guest_candidate")
 def hide_guest_candidate(
-    dni: str = Form(...),
+    dni: str = Form(""),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
