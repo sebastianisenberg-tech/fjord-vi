@@ -2999,10 +2999,16 @@ async def add_protocolar_participation(
     reason = (form.get("protocolar_reason") or "Autorizado por Comisión Fjord VI").strip()
 
     matched_user = None
+    member_lookup_failed = False
     if member_no:
         matched_user = db.query(User).filter(User.member_no == member_no, User.active == True).first()
+        if not matched_user:
+            member_lookup_failed = True
     if not matched_user and document:
         matched_user = db.query(User).filter(User.dni == document, User.active == True).first()
+
+    if member_lookup_failed and not name:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=falta_nombre_protocolar", status_code=303)
 
     if matched_user and matched_user.role == "socio":
         person_name = matched_user.name
@@ -3015,8 +3021,11 @@ async def add_protocolar_participation(
         kind = "invitado"
         responsible_id = user.id
 
-    if not person_name or not dni_clean:
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
+    if not person_name:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=falta_nombre_protocolar", status_code=303)
+
+    if not dni_clean:
+        dni_clean = f"PROTO-{int(datetime.now().timestamp())}"
 
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
     rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
