@@ -1,0 +1,12 @@
+{
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "version": "Fjord VI 1.2.4",
+  "has_password_toggle": true,
+  "has_password_wrap": true,
+  "has_show_hide_js": true,
+  "has_autofocus": true,
+  "has_enter_next": true,
+  "has_css": true,
+  "old_refs": []
+}

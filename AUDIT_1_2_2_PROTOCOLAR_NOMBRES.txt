@@ -1,7 +1,7 @@
 {
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "version": "Fjord VI 1.2.3",
+  "version": "Fjord VI 1.2.4",
   "captain_name_class": true,
   "captain_duplicate_badge_removed": true,
   "captain_badge_count": 1,
