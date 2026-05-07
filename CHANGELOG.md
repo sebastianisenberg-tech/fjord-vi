@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2
+
+- Corrección precisa de alineación del ícono mostrar/ocultar clave.
+- Centrado real dentro del campo con `top:0`, `bottom:0` y `margin:auto`.
+- Elimina efecto visual de botón externo caído.
+
+
 ## 1.3.1
 
 - Cambio obligatorio de clave inicial.

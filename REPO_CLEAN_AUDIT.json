@@ -1,8 +1,9 @@
 {
   "python_syntax_ok": true,
-  "version": "1.3.1",
-  "account_password_template": true,
-  "account_route": true,
-  "admin_reset_route": true,
-  "profile_link_added": true
+  "jinja_errors": [],
+  "version": "Fjord VI 1.3.2",
+  "has_final_alignment_css": true,
+  "uses_top_bottom_margin_auto": true,
+  "button_transparent": true,
+  "button_not_blue": true
 }
