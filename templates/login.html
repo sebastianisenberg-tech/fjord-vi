@@ -5,39 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/style.css?v={{version}}">
   <title>Yacht Club Argentino · Fjord VI · Embarque</title>
-</head>
-<body class="loginBody institutionalLogin">
-  <div class="container loginShell">
-    <div class="card loginCard premiumLoginCard">
-      <div class="loginBrandBlock">
-        <div class="clubFullName">Yacht Club Argentino</div>
-        <div class="boatName">FJORD VI</div>
-        <div class="systemName">EMBARQUE</div>
-      </div>
-      {% if error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
-      <form method="post" action="/login" class="loginForm" id="loginForm">
-        <label for="loginDni">Nº de socio o documento</label>
-        <input id="loginDni" name="dni" autocomplete="username" inputmode="text" enterkeyhint="next" required autofocus onkeydown="return fjordPasswordEnterFlow(event, \'loginPassword\')">
-        <label for="loginPassword">Clave</label>
-        <div class="passwordWrap">
-          <input id="loginPassword" type="password" name="password" autocomplete="current-password" enterkeyhint="go" required onkeydown="return fjordPasswordEnterFlow(event, \'submit\')">
-          <button type="button" class="passwordToggle" aria-label="Mostrar clave" aria-pressed="false" onclick="return fjordTogglePassword(\'loginPassword\', this)"><span class="eyeIcon" aria-hidden="true"></span></button>
-        </div>
-        <button type="submit">Ingresar</button>
-      </form>
-      <div class="loginContact">
-        <strong>Oficina de Vela</strong><br>
-        Dársena Norte<br>
-        <a href="tel:+541143140505">+54 11 4314-0505</a>
-      </div>
-      <small class="version loginVersion">{{ release_label or ("Fjord VI " ~ version) }}</small>
-    </div>
-  </div>
-
-
-
-<script src="/static/app.js?v={{version}}"></script>
-
 <script>
 function fjordTogglePassword(inputId, btn){
   var input = document.getElementById(inputId);
@@ -71,6 +38,40 @@ function fjordPasswordEnterFlow(e, nextId){
   return false;
 }
 </script>
+</head>
+<body class="loginBody institutionalLogin">
+  <div class="container loginShell">
+    <div class="card loginCard premiumLoginCard">
+      <div class="loginBrandBlock">
+        <div class="clubFullName">Yacht Club Argentino</div>
+        <div class="boatName">FJORD VI</div>
+        <div class="systemName">EMBARQUE</div>
+      </div>
+      {% if error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
+      <form method="post" action="/login" class="loginForm" id="loginForm">
+        <label for="loginDni">Nº de socio o documento</label>
+        <input id="loginDni" name="dni" autocomplete="username" inputmode="text" enterkeyhint="next" required autofocus onkeydown="return fjordPasswordEnterFlow(event, 'loginPassword')">
+        <label for="loginPassword">Clave</label>
+        <div class="passwordWrap">
+          <input id="loginPassword" type="password" name="password" autocomplete="current-password" enterkeyhint="go" required onkeydown="return fjordPasswordEnterFlow(event, 'submit')">
+          <button type="button" class="passwordToggle" aria-label="Mostrar clave" aria-pressed="false" onclick="return fjordTogglePassword('loginPassword', this)"><span class="eyeIcon" aria-hidden="true"></span></button>
+        </div>
+        <button type="submit">Ingresar</button>
+      </form>
+      <div class="loginContact">
+        <strong>Oficina de Vela</strong><br>
+        Dársena Norte<br>
+        <a href="tel:+541143140505">+54 11 4314-0505</a>
+      </div>
+      <small class="version loginVersion">{{ release_label or ("Fjord VI " ~ version) }}</small>
+    </div>
+  </div>
+
+
+
+<script src="/static/app.js?v={{version}}"></script>
+
+
 
 </body>
 </html>
