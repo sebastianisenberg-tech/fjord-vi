@@ -2,7 +2,7 @@
 
 Sistema web operativo para la gestión de reservas, embarque, check-in, cierre de navegación y liquidación del barco **Fjord VI** del Yacht Club Argentino.
 
-Versión actual: **Fjord VI 1.3.2**
+Versión actual: **Fjord VI 1.3.3**
 
 ## Propósito
 

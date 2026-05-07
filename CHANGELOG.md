@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.3
+
+- Botón visible “Cambiar mi clave” dentro de Perfil de Socio.
+- Link discreto de clave para Capitán/Admin.
+- Corrección de link anterior que había quedado fuera del HTML visible.
+
+
 ## 1.3.2
 
 - Corrección precisa de alineación del ícono mostrar/ocultar clave.
