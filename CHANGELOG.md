@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.9
+
+- Auditoría profunda de la versión 1.3.8.
+- Corrige ruta visible de reset administrativo de clave.
+- Ahora todo reset a `demo1234` marca `must_change_password=True`.
+- El usuario reseteado queda obligado a crear clave personal al volver a entrar.
+- Verificación adicional de templates, rutas y estructura HTML.
+
+
 ## 1.3.8
 
 - Corrige error de Administración `UndefinedError: 'u' is undefined`.

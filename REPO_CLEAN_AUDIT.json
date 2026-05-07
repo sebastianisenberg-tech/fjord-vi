@@ -1,9 +1,113 @@
 {
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "version": "Fjord VI 1.3.8",
-  "no_stray_u_form_after_html": true,
-  "valid_existing_reset_inside_loop": true,
-  "admin_ends_at_html": true,
-  "tail": "calNext')?.addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);renderCal();});document.querySelectorAll('[data-hour]').forEach(b=>{if(b.dataset.hour===selectedHour)b.classList.add('selected');b.addEventListener('click',()=>{selectedHour=b.dataset.hour;document.querySelectorAll('[data-hour]').forEach(x=>x.classList.toggle('selected',x===b));setInputDate(selected);});});renderCal();\n})();\n</script>\n<script src=\"/static/app.js?v={{version}}\"></script>\n</body>\n</html>"
+  "version": "Fjord VI 1.3.9",
+  "route_count": 74,
+  "has_must_change_column": true,
+  "has_schema_migration": true,
+  "create_user_forces_change": true,
+  "login_demo_forces_change": true,
+  "visible_admin_reset_sets_demo1234": true,
+  "visible_admin_reset_sets_must_change": true,
+  "secondary_admin_reset_sets_must_change": true,
+  "admin_template_uses_visible_reset_route": true,
+  "admin_template_no_stray_u": true,
+  "html_checks": {
+    "account_password.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "admin.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "admin_qr.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "captain.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "captain_preflight.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "change_password.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "checkin.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "closing_sheet.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "closing_sheets.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "embarque_fijo.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "fixed_qr.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "login.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "padron_import.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "padron_import_preview.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "session_required.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    },
+    "socio.html": {
+      "ends_html": true,
+      "has_stray_after_html": false,
+      "bad_u_reset_form": false,
+      "bad_escaped_onclick": false
+    }
+  }
 }

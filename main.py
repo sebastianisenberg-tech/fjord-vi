@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.3.8"
-APP_BUILD = "build-138-admin-u-fix"
-RELEASE_LABEL = "Fjord VI 1.3.8"
+VERSION = "1.3.9"
+APP_BUILD = "build-139-reset-password-force-change"
+RELEASE_LABEL = "Fjord VI 1.3.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -4550,9 +4550,10 @@ def reset_password(
         raise HTTPException(404, "Usuario inexistente")
 
     target.password_hash = hash_password("demo1234")
+    target.must_change_password = True
     db.commit()
-    log(db, user.name, "reset password", f"{target.name} / {target.dni}")
-    return RedirectResponse("/admin?msg=clave_reseteada", status_code=303)
+    log(db, user.name, "reset clave temporal", f"{target.name} / {target.dni} / cambio obligatorio")
+    return RedirectResponse("/admin?page=socios&msg=clave_reseteada", status_code=303)
 
 
 @app.post("/admin/toggle_user/{uid}")
