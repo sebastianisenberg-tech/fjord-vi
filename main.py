@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.3.3"
-APP_BUILD = "build-133-profile-password-visible"
-RELEASE_LABEL = "Fjord VI 1.3.3"
+VERSION = "1.3.4"
+APP_BUILD = "build-134-password-flow"
+RELEASE_LABEL = "Fjord VI 1.3.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2980,7 +2980,7 @@ def account_password_submit(
     db.commit()
 
     log(db, user.name, "cambio clave usuario", "clave actualizada desde perfil")
-    return RedirectResponse("/account/password?ok=1", status_code=303)
+    return RedirectResponse("/?msg=clave_actualizada", status_code=303)
 
 @app.post("/admin/user/reset-password/{user_id}")
 def admin_reset_password(

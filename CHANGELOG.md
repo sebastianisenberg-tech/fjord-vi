@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.4
+
+- Corrección de ojos mostrar/ocultar en pantalla Cambiar mi clave.
+- Enter fluido: clave actual → nueva clave → repetir clave → guardar.
+- Botón Volver al sistema y cruz de cierre en cambio voluntario.
+- Al guardar correctamente vuelve al sistema.
+
+
 ## 1.3.3
 
 - Botón visible “Cambiar mi clave” dentro de Perfil de Socio.
