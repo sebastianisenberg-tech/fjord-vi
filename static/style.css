@@ -6108,3 +6108,45 @@ html body .socioV51Bottom a[href="#inicio"].on{
     padding-right:66px!important;
   }
 }
+
+
+/* Fjord VI 1.2.6 · refined inline eye */
+.passwordWrap{
+  position:relative;
+}
+
+.passwordWrap input{
+  padding-right:56px!important;
+}
+
+.passwordToggle{
+  position:absolute!important;
+  right:14px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:28px!important;
+  height:28px!important;
+  border:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:0!important;
+  margin:0!important;
+  min-width:28px!important;
+  max-width:28px!important;
+  z-index:5;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+.passwordToggle:focus,
+.passwordToggle:active,
+.passwordToggle:hover{
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+
+.eyeIcon{
+  opacity:.82;
+}
