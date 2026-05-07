@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.1.9"
-APP_BUILD = "build-119-protocolar"
-RELEASE_LABEL = "Fjord VI 1.1.9"
+VERSION = "1.2.0"
+APP_BUILD = "build-120-protocolar-ordenado"
+RELEASE_LABEL = "Fjord VI 1.2.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -94,6 +94,7 @@ class Outing(Base):
     departure_at = Column(DateTime, nullable=False)
     status = Column(String, default="Programada")
     max_crew = Column(Integer, default=MAX_CREW)
+    institutional_reserve = Column(Integer, default=0)
     min_crew = Column(Integer, default=MIN_CREW)
     guest_fee = Column(Numeric(12,2), default=INVITED_FEE)
     notes = Column(Text, default="")
@@ -496,6 +497,16 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar_by_user_id INTEGER"))
         if "protocolar_reason" not in reservation_columns:
             conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar_reason TEXT"))
+
+
+    try:
+        outing_columns = [c["name"] for c in inspector.get_columns("outings")]
+    except Exception:
+        outing_columns = []
+
+    with engine.begin() as conn:
+        if "institutional_reserve" not in outing_columns:
+            conn.execute(text("ALTER TABLE outings ADD COLUMN institutional_reserve INTEGER DEFAULT 0"))
 
     try:
         user_columns = [c["name"] for c in inspector.get_columns("users")]
@@ -1150,7 +1161,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.1.9:
+    Blindaje 1.2.0:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1376,6 +1387,8 @@ def enforce_responsible_dependency(db: Session, outing: Outing, reservations=Non
     for r in rows:
         if canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
             continue
+        if is_protocolar(r):
+            continue
         if is_waitlisted(r) or r.cancelled_at is not None or r.status == "Cancelado":
             continue
         responsible = users_by_id.get(r.responsible_user_id)
@@ -1412,6 +1425,36 @@ def reactivate_reservation(db: Session, outing: Outing, r: Reservation):
 def is_waitlisted(r: Reservation) -> bool:
     return (getattr(r, "status", "") == "Lista de espera" or getattr(r, "attendance", "") == "Lista de espera")
 
+
+
+def institutional_reserve(outing: Outing) -> int:
+    try:
+        return max(0, int(getattr(outing, "institutional_reserve", 0) or 0))
+    except Exception:
+        return 0
+
+def public_capacity(outing: Outing) -> int:
+    """Capacidad disponible para reservas normales. No incluye reserva institucional."""
+    if not outing:
+        return MAX_CREW
+    try:
+        return max(0, int(outing.max_crew or MAX_CREW) - institutional_reserve(outing))
+    except Exception:
+        return MAX_CREW
+
+def active_public_reservations(rows) -> list:
+    return [r for r in active_reservations(rows) if not is_protocolar(r)]
+
+def active_protocolar_reservations(rows) -> list:
+    return [r for r in active_reservations(rows) if is_protocolar(r)]
+
+def protocolar_capacity_available(outing: Outing, rows, exclude_id: Optional[int] = None) -> bool:
+    """Puede usar reserva institucional o cupo operativo libre total."""
+    active = [r for r in active_reservations(rows) if not exclude_id or r.id != exclude_id]
+    proto = [r for r in active if is_protocolar(r)]
+    if len(active) < int(outing.max_crew or MAX_CREW):
+        return True
+    return len(proto) < institutional_reserve(outing)
 
 def put_on_waitlist(r: Reservation, reason: str = "En lista de espera"):
     # La lista de espera no ocupa cupo y nunca genera cargo mientras no sea promovida.
@@ -1460,7 +1503,7 @@ def place_socio_with_priority(db: Session, outing: Outing, r: Reservation) -> tu
     # de decidir si entra o queda en espera.
     rows_without_target = [x for x in rows if x is not r and (not getattr(r, "id", None) or x.id != r.id)]
 
-    if len(active_reservations(rows_without_target)) < outing.max_crew:
+    if len(active_public_reservations(rows_without_target)) < public_capacity(outing):
         reactivate_reservation(db, outing, r)
         return "active", None
 
@@ -1481,7 +1524,7 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
     promoted = []
     while True:
         rows = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.created_at.asc(), Reservation.id.asc()).all()
-        if len(active_reservations(rows)) >= outing.max_crew:
+        if len(active_public_reservations(rows)) >= public_capacity(outing):
             break
         waiting = [r for r in rows if is_waitlisted(r)]
         if not waiting:
@@ -1528,6 +1571,29 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
         return []
 
     displaced = []
+
+    # Blindaje 1.2.0: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
+    # a invitados/menores no presentes y luego a otros registros no presentes.
+    while True:
+        rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        active_public = active_public_reservations(rows)
+        if len(active_public) <= public_capacity(outing):
+            break
+        candidates = [
+            r for r in active_public
+            if (r.attendance or "Por confirmar") != "Presente"
+            and canonical_kind(r.kind) in ("invitado", "hijo_menor")
+        ]
+        if not candidates:
+            candidates = [r for r in active_public if (r.attendance or "Por confirmar") != "Presente"]
+        if not candidates:
+            break
+        candidates.sort(key=lambda r: (r.created_at or datetime.min, r.id or 0), reverse=True)
+        chosen = candidates[0]
+        put_on_waitlist(chosen, "Pasado a lista de espera para respetar reserva institucional")
+        displaced.append(chosen.person_name)
+
     while True:
         rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
         active = active_reservations(rows)
@@ -1645,6 +1711,7 @@ def data_blindaje_checks(db: Session) -> dict:
         "duplicate_reservation_dni_by_outing": [],
         "multiple_vigente_sheets_by_outing": [],
         "orphan_guest_reservations": [],
+        "institutional_reserve_over_capacity": [],
     }
 
     # Usuarios con DNI/documento repetido.
@@ -1663,8 +1730,16 @@ def data_blindaje_checks(db: Session) -> dict:
     rows = db.query(ClosingSheet.outing_id).filter(ClosingSheet.status == "VIGENTE").group_by(ClosingSheet.outing_id).having(func.count(ClosingSheet.id) > 1).all()
     checks["multiple_vigente_sheets_by_outing"] = [r[0] for r in rows]
 
-    # Invitados/menores sin socio responsable.
-    rows = db.query(Reservation).filter(Reservation.kind.in_(["invitado", "hijo_menor"]), Reservation.responsible_user_id.is_(None)).all()
+    # Salidas con reserva institucional inválida.
+    rows = db.query(Outing).all()
+    checks["institutional_reserve_over_capacity"] = [
+        {"outing_id": o.id, "max_crew": o.max_crew, "institutional_reserve": getattr(o, "institutional_reserve", 0)}
+        for o in rows
+        if institutional_reserve(o) > int(o.max_crew or 0)
+    ]
+
+    # Invitados/menores sin socio responsable, excepto participación protocolar institucional.
+    rows = db.query(Reservation).filter(Reservation.kind.in_(["invitado", "hijo_menor"]), Reservation.responsible_user_id.is_(None), Reservation.protocolar == False).all()
     checks["orphan_guest_reservations"] = [{"reservation_id": r.id, "outing_id": r.outing_id, "name": r.person_name} for r in rows]
 
     checks["ok"] = not any(v for k, v in checks.items() if k != "ok")
@@ -2837,7 +2912,7 @@ async def add_guest(
     dni_clean = norm_dni(dni or "")
     kind = canonical_kind(kind)
 
-    full_capacity = len(active) >= outing.max_crew
+    full_capacity = len(active_public_reservations(reservations)) >= public_capacity(outing)
 
     if kind not in ("invitado", "hijo_menor") or not person_name or not dni_clean:
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
@@ -2898,6 +2973,87 @@ async def add_guest(
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
 
+@app.post("/socio/add_protocolar")
+async def add_protocolar_participation(
+    request: Request,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio", "admin"))
+):
+    if not can_manage_protocolar(user):
+        return RedirectResponse("/socio?msg=sin_permiso_protocolar", status_code=303)
+
+    form = await request.form()
+    try:
+        outing_id = int(form.get("outing_id") or 0)
+    except Exception:
+        outing_id = None
+
+    outing, reservations, active, *_ = outing_context(db, outing_id)
+    if not outing:
+        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
+    ensure_outing_editable(outing)
+
+    name = (form.get("name") or "").strip()
+    document = norm_dni(form.get("dni") or "")
+    member_no = member_key(form.get("member_no") or "")
+    reason = (form.get("protocolar_reason") or "Autorizado por Comisión Fjord VI").strip()
+
+    matched_user = None
+    if member_no:
+        matched_user = db.query(User).filter(User.member_no == member_no, User.active == True).first()
+    if not matched_user and document:
+        matched_user = db.query(User).filter(User.dni == document, User.active == True).first()
+
+    if matched_user and matched_user.role == "socio":
+        person_name = matched_user.name
+        dni_clean = matched_user.dni
+        kind = "socio"
+        responsible_id = matched_user.id
+    else:
+        person_name = name
+        dni_clean = document
+        kind = "invitado"
+        responsible_id = user.id
+
+    if not person_name or not dni_clean:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
+
+    existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+
+    if existing:
+        r = existing
+        r.person_name = person_name
+        r.kind = kind
+        r.responsible_user_id = responsible_id
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.attendance = "Por confirmar"
+    else:
+        if not protocolar_capacity_available(outing, rows):
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_protocolar_completo", status_code=303)
+        r = Reservation(
+            outing_id=outing.id,
+            person_name=person_name,
+            dni=dni_clean,
+            kind=kind,
+            responsible_user_id=responsible_id,
+            status="Confirmado",
+            attendance="Por confirmar"
+        )
+        db.add(r)
+        db.flush()
+
+    r.protocolar = True
+    r.protocolar_by_user_id = user.id
+    r.protocolar_reason = reason
+    r.charge_amount = 0
+    enforce_capacity(db, outing)
+    db.commit()
+    log(db, user.name, "agrega participación protocolar", f"{person_name} / {outing.title} / {reason}")
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=protocolar_ok", status_code=303)
+
+
 @app.post("/socio/protocolar/{rid}")
 def socio_protocolar(
     rid: int,
@@ -2921,6 +3077,9 @@ def socio_protocolar(
         log(db, user.name, "quita participación protocolar", f"{r.person_name} / {outing.title}")
         msg = "protocolar_quitado"
     else:
+        rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+        if not reservation_is_active(r) and not protocolar_capacity_available(outing, rows, exclude_id=r.id):
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cupo_protocolar_completo", status_code=303)
         r.protocolar = True
         r.protocolar_by_user_id = user.id
         r.protocolar_reason = (protocolar_reason or "Autorizado por Comisión Fjord VI").strip()
@@ -4644,11 +4803,12 @@ def admin_outing_status(
     return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/admin/new_outing")
-def new_outing(title: str = Form(...), departure_at: str = Form(...), max_crew: int = Form(MAX_CREW), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+def new_outing(title: str = Form(...), departure_at: str = Form(...), max_crew: int = Form(MAX_CREW), institutional_reserve: int = Form(0), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     dep = datetime.fromisoformat(departure_at)
     capacity = max(1, min(int(max_crew or MAX_CREW), 30))
+    reserve_inst = max(0, min(int(institutional_reserve or 0), capacity))
     # Módulo actual limitado a paseos: destino/tipo y tarifa quedan fijos por sistema.
-    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=INVITED_FEE, status="En reservas", max_crew=capacity, min_crew=MIN_CREW)
+    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=INVITED_FEE, status="En reservas", max_crew=capacity, institutional_reserve=reserve_inst, min_crew=MIN_CREW)
     db.add(o)
     db.commit()
     db.refresh(o)

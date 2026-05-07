@@ -1,1 +1,1 @@
-Fjord VI 1.1.9
+Fjord VI 1.2.0
