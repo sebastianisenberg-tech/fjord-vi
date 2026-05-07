@@ -1,6 +1,15 @@
 # Changelog
 
-## 1.2.6
+## 1.3.1
+
+- Cambio obligatorio de clave inicial.
+- Nuevos usuarios quedan con clave temporal y deben definir clave personal.
+- Usuarios que ingresan con `demo1234` son derivados a cambio de clave.
+- Nueva pantalla premium `Crear clave personal`.
+- Validación de doble clave, longitud mínima y bloqueo de clave temporal/Nº socio/documento.
+
+
+## 1.2.7
 
 - Ajuste del login con control mostrar/ocultar clave.
 - Mantiene foco en el campo de clave al tocar el ojo.

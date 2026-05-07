@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.2.6"
-APP_BUILD = "build-125-login-eye-icon"
-RELEASE_LABEL = "Fjord VI 1.2.6"
+VERSION = "1.3.1"
+APP_BUILD = "build-130-password-init"
+RELEASE_LABEL = "Fjord VI 1.3.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -85,6 +85,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     active = Column(Boolean, default=True)
     can_manage_protocolar = Column(Boolean, default=False)
+    must_change_password = Column(Boolean, default=False)
 
 class Outing(Base):
     __tablename__ = "outings"
@@ -526,6 +527,8 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN birth_date VARCHAR"))
         if "can_manage_protocolar" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN can_manage_protocolar BOOLEAN DEFAULT FALSE"))
+        if "must_change_password" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT FALSE"))
 
 
 def set_system_meta(key: str, value: str):
@@ -1133,6 +1136,28 @@ def verify_password(password: str, stored: str) -> bool:
     except Exception:
         return False
 
+
+def is_temporary_password(password: str) -> bool:
+    return (password or "") == "demo1234"
+
+def password_change_error(new_password: str, confirm_password: str, user: User) -> Optional[str]:
+    pwd = (new_password or "").strip()
+    confirm = (confirm_password or "").strip()
+    if not pwd or not confirm:
+        return "faltan_datos"
+    if pwd != confirm:
+        return "no_coincide"
+    if len(pwd) < 6:
+        return "corta"
+    if is_temporary_password(pwd):
+        return "temporal"
+    if user and user.member_no and pwd == str(user.member_no):
+        return "igual_socio"
+    if user and user.dni and pwd == str(user.dni):
+        return "igual_documento"
+    return None
+
+
 def sign_value(value: str) -> str:
     sig = hmac.new(SECRET_KEY.encode(), value.encode(), hashlib.sha256).hexdigest()
     return f"{value}.{sig}"
@@ -1159,7 +1184,7 @@ def export_state(db: Session) -> dict:
         "users": [
             {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no,
              "email": u.email or "", "phone": u.phone or "", "birth_date": u.birth_date or "", "role": u.role,
-             "password_hash": u.password_hash, "active": bool(u.active)}
+             "password_hash": u.password_hash, "active": bool(u.active), "must_change_password": bool(getattr(u, "must_change_password", False))}
             for u in db.query(User).order_by(User.id).all()
         ],
         "outings": [
@@ -1201,7 +1226,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.2.6:
+    Blindaje 1.2.7:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1303,6 +1328,35 @@ def require_role(*roles):
             raise HTTPException(status_code=403, detail="Rol no autorizado")
         return user
     return dep
+
+
+@app.middleware("http")
+async def force_password_change_middleware(request: Request, call_next):
+    path = request.url.path or ""
+    allowed = (
+        path == "/",
+        path == "/login",
+        path == "/logout",
+        path == "/change-password",
+        path.startswith("/static"),
+        path.startswith("/health"),
+        path == "/favicon.ico",
+    )
+    if not any(allowed):
+        try:
+            uid = unsign_value(request.cookies.get("fjord_uid", ""))
+            if uid:
+                db = SessionLocal()
+                try:
+                    u = db.get(User, int(uid))
+                    if u and getattr(u, "must_change_password", False):
+                        return RedirectResponse("/change-password", status_code=303)
+                finally:
+                    db.close()
+        except Exception:
+            pass
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def activity_tracker(request: Request, call_next):
@@ -1612,7 +1666,7 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
 
     displaced = []
 
-    # Blindaje 1.2.6: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Blindaje 1.2.7: la reserva institucional no puede ser ocupada por lista/reservas normales.
     # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
     # a invitados/menores no presentes y luego a otros registros no presentes.
     while True:
@@ -2630,8 +2684,8 @@ def seed():
         if db.query(User).count() == 0:
             db.add_all([
                 User(name="Juan Pérez", dni="20123456", member_no="1234", email="juan@example.com", phone="", role="socio", password_hash=hash_password("demo1234")),
-                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234")),
-                User(name="Admin Club", dni="27999111", member_no="ADM-01", email="admin@example.com", phone="", role="admin", password_hash=hash_password("demo1234")),
+                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Admin Club", dni="27999111", member_no="ADM-01", email="admin@example.com", phone="", role="admin", password_hash=hash_password("demo1234"), must_change_password=True),
             ])
             db.commit()
 
@@ -2807,6 +2861,8 @@ def index(request: Request, db: Session = Depends(db_session), user: Optional[Us
         resp = templates.TemplateResponse(request, "login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
         resp.headers["Cache-Control"] = "no-store"
         return resp
+    if getattr(user, "must_change_password", False):
+        return RedirectResponse("/change-password", status_code=303)
     if user.role == "captain":
         return RedirectResponse("/captain", status_code=303)
     if user.role == "admin":
@@ -2845,10 +2901,104 @@ def login(dni: str = Form(""), password: str = Form(...), db: Session = Depends(
 
     if not user or not verify_password(password, user.password_hash):
         return RedirectResponse("/?error=1", status_code=303)
+    if is_temporary_password(password) and not getattr(user, "must_change_password", False):
+        user.must_change_password = True
+        db.commit()
     log(db, user.name, "login", user.role)
-    resp = RedirectResponse("/", status_code=303)
+    target = "/change-password" if getattr(user, "must_change_password", False) else "/"
+    resp = RedirectResponse(target, status_code=303)
     resp.set_cookie("fjord_uid", sign_value(str(user.id)), httponly=True, samesite="lax", max_age=43200)
     return resp
+
+
+@app.get("/change-password", response_class=HTMLResponse)
+def change_password_page(request: Request, user: User = Depends(require_user)):
+    if not getattr(user, "must_change_password", False):
+        return RedirectResponse("/", status_code=303)
+    resp = templates.TemplateResponse(request, "change_password.html", {
+        "request": request,
+        "version": VERSION,
+        "release_label": RELEASE_LABEL,
+        "user": user,
+        "error": request.query_params.get("error"),
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.post("/change-password")
+def change_password_submit(
+    new_password: str = Form(""),
+    confirm_password: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_user)
+):
+    error = password_change_error(new_password, confirm_password, user)
+    if error:
+        return RedirectResponse(f"/change-password?error={error}", status_code=303)
+
+    user.password_hash = hash_password(new_password.strip())
+    user.must_change_password = False
+    db.commit()
+    log(db, user.name, "cambio clave inicial", "clave personal definida")
+    return RedirectResponse("/", status_code=303)
+
+
+
+@app.get("/account/password", response_class=HTMLResponse)
+def account_password_page(
+    request: Request,
+    user: User = Depends(require_user)
+):
+    resp = templates.TemplateResponse(request, "account_password.html", {
+        "request": request,
+        "version": VERSION,
+        "release_label": RELEASE_LABEL,
+        "user": user,
+        "ok": request.query_params.get("ok"),
+        "error": request.query_params.get("error"),
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.post("/account/password")
+def account_password_submit(
+    current_password: str = Form(""),
+    new_password: str = Form(""),
+    confirm_password: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_user)
+):
+    if not verify_password(current_password or "", user.password_hash):
+        return RedirectResponse("/account/password?error=actual", status_code=303)
+
+    error = password_change_error(new_password, confirm_password, user)
+    if error:
+        return RedirectResponse(f"/account/password?error={error}", status_code=303)
+
+    user.password_hash = hash_password(new_password.strip())
+    user.must_change_password = False
+    db.commit()
+
+    log(db, user.name, "cambio clave usuario", "clave actualizada desde perfil")
+    return RedirectResponse("/account/password?ok=1", status_code=303)
+
+@app.post("/admin/user/reset-password/{user_id}")
+def admin_reset_password(
+    user_id: int,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    target = db.get(User, user_id)
+    if not target:
+        return RedirectResponse("/admin?page=socios&msg=usuario_no_encontrado", status_code=303)
+
+    target.password_hash = hash_password("demo1234")
+    target.must_change_password = True
+    db.commit()
+
+    log(db, user.name, "reset clave temporal", f"{target.name} ({target.member_no or target.dni})")
+    return RedirectResponse("/admin?page=socios&msg=clave_reseteada", status_code=303)
+
 
 @app.get("/logout")
 def logout():
@@ -4375,7 +4525,8 @@ def create_user(
             role=role,
             password_hash=hash_password("demo1234"),
             active=True,
-            can_manage_protocolar=bool(can_manage_protocolar_form == "on") if role == "socio" else False
+            can_manage_protocolar=bool(can_manage_protocolar_form == "on") if role == "socio" else False,
+            must_change_password=True
         )
         db.add(new_user)
         db.commit()
