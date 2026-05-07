@@ -55,7 +55,7 @@ INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = "1.0.4"
 APP_BUILD = "build-69-premium-operativo-1.0.4"
-RELEASE_LABEL = "Fjord VI 1.1.0"
+RELEASE_LABEL = "Fjord VI 1.0.7"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2917,197 +2917,12 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
 
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
 
-    
-
-def _safe_int_digits(value: str) -> str:
-    return re.sub(r"\D+", "", value or "")
-
-def _age_from_birth_date(value: str) -> Optional[int]:
-    if not value:
-        return None
-    txt = str(value).strip()
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
-        try:
-            d = datetime.strptime(txt, fmt).date()
-            today = now_local().date()
-            age = today.year - d.year - ((today.month, today.day) < (d.month, d.day))
-            return age if 0 <= age <= 120 else None
-        except Exception:
-            pass
-    return None
-
-def _age_from_arg_dni(value: str) -> Optional[int]:
-    """Estimación muy prudente por DNI argentino. Solo sirve para rangos, no edad exacta."""
-    digits = _safe_int_digits(value)
-    if not digits:
-        return None
-    try:
-        n = int(digits)
-    except Exception:
-        return None
-    # Rango orientativo 2026: muy impreciso, pero útil como señal de mayores/menores.
-    if 55_000_000 <= n <= 70_000_000:
-        return 0
-    if 45_000_000 <= n < 55_000_000:
-        return 12
-    if 38_000_000 <= n < 45_000_000:
-        return 22
-    if 30_000_000 <= n < 38_000_000:
-        return 36
-    if 20_000_000 <= n < 30_000_000:
-        return 52
-    if 10_000_000 <= n < 20_000_000:
-        return 68
-    if 5_000_000 <= n < 10_000_000:
-        return 82
-    return None
-
-def _age_bucket(age: Optional[int], kind: str = "") -> str:
-    k = canonical_kind(kind)
-    if k == "hijo_menor":
-        return "Menores"
-    if age is None:
-        return "Sin dato"
-    if age < 18:
-        return "Menores"
-    if age < 30:
-        return "18-29"
-    if age < 45:
-        return "30-44"
-    if age < 60:
-        return "45-59"
-    return "60+"
-
-def _pct(n: int, d: int) -> int:
-    return int(round((n * 100 / d), 0)) if d else 0
-
-def build_usage_stats(all_reservation_rows: list, all_outings: list, all_closing_sheet_rows: list = None) -> dict:
-    rows = list(all_reservation_rows or [])
-    sheets = list(all_closing_sheet_rows or [])
-    total_records = len(rows)
-    embarked = [r for r in rows if (r.get("physical") or r.get("attendance") or r.get("status") or "").lower() in ("presente", "embarcado")]
-    not_embarked = [r for r in rows if "no embarc" in (r.get("physical") or r.get("status") or "").lower()]
-    charge_rows = [r for r in rows if float(r.get("charge") or 0) > 0]
-    invited_rows = [r for r in rows if canonical_kind(r.get("kind", "")) in ("invitado", "hijo_menor")]
-    guest_rows = [r for r in rows if canonical_kind(r.get("kind", "")) == "invitado"]
-    member_rows = [r for r in rows if canonical_kind(r.get("kind", "")) == "socio"]
-    minor_rows = [r for r in rows if canonical_kind(r.get("kind", "")) == "hijo_menor"]
-
-    sailed = embarked if embarked else rows
-    sailed_count = len(sailed)
-    sailed_guests = [r for r in sailed if canonical_kind(r.get("kind", "")) == "invitado"]
-    sailed_members = [r for r in sailed if canonical_kind(r.get("kind", "")) == "socio"]
-    sailed_minors = [r for r in sailed if canonical_kind(r.get("kind", "")) == "hijo_menor"]
-
-    # Ranking por persona: DNI para invitados/menores, nombre como fallback. Socios se agrupan por nombre/DNI del registro.
-    people = {}
-    for r in sailed:
-        key = _safe_int_digits(r.get("dni", "")) or (r.get("name", "") or "").strip().lower()
-        if not key:
-            continue
-        p = people.setdefault(key, {
-            "name": r.get("name", "Sin nombre"),
-            "kind": r.get("kind", ""),
-            "dni": r.get("dni", ""),
-            "uses": 0,
-            "charges": 0.0,
-            "guest_uses": 0,
-            "member_uses": 0,
-            "last": r.get("outing_date", ""),
-        })
-        p["uses"] += 1
-        p["charges"] += float(r.get("charge") or 0)
-        if canonical_kind(r.get("kind", "")) == "socio":
-            p["member_uses"] += 1
-        elif canonical_kind(r.get("kind", "")) in ("invitado", "hijo_menor"):
-            p["guest_uses"] += 1
-        if r.get("outing_date"):
-            p["last"] = r.get("outing_date")
-
-    ranking = sorted(people.values(), key=lambda x: (-x["uses"], x["name"]))[:10]
-    for p in ranking:
-        p["charges_label"] = money0(p["charges"])
-
-    # Responsables por invitados navegados/cargos.
-    resp = {}
-    for r in sailed:
-        if canonical_kind(r.get("kind", "")) not in ("invitado", "hijo_menor"):
-            continue
-        name = r.get("responsible") or "Sin responsable"
-        item = resp.setdefault(name, {"name": name, "guests": 0, "charges": 0.0})
-        item["guests"] += 1
-        item["charges"] += float(r.get("charge") or 0)
-    responsible_rank = sorted(resp.values(), key=lambda x: (-x["guests"], x["name"]))[:8]
-    for item in responsible_rank:
-        item["charges_label"] = money0(item["charges"])
-
-    # Rangos etarios. Priorizo birth_date si existe en row futuro; hoy usa DNI como estimación débil.
-    age_counts = {"Menores": 0, "18-29": 0, "30-44": 0, "45-59": 0, "60+": 0, "Sin dato": 0}
-    for r in sailed:
-        age = _age_from_birth_date(r.get("birth_date", "")) if r.get("birth_date") else None
-        if age is None:
-            age = _age_from_arg_dni(r.get("dni", ""))
-        b = _age_bucket(age, r.get("kind", ""))
-        age_counts[b] = age_counts.get(b, 0) + 1
-    age_buckets = [{"label": k, "count": v, "pct": _pct(v, sailed_count)} for k, v in age_counts.items() if v]
-
-    # Categorías reales del padrón: se llenará cuando los usuarios tengan category.
-    category_counts = {}
-    for r in member_rows:
-        cat = (r.get("category") or "").strip() if r.get("category") else ""
-        if cat:
-            category_counts[cat] = category_counts.get(cat, 0) + 1
-    category_buckets = [{"label": k, "count": v, "pct": _pct(v, len(member_rows))} for k, v in sorted(category_counts.items(), key=lambda x: -x[1])[:8]]
-
-    # Meses / salidas.
-    month_counts = {}
-    for r in sailed:
-        od = r.get("outing_date", "") or ""
-        label = od[:7] if re.match(r"\d{4}-\d{2}", od) else (od.split(" ")[0] if od else "Sin fecha")
-        month_counts[label] = month_counts.get(label, 0) + 1
-    months = [{"label": k, "count": v, "pct": _pct(v, max(month_counts.values()) if month_counts else 0)} for k, v in list(month_counts.items())[:8]]
-
-    total_capacity = sum(int(getattr(o, "max_crew", MAX_CREW) or MAX_CREW) for o in (all_outings or []))
-    occupancy_pct = _pct(sailed_count, total_capacity)
-
-    total_charges = sum(float(r.get("charge") or 0) for r in rows)
-
-    return {
-        "total_records": total_records,
-        "outings": len(all_outings or []),
-        "sheets": len(sheets),
-        "sailed_count": sailed_count,
-        "members_sailed": len(sailed_members),
-        "guests_sailed": len(sailed_guests),
-        "minors_sailed": len(sailed_minors),
-        "guest_pct": _pct(len(sailed_guests), sailed_count),
-        "member_pct": _pct(len(sailed_members), sailed_count),
-        "minor_pct": _pct(len(sailed_minors), sailed_count),
-        "not_embarked_count": len(not_embarked),
-        "not_embarked_pct": _pct(len(not_embarked), total_records),
-        "charge_count": len(charge_rows),
-        "charge_pct": _pct(len(charge_rows), total_records),
-        "total_charges": total_charges,
-        "total_charges_label": money0(total_charges),
-        "occupancy_pct": min(100, occupancy_pct),
-        "capacity_total": total_capacity,
-        "ranking": ranking,
-        "responsible_rank": responsible_rank,
-        "age_buckets": age_buckets,
-        "category_buckets": category_buckets,
-        "months": months,
-        "data_note": "Edad estimada solo por DNI cuando no hay fecha de nacimiento. Sexo/género no se infiere: requiere dato de padrón.",
-    }
-
-
     # Tabla maestra para Administración: historial completo de reservas, independiente de la salida seleccionada.
     all_outings = db.query(Outing).order_by(Outing.departure_at.desc()).all()
     outing_by_id = {o.id: o for o in all_outings}
     all_reservations = db.query(Reservation).order_by(Reservation.created_at.desc()).all()
     all_responsible_ids = sorted({r.responsible_user_id for r in all_reservations if r.responsible_user_id})
     all_responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(all_responsible_ids)).all()} if all_responsible_ids else {}
-    users_for_stats = db.query(User).all()
-    users_by_dni_stats = {norm_dni(u.dni): u for u in users_for_stats if norm_dni(u.dni)}
     all_reservation_rows = []
     for rr in sorted(all_reservations, key=lambda x: (outing_by_id.get(x.outing_id).departure_at if outing_by_id.get(x.outing_id) else datetime.min, x.created_at or datetime.min), reverse=True):
         row_outing = outing_by_id.get(rr.outing_id)
@@ -3133,8 +2948,6 @@ def build_usage_stats(all_reservation_rows: list, all_outings: list, all_closing
             "charge_preview": vv.get("charge_preview", 0),
             "charge_preview_label": vv.get("charge_preview_label", "0"),
             "responsible": all_responsible_names.get(rr.responsible_user_id, "") if rr.responsible_user_id else "",
-            "category": (users_by_dni_stats.get(norm_dni(rr.dni)).category if users_by_dni_stats.get(norm_dni(rr.dni)) else ""),
-            "birth_date": (users_by_dni_stats.get(norm_dni(rr.dni)).birth_date if users_by_dni_stats.get(norm_dni(rr.dni)) else rr.birth_date),
             "created_at": fmt_admin_datetime(rr.created_at),
             "cancelled_at": fmt_admin_datetime(rr.cancelled_at) if rr.cancelled_at else "",
             "row_class": "chargeRow" if vv.get("charge", 0) > 0 else ("waitRow" if vv.get("waitlisted") else ("mutedRow" if vv.get("cancelled") else "")),
@@ -4056,197 +3869,12 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
 
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
 
-    
-
-def _safe_int_digits(value: str) -> str:
-    return re.sub(r"\D+", "", value or "")
-
-def _age_from_birth_date(value: str) -> Optional[int]:
-    if not value:
-        return None
-    txt = str(value).strip()
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
-        try:
-            d = datetime.strptime(txt, fmt).date()
-            today = now_local().date()
-            age = today.year - d.year - ((today.month, today.day) < (d.month, d.day))
-            return age if 0 <= age <= 120 else None
-        except Exception:
-            pass
-    return None
-
-def _age_from_arg_dni(value: str) -> Optional[int]:
-    """Estimación muy prudente por DNI argentino. Solo sirve para rangos, no edad exacta."""
-    digits = _safe_int_digits(value)
-    if not digits:
-        return None
-    try:
-        n = int(digits)
-    except Exception:
-        return None
-    # Rango orientativo 2026: muy impreciso, pero útil como señal de mayores/menores.
-    if 55_000_000 <= n <= 70_000_000:
-        return 0
-    if 45_000_000 <= n < 55_000_000:
-        return 12
-    if 38_000_000 <= n < 45_000_000:
-        return 22
-    if 30_000_000 <= n < 38_000_000:
-        return 36
-    if 20_000_000 <= n < 30_000_000:
-        return 52
-    if 10_000_000 <= n < 20_000_000:
-        return 68
-    if 5_000_000 <= n < 10_000_000:
-        return 82
-    return None
-
-def _age_bucket(age: Optional[int], kind: str = "") -> str:
-    k = canonical_kind(kind)
-    if k == "hijo_menor":
-        return "Menores"
-    if age is None:
-        return "Sin dato"
-    if age < 18:
-        return "Menores"
-    if age < 30:
-        return "18-29"
-    if age < 45:
-        return "30-44"
-    if age < 60:
-        return "45-59"
-    return "60+"
-
-def _pct(n: int, d: int) -> int:
-    return int(round((n * 100 / d), 0)) if d else 0
-
-def build_usage_stats(all_reservation_rows: list, all_outings: list, all_closing_sheet_rows: list = None) -> dict:
-    rows = list(all_reservation_rows or [])
-    sheets = list(all_closing_sheet_rows or [])
-    total_records = len(rows)
-    embarked = [r for r in rows if (r.get("physical") or r.get("attendance") or r.get("status") or "").lower() in ("presente", "embarcado")]
-    not_embarked = [r for r in rows if "no embarc" in (r.get("physical") or r.get("status") or "").lower()]
-    charge_rows = [r for r in rows if float(r.get("charge") or 0) > 0]
-    invited_rows = [r for r in rows if canonical_kind(r.get("kind", "")) in ("invitado", "hijo_menor")]
-    guest_rows = [r for r in rows if canonical_kind(r.get("kind", "")) == "invitado"]
-    member_rows = [r for r in rows if canonical_kind(r.get("kind", "")) == "socio"]
-    minor_rows = [r for r in rows if canonical_kind(r.get("kind", "")) == "hijo_menor"]
-
-    sailed = embarked if embarked else rows
-    sailed_count = len(sailed)
-    sailed_guests = [r for r in sailed if canonical_kind(r.get("kind", "")) == "invitado"]
-    sailed_members = [r for r in sailed if canonical_kind(r.get("kind", "")) == "socio"]
-    sailed_minors = [r for r in sailed if canonical_kind(r.get("kind", "")) == "hijo_menor"]
-
-    # Ranking por persona: DNI para invitados/menores, nombre como fallback. Socios se agrupan por nombre/DNI del registro.
-    people = {}
-    for r in sailed:
-        key = _safe_int_digits(r.get("dni", "")) or (r.get("name", "") or "").strip().lower()
-        if not key:
-            continue
-        p = people.setdefault(key, {
-            "name": r.get("name", "Sin nombre"),
-            "kind": r.get("kind", ""),
-            "dni": r.get("dni", ""),
-            "uses": 0,
-            "charges": 0.0,
-            "guest_uses": 0,
-            "member_uses": 0,
-            "last": r.get("outing_date", ""),
-        })
-        p["uses"] += 1
-        p["charges"] += float(r.get("charge") or 0)
-        if canonical_kind(r.get("kind", "")) == "socio":
-            p["member_uses"] += 1
-        elif canonical_kind(r.get("kind", "")) in ("invitado", "hijo_menor"):
-            p["guest_uses"] += 1
-        if r.get("outing_date"):
-            p["last"] = r.get("outing_date")
-
-    ranking = sorted(people.values(), key=lambda x: (-x["uses"], x["name"]))[:10]
-    for p in ranking:
-        p["charges_label"] = money0(p["charges"])
-
-    # Responsables por invitados navegados/cargos.
-    resp = {}
-    for r in sailed:
-        if canonical_kind(r.get("kind", "")) not in ("invitado", "hijo_menor"):
-            continue
-        name = r.get("responsible") or "Sin responsable"
-        item = resp.setdefault(name, {"name": name, "guests": 0, "charges": 0.0})
-        item["guests"] += 1
-        item["charges"] += float(r.get("charge") or 0)
-    responsible_rank = sorted(resp.values(), key=lambda x: (-x["guests"], x["name"]))[:8]
-    for item in responsible_rank:
-        item["charges_label"] = money0(item["charges"])
-
-    # Rangos etarios. Priorizo birth_date si existe en row futuro; hoy usa DNI como estimación débil.
-    age_counts = {"Menores": 0, "18-29": 0, "30-44": 0, "45-59": 0, "60+": 0, "Sin dato": 0}
-    for r in sailed:
-        age = _age_from_birth_date(r.get("birth_date", "")) if r.get("birth_date") else None
-        if age is None:
-            age = _age_from_arg_dni(r.get("dni", ""))
-        b = _age_bucket(age, r.get("kind", ""))
-        age_counts[b] = age_counts.get(b, 0) + 1
-    age_buckets = [{"label": k, "count": v, "pct": _pct(v, sailed_count)} for k, v in age_counts.items() if v]
-
-    # Categorías reales del padrón: se llenará cuando los usuarios tengan category.
-    category_counts = {}
-    for r in member_rows:
-        cat = (r.get("category") or "").strip() if r.get("category") else ""
-        if cat:
-            category_counts[cat] = category_counts.get(cat, 0) + 1
-    category_buckets = [{"label": k, "count": v, "pct": _pct(v, len(member_rows))} for k, v in sorted(category_counts.items(), key=lambda x: -x[1])[:8]]
-
-    # Meses / salidas.
-    month_counts = {}
-    for r in sailed:
-        od = r.get("outing_date", "") or ""
-        label = od[:7] if re.match(r"\d{4}-\d{2}", od) else (od.split(" ")[0] if od else "Sin fecha")
-        month_counts[label] = month_counts.get(label, 0) + 1
-    months = [{"label": k, "count": v, "pct": _pct(v, max(month_counts.values()) if month_counts else 0)} for k, v in list(month_counts.items())[:8]]
-
-    total_capacity = sum(int(getattr(o, "max_crew", MAX_CREW) or MAX_CREW) for o in (all_outings or []))
-    occupancy_pct = _pct(sailed_count, total_capacity)
-
-    total_charges = sum(float(r.get("charge") or 0) for r in rows)
-
-    return {
-        "total_records": total_records,
-        "outings": len(all_outings or []),
-        "sheets": len(sheets),
-        "sailed_count": sailed_count,
-        "members_sailed": len(sailed_members),
-        "guests_sailed": len(sailed_guests),
-        "minors_sailed": len(sailed_minors),
-        "guest_pct": _pct(len(sailed_guests), sailed_count),
-        "member_pct": _pct(len(sailed_members), sailed_count),
-        "minor_pct": _pct(len(sailed_minors), sailed_count),
-        "not_embarked_count": len(not_embarked),
-        "not_embarked_pct": _pct(len(not_embarked), total_records),
-        "charge_count": len(charge_rows),
-        "charge_pct": _pct(len(charge_rows), total_records),
-        "total_charges": total_charges,
-        "total_charges_label": money0(total_charges),
-        "occupancy_pct": min(100, occupancy_pct),
-        "capacity_total": total_capacity,
-        "ranking": ranking,
-        "responsible_rank": responsible_rank,
-        "age_buckets": age_buckets,
-        "category_buckets": category_buckets,
-        "months": months,
-        "data_note": "Edad estimada solo por DNI cuando no hay fecha de nacimiento. Sexo/género no se infiere: requiere dato de padrón.",
-    }
-
-
     # Tabla maestra para Administración: historial completo de reservas, independiente de la salida seleccionada.
     all_outings = db.query(Outing).order_by(Outing.departure_at.desc()).all()
     outing_by_id = {o.id: o for o in all_outings}
     all_reservations = db.query(Reservation).order_by(Reservation.created_at.desc()).all()
     all_responsible_ids = sorted({r.responsible_user_id for r in all_reservations if r.responsible_user_id})
     all_responsible_names = {u.id: u.name for u in db.query(User).filter(User.id.in_(all_responsible_ids)).all()} if all_responsible_ids else {}
-    users_for_stats = db.query(User).all()
-    users_by_dni_stats = {norm_dni(u.dni): u for u in users_for_stats if norm_dni(u.dni)}
     all_reservation_rows = []
     for rr in sorted(all_reservations, key=lambda x: (outing_by_id.get(x.outing_id).departure_at if outing_by_id.get(x.outing_id) else datetime.min, x.created_at or datetime.min), reverse=True):
         row_outing = outing_by_id.get(rr.outing_id)
@@ -4272,8 +3900,6 @@ def build_usage_stats(all_reservation_rows: list, all_outings: list, all_closing
             "charge_preview": vv.get("charge_preview", 0),
             "charge_preview_label": vv.get("charge_preview_label", "0"),
             "responsible": all_responsible_names.get(rr.responsible_user_id, "") if rr.responsible_user_id else "",
-            "category": (users_by_dni_stats.get(norm_dni(rr.dni)).category if users_by_dni_stats.get(norm_dni(rr.dni)) else ""),
-            "birth_date": (users_by_dni_stats.get(norm_dni(rr.dni)).birth_date if users_by_dni_stats.get(norm_dni(rr.dni)) else rr.birth_date),
             "created_at": fmt_admin_datetime(rr.created_at),
             "cancelled_at": fmt_admin_datetime(rr.cancelled_at) if rr.cancelled_at else "",
             "row_class": "chargeRow" if vv.get("charge", 0) > 0 else ("waitRow" if vv.get("waitlisted") else ("mutedRow" if vv.get("cancelled") else "")),
@@ -4342,7 +3968,6 @@ def build_usage_stats(all_reservation_rows: list, all_outings: list, all_closing
         "all_outings": all_outings,
         "all_reservation_rows": all_reservation_rows,
         "all_reservation_count": len(all_reservation_rows),
-        "usage_stats": usage_stats,
         "all_logs_count": len(logs),
         "current_sheet": current_sheet,
         "closing_sheets": closing_sheets,
@@ -4373,25 +3998,20 @@ def create_user(
 ):
     dni_clean = norm_dni(dni)
     member_clean = member_key(member_no)
-    role = (role or "socio").strip()
+    if not name.strip() or (role == "socio" and not (dni_clean or member_clean)) or (role != "socio" and not dni_clean):
+        return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
 
     if role not in ("socio", "captain", "admin"):
-        return RedirectResponse("/admin?page=socios&msg=rol_invalido", status_code=303)
-    if not name.strip():
-        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
-    if role == "socio" and not (dni_clean or member_clean):
-        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
-    if role != "socio" and not dni_clean:
-        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
+        return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
 
-    if role == "socio" and not dni_clean and member_clean:
+    if not dni_clean and member_clean:
         dni_clean = synthetic_dni_for_member(member_clean)
 
     existing = db.query(User).filter_by(dni=dni_clean).first() if dni_clean else None
     if existing:
-        return RedirectResponse("/admin?page=socios&msg=usuario_existente", status_code=303)
-    if role == "socio" and member_clean and db.query(User).filter(User.member_no == member_clean).first():
-        return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
+        return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
+    if member_clean and db.query(User).filter(User.member_no == member_clean).first():
+        return RedirectResponse("/admin?msg=socio_existente", status_code=303)
 
     new_user = User(
         name=name.strip(),
@@ -4409,7 +4029,7 @@ def create_user(
     db.add(new_user)
     db.commit()
     log(db, user.name, "alta usuario", f"{new_user.name} / {new_user.dni} / {new_user.role}")
-    return RedirectResponse("/admin?page=socios&msg=usuario_creado", status_code=303)
+    return RedirectResponse("/admin?msg=usuario_creado", status_code=303)
 
 
 @app.post("/admin/reset_password/{uid}")
@@ -4469,24 +4089,20 @@ def update_user(
 
     dni_clean = norm_dni(dni)
     member_clean = member_key(member_no)
-    if not name.strip():
-        return RedirectResponse("/admin?page=socios&msg=falta_nombre", status_code=303)
-    if role == "socio" and not (dni_clean or member_clean):
-        return RedirectResponse("/admin?page=socios&msg=falta_socio_o_documento", status_code=303)
-    if role != "socio" and not dni_clean:
-        return RedirectResponse("/admin?page=socios&msg=falta_documento", status_code=303)
+    if not name.strip() or (role == "socio" and not (dni_clean or member_clean)) or (role != "socio" and not dni_clean):
+        return RedirectResponse("/admin?msg=datos_usuario_invalidos", status_code=303)
 
     if role not in ("socio", "captain", "admin"):
-        return RedirectResponse("/admin?page=socios&msg=rol_invalido", status_code=303)
+        return RedirectResponse("/admin?msg=rol_invalido", status_code=303)
 
-    if role == "socio" and not dni_clean and member_clean:
+    if not dni_clean and member_clean:
         dni_clean = synthetic_dni_for_member(member_clean)
 
     existing = db.query(User).filter(User.dni == dni_clean, User.id != uid).first() if dni_clean else None
     if existing:
-        return RedirectResponse("/admin?page=socios&msg=usuario_existente", status_code=303)
+        return RedirectResponse("/admin?msg=usuario_existente", status_code=303)
     if member_clean and db.query(User).filter(User.member_no == member_clean, User.id != uid).first():
-        return RedirectResponse("/admin?page=socios&msg=socio_existente", status_code=303)
+        return RedirectResponse("/admin?msg=socio_existente", status_code=303)
 
     target.name = name.strip()
     target.dni = dni_clean
