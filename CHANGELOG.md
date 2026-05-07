@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0
+
+- Pulido visual mobile integral del módulo Socio.
+- Nombre del socio compacto y más premium.
+- Tarjeta de cambio de clave con flecha de acción visible.
+- Estado de salida cancelada más claro.
+- Participaciones protocolares colapsables para reducir scroll.
+- Footer compacto `Fjord VI · v1.4.0`.
+- Bottom navigation refinada.
+- Mejora de tarjetas, calendario, personas e inputs.
+
+
 ## 1.3.9
 
 - Auditoría profunda de la versión 1.3.8.
