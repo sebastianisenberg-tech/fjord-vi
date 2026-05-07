@@ -35,7 +35,7 @@ function showSocioNotice(text){
 <main class="wrap socioWrap">
   <div class="socioReglamentoBarV49"><a class="reglamentoSocioBtnV49" href="/static/reglamento.html" target="_blank" rel="noopener">ⓘ Reglamento Fjord VI</a></div>
 {% if msg %}
-{% set error_msgs = ['cupo_completo','socio_requerido','duplicado','dni_duplicado','persona_ya_registrada','socio_documento','hijo_menor_invalido','datos_invalidos','sin_permiso_protocolar'] %}
+{% set error_msgs = ['cupo_completo','socio_requerido','duplicado','dni_duplicado','persona_ya_registrada','socio_documento','hijo_menor_invalido','datos_invalidos','sin_permiso_protocolar','cupo_protocolar_completo'] %}
 {% set warn_msgs = ['lista_espera_ok','ya_anotado','cancelado'] %}
 <div class="toast compactToast toastSmart {% if msg in error_msgs %}toastError{% elif msg in warn_msgs %}toastWarn{% else %}toastOk{% endif %}" role="status" aria-live="polite">
   <span class="toastIcon">{% if msg in error_msgs %}!{% elif msg in warn_msgs %}i{% else %}✓{% endif %}</span>
@@ -70,7 +70,7 @@ function showSocioNotice(text){
   <div class="miEmbGrid socioProStats">
     <div><small>Tu lugar</small><b>{% if self_view and self_view.waitlisted %}Lista de espera{% elif has_self %}Confirmado{% elif self_reservation %}Cancelada{% else %}Sin reserva{% endif %}</b></div>
     <div><small>Invitados <span class="helpDot" data-tip="El socio es responsable de sus invitados. Si no embarcan o no se presentan, el cargo se imputa al socio.">ⓘ</span></small><b>{{guest_ns.count}}</b></div>
-    <div><small>Cupo <span class="helpDot" data-tip="Cantidad máxima de tripulantes para esta salida. El capitán no cuenta dentro de este cupo.">ⓘ</span></small><b>{{active_count}} / {{outing.max_crew}}</b></div>
+    <div><small>Plazas disponibles <span class="helpDot" data-tip="Plazas normales disponibles para socios e invitados. La reserva institucional, si existe, queda separada.">ⓘ</span></small><b>{{active_count}} / {{outing.max_crew}}{% if outing.institutional_reserve %}<small>Reserva institucional: {{outing.institutional_reserve}}</small>{% endif %}</b></div>
   </div>
   <div class="socioProProgress" aria-label="Ocupación de cupo"><i style="width: {{ ((active_count / outing.max_crew) * 100)|round(0, 'floor') if outing.max_crew else 0 }}%"></i></div>
   <div class="socioV51Crew" aria-label="Tripulación confirmada">
@@ -115,11 +115,21 @@ function showSocioNotice(text){
     {% endif %}
   </form>
 {% endif %}
+{% if user.can_manage_protocolar and self_reservation and not closed and not outing_cancelled %}
+  <form class="protoSelfBox" method="post" action="/socio/protocolar/{{self_reservation.id}}">
+    <input type="hidden" name="outing_id" value="{{outing.id}}">
+    {% if self_view and self_view.protocolar %}
+      <input type="hidden" name="remove" value="1"><button class="protoBtn remove" type="submit">Quitar mi participación protocolar</button>
+    {% else %}
+      <input name="protocolar_reason" placeholder="Motivo protocolar" value="Autorizado por Comisión Fjord VI"><button class="protoBtn" type="submit">Marcar mi participación protocolar</button>
+    {% endif %}
+  </form>
+{% endif %}
 </section>
 {% endif %}
 
 <section class="socioV51QuickActions" aria-label="Acciones rápidas">
-  <a href="#invitados"><b>Invitar</b><small>Agregar invitado</small></a>{% if user.can_manage_protocolar %}<a href="#invitados"><b>Protocolar</b><small>Comisión Fjord VI</small></a>{% endif %}
+  <a href="#invitados"><b>Invitar</b><small>Agregar invitado</small></a>{% if user.can_manage_protocolar %}<a href="#protocolar"><b>Protocolar</b><small>Comisión Fjord VI</small></a>{% endif %}{% if user.can_manage_protocolar %}<a href="#invitados"><b>Protocolar</b><small>Comisión Fjord VI</small></a>{% endif %}
   <a href="/static/reglamento.html" target="_blank" rel="noopener"><b>Reglamento</b><small>Reglas y cargos</small></a>
   <a href="#inicio"><b>Estado</b><small>Cupo y salida</small></a>
 </section>
@@ -157,10 +167,10 @@ function showSocioNotice(text){
   {% set ns = namespace(count=0) %}
   {% for r in mine %}{% if r.dni != user.dni %}{% set ns.count = ns.count + 1 %}{% set v = reservation_views.get(r.id) %}
     <div class="premiumPerson boardingPass {{v.level}} {{v.tipo_class}} {% if v.waitlisted %}bpWait{% elif v.active %}bpActive{% else %}bpCancelled{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %}">
-      <div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
+      <div class="personMain"><b>{{r.person_name}}</b><span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% if v.protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% endif %}
+        <div class="personState">{% if v.waitlisted %}Lista de espera<small>Se activa si se libera una vacante</small>{% elif v.protocolar %}Participación protocolar · Sin cargo{% elif v.charge > 0 %}Cargo firme · $ {{v.charge_label}}{% elif v.charge_is_preliminary %}Estimación · $ {{v.charge_preview_label}}<small>Sujeto a confirmación final</small>{% elif outing_cancelled %}Sin cargo{% else %}{{v.alert}}{% endif %}</div>
       </div>
-      <div class="personAction">{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">🔒 Cerrado</span>{% elif v.waitlisted %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini neutralBtn">Salir de espera</button></form>{% elif v.active %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Cancelar invitado</button></form>{% else %}<form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporar</button></form>{% endif %}</div>
+      <div class="personAction">{% if user.can_manage_protocolar and not closed and not outing_cancelled %}<form class="protoInlineForm" method="post" action="/socio/protocolar/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}">{% if v.protocolar %}<input type="hidden" name="remove" value="1"><button class="mini protoRemove">Quitar protocolar</button>{% else %}<input type="hidden" name="protocolar_reason" value="Autorizado por Comisión Fjord VI"><button class="mini protoAction">Marcar protocolar</button>{% endif %}</form>{% endif %}{% if outing_cancelled %}<span class="pill neutral">Bloqueado</span>{% elif closed %}<span class="pill neutral">🔒 Cerrado</span>{% elif v.waitlisted %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini neutralBtn">Salir de espera</button></form>{% elif v.active %}<form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini secondaryDanger">Cancelar invitado</button></form>{% else %}<form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="mini okBtn">Reincorporar</button></form>{% endif %}</div>
     </div>
   {% endif %}{% endfor %}
   {% if ns.count == 0 %}<div class="empty emptyBoarding"><b>Sin invitados cargados</b><small>Todavía no agregaste invitados ni menores para esta salida. Cuando tengas tu reserva activa, podés cargarlos desde este bloque.</small></div>{% endif %}
@@ -169,6 +179,22 @@ function showSocioNotice(text){
   <div class="formIntro"><b>Agregar invitado</b><small>Los invitados quedan asociados a tu reserva titular.</small></div><form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">{% if remaining == 0 %}Agregar a lista de espera{% else %}Agregar invitado{% endif %}</button></form>
   {% elif not closed and not has_self %}<div class="empty lockedGuestBox"><button type="button" class="mini neutralBtn lockedBtn" onclick="showSocioNotice('Primero debés anotarte como socio titular para agregar invitados.')">🔒 Agregar invitados</button></div>{% endif %}
 </section>
+
+
+{% if user.can_manage_protocolar and outing and not closed and not outing_cancelled %}
+<section class="card premiumCard socioProCard socioProtocolarPanel" id="protocolar">
+  <div class="cardTitle"><div><span class="eyebrow">Comisión Fjord VI</span><h2>Participaciones protocolares</h2></div><span class="pill neutral">Sin cargo</span></div>
+  <p class="formHint">Permite agregar socios o personas externas como participación protocolar. Ocupan plaza institucional, no generan cargo y no dependen del socio anfitrión para embarcar.</p>
+  <form class="gridForm guestForm premiumForm" method="post" action="/socio/add_protocolar">
+    <input type="hidden" name="outing_id" value="{{outing.id}}">
+    <input class="input" name="member_no" placeholder="Nº socio, si corresponde">
+    <input class="input" name="name" placeholder="Nombre y apellido si es externo">
+    <input class="input" name="dni" placeholder="DNI / Pasaporte / Documento">
+    <input class="input" name="protocolar_reason" placeholder="Motivo protocolar" value="Autorizado por Comisión Fjord VI">
+    <button class="btn light">Agregar participación protocolar</button>
+  </form>
+</section>
+{% endif %}
 
 <details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
 {% endif %}
