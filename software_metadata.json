@@ -1,7 +1,11 @@
 {
   "software": "Fjord VI Embarque",
-  "version": "1.1.7",
+  "version": "1.1.9",
   "author": "Sebastián Isenberg",
-  "scope": "Sistema de reservas, embarque y cierre de navegación Fjord VI",
+  "features": [
+    "participacion_protocolar",
+    "permiso_comision_fjord_vi",
+    "capacidad_operativa_por_salida"
+  ],
   "visibility": "internal_metadata_only"
 }

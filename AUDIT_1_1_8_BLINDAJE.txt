@@ -1,0 +1,13 @@
+Fjord VI 1.1.9 Blindaje
+
+{
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "version_txt": "Fjord VI 1.1.9",
+  "metadata_author_ok": true,
+  "has_blindaje_endpoint": true,
+  "has_safe_import_state": true,
+  "reset_requires_json_backup": true,
+  "old_version_refs": [],
+  "no_vino_refs": []
+}

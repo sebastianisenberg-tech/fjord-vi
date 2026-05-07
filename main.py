@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, 
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 
@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.1.7"
-APP_BUILD = "build-69-premium-operativo-1.0.4"
-RELEASE_LABEL = "Fjord VI 1.1.7"
+VERSION = "1.1.9"
+APP_BUILD = "build-119-protocolar"
+RELEASE_LABEL = "Fjord VI 1.1.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -84,6 +84,7 @@ class User(Base):
     role = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     active = Column(Boolean, default=True)
+    can_manage_protocolar = Column(Boolean, default=False)
 
 class Outing(Base):
     __tablename__ = "outings"
@@ -113,6 +114,9 @@ class Reservation(Base):
     birth_date = Column(String, nullable=True)
     created_at = Column(DateTime, default=now_local)
     cancelled_at = Column(DateTime, nullable=True)
+    protocolar = Column(Boolean, default=False)
+    protocolar_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    protocolar_reason = Column(Text, default="")
     __table_args__ = (UniqueConstraint("outing_id", "dni", name="uq_outing_dni"),)
 
 class AuditLog(Base):
@@ -483,9 +487,15 @@ def ensure_schema():
     except Exception:
         reservation_columns = []
 
-    if "birth_date" not in reservation_columns:
-        with engine.begin() as conn:
+    with engine.begin() as conn:
+        if "birth_date" not in reservation_columns:
             conn.execute(text("ALTER TABLE reservations ADD COLUMN birth_date VARCHAR"))
+        if "protocolar" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar BOOLEAN DEFAULT FALSE"))
+        if "protocolar_by_user_id" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar_by_user_id INTEGER"))
+        if "protocolar_reason" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar_reason TEXT"))
 
     try:
         user_columns = [c["name"] for c in inspector.get_columns("users")]
@@ -503,6 +513,8 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN category VARCHAR"))
         if "birth_date" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN birth_date VARCHAR"))
+        if "can_manage_protocolar" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN can_manage_protocolar BOOLEAN DEFAULT FALSE"))
 
 
 def set_system_meta(key: str, value: str):
@@ -1135,16 +1147,33 @@ def persist_json(db: Session):
     """
     return False
 
-def import_state(db: Session, data: dict):
-    try:
-        db.query(ClosingSheet).delete()
-    except Exception:
-        pass
-    db.query(AuditLog).delete()
-    db.query(Reservation).delete()
-    db.query(Outing).delete()
-    db.query(User).delete()
-    db.commit()
+def import_state(db: Session, data: dict, allow_destructive: bool = False):
+    """Importa estado desde backup JSON.
+
+    Blindaje 1.1.9:
+    - Por defecto solo importa sobre base vacía.
+    - Para borrar datos existentes debe llamarse con allow_destructive=True.
+    - El flujo automático restore_json_if_db_empty usa el modo seguro.
+    """
+    has_existing_data = bool(
+        db.query(User).count()
+        or db.query(Outing).count()
+        or db.query(Reservation).count()
+        or db.query(AuditLog).count()
+    )
+    if has_existing_data and not allow_destructive:
+        raise RuntimeError("Importación bloqueada: la base no está vacía.")
+
+    if allow_destructive:
+        try:
+            db.query(ClosingSheet).delete()
+        except Exception:
+            pass
+        db.query(AuditLog).delete()
+        db.query(Reservation).delete()
+        db.query(Outing).delete()
+        db.query(User).delete()
+        db.commit()
     for u in data.get("users", []):
         db.add(User(id=u.get("id"), name=u.get("name") or "", dni=norm_dni(u.get("dni") or ""),
                     member_no=u.get("member_no"), email=u.get("email") or None, phone=u.get("phone") or None,
@@ -1408,6 +1437,7 @@ def displaceable_guest_for_socios(db: Session, outing: Outing) -> Optional[Reser
     candidates = [
         r for r in active_reservations(rows)
         if canonical_kind(r.kind) in ("invitado", "hijo_menor")
+        and not is_protocolar(r)
         and (r.attendance or "Por confirmar") != "Presente"
     ]
     if not candidates:
@@ -1508,9 +1538,10 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
             r for r in active
             if (r.attendance or "Por confirmar") != "Presente"
             and canonical_kind(r.kind) in ("invitado", "hijo_menor")
+            and not is_protocolar(r)
         ]
         if not candidates:
-            candidates = [r for r in active if (r.attendance or "Por confirmar") != "Presente"]
+            candidates = [r for r in active if (r.attendance or "Por confirmar") != "Presente" and not is_protocolar(r)]
         if not candidates:
             break
 
@@ -1547,15 +1578,17 @@ def reservation_charge(outing: Outing, r: Reservation) -> float:
 
     Regla operativa vigente para paseos Fjord VI:
     - Socio presente: no paga.
-    - Socio no vino / ausente: paga 70% de la tarifa de invitado.
+    - Socio no embarcó / ausente: paga 70% de la tarifa de invitado.
     - Invitado / hijo menor no socio presente: paga tarifa completa por navegación
       (eso se liquida aparte, no en esta función).
-    - Invitado / hijo menor no socio no vino: paga tarifa completa de invitado.
+    - Invitado / hijo menor no socio no embarcó: paga tarifa completa de invitado.
     - No embarca por decisión del capitán: se filtra antes y siempre queda sin cargo.
 
     Esta función NO se usa para navegación normal; solo para ausencias/cancelaciones
     tardías con cargo.
     """
+    if is_protocolar(r):
+        return 0.0
     fee = float(outing.guest_fee or 0)
     k = canonical_kind(r.kind)
     if k == "socio":
@@ -1570,6 +1603,17 @@ def human_money(value) -> str:
 # Alias de compatibilidad: varias rutinas de emails/cierre usan fmt_money.
 def fmt_money(value) -> str:
     return human_money(value)
+
+
+def can_manage_protocolar(user: User) -> bool:
+    return bool(user and (user.role == "admin" or getattr(user, "can_manage_protocolar", False)))
+
+def is_protocolar(r: Reservation) -> bool:
+    return bool(getattr(r, "protocolar", False))
+
+def protocolar_label(r: Reservation) -> str:
+    return "Participación protocolar" if is_protocolar(r) else ""
+
 
 def mask_document(value) -> str:
     """Documento abreviado para pantallas móviles/operativas.
@@ -1592,6 +1636,39 @@ templates.env.globals.update({"user_age_label": user_age_label})
 def valid_email_syntax(email: str) -> bool:
     e = (email or "").strip()
     return bool(e and "@" in e and "." in e.split("@")[-1] and " " not in e)
+
+def data_blindaje_checks(db: Session) -> dict:
+    """Chequeos defensivos de consistencia sin modificar datos."""
+    checks = {
+        "duplicate_user_dni": [],
+        "duplicate_member_no": [],
+        "duplicate_reservation_dni_by_outing": [],
+        "multiple_vigente_sheets_by_outing": [],
+        "orphan_guest_reservations": [],
+    }
+
+    # Usuarios con DNI/documento repetido.
+    rows = db.query(User.dni).filter(User.dni.isnot(None), User.dni != "").group_by(User.dni).having(func.count(User.id) > 1).all()
+    checks["duplicate_user_dni"] = [r[0] for r in rows]
+
+    # N° de socio repetido. El modelo no siempre tiene restricción física para member_no.
+    rows = db.query(User.member_no).filter(User.member_no.isnot(None), User.member_no != "").group_by(User.member_no).having(func.count(User.id) > 1).all()
+    checks["duplicate_member_no"] = [r[0] for r in rows]
+
+    # Una misma persona repetida dentro de la misma salida.
+    rows = db.query(Reservation.outing_id, Reservation.dni).filter(Reservation.dni != "").group_by(Reservation.outing_id, Reservation.dni).having(func.count(Reservation.id) > 1).all()
+    checks["duplicate_reservation_dni_by_outing"] = [{"outing_id": r[0], "dni": r[1]} for r in rows]
+
+    # Más de una ficha vigente por salida.
+    rows = db.query(ClosingSheet.outing_id).filter(ClosingSheet.status == "VIGENTE").group_by(ClosingSheet.outing_id).having(func.count(ClosingSheet.id) > 1).all()
+    checks["multiple_vigente_sheets_by_outing"] = [r[0] for r in rows]
+
+    # Invitados/menores sin socio responsable.
+    rows = db.query(Reservation).filter(Reservation.kind.in_(["invitado", "hijo_menor"]), Reservation.responsible_user_id.is_(None)).all()
+    checks["orphan_guest_reservations"] = [{"reservation_id": r.id, "outing_id": r.outing_id, "name": r.person_name} for r in rows]
+
+    checks["ok"] = not any(v for k, v in checks.items() if k != "ok")
+    return checks
 
 
 SOCIO_CATEGORIES = [
@@ -1953,6 +2030,9 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
     cancelled = bool(r.cancelled_at) or r.status == "Cancelado" or captain_cancelled
     charge = actual_charge(outing, r)
     charge_preview = projected_charge(outing, r)
+    if is_protocolar(r):
+        charge = 0.0
+        charge_preview = 0.0
     closed = is_closed_outing(outing)
     preliminary = (not closed) and charge == 0 and charge_preview > 0
     outing_cancelled = is_outing_cancelled_by_captain(outing)
@@ -2041,7 +2121,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         if cancelled:
             motivo = motivo or "Preliquidación por baja tardía, no firme hasta cierre"
         elif raw_attendance in ("Ausente", "No embarcable"):
-            motivo = motivo or "Preliquidación por no vino/no embarque, no firme hasta cierre"
+            motivo = motivo or "Preliquidación por no embarcó/no embarque, no firme hasta cierre"
         else:
             motivo = "Tarifa de invitado pendiente de cierre"
     elif cancelled:
@@ -2107,6 +2187,8 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         "motivo": motivo,
         "charge": charge,
         "charge_preview": charge_preview,
+        "protocolar": is_protocolar(r),
+        "protocolar_label": protocolar_label(r),
         "charge_is_preliminary": preliminary,
         "critical": bool(charge > 0 or preliminary or is_not_embarked or cancelled),
         "closed": closed,
@@ -2309,6 +2391,8 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
             "dni": (r.dni or "") if k in ("invitado", "hijo_menor") else "",
             "responsible_member_no": (responsible.member_no if responsible else "") or "",
             "reason": (r.cancel_reason or v.get("motivo") or ""),
+            "protocolar": is_protocolar(r),
+            "protocolar_label": protocolar_label(r),
             "amount": charge,
             "amount_label": human_money(charge),
         }
@@ -2814,6 +2898,39 @@ async def add_guest(
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
 
+@app.post("/socio/protocolar/{rid}")
+def socio_protocolar(
+    rid: int,
+    outing_id: Optional[int] = Form(None),
+    protocolar_reason: str = Form(""),
+    remove: Optional[str] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio", "admin"))
+):
+    if not can_manage_protocolar(user):
+        return RedirectResponse("/socio?msg=sin_permiso_protocolar", status_code=303)
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    if not r or not outing or r.outing_id != outing.id:
+        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
+    ensure_outing_editable(outing)
+    if remove == "1":
+        r.protocolar = False
+        r.protocolar_by_user_id = None
+        r.protocolar_reason = ""
+        log(db, user.name, "quita participación protocolar", f"{r.person_name} / {outing.title}")
+        msg = "protocolar_quitado"
+    else:
+        r.protocolar = True
+        r.protocolar_by_user_id = user.id
+        r.protocolar_reason = (protocolar_reason or "Autorizado por Comisión Fjord VI").strip()
+        r.charge_amount = 0
+        log(db, user.name, "marca participación protocolar", f"{r.person_name} / {outing.title} / {r.protocolar_reason}")
+        msg = "protocolar_ok"
+    db.commit()
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg={msg}", status_code=303)
+
+
 @app.post("/socio/cancel/{rid}")
 def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
@@ -3000,7 +3117,7 @@ def present_guest_without_present_responsible_errors(db: Session, outing: Outing
     """Validación dura de embarque.
 
     Un invitado presente solo puede navegar si su socio responsable también figura
-    Presente y activo en la misma salida. Si el socio no vino, fue bajado, está
+    Presente y activo en la misma salida. Si el socio no embarcó, fue bajado, está
     cancelado, en espera o no embarca por capitán, el invitado debe reasignarse
     a otro socio presente o marcarse No embarca / No embarcó antes del cierre.
     """
@@ -3432,7 +3549,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.charge_amount = 0
         r.attendance = value
     elif value == "Ausente":
-        # Ausente verdadero: no vino y queda como plaza perdida con cargo reglamentario.
+        # Ausente verdadero: no embarcó y queda como plaza perdida con cargo reglamentario.
         # Si venía de una reasignación, se conserva la traza y se agrega el estado final.
         r.attendance = "Ausente"
         r.cancel_reason = (previous_trace + " · Ausente / no se presentó") if previous_trace else "Ausente / no se presentó"
@@ -4005,6 +4122,7 @@ def create_user(
     category: str = Form(""),
     birth_date: str = Form(""),
     role: str = Form("socio"),
+    can_manage_protocolar_form: Optional[str] = Form(None),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -4048,7 +4166,8 @@ def create_user(
             birth_date=(birth_date or "").strip() or None,
             role=role,
             password_hash=hash_password("demo1234"),
-            active=True
+            active=True,
+            can_manage_protocolar=bool(can_manage_protocolar_form == "on") if role == "socio" else False
         )
         db.add(new_user)
         db.commit()
@@ -4109,6 +4228,7 @@ def update_user(
     birth_date: str = Form(""),
     role: str = Form("socio"),
     active: str = Form("activo"),
+    can_manage_protocolar_form: Optional[str] = Form(None),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -4165,6 +4285,7 @@ def update_user(
         target.category = normalize_category(category) or None
         target.birth_date = (birth_date or "").strip() or None
         target.role = role
+        target.can_manage_protocolar = bool(can_manage_protocolar_form == "on") if role == "socio" else False
         if target.id == user.id and active != "activo":
             return RedirectResponse("/admin?page=socios&msg=no_puede_desactivarse", status_code=303)
         target.active = (active == "activo")
@@ -4523,10 +4644,11 @@ def admin_outing_status(
     return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/admin/new_outing")
-def new_outing(title: str = Form(...), departure_at: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+def new_outing(title: str = Form(...), departure_at: str = Form(...), max_crew: int = Form(MAX_CREW), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     dep = datetime.fromisoformat(departure_at)
+    capacity = max(1, min(int(max_crew or MAX_CREW), 30))
     # Módulo actual limitado a paseos: destino/tipo y tarifa quedan fijos por sistema.
-    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=INVITED_FEE, status="En reservas", max_crew=MAX_CREW, min_crew=MIN_CREW)
+    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=INVITED_FEE, status="En reservas", max_crew=capacity, min_crew=MIN_CREW)
     db.add(o)
     db.commit()
     db.refresh(o)
@@ -4663,6 +4785,12 @@ def admin_schema_check(db: Session = Depends(db_session), user: User = Depends(r
     set_system_meta("last_schema_check", now_local().isoformat())
     log(db, user.name, "schema check", "Revisión técnica de esquema ejecutada desde Sistema")
     return RedirectResponse("/admin?page=sistema&msg=schema_ok", status_code=303)
+
+@app.get("/admin/blindaje.json")
+def admin_blindaje_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Diagnóstico rápido de consistencia de datos. No modifica la base."""
+    return data_blindaje_checks(db)
+
 
 @app.get("/admin/diagnostic.txt")
 def admin_diagnostic_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
@@ -4966,6 +5094,8 @@ def admin_production_reset(
 
     # Backup previo obligatorio. Si el backup JSON falla, no se resetea.
     backups = create_pre_reset_backups(db)
+    if not backups.get("json"):
+        raise HTTPException(500, "Reset bloqueado: no se pudo generar backup JSON previo.")
 
     reset_operational_sequences(db)
 

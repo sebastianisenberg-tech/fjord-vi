@@ -1,0 +1,17 @@
+{
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "version": "Fjord VI 1.1.9",
+  "has_permission_column": true,
+  "has_reservation_protocolar_columns": true,
+  "has_schema_migration": true,
+  "has_protocolar_route": true,
+  "protocolar_zero_charge": true,
+  "protocolar_no_displacement": true,
+  "has_capacity_form": true,
+  "has_capacity_backend": true,
+  "has_admin_checkbox": true,
+  "has_socio_protocolar_ui": true,
+  "has_closing_protocolar": true,
+  "old_refs": []
+}
