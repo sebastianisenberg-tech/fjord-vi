@@ -1,0 +1,11 @@
+{
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "version": "Fjord VI 1.2.3",
+  "has_http_exception_handler": true,
+  "has_session_template": true,
+  "session_required_json_avoided": true,
+  "post_redirects_login": true,
+  "deletes_bad_cookie": true,
+  "old_refs": []
+}

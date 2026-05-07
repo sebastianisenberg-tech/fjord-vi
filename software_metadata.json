@@ -1,12 +1,12 @@
 {
   "software": "Fjord VI Embarque",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": "Sebastián Isenberg",
   "fixes": [
-    "nombre_visible_permanente_protocolar",
-    "badge_protocolar_sin_duplicacion",
-    "identidad_visible_en_capitan_cerrado",
-    "truncado_mobile_seguro"
+    "sesion_requerida_html_amable",
+    "sin_json_crudo_en_pantallas_protegidas",
+    "redirigir_post_sin_sesion_al_ingreso",
+    "cache_control_no_store_en_sesion_vencida"
   ],
   "visibility": "internal_metadata_only"
 }

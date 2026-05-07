@@ -53,9 +53,9 @@ MAX_CREW = int(os.getenv("MAX_CREW", "9"))
 MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
-VERSION = "1.2.2"
-APP_BUILD = "build-122-protocolar-name-fix"
-RELEASE_LABEL = "Fjord VI 1.2.2"
+VERSION = "1.2.3"
+APP_BUILD = "build-123-session-friendly"
+RELEASE_LABEL = "Fjord VI 1.2.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -670,6 +670,46 @@ if not TEMPLATES_DIR.exists():
     TEMPLATES_DIR = APP_DIR
 templates = SafeTemplates(TEMPLATES_DIR)
 
+@app.exception_handler(HTTPException)
+async def friendly_http_exception_handler(request: Request, exc: HTTPException):
+    """Evita pantallas JSON crudas cuando vence o falta sesión.
+
+    En rutas de pantalla devuelve HTML amable.
+    En acciones POST redirige al ingreso para no dejar al usuario en una página técnica.
+    """
+    detail = str(exc.detail or "")
+    if exc.status_code == 401 and "Sesión requerida" in detail:
+        if request.method != "GET":
+            resp = RedirectResponse("/?error=session", status_code=303)
+            resp.delete_cookie("fjord_uid")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
+        resp = templates.TemplateResponse(
+            request,
+            "session_required.html",
+            {"request": request, "version": VERSION, "release_label": RELEASE_LABEL}
+        )
+        resp.status_code = 401
+        resp.headers["Cache-Control"] = "no-store"
+        resp.delete_cookie("fjord_uid")
+        return resp
+
+    if exc.status_code == 403 and request.method == "GET":
+        return HTMLResponse(
+            """<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fjord VI · Acceso no autorizado</title><style>body{font-family:Arial,sans-serif;background:#eef5f9;color:#102033;padding:24px}.box{max-width:520px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.12)}a{display:inline-block;margin-top:12px;background:#0b5f8f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}</style></head><body><div class='box'><h1>Acceso no autorizado</h1><p>Tu usuario no tiene permiso para esta pantalla.</p><a href='/'>Volver al inicio</a></div></body></html>""",
+            status_code=403,
+            headers={"Cache-Control": "no-store"}
+        )
+
+    return HTMLResponse(
+        f"""<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fjord VI · Error</title><style>body{{font-family:Arial,sans-serif;background:#eef5f9;color:#102033;padding:24px}}.box{{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.12)}}code{{display:block;margin-top:10px;color:#8a1f1f}}a{{display:inline-block;margin-top:12px;background:#0b5f8f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}}</style></head><body><div class='box'><h1>Fjord VI</h1><p>No se pudo completar esta acción.</p><code>{detail}</code><a href='/'>Volver al inicio</a></div></body></html>""",
+        status_code=exc.status_code,
+        headers={"Cache-Control": "no-store"}
+    )
+
+
+
+
 WEEKDAY_ES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
 def fmt_admin_datetime(dt: datetime) -> str:
@@ -1161,7 +1201,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.2.2:
+    Blindaje 1.2.3:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1572,7 +1612,7 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
 
     displaced = []
 
-    # Blindaje 1.2.2: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Blindaje 1.2.3: la reserva institucional no puede ser ocupada por lista/reservas normales.
     # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
     # a invitados/menores no presentes y luego a otros registros no presentes.
     while True:
