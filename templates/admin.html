@@ -204,23 +204,19 @@
   </nav>
 
   <main class="erpMain">
-  {% if msg %}
-  {% set msgMapAdminV109 = {
-    'usuario_creado':'Usuario creado correctamente.',
-    'datos_usuario_invalidos':'No se pudo crear el usuario: faltan datos obligatorios.',
-    'falta_nombre':'No se pudo crear el usuario: falta el nombre.',
-    'falta_socio_o_documento':'No se pudo crear el socio: cargá Nº de socio o documento.',
-    'falta_documento':'No se pudo crear el usuario: falta documento.',
-    'usuario_existente':'No se pudo crear: ya existe un usuario con ese documento.',
-    'socio_existente':'No se pudo crear: ya existe un socio con ese Nº de socio.',
-    'rol_invalido':'No se pudo crear: rol inválido.'
-  } %}
-  <div class="adminNotice {% if msg in ['usuario_creado'] %}ok{% else %}warn{% endif %}">
-    {{ msgMapAdminV109.get(msg, msg) }}
-  </div>
-  {% endif %}
-
-    {% if msg %}<div class="msg">Operación registrada: {{msg}}</div>{% endif %}
+    {% if msg %}
+    <div class="msg">
+      {% if msg == 'usuario_creado' %}Usuario creado correctamente.
+      {% elif msg == 'falta_nombre' %}No se pudo crear el usuario: falta el nombre.
+      {% elif msg == 'falta_socio_o_documento' %}No se pudo crear el socio: cargá Nº de socio o documento.
+      {% elif msg == 'falta_documento' %}No se pudo crear el usuario: falta documento.
+      {% elif msg == 'usuario_existente' %}No se pudo crear: ya existe un usuario con ese documento.
+      {% elif msg == 'socio_existente' %}No se pudo crear: ya existe un socio con ese Nº de socio.
+      {% elif msg == 'rol_invalido' %}No se pudo crear: rol inválido.
+      {% else %}Operación registrada: {{msg}}
+      {% endif %}
+    </div>
+    {% endif %}
     {% if admin_page == 'sistema' and system_console.get('missing_sheet_count') and system_console.get('missing_sheet_count') > 0 %}<div class="smartAlert warn"><b>Atención técnica:</b><span>{{system_console.get('missing_sheet_count')}} salidas cerradas no tienen ficha vigente.</span><a href="#integridad">Revisar integridad</a></div>{% endif %}
 
     {% if admin_page == 'dashboard' %}
@@ -425,8 +421,7 @@
 
     <div class="erpWorkGrid">
       <article class="erpCard"><h3>Estado <span class="infoTip" title="La cola se procesa automáticamente en pequeñas tandas cuando hay uso del sistema. El botón Procesar cola sirve para forzar el envío manualmente.">i</span></h3><div class="systemKv"><span>SMTP</span><b>{% if communications.smtp_configured %}configurado{% else %}pendiente{% endif %}</b></div><div class="systemKv"><span>Procesamiento</span><b>automático + manual</b></div><div class="systemKv"><span>Pendientes</span><b>{{communications.pending}}</b></div><div class="systemKv"><span>Fallidos</span><b>{{communications.failed}}</b></div><div class="systemKv"><span>Enviados hoy</span><b>{{communications.sent_today}}</b></div></article>
-      <article class="erpCard"><h3>Email de prueba <span class="infoTip" title="Envía un correo real usando la configuración SMTP actual. Sirve para validar remitente, puerto, TLS y credenciales.">i</span></h3><form method="post" action="/admin/communications/test" class="drawerForm"><label>Enviar a<input name="test_email" type="email" required placeholder="correo@dominio.com"></label>
-<p class="formHint">Para socios, el Nº de socio alcanza para el alta. El DNI real no es obligatorio.</p><button class="erpBtn erpPrimary" type="submit">Enviar prueba</button></form></article>
+      <article class="erpCard"><h3>Email de prueba <span class="infoTip" title="Envía un correo real usando la configuración SMTP actual. Sirve para validar remitente, puerto, TLS y credenciales.">i</span></h3><form method="post" action="/admin/communications/test" class="drawerForm"><label>Enviar a<input name="test_email" type="email" required placeholder="correo@dominio.com"></label><button class="erpBtn erpPrimary" type="submit">Enviar prueba</button></form></article>
     </div>
 
     <article class="erpCard"><h3>Configuración SMTP <span class="infoTip" title="Usar preferentemente un proveedor transaccional: Brevo, SendGrid, Mailgun, SES o cuenta institucional del club.">i</span></h3><form method="post" action="/admin/communications/settings" class="drawerForm commGrid"><label>SMTP host<input name="smtp_host" value="{{communications.settings.host}}" placeholder="smtp.sendgrid.net"></label><label>Puerto<input name="smtp_port" value="{{communications.settings.port}}" placeholder="587"></label><label>Usuario<input name="smtp_username" value="{{communications.settings.username}}"></label><label>Password<input name="smtp_password" type="password" placeholder="Dejar vacío para conservar"></label><label>Remitente email<input name="smtp_from_email" type="email" value="{{communications.settings.from_email}}" placeholder="fjord@club.org"></label><label>Nombre remitente<input name="smtp_from_name" value="{{communications.settings.from_name}}"></label><label>Email administración<input name="communications_admin_email" type="email" value="{{communications.settings.admin_email}}" placeholder="administracion@club.org"></label><label><input type="checkbox" name="smtp_tls" value="1" {% if communications.settings.tls in ['1','true','True','yes','on'] %}checked{% endif %}> Usar TLS</label><button class="erpBtn erpPrimary" type="submit">Guardar configuración</button></form></article>
