@@ -1,6 +1,6 @@
 Software: Fjord VI Embarque
-Version: 1.2.0
+Version: 1.2.2
 Autor: Sebastián Isenberg
 Ambito: Sistema de reservas, embarque y cierre de navegación Fjord VI
 Nota: metadatos internos; no visible en pantallas operativas.
-Incluye: Participación protocolar completa, reserva institucional por salida, capacidad pública separada y permisos institucionales avanzados.
+Corrección: nombre visible permanente en participaciones protocolares y badge PROTOCOLAR sin duplicación.

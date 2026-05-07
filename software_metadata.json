@@ -1,13 +1,12 @@
 {
   "software": "Fjord VI Embarque",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "author": "Sebastián Isenberg",
-  "features": [
-    "participacion_protocolar_completa",
-    "reserva_institucional_por_salida",
-    "capacidad_publica_separada",
-    "permiso_comision_fjord_vi_avanzado",
-    "protocolar_independiente_del_socio_anfitrion"
+  "fixes": [
+    "nombre_visible_permanente_protocolar",
+    "badge_protocolar_sin_duplicacion",
+    "identidad_visible_en_capitan_cerrado",
+    "truncado_mobile_seguro"
   ],
   "visibility": "internal_metadata_only"
 }

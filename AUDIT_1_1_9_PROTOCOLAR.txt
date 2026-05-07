@@ -1,7 +1,7 @@
 {
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "version": "Fjord VI 1.2.0",
+  "version": "Fjord VI 1.2.2",
   "has_permission_column": true,
   "has_reservation_protocolar_columns": true,
   "has_schema_migration": true,

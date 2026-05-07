@@ -1,0 +1,12 @@
+{
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "version": "Fjord VI 1.2.2",
+  "captain_name_class": true,
+  "captain_duplicate_badge_removed": true,
+  "captain_badge_count": 1,
+  "socio_name_class": true,
+  "closing_name_class": true,
+  "css_visibility_fix": true,
+  "old_refs": []
+}
