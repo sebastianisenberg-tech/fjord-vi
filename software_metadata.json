@@ -2,10 +2,40 @@
   "software": "Fjord VI Embarque",
   "version": "1.2.6",
   "author": "Sebastián Isenberg",
-  "fixes": [
-    "login_icono_ojo_clave",
-    "elimina_boton_ver_grande",
-    "conserva_estetica_premium_login"
+  "institution": "Yacht Club Argentino",
+  "boat": "Fjord VI",
+  "purpose": "Sistema web para reservas, embarque, check-in, cierre de navegación y liquidación operativa del Fjord VI.",
+  "runtime_files": [
+    "main.py",
+    "templates/",
+    "static/",
+    "requirements.txt",
+    "Procfile",
+    "Dockerfile",
+    "docker-compose.yml",
+    "render.yaml",
+    "start.sh"
   ],
-  "visibility": "internal_metadata_only"
+  "core_modules": [
+    "Login y roles",
+    "Socio",
+    "Capitán",
+    "Administración",
+    "Reservas y lista de espera",
+    "Participaciones protocolares",
+    "Cierre y liquidación",
+    "Fichas vigentes/anuladas",
+    "Exportaciones CSV/PDF",
+    "Auditoría operativa"
+  ],
+  "latest_features": [
+    "Pantalla amable de sesión vencida",
+    "Participación protocolar sin cargo",
+    "Reserva institucional por salida",
+    "Capacidad operativa editable",
+    "Nombre visible permanente en protocolares",
+    "Login con control mostrar/ocultar clave integrado"
+  ],
+  "repository_profile": "production-clean",
+  "notes": "Este ZIP elimina auditorías transitorias y residuos de desarrollo. Las auditorías históricas no son necesarias para ejecución ni deploy."
 }

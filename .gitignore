@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+.DS_Store
+*.sqlite
+*.db
+fjord_vi_data.json
+*.log
+AUDIT_*.txt

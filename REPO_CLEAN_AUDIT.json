@@ -1,0 +1,24 @@
+{
+  "version": "1.2.6",
+  "profile": "production-clean",
+  "essential_present": {
+    "main.py": true,
+    "templates": true,
+    "static": true,
+    "requirements.txt": true,
+    "Procfile": true,
+    "Dockerfile": true,
+    "docker-compose.yml": true,
+    "render.yaml": true,
+    "start.sh": true,
+    "README.md": true,
+    "CHANGELOG.md": true,
+    "VERSION.txt": true,
+    "software_metadata.json": true,
+    ".gitignore": true
+  },
+  "remaining_audits": [],
+  "remaining_pycache": [],
+  "remaining_pyc": [],
+  "status": "ok"
+}
