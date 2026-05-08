@@ -1,11 +1,13 @@
 # Changelog
 
-## 1.6.6
+## 1.6.7
 
-- Identidad visual para cada navegación mediante barra lateral y badge `Paseo`.
-- Refinamiento de microtipografía.
-- Mejora de contraste fino.
-- CSS más sistemático con tokens visuales.
-- Unificación de pills/badges.
-- Quick actions mejor alineadas.
+- Fine polish final sobre 1.6.6.
+- Hero de próximo embarque con transición visual más integrada.
+- Modo vacío de invitados más premium y menos administrativo.
+- `Historial` más claro y secundario.
+- Participaciones protocolares con card más consistente.
+- Unificación final de pills y badges.
+- Más contraste en metadatos y subtítulos.
+- Ajustes de espaciado fino.
 - Sin cambios de backend ni lógica operativa.
