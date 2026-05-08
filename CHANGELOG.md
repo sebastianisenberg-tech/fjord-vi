@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.1
+## 1.6.4
 
 - Cirugía UX real del bloque Próximas navegaciones.
 - Reemplaza “Elegí una salida” por “Próximas navegaciones”.
