@@ -146,7 +146,7 @@ function showSocioNotice(text){
   </div>
   {% if outings|length > 3 %}
   <details class="moreTripsV161">
-    <summary><span style="font-size:13px;">+ Más salidas</span></summary>
+    <summary><span style="font-size:13px;">Más salidas</span></summary>
     <div class="selectorList compactSelectorV161 moreListV161">
     {% for o in outings %}
       {% if loop.index > 3 %}
@@ -161,7 +161,7 @@ function showSocioNotice(text){
   {% endif %}
   {% if history_groups and history_groups|length > 0 %}
   <details class="historyFold historyMiniV161">
-    <summary>Historial</summary>
+    <summary>Ver historial</summary>
     {% for g in history_groups %}
       <div class="historyMonth">{{g.label}}</div>
       {% for o in g["items"] %}
