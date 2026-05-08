@@ -1,11 +1,11 @@
 # Changelog
 
-## 1.6.4
+## 1.6.5
 
-- Cirugía UX real del bloque Próximas navegaciones.
-- Reemplaza “Elegí una salida” por “Próximas navegaciones”.
-- Muestra solo 3 salidas iniciales.
-- El resto queda colapsado en “+ Más salidas”.
-- “Ver salidas anteriores” pasa a “Historial”.
-- Compacta tarjetas de salidas y reduce scroll.
-- Mantiene todos los controles y rutas existentes.
+- Identidad visual para cada navegación mediante barra lateral y badge `Paseo`.
+- Refinamiento de microtipografía.
+- Mejora de contraste fino.
+- CSS más sistemático con tokens visuales.
+- Unificación de pills/badges.
+- Quick actions mejor alineadas.
+- Sin cambios de backend ni lógica operativa.

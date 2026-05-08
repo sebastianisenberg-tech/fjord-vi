@@ -1,5 +1,5 @@
 {
-  "version": "1.6.4",
+  "version": "1.6.5",
   "controls_removed": false,
   "compact_ui": true,
   "bottom_nav_refined": true,
