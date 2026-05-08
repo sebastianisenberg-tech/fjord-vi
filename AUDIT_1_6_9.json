@@ -2,7 +2,8 @@
   "version": "1.6.9",
   "backend_changed": false,
   "logic_changed": false,
-  "css_final_fine_polish": true,
+  "fix_plus_more": true,
+  "history_more_legible": true,
   "python_syntax_ok": true,
   "jinja_errors": []
 }

@@ -1,13 +1,10 @@
 # Changelog
 
-## 1.6.8
+## 1.6.9
 
-- Fine polish final sobre 1.6.6.
-- Hero de próximo embarque con transición visual más integrada.
-- Modo vacío de invitados más premium y menos administrativo.
-- `Historial` más claro y secundario.
-- Participaciones protocolares con card más consistente.
-- Unificación final de pills y badges.
-- Más contraste en metadatos y subtítulos.
-- Ajustes de espaciado fino.
+- Corrige bug visual de `+ + Más salidas`.
+- Cambia el control a `+ Más salidas` con una sola fuente de verdad visual.
+- Cambia `Historial` a `Ver historial` más legible.
+- Badge `PASEO` apenas más definido.
+- Inputs con borde apenas más visible.
 - Sin cambios de backend ni lógica operativa.
