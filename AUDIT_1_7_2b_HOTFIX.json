@@ -1,9 +1,9 @@
 {
-  "version": "1.7.2b",
+  "version": "1.7.3",
   "hotfix": "APP_VERSION self-reference fixed",
   "python_syntax_ok": true,
   "contains_bad_self_reference": false,
   "app_version_line": [
-    "APP_VERSION = \"1.7.2b\""
+    "APP_VERSION = \"1.7.3\""
   ]
 }

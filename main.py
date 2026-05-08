@@ -11,6 +11,8 @@ import secrets
 import shutil
 import subprocess
 import tempfile
+import traceback
+import uuid
 import smtplib
 from email.message import EmailMessage
 from urllib.parse import urlparse
@@ -23,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.2b"
+APP_VERSION = "1.7.3"
 
 
 # =========================
@@ -56,14 +58,42 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.2b"
-RELEASE_LABEL = "Fjord VI · v1.7.2b"
+APP_BUILD = "Fjord VI 1.7.3"
+RELEASE_LABEL = "Fjord VI · v1.7.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
 APP_MODEL = "Embarque"
 
 APP_TZ = ZoneInfo(os.getenv("APP_TZ", "America/Argentina/Buenos_Aires"))
+
+
+# =========================
+# ROBUSTEZ OPERATIVA / GUARDAS
+# =========================
+RECENT_POST_KEYS = {}
+RECENT_POST_TTL_SECONDS = 12
+
+def _cleanup_recent_post_keys():
+    """Limpieza liviana del guard anti doble-submit."""
+    try:
+        now_ts = datetime.utcnow().timestamp()
+        stale = [k for k, ts in RECENT_POST_KEYS.items() if now_ts - ts > RECENT_POST_TTL_SECONDS]
+        for k in stale[:250]:
+            RECENT_POST_KEYS.pop(k, None)
+    except Exception:
+        pass
+
+def _safe_back_url(request: Request) -> str:
+    ref = request.headers.get("referer") or "/"
+    try:
+        parsed = urlparse(ref)
+        if parsed.netloc and parsed.netloc != request.url.netloc:
+            return "/"
+        return parsed.path + (("?" + parsed.query) if parsed.query else "")
+    except Exception:
+        return "/"
+
 
 def now_local() -> datetime:
     return datetime.now(APP_TZ).replace(tzinfo=None)
@@ -675,6 +705,34 @@ if not TEMPLATES_DIR.exists():
     TEMPLATES_DIR = APP_DIR
 templates = SafeTemplates(TEMPLATES_DIR)
 
+
+@app.middleware("http")
+async def duplicate_post_guard(request: Request, call_next):
+    """Evita doble submit accidental desde móvil o mala conexión.
+
+    No reemplaza las validaciones de negocio del backend.
+    Solo corta requests idénticos con el mismo client_request_id durante pocos segundos.
+    """
+    if request.method.upper() == "POST":
+        path = request.url.path or ""
+        if not path.startswith("/admin/padron/import") and not path.startswith("/admin/import"):
+            rid = request.headers.get("X-Fjord-Request-ID", "").strip()
+            if rid:
+                uid = request.cookies.get("fjord_uid", "")
+                key = f"{uid}:{path}:{rid}"
+                now_ts = datetime.utcnow().timestamp()
+                _cleanup_recent_post_keys()
+                last_ts = RECENT_POST_KEYS.get(key)
+                if last_ts and now_ts - last_ts < RECENT_POST_TTL_SECONDS:
+                    resp = RedirectResponse(_safe_back_url(request), status_code=303)
+                    resp.headers["X-Fjord-Duplicate-Blocked"] = "1"
+                    resp.headers["Cache-Control"] = "no-store"
+                    return resp
+                RECENT_POST_KEYS[key] = now_ts
+    return await call_next(request)
+
+
+
 @app.exception_handler(HTTPException)
 async def friendly_http_exception_handler(request: Request, exc: HTTPException):
     """Evita pantallas JSON crudas cuando vence o falta sesión.
@@ -713,6 +771,36 @@ async def friendly_http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
+
+
+
+@app.exception_handler(Exception)
+async def friendly_unhandled_exception_handler(request: Request, exc: Exception):
+    """Última red de seguridad: evita pantallas blancas/crash visibles.
+
+    En POST vuelve a la pantalla anterior con mensaje recuperable.
+    En GET muestra error controlado. El traceback queda en logs de Render.
+    """
+    request_id = str(uuid.uuid4())[:8]
+    try:
+        print(f"[fjord-error:{request_id}] {request.method} {request.url.path}: {repr(exc)}")
+        traceback.print_exc()
+    except Exception:
+        pass
+
+    if request.method.upper() != "GET":
+        target = _safe_back_url(request)
+        sep = "&" if "?" in target else "?"
+        resp = RedirectResponse(f"{target}{sep}msg=error_recuperable", status_code=303)
+        resp.headers["X-Fjord-Error-ID"] = request_id
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    return HTMLResponse(
+        f"""<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fjord VI · Recuperación</title><style>body{{font-family:Arial,sans-serif;background:#eef5f9;color:#102033;padding:24px}}.box{{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.12)}}a{{display:inline-block;margin-top:12px;background:#0b5f8f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}}code{{display:block;margin-top:10px;color:#667}}</style></head><body><div class='box'><h1>Fjord VI</h1><p>No pudimos mostrar esta pantalla, pero la aplicación sigue activa.</p><p>Volvé al sistema y reintentá la operación.</p><code>Referencia: {request_id}</code><a href='/'>Volver al inicio</a></div></body></html>""",
+        status_code=500,
+        headers={"Cache-Control": "no-store", "X-Fjord-Error-ID": request_id}
+    )
 
 
 WEEKDAY_ES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -1027,7 +1115,7 @@ def norm_dni(v: str) -> str:
 
     Mantiene letras y números, elimina puntos, espacios, guiones y símbolos.
     Ejemplos:
-    - 41.7.2b -> 41325286
+    - 41.7.3 -> 41325286
     - AB 123456 -> AB123456
     - P-9087-X -> P9087X
     """
@@ -1228,7 +1316,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.7.2b:
+    Blindaje 1.7.3:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1668,7 +1756,7 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
 
     displaced = []
 
-    # Blindaje 1.7.2b: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Blindaje 1.7.3: la reserva institucional no puede ser ocupada por lista/reservas normales.
     # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
     # a invitados/menores no presentes y luego a otros registros no presentes.
     while True:

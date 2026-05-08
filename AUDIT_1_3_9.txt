@@ -1,4 +1,4 @@
-AUDITORÍA FJORD VI 1.7.2b
+AUDITORÍA FJORD VI 1.7.3
 
 Base auditada:
 - Fjord_VI_1_3_8_ADMIN_U_UNDEFINED_FIX.zip
@@ -8,9 +8,9 @@ Resultado general:
 - Templates Jinja: OK
 - Admin u undefined: corregido
 - HTML suelto después de </html>: no detectado
-- Ojos de clave inline: conservados desde 1.7.2b/1.7.2b
+- Ojos de clave inline: conservados desde 1.7.3/1.7.3
 - Cambio obligatorio de clave inicial: presente
-- Reset administrativo visible: corregido en 1.7.2b
+- Reset administrativo visible: corregido en 1.7.3
 
 Hallazgo importante:
 El botón visible de reset en Administración usaba /admin/reset_password/{u.id}.
@@ -24,7 +24,7 @@ Corrección aplicada:
 - log actualizado como reset de clave temporal con cambio obligatorio
 
 Conclusión:
-La versión 1.7.2b es más consistente que 1.7.2b para producción, porque cierra el ciclo completo:
+La versión 1.7.3 es más consistente que 1.7.3 para producción, porque cierra el ciclo completo:
 1. usuario nuevo debe crear clave;
 2. usuario con demo1234 debe crear clave;
 3. usuario reseteado por Administración debe crear clave;

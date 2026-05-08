@@ -1,10 +1,13 @@
 # Changelog
 
-## 1.7.2b
+## 1.7.3
 
-- Centralización inicial de versión en `APP_VERSION`.
-- Normalización de strings visibles y metadata a `v1.7.2b`.
-- Revisión de formularios POST marcados en auditoría.
-- Limpieza/corrección de posible formulario huérfano de reset de clave.
-- No se modificó lógica de reservas, cierres, QR ni cargos.
-- No se tocó la pantalla Capitán salvo versión/metadatos.
+- Robustness Guard transversal.
+- Anti doble-submit en formularios desde frontend.
+- `X-Fjord-Request-ID` para detectar acciones duplicadas.
+- Middleware backend de bloqueo de POST duplicado por pocos segundos.
+- Handler global de excepción para evitar pantallas blancas.
+- Botones muestran `Procesando...` y se bloquean durante la acción.
+- Recuperación automática al volver con botón atrás del navegador.
+- Mensaje recuperable si una acción POST falla.
+- Sin cambios en reglas de reservas, cargos, cierres ni QR.
