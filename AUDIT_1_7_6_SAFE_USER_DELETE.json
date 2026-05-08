@@ -1,11 +1,10 @@
 {
   "version": "1.7.6",
-  "goal": "robustness_guard",
+  "goal": "safe_user_delete",
   "logic_rules_changed": false,
   "python_syntax_ok": true,
   "jinja_errors": [],
-  "duplicate_post_guard_present": true,
-  "global_exception_handler_present": true,
-  "frontend_lock_present": true,
+  "delete_endpoint_present": true,
+  "delete_button_present": true,
   "bad_app_version_self_reference": false
 }

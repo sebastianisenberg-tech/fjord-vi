@@ -1,5 +1,5 @@
 {
-  "version": "1.7.5",
+  "version": "1.7.6",
   "python_syntax_ok": true,
   "jinja_errors": [],
   "ensure_db_indexes_present": true,

@@ -1,11 +1,12 @@
 # Changelog
 
-## 1.7.5
+## 1.7.6
 
-- UI Structure Cleanup.
-- Reestructura CSS de headers Socio/Capitán para evitar superposición de nombre, Clave y Salir.
-- Fuerza comportamiento estable: grid/flex seguro, text-overflow, sin position absolute heredado.
-- Compacta el botón Clave en pantallas chicas.
-- Reserva ancho estable para Salir.
-- Estabiliza bottom nav y pills/badges para evitar deformaciones.
-- No modifica lógica, base de datos, reservas, cupos, QR ni cargos.
+- Safe User Delete.
+- Agrega botón Borrar en Admin / Usuarios.
+- Solo elimina físicamente usuarios sin historial operativo.
+- Bloquea borrado si tiene reservas, responsable de invitados, autorizaciones protocolares o actividad.
+- Si no se puede borrar, lo deja inactivo y registra el intento.
+- Protege al usuario actual y al admin principal.
+- Doble confirmación: escribir BORRAR + confirmación final.
+- No cambia reglas de reservas, cupos, cargos, QR ni cierres.

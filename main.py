@@ -25,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.5"
+APP_VERSION = "1.7.6"
 
 
 # =========================
@@ -58,8 +58,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.5"
-RELEASE_LABEL = "Fjord VI · v1.7.5"
+APP_BUILD = "Fjord VI 1.7.6"
+RELEASE_LABEL = "Fjord VI · v1.7.6"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1202,7 +1202,7 @@ def norm_dni(v: str) -> str:
 
     Mantiene letras y números, elimina puntos, espacios, guiones y símbolos.
     Ejemplos:
-    - 41.7.5 -> 41325286
+    - 41.7.6 -> 41325286
     - AB 123456 -> AB123456
     - P-9087-X -> P9087X
     """
@@ -1403,7 +1403,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.7.5:
+    Blindaje 1.7.6:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1843,7 +1843,7 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
 
     displaced = []
 
-    # Blindaje 1.7.5: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Blindaje 1.7.6: la reserva institucional no puede ser ocupada por lista/reservas normales.
     # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
     # a invitados/menores no presentes y luego a otros registros no presentes.
     while True:
@@ -4733,6 +4733,31 @@ def reset_password(
     return RedirectResponse("/admin?page=socios&msg=clave_reseteada", status_code=303)
 
 
+
+
+def user_operational_links_count(db: Session, target: User) -> dict:
+    """Cuenta vínculos operativos que impiden borrado físico seguro."""
+    uid = target.id
+    dni = target.dni or ""
+    counts = {
+        "reservas_por_dni": db.query(Reservation).filter(Reservation.dni == dni).count() if dni else 0,
+        "reservas_responsable": db.query(Reservation).filter(Reservation.responsible_user_id == uid).count(),
+        "protocolares_autorizados": db.query(Reservation).filter(Reservation.protocolar_by_user_id == uid).count(),
+        "actividad": db.query(ActivityLog).filter(ActivityLog.user_id == uid).count(),
+    }
+    return counts
+
+def can_hard_delete_user(db: Session, target: User, actor: User) -> tuple[bool, str, dict]:
+    counts = user_operational_links_count(db, target)
+    if target.id == actor.id:
+        return False, "no_puede_borrarse_a_si_mismo", counts
+    if (target.role or "").lower() == "admin" and (target.name or "").strip().lower() in {"admin club", "administrador", "admin"}:
+        return False, "no_puede_borrar_admin_principal", counts
+    if any(v > 0 for v in counts.values()):
+        return False, "usuario_con_historial", counts
+    return True, "ok", counts
+
+
 @app.post("/admin/toggle_user/{uid}")
 def toggle_user(
     uid: int,
@@ -4750,6 +4775,39 @@ def toggle_user(
     db.commit()
     log(db, user.name, "toggle usuario", f"{target.name} / activo={target.active}")
     return RedirectResponse("/admin?msg=usuario_actualizado", status_code=303)
+
+
+
+
+@app.post("/admin/delete_user/{uid}")
+def delete_user_safe(
+    uid: int,
+    confirm_delete: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    target = db.get(User, uid)
+    if not target:
+        return RedirectResponse("/admin?page=socios&msg=usuario_no_encontrado", status_code=303)
+
+    if (confirm_delete or "").strip().upper() != "BORRAR":
+        return RedirectResponse("/admin?page=socios&msg=confirmacion_borrado_invalida", status_code=303)
+
+    ok, reason, counts = can_hard_delete_user(db, target, user)
+    if not ok:
+        try:
+            target.active = False
+            db.commit()
+        except Exception:
+            db.rollback()
+        log(db, user.name, "intento borrado usuario bloqueado", f"{target.name} / {target.dni} / {target.member_no or ''} / reason={reason} / links={counts}")
+        return RedirectResponse(f"/admin?page=socios&msg={reason}", status_code=303)
+
+    detail = f"{target.name} / dni={target.dni} / socio={target.member_no or ''} / rol={target.role}"
+    db.delete(target)
+    db.commit()
+    log(db, user.name, "borrado seguro usuario", detail)
+    return RedirectResponse("/admin?page=socios&msg=usuario_borrado", status_code=303)
 
 
 @app.post("/admin/update_user/{uid}")
