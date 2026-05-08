@@ -134,8 +134,8 @@ function showSocioNotice(text){
   <div class="selectorList compactSelectorV161">
   {% for o in outings %}
     {% if loop.index <= 3 %}
-    <a class="selectRow compactTripV161 {% if outing and o.id == outing.id %}selected mainTrip{% endif %}" href="/socio?outing_id={{o.id}}">
-      <div class="tripTextV161">
+    <a class="selectRow compactTripV161 navTripCard navTypePaseo {% if outing and o.id == outing.id %}selected mainTrip{% endif %}" href="/socio?outing_id={{o.id}}">
+      <div class="tripTextV161"><span class="tripKindPill">Paseo</span>
         <b>{{o.title}}</b>
         <small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small>
       </div>
@@ -150,8 +150,8 @@ function showSocioNotice(text){
     <div class="selectorList compactSelectorV161 moreListV161">
     {% for o in outings %}
       {% if loop.index > 3 %}
-      <a class="selectRow compactTripV161 {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
-        <div class="tripTextV161"><b>{{o.title}}</b><small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small></div>
+      <a class="selectRow compactTripV161 navTripCard navTypePaseo {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
+        <div class="tripTextV161"><span class="tripKindPill">Paseo</span><b>{{o.title}}</b><small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small></div>
         <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
       </a>
       {% endif %}
