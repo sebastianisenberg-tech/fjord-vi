@@ -1,13 +1,10 @@
 # Changelog
 
-## 1.6.8
+## 1.7.0
 
-- Fine polish final sobre 1.6.6.
-- Hero de próximo embarque con transición visual más integrada.
-- Modo vacío de invitados más premium y menos administrativo.
-- `Historial` más claro y secundario.
-- Participaciones protocolares con card más consistente.
-- Unificación final de pills y badges.
-- Más contraste en metadatos y subtítulos.
-- Ajustes de espaciado fino.
+- Corrige definitivamente el bug visual `+ + Más salidas`.
+- Deja `Más salidas` como texto base y el `+` queda controlado solo por CSS.
+- Normaliza footer y metadatos a `v1.7.0`.
+- Cambia historial a `Ver historial`, más legible.
+- Micro ajuste final de cards de navegación.
 - Sin cambios de backend ni lógica operativa.

@@ -2,7 +2,7 @@
 
 Sistema web operativo para la gestión de reservas, embarque, check-in, cierre de navegación y liquidación del barco **Fjord VI** del Yacht Club Argentino.
 
-Versión actual: **Fjord VI 1.6.8**
+Versión actual: **Fjord VI · v1.7.0**
 
 ## Propósito
 
@@ -104,7 +104,7 @@ Si una salida se reabre y se vuelve a cerrar, la ficha anterior queda anulada y 
 
 ## Seguridad de credenciales
 
-La versión 1.3.1 incorpora **cambio obligatorio de clave inicial**.
+La versión 1.7.0 incorpora **cambio obligatorio de clave inicial**.
 
 Cuando un usuario entra por primera vez con clave temporal, el sistema lo deriva a una pantalla premium para definir su clave personal antes de acceder a Socio, Capitán o Administración.
 
@@ -188,7 +188,7 @@ Autor registrado en metadata interna: **Sebastián Isenberg**.
 
 ## Gestión de claves
 
-La versión 1.3.1 incorpora:
+La versión 1.7.0 incorpora:
 
 - cambio voluntario de clave desde Perfil;
 - verificación de clave actual;
