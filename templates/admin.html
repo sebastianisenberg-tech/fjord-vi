@@ -371,6 +371,12 @@
         {% endif %}
       </article>
 
+      
+      <article class="erpCard"><h3>Índices de performance <span class="smartTip" data-tip="Índices seguros para que usuarios, reservas, historial, fichas y auditoría no se vuelvan lentos al crecer la base.">i</span></h3>
+        <p>Estos índices no cambian datos. Mejoran búsquedas, listados, historial y operaciones con muchas reservas.</p>
+        <div class="systemCheckList">{% for row in system_console.index_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.table}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
+      </article>
+
       <article class="erpCard"><h3>Actividad y uso <span class="smartTip" data-tip="Actividad reciente estimada por eventos. No equivale a usuarios conectados por WebSocket.">i</span></h3>
         <div class="systemMiniGrid"><div><span>Activos 5m</span><b>{{system_console.activity.active_5m}}</b></div><div><span>Activos 30m</span><b>{{system_console.activity.active_30m}}</b></div><div><span>Activos hoy</span><b>{{system_console.activity.active_today}}</b></div><div><span>Eventos hoy</span><b>{{system_console.activity.events_today}}</b></div></div>
         <h4>Módulos usados hoy</h4>
