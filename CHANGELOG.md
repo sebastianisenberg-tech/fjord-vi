@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.7
+## 1.6.8
 
 - Fine polish final sobre 1.6.6.
 - Hero de próximo embarque con transición visual más integrada.
