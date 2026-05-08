@@ -25,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.7"
+APP_VERSION = "1.7.8"
 
 
 # =========================
@@ -58,8 +58,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.7"
-RELEASE_LABEL = "Fjord VI · v1.7.7"
+APP_BUILD = "Fjord VI 1.7.8"
+RELEASE_LABEL = "Fjord VI · v1.7.8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5629,7 +5629,7 @@ def demo_reset_disabled(user: User = Depends(require_role("admin"))):
 
 
 
-PRODUCTION_RESET_PHRASE = "RESET PRODUCCION FJORD VI"
+PRODUCTION_RESET_PHRASE = "RESET OPERATIVO FJORD VI"
 
 
 def _safe_backup_filename(prefix: str, suffix: str) -> str:
@@ -5679,14 +5679,28 @@ def create_pre_reset_backups(db: Session) -> dict:
 
 
 def reset_operational_sequences(db: Session):
-    """Resetea numeración operativa. Conserva usuarios y configuración."""
-    tables = ["closing_sheets", "reservations", "outings", "audit_logs", "activity_log"]
+    """Resetea de verdad los datos operativos. Conserva padrón, admins y configuración.
+
+    Limpia salidas colgadas, reservas huérfanas, fichas, cargos/auditoría operativa,
+    actividad y colas/logs de comunicaciones. Esto evita que una navegación de prueba
+    quede visible después de depurar el padrón.
+    """
+    tables = [
+        "notification_log",
+        "notification_queue",
+        "closing_sheets",
+        "reservations",
+        "outings",
+        "audit_logs",
+        "activity_log",
+    ]
     if DB_URL.startswith("postgres"):
-        # TRUNCATE reinicia IDs y respeta dependencias entre salidas, reservas y fichas.
-        db.execute(text("TRUNCATE TABLE closing_sheets, reservations, outings, audit_logs, activity_log RESTART IDENTITY CASCADE"))
+        # TRUNCATE reinicia IDs y CASCADE limpia dependencias. Conserva users, system_meta y templates.
+        db.execute(text("TRUNCATE TABLE notification_log, notification_queue, closing_sheets, reservations, outings, audit_logs, activity_log RESTART IDENTITY CASCADE"))
     else:
-        for model in (ClosingSheet, Reservation, Outing, AuditLog, ActivityLog):
-            db.query(model).delete()
+        # Orden defensivo: primero tablas dependientes, después salidas.
+        for model in (NotificationLog, NotificationQueue, ClosingSheet, Reservation, Outing, AuditLog, ActivityLog):
+            db.query(model).delete(synchronize_session=False)
         try:
             for t in tables:
                 db.execute(text("DELETE FROM sqlite_sequence WHERE name = :name"), {"name": t})
@@ -5715,29 +5729,29 @@ def admin_production_reset(
 
     # Registrar el reset después de reiniciar secuencias para que quede como primer evento operativo.
     detail = (
-        "RESET PRODUCCIÓN ejecutado. Usuarios y configuración conservados. "
+        "RESET OPERATIVO ejecutado. Padrón, usuarios y configuración conservados. "
         f"Backup JSON: {backups.get('json') or 'no generado'}. "
         f"Backup PostgreSQL: {backups.get('postgres') or 'no generado'}. "
         f"Error PostgreSQL backup: {backups.get('postgres_error') or '-'}"
     )
-    log(db, user.name, "reset producción", detail)
+    log(db, user.name, "reset operativo total", detail)
     db.add(ActivityLog(
         user_id=user.id,
         user_name=user.name,
         role=user.role,
         module="sistema",
-        action="reset_produccion",
+        action="reset_operativo_total",
         path="/admin?page=sistema",
-        detail="Sistema reiniciado para uso comercial",
+        detail="Salidas, reservas, fichas, cargos y actividad operativa eliminadas",
     ))
     db.commit()
-    set_system_meta("production_reset_at", now_local().isoformat())
-    set_system_meta("production_reset_by", user.name)
+    set_system_meta("operational_reset_at", now_local().isoformat())
+    set_system_meta("operational_reset_by", user.name)
     set_system_meta("last_pre_reset_json", backups.get("json", ""))
     set_system_meta("last_pre_reset_postgres", backups.get("postgres", ""))
     if backups.get("postgres_error"):
         set_system_meta("last_pre_reset_postgres_error", backups.get("postgres_error", ""))
     with SessionLocal() as fresh:
         persist_json(fresh)
-    return RedirectResponse("/admin?page=sistema&msg=reset_produccion_ok", status_code=303)
+    return RedirectResponse("/admin?page=sistema&msg=reset_operativo_ok", status_code=303)
 
