@@ -5631,7 +5631,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .sheetVersionBadge{display:inline-flex;align-items:center;border:1px solid rgba(15,79,120,.24);background:#eef7fb;color:#0f4f78;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;margin:0 6px;}
 .versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px;}
 
-/* Fjord VI 1.6.6 · corrección quirúrgica premium */
+/* Fjord VI 1.6.7 · corrección quirúrgica premium */
 .appFooter,.socioFooter,.preflightVersion,.loginVersion{opacity:.42!important;color:#7d8793!important;font-size:11px!important;letter-spacing:.04em!important;}
 .captainOutingCard .qrQuick{min-width:54px!important;height:42px!important;border-radius:16px!important;box-shadow:0 6px 14px rgba(8,50,78,.16)!important;align-self:center!important;}
 .captainStickyTabs button,.captainStickyTabs .tabBtn{box-shadow:none!important;filter:saturate(.92)!important;}
@@ -5641,7 +5641,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .erpTop b + span,.erpVersion,.adminVersion{opacity:.72!important;}
 
 
-/* ===== Fjord VI 1.6.6 · coherencia premium fina ===== */
+/* ===== Fjord VI 1.6.7 · coherencia premium fina ===== */
 .socioApp.socioV51 .socioProProgress{
   margin-left:0!important;
   margin-right:0!important;
@@ -5680,7 +5680,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.6.6 · fix bottom nav activo visible ===== */
+/* ===== Fjord VI 1.6.7 · fix bottom nav activo visible ===== */
 /* Corrige la pastilla azul vacía del primer tab activo sin tocar lógica ni navegación. */
 .bottom a,
 .socioV51Bottom a,
@@ -5732,7 +5732,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI 1.6.6 · bottom nav sin pastilla fantasma ===== */
+/* ===== Fjord VI 1.6.7 · bottom nav sin pastilla fantasma ===== */
 /* La barra inferior vuelve a mostrar el texto del tab activo.
    Se elimina cualquier pseudo-indicador o fondo oscuro heredado. */
 
@@ -5806,15 +5806,15 @@ html body .socioV51Bottom a[href="#inicio"].on{
   text-indent:0!important;
 }
 
-/* Fjord VI 1.6.6 alta usuario feedback */
+/* Fjord VI 1.6.7 alta usuario feedback */
 .formHint{margin:6px 0 0;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 #createUserForm button[type="submit"]{min-height:42px;font-weight:900}
 
-/* Fjord VI 1.6.6 identidad socio DNI */
+/* Fjord VI 1.6.7 identidad socio DNI */
 .formHint{margin:6px 0 10px;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 
 
-/* ===== Fjord VI 1.6.6 · refinamiento UX conservador ===== */
+/* ===== Fjord VI 1.6.7 · refinamiento UX conservador ===== */
 /* Corrige el tab azul vacío de la barra inferior y conserva el look premium. */
 
 html body .bottom,
@@ -5908,7 +5908,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   letter-spacing:.04em!important;
 }
 
-/* Fjord VI 1.6.6 · fechas con día de semana y nav visible */
+/* Fjord VI 1.6.7 · fechas con día de semana y nav visible */
 .socioV51Bottom a[href="#inicio"], .bottom a[href="#inicio"] {
   color:#0b5f8f!important; text-indent:0!important; opacity:1!important; visibility:visible!important;
   font-size:11px!important; font-weight:850!important; overflow:visible!important;
@@ -5921,7 +5921,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   white-space:normal!important; line-height:1.28!important;
 }
 
-/* Fjord VI 1.6.6 · Participación protocolar */
+/* Fjord VI 1.6.7 · Participación protocolar */
 .protoBadge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#eaf4ff;color:#0b5f8f;border:1px solid #b9d9ef;font-size:10px;font-weight:900;letter-spacing:.05em;vertical-align:middle}
 .protoForm,.protoSelfBox{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .protoForm input,.protoSelfBox input{min-width:190px;flex:1;border:1px solid #d7e5ee;border-radius:10px;padding:8px 10px;font-size:13px}
@@ -5931,7 +5931,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 .drawerForm .checkLine{display:flex;gap:8px;align-items:flex-start;line-height:1.25}
 .drawerForm .checkLine small{display:block;color:#607181;font-weight:650}
 
-/* Fjord VI 1.6.6 · Protocolar ordenado */
+/* Fjord VI 1.6.7 · Protocolar ordenado */
 .protoBadge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#eaf4ff;color:#0b5f8f;border:1px solid #b9d9ef;font-size:10px;font-weight:900;letter-spacing:.05em;vertical-align:middle}
 .protoSelfBox,.protoInlineForm{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .protoSelfBox input{min-width:190px;flex:1;border:1px solid #d7e5ee;border-radius:10px;padding:8px 10px;font-size:13px}
@@ -5944,7 +5944,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 .drawerForm .checkLine small{display:block;color:#607181;font-weight:650}
 .erpTable small{display:block;color:#607181;font-size:10.5px;margin-top:2px}
 
-/* Fjord VI 1.6.6 · protocolar name visibility */
+/* Fjord VI 1.6.7 · protocolar name visibility */
 .captainFastIdentityV65{
   display:flex!important;
   align-items:center!important;
@@ -5981,7 +5981,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   }
 }
 
-/* Fjord VI 1.6.6 · login password toggle */
+/* Fjord VI 1.6.7 · login password toggle */
 .passwordWrap{
   position:relative;
   display:flex;
@@ -6024,7 +6024,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   }
 }
 
-/* Fjord VI 1.6.6 · login eye icon */
+/* Fjord VI 1.6.7 · login eye icon */
 .passwordWrap{
   position:relative;
   display:block;
@@ -6110,7 +6110,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 }
 
 
-/* Fjord VI 1.6.6 · refined inline eye */
+/* Fjord VI 1.6.7 · refined inline eye */
 .passwordWrap{
   position:relative;
 }
@@ -6153,7 +6153,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 
 
 
-/* LOGIN PASSWORD EYE ALIGNMENT · Fjord VI 1.6.6 */
+/* LOGIN PASSWORD EYE ALIGNMENT · Fjord VI 1.6.7 */
 
 .password-wrapper,
 .password-container,
@@ -6188,7 +6188,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
     padding-right: 56px !important;
 }
 
-/* Fjord VI 1.6.6 · change password */
+/* Fjord VI 1.6.7 · change password */
 .changePasswordCard .changeIntro{
   margin:18px 0 18px;
 }
@@ -6223,7 +6223,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 }
 
 
-/* Fjord VI 1.6.6 · password management */
+/* Fjord VI 1.6.7 · password management */
 .accountPasswordLink{
 display:inline-flex;
 align-items:center;
@@ -6255,7 +6255,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI 1.6.6 · eye icon exact alignment
+/* Fjord VI 1.6.7 · eye icon exact alignment
    Final override: centra el ojo dentro del campo sin depender de la altura real del input. */
 .loginForm .passwordWrap,
 .changePasswordForm .passwordWrap{
@@ -6350,7 +6350,7 @@ cursor:pointer;
   }
 }
 
-/* Fjord VI 1.6.6 · visible account password links */
+/* Fjord VI 1.6.7 · visible account password links */
 .profileActions{
   margin-top:12px;
   display:grid;
@@ -6401,7 +6401,7 @@ cursor:pointer;
   font-size:13px;
 }
 
-/* Fjord VI 1.6.6 · password flow polish */
+/* Fjord VI 1.6.7 · password flow polish */
 .passwordCloseLink{
   position:absolute;
   top:18px;
@@ -6460,7 +6460,7 @@ cursor:pointer;
   border-radius:999px;
 }
 
-/* Fjord VI 1.6.6 · direct password toggle */
+/* Fjord VI 1.6.7 · direct password toggle */
 .passwordWrap{
   position:relative!important;
 }
@@ -6484,7 +6484,7 @@ cursor:pointer;
   border-radius:999px;
 }
 
-/* Fjord VI 1.6.6 · inline password toggle final */
+/* Fjord VI 1.6.7 · inline password toggle final */
 .passwordWrap .passwordToggle{
   pointer-events:auto!important;
   touch-action:manipulation!important;
@@ -6507,7 +6507,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI 1.6.6 · Mobile visual polish */
+/* Fjord VI 1.6.7 · Mobile visual polish */
 .socioV51 .socioWrap{
   padding-bottom:92px!important;
 }
@@ -6779,7 +6779,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI 1.6.6 · UI Compact Premium */
+/* Fjord VI 1.6.7 · UI Compact Premium */
 .socioV51 .topbar,
 .socioV51 .header,
 .socioV51 .topHeader{
@@ -6932,7 +6932,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI 1.6.6 Navigation Refactor */
+/* Fjord VI 1.6.7 Navigation Refactor */
 
 .socioV51 .nextNavSection{
   display:flex;
@@ -7012,7 +7012,7 @@ cursor:pointer;
 
 
 
-/* Fjord VI 1.6.6 · cirugía real de próximas navegaciones */
+/* Fjord VI 1.6.7 · cirugía real de próximas navegaciones */
 .socioV51 .navCompactV161{
   padding:14px!important;
 }
@@ -7114,7 +7114,7 @@ cursor:pointer;
 }
 
 
-/* ===== V1.6.6 PREMIUM POLISH ===== */
+/* ===== V1.6.7 PREMIUM POLISH ===== */
 
 .section-title{
     letter-spacing:-0.4px;
@@ -7178,7 +7178,7 @@ button, .btn{
 
 
 
-/* Fjord VI 1.6.6 · Visual System */
+/* Fjord VI 1.6.7 · Visual System */
 :root{
   --fjord-ink:#102333;
   --fjord-ink-soft:#24394a;
@@ -7402,7 +7402,7 @@ button, .btn{
 .socioV51 .bottom.socioV51Bottom a.on{color:#fff!important;}
 
 
-/* Fjord VI 1.6.6 · Visual Hierarchy Pass */
+/* Fjord VI 1.6.7 · Visual Hierarchy Pass */
 
 :root{
   --hero-shadow:0 18px 42px rgba(0,45,90,.16);
@@ -7475,3 +7475,215 @@ button, .btn{
   color:#65798a!important;
 }
 
+
+
+/* Fjord VI 1.6.7 · Final Fine Polish */
+
+:root{
+  --fjord-primary:#0877a6;
+  --fjord-primary-dark:#063f70;
+  --fjord-primary-deep:#052f5d;
+  --fjord-primary-soft:#eaf7fc;
+  --fjord-outline:#c9e2ee;
+  --fjord-empty:#f8fbfd;
+  --fjord-empty-border:#e1ebf1;
+  --fjord-text:#102333;
+  --fjord-text-2:#263d50;
+  --fjord-muted-final:#607282;
+  --fjord-radius-xl:22px;
+  --fjord-radius-md:15px;
+}
+
+/* Header: un poco más respirado */
+.socioV51 .topbar,
+.socioV51 .header,
+.socioV51 .topHeader{
+  min-height:58px!important;
+}
+.socioV51 .topbar b,
+.socioV51 .header b{
+  letter-spacing:-.025em!important;
+}
+.socioV51 .topbar small,
+.socioV51 .header small{
+  opacity:.88!important;
+}
+
+/* Hero embarque: transición menos formulario */
+.socioV51 .miEmbarqueCard{
+  background:
+    linear-gradient(180deg,rgba(5,47,93,.98) 0%,rgba(7,95,138,.96) 42%,rgba(238,248,252,.96) 43%,#ffffff 100%)!important;
+  border:1px solid rgba(7,95,138,.16)!important;
+  box-shadow:0 18px 42px rgba(5,47,93,.15)!important;
+  overflow:hidden!important;
+}
+.socioV51 .miEmbarqueCard .socioProStats,
+.socioV51 .miEmbarqueCard .miEmbStats,
+.socioV51 .miEmbarqueCard .statusBox{
+  background:rgba(255,255,255,.96)!important;
+  border:1px solid rgba(5,47,93,.09)!important;
+  box-shadow:0 8px 22px rgba(5,47,93,.06)!important;
+}
+.socioV51 .miEmbarqueCard .btn,
+.socioV51 .miEmbarqueCard button{
+  box-shadow:none!important;
+}
+.socioV51 .miEmbTop{
+  padding-bottom:4px!important;
+}
+.socioV51 .miEmbTop h2{
+  text-shadow:0 1px 8px rgba(0,0,0,.12)!important;
+}
+
+/* Pills y badges: cierre de consistencia */
+.socioV51 .pill,
+.socioV51 .badge,
+.socioV51 .tripKindPill,
+.socioV51 .protoBadge,
+.socioV51 .miEmbState,
+.socioV51 .badgeTipo{
+  min-height:22px!important;
+  height:22px!important;
+  padding:0 8px!important;
+  border-radius:999px!important;
+  font-size:10px!important;
+  line-height:22px!important;
+  font-weight:900!important;
+  letter-spacing:.015em!important;
+}
+
+/* Navegaciones */
+.socioV51 .navTripCard{
+  border-radius:16px!important;
+}
+.socioV51 .navTripCard.selected{
+  border-color:rgba(8,119,166,.26)!important;
+  box-shadow:0 10px 26px rgba(8,119,166,.10)!important;
+}
+.socioV51 .tripKindPill{
+  min-width:42px!important;
+  opacity:.82!important;
+}
+.socioV51 .tripTextV161 b{
+  color:var(--fjord-text-2)!important;
+}
+.socioV51 .tripTextV161 small{
+  color:var(--fjord-muted-final)!important;
+}
+
+/* Más salidas / historial */
+.socioV51 .moreTripsV161 summary{
+  min-height:40px!important;
+}
+.socioV51 .historyMiniV161 summary{
+  min-height:34px!important;
+  color:#7e919e!important;
+}
+.socioV51 .historyMiniV161 summary::after{
+  content:"›";
+  margin-left:6px;
+  font-weight:950;
+}
+
+/* Invitados vacío: menos administrativo */
+.socioV51 .empty,
+.socioV51 .emptyState,
+.socioV51 .noGuests,
+.socioV51 .emptyGuests{
+  background:var(--fjord-empty)!important;
+  border:1px solid var(--fjord-empty-border)!important;
+  border-style:solid!important;
+  border-radius:16px!important;
+  box-shadow:none!important;
+  padding:12px 14px!important;
+  color:#526676!important;
+}
+.socioV51 .empty b,
+.socioV51 .emptyState b,
+.socioV51 .noGuests b{
+  color:var(--fjord-text-2)!important;
+}
+.socioV51 #invitados .formHint,
+.socioV51 #invitados small{
+  color:#6b7f8e!important;
+}
+
+/* Invitados: menos altura cuando está vacío o con formulario */
+.socioV51 #invitados .guestForm,
+.socioV51 #invitados .premiumForm{
+  gap:8px!important;
+}
+.socioV51 #invitados input,
+.socioV51 #invitados select,
+.socioV51 #invitados .input{
+  min-height:44px!important;
+  border-radius:14px!important;
+}
+.socioV51 #invitados .btn{
+  min-height:44px!important;
+}
+
+/* Participaciones protocolares: card desplegable más premium */
+.socioV51 .socioProtocolarPanel,
+.socioV51 .protocolarCompact{
+  padding-top:2px!important;
+  padding-bottom:2px!important;
+  border-radius:20px!important;
+}
+.socioV51 .protocolarSummary{
+  min-height:58px!important;
+  padding:14px 16px!important;
+}
+.socioV51 .protocolarSummary h2{
+  font-size:18px!important;
+}
+.socioV51 .protocolarSummary .pill{
+  background:#edf5f8!important;
+  color:#536b7b!important;
+}
+
+/* Espaciados finos */
+.socioV51 .socioV51QuickActions{
+  margin-top:8px!important;
+  margin-bottom:8px!important;
+}
+.socioV51 .socioV51Calendar{
+  margin-top:10px!important;
+}
+.socioV51 .navTitleV161{
+  margin-bottom:7px!important;
+}
+.socioV51 #invitados{
+  margin-top:10px!important;
+}
+.socioV51 .premiumCard{
+  margin-bottom:10px!important;
+}
+
+/* Botones rápidos */
+.socioV51 .socioV51QuickActions a{
+  border-radius:16px!important;
+  background:linear-gradient(180deg,#ffffff,#fbfdff)!important;
+}
+.socioV51 .socioV51QuickActions a:active{
+  transform:scale(.985)!important;
+}
+
+/* Footer */
+.socioV51 .socioFooter{
+  padding-top:16px!important;
+  padding-bottom:88px!important;
+}
+.socioV51 .socioFooter b{
+  background:#ffffff!important;
+  border:1px solid rgba(18,55,80,.08)!important;
+  box-shadow:0 5px 14px rgba(15,45,65,.045)!important;
+}
+
+/* Bottom nav: mínimo ajuste óptico */
+.socioV51 .bottom.socioV51Bottom{
+  backdrop-filter:blur(18px)!important;
+}
+.socioV51 .bottom.socioV51Bottom a{
+  letter-spacing:-.015em!important;
+}
