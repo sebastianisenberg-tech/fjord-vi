@@ -1,0 +1,16 @@
+{
+  "version": "1.8.0",
+  "base": "1.7.9_GESTION_SALIDAS",
+  "cambios": [
+    "Se hizo visible en Usuarios / Padrón Pro el botón por usuario 'Resetear clave'.",
+    "El reseteo individual deja la clave en demo1234 y marca cambio obligatorio al ingresar.",
+    "Se agregó un bloque superior 'Claves de acceso' con explicación operativa.",
+    "Se agregó reset masivo excepcional de claves de usuarios activos, protegido con frase exacta de confirmación: RESET CLAVES FJORD VI.",
+    "Se amplió la columna Acciones de la tabla de usuarios para que el botón no quede escondido o cortado.",
+    "Se agregaron mensajes claros para clave reseteada, claves reseteadas y confirmación inválida."
+  ],
+  "validacion": [
+    "python3 -m py_compile main.py ejecutado sin errores",
+    "No se modificó la lógica de salidas, reservas, invitados, cierres ni padrón salvo claves de usuarios"
+  ]
+}

@@ -4758,6 +4758,24 @@ def can_hard_delete_user(db: Session, target: User, actor: User) -> tuple[bool, 
         return False, "usuario_con_historial", counts
     return True, "ok", counts
 
+@app.post("/admin/reset_all_passwords")
+def reset_all_passwords(
+    confirm_phrase: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    if (confirm_phrase or "").strip() != "RESET CLAVES FJORD VI":
+        return RedirectResponse("/admin?page=socios&msg=confirmacion_claves_invalida", status_code=303)
+
+    targets = db.query(User).filter(User.active == True).all()
+    for target in targets:
+        target.password_hash = hash_password("demo1234")
+        target.must_change_password = True
+    db.commit()
+    log(db, user.name, "reset masivo claves temporales", f"{len(targets)} usuarios activos / cambio obligatorio")
+    return RedirectResponse("/admin?page=socios&msg=claves_reseteadas", status_code=303)
+
+
 
 @app.post("/admin/toggle_user/{uid}")
 def toggle_user(
