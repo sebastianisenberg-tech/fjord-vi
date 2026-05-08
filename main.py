@@ -5185,26 +5185,72 @@ def update_outing(
     title: str = Form(...),
     destination: str = Form("paseo"),
     departure_at: str = Form(...),
+    max_crew: int = Form(MAX_CREW),
+    institutional_reserve: int = Form(0),
     guest_fee: float = Form(INVITED_FEE),
+    notes: str = Form(""),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
     outing = db.get(Outing, outing_id)
     if not outing:
         raise HTTPException(404, "Salida inexistente")
-    old = f"{outing.title} / {outing.destination} / {outing.departure_at.isoformat()} / tarifa {float(outing.guest_fee or 0)}"
-    outing.title = title.strip() or outing.title
-    outing.destination = destination.strip() or outing.destination
-    outing.departure_at = datetime.fromisoformat(departure_at)
-    outing.guest_fee = guest_fee
-    # Si la tarifa cambió y la salida está cerrada, recalcula cargos firmes sin tocar asistencia.
-    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
     if is_closed_outing(outing):
-        liquidate_and_close_boarding(db, outing, reservations, active_reservations(reservations))
+        return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=salida_cerrada_no_editable", status_code=303)
+
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    active_count = len(active_reservations(reservations))
+
+    try:
+        new_departure = datetime.fromisoformat((departure_at or "").replace(" ", "T"))
+    except Exception:
+        return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=fecha_invalida", status_code=303)
+
+    try:
+        new_capacity = max(1, min(int(max_crew or MAX_CREW), 30))
+    except Exception:
+        new_capacity = MAX_CREW
+    try:
+        new_reserve = max(0, min(int(institutional_reserve or 0), new_capacity))
+    except Exception:
+        new_reserve = 0
+    try:
+        new_fee = max(0, min(float(guest_fee or 0), 999999999))
+    except Exception:
+        new_fee = float(INVITED_FEE)
+
+    if active_count > new_capacity:
+        return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=cupo_menor_a_reservas", status_code=303)
+
+    old = (
+        f"{outing.title} / {outing.destination} / "
+        f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "
+        f"reserva institucional {getattr(outing, 'institutional_reserve', 0) or 0} / "
+        f"tarifa {float(outing.guest_fee or 0)}"
+    )
+
+    outing.title = (title or "").strip() or outing.title
+    outing.destination = (destination or "").strip() or "paseo"
+    outing.departure_at = new_departure
+    outing.max_crew = new_capacity
+    outing.institutional_reserve = new_reserve
+    outing.guest_fee = new_fee
+    outing.notes = (notes or "").strip()
+
+    # Si cambió una salida con reservas activas, queda registrado en auditoría.
+    # No se recalculan cargos firmes porque una salida cerrada no se edita desde este flujo.
     db.commit()
-    new = f"{outing.title} / {outing.destination} / {outing.departure_at.isoformat()} / tarifa {float(outing.guest_fee or 0)}"
-    log(db, user.name, "edición administrativa salida", f"{outing.id}: {old} -> {new}")
-    return RedirectResponse(f"/admin?outing_id={outing.id}&msg=salida_actualizada", status_code=303)
+    new = (
+        f"{outing.title} / {outing.destination} / "
+        f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "
+        f"reserva institucional {getattr(outing, 'institutional_reserve', 0) or 0} / "
+        f"tarifa {float(outing.guest_fee or 0)}"
+    )
+    detail = f"{outing.id}: {old} -> {new}"
+    if active_count:
+        detail += f" / advertencia: tenía {active_count} reservas activas"
+    log(db, user.name, "edición administrativa salida", detail)
+    return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=salida_actualizada", status_code=303)
 
 
 @app.post("/admin/outing_status")
