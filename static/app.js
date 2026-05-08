@@ -131,7 +131,7 @@
 
 
 /* =========================================================
-   v1.7.3 · Robustez operativa: anti doble-submit y recuperación
+   v1.7.4 · Robustez operativa: anti doble-submit y recuperación
    ========================================================= */
 (function(){
   function ready(fn){ if(document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
