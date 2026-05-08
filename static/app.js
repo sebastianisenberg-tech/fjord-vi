@@ -128,3 +128,113 @@
     if(inline){ window.fjordToastV49(inline.getAttribute('data-toast-message'), inline.getAttribute('data-toast-type')||'info'); }
   });
 })();
+
+
+/* =========================================================
+   v1.7.3 · Robustez operativa: anti doble-submit y recuperación
+   ========================================================= */
+(function(){
+  function ready(fn){ if(document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+
+  function uuidLike(){
+    try{
+      if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    }catch(e){}
+    return 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  }
+
+  function lockForm(form){
+    if(form.dataset.submitting === '1') return false;
+    form.dataset.submitting = '1';
+    form.classList.add('formSubmittingV173');
+
+    var rid = form.querySelector('input[name="_client_request_id"]');
+    if(!rid){
+      rid = document.createElement('input');
+      rid.type = 'hidden';
+      rid.name = '_client_request_id';
+      form.appendChild(rid);
+    }
+    rid.value = uuidLike();
+
+    form.querySelectorAll('button, input[type="submit"]').forEach(function(btn){
+      btn.dataset.originalText = btn.dataset.originalText || btn.textContent || '';
+      btn.disabled = true;
+      btn.classList.add('disabledBtn','processingBtnV173');
+      if(btn.tagName === 'BUTTON' && !btn.dataset.keepLabel){
+        btn.textContent = btn.dataset.processingLabel || 'Procesando...';
+      }
+    });
+
+    window.setTimeout(function(){
+      if(document.body && form.isConnected && form.dataset.submitting === '1'){
+        form.dataset.submitting = '0';
+        form.classList.remove('formSubmittingV173');
+        form.querySelectorAll('button, input[type="submit"]').forEach(function(btn){
+          btn.disabled = false;
+          btn.classList.remove('disabledBtn','processingBtnV173');
+          if(btn.tagName === 'BUTTON' && btn.dataset.originalText){ btn.textContent = btn.dataset.originalText; }
+        });
+      }
+    }, 14000);
+
+    return rid.value;
+  }
+
+  function unlockAllForms(){
+    document.querySelectorAll('form[data-submitting="1"]').forEach(function(form){
+      form.dataset.submitting = '0';
+      form.classList.remove('formSubmittingV173');
+      form.querySelectorAll('button, input[type="submit"]').forEach(function(btn){
+        btn.disabled = false;
+        btn.classList.remove('disabledBtn','processingBtnV173');
+        if(btn.tagName === 'BUTTON' && btn.dataset.originalText){ btn.textContent = btn.dataset.originalText; }
+      });
+    });
+  }
+
+  window.addEventListener('pageshow', function(){ unlockAllForms(); });
+
+  ready(function(){
+    document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function(form){
+      if(form.dataset.robustSubmitV173 === '1') return;
+      form.dataset.robustSubmitV173 = '1';
+
+      form.addEventListener('submit', function(ev){
+        if(ev.defaultPrevented) return;
+        var rid = lockForm(form);
+        if(!rid){
+          ev.preventDefault();
+          if(window.showAppToast) window.showAppToast('La operación ya se está procesando.', 'info');
+          return false;
+        }
+      }, true);
+    });
+
+    var params = new URLSearchParams(window.location.search);
+    if(params.get('msg') === 'error_recuperable' && window.showAppToast){
+      window.showAppToast('No pudimos completar la operación. Revisá el estado actual y reintentá.', 'error');
+    }
+  });
+
+  if(window.fetch && !window.__fjordFetchGuardV173){
+    window.__fjordFetchGuardV173 = true;
+    var originalFetch = window.fetch;
+    window.fetch = function(input, init){
+      init = init || {};
+      try{
+        if(init.body instanceof FormData){
+          var rid = init.body.get('_client_request_id') || uuidLike();
+          init.body.set('_client_request_id', rid);
+          init.headers = init.headers || {};
+          if(init.headers instanceof Headers){
+            init.headers.set('X-Fjord-Request-ID', rid);
+          }else{
+            init.headers['X-Fjord-Request-ID'] = rid;
+          }
+        }
+      }catch(e){}
+      return originalFetch(input, init);
+    };
+  }
+})();
