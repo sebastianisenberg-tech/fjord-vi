@@ -25,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.4"
+APP_VERSION = "1.7.5"
 
 
 # =========================
@@ -58,8 +58,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.4"
-RELEASE_LABEL = "Fjord VI · v1.7.4"
+APP_BUILD = "Fjord VI 1.7.5"
+RELEASE_LABEL = "Fjord VI · v1.7.5"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1202,7 +1202,7 @@ def norm_dni(v: str) -> str:
 
     Mantiene letras y números, elimina puntos, espacios, guiones y símbolos.
     Ejemplos:
-    - 41.7.4 -> 41325286
+    - 41.7.5 -> 41325286
     - AB 123456 -> AB123456
     - P-9087-X -> P9087X
     """
@@ -1403,7 +1403,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.7.4:
+    Blindaje 1.7.5:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1843,7 +1843,7 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
 
     displaced = []
 
-    # Blindaje 1.7.4: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Blindaje 1.7.5: la reserva institucional no puede ser ocupada por lista/reservas normales.
     # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
     # a invitados/menores no presentes y luego a otros registros no presentes.
     while True:

@@ -1,5 +1,5 @@
 {
-  "version": "1.7.4",
+  "version": "1.7.5",
   "backend_changed": "version_constant_and_form_cleanup",
   "logic_changed": false,
   "python_syntax_ok": true,
@@ -18,7 +18,7 @@
   ],
   "applied_action_replacements": {},
   "versions_detected": [
-    "1.7.4",
-    "v1.7.4"
+    "1.7.5",
+    "v1.7.5"
   ]
 }

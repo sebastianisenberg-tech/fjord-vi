@@ -1,10 +1,11 @@
 # Changelog
 
-## 1.7.4
+## 1.7.5
 
-- Database Integrity Guard.
-- Agrega creación segura de índices no únicos para usuarios, salidas, reservas, fichas, auditoría, actividad y cola de emails.
-- Agrega rollback automático de sesión ante excepciones.
-- Admin/Sistema muestra estado de índices requeridos.
-- El botón Revisar / aplicar reparación segura también aplica índices.
-- No cambia reglas de reservas, cupos, cargos, QR ni cierres.
+- UI Structure Cleanup.
+- Reestructura CSS de headers Socio/Capitán para evitar superposición de nombre, Clave y Salir.
+- Fuerza comportamiento estable: grid/flex seguro, text-overflow, sin position absolute heredado.
+- Compacta el botón Clave en pantallas chicas.
+- Reserva ancho estable para Salir.
+- Estabiliza bottom nav y pills/badges para evitar deformaciones.
+- No modifica lógica, base de datos, reservas, cupos, QR ni cargos.
