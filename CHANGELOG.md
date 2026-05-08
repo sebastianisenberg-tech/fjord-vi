@@ -1,10 +1,10 @@
 # Changelog
 
-## 1.7.1
+## 1.7.2
 
-- Corrige definitivamente el bug visual `+ + Más salidas`.
-- Deja `Más salidas` como texto base y el `+` queda controlado solo por CSS.
-- Normaliza footer y metadatos a `v1.7.1`.
-- Cambia historial a `Ver historial`, más legible.
-- Micro ajuste final de cards de navegación.
-- Sin cambios de backend ni lógica operativa.
+- Centralización inicial de versión en `APP_VERSION`.
+- Normalización de strings visibles y metadata a `v1.7.2`.
+- Revisión de formularios POST marcados en auditoría.
+- Limpieza/corrección de posible formulario huérfano de reset de clave.
+- No se modificó lógica de reservas, cierres, QR ni cargos.
+- No se tocó la pantalla Capitán salvo versión/metadatos.

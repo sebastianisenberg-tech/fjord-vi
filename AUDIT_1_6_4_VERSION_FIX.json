@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.7.2",
   "fix": "footer/version labels normalized",
   "backend_changed": false,
   "logic_changed": false,

@@ -1,0 +1,24 @@
+{
+  "version": "1.7.2",
+  "backend_changed": "version_constant_and_form_cleanup",
+  "logic_changed": false,
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "missing_post_actions_before": [
+    "/admin",
+    "/admin/update_user/",
+    "/admin_qr",
+    "/captain/preflight"
+  ],
+  "missing_post_actions_after": [
+    "/admin",
+    "/admin/update_user/",
+    "/admin_qr",
+    "/captain/preflight"
+  ],
+  "applied_action_replacements": {},
+  "versions_detected": [
+    "1.7.2",
+    "v1.7.2"
+  ]
+}

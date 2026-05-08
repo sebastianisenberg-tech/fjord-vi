@@ -1,5 +1,5 @@
 
-Fjord VI · v1.7.1
+Fjord VI · v1.7.2
 
 Implementado:
 - Reestructuración visual de próximas navegaciones.
