@@ -25,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.6"
+APP_VERSION = "1.7.7"
 
 
 # =========================
@@ -58,8 +58,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.6"
-RELEASE_LABEL = "Fjord VI · v1.7.6"
+APP_BUILD = "Fjord VI 1.7.7"
+RELEASE_LABEL = "Fjord VI · v1.7.7"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -4628,7 +4628,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "responsible_names": responsible_names,
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
         "control_window": control_window,
-        "default_new_outing_at": default_new_outing_datetime(),
+        "default_new_outing_at": default_new_outing_datetime().strftime("%Y-%m-%dT%H:%M"),
+        "default_guest_fee": int(INVITED_FEE) if float(INVITED_FEE).is_integer() else INVITED_FEE,
         "all_outings": all_outings,
         "all_reservation_rows": all_reservation_rows,
         "all_reservation_count": len(all_reservation_rows),
@@ -5239,16 +5240,30 @@ def admin_outing_status(
     return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/admin/new_outing")
-def new_outing(title: str = Form(...), departure_at: str = Form(...), max_crew: int = Form(MAX_CREW), institutional_reserve: int = Form(0), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+def new_outing(
+    title: str = Form(...),
+    departure_at: str = Form(...),
+    max_crew: int = Form(MAX_CREW),
+    institutional_reserve: int = Form(0),
+    guest_fee: float = Form(INVITED_FEE),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
     dep = datetime.fromisoformat(departure_at)
     capacity = max(1, min(int(max_crew or MAX_CREW), 30))
     reserve_inst = max(0, min(int(institutional_reserve or 0), capacity))
-    # Módulo actual limitado a paseos: destino/tipo y tarifa quedan fijos por sistema.
-    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=INVITED_FEE, status="En reservas", max_crew=capacity, institutional_reserve=reserve_inst, min_crew=MIN_CREW)
+    try:
+        fee = float(guest_fee or INVITED_FEE)
+    except Exception:
+        fee = float(INVITED_FEE)
+    fee = max(0, min(fee, 999999999))
+    # La tarifa se guarda en la salida para preservar trazabilidad histórica:
+    # cambios futuros del valor global no recalculan salidas ya creadas.
+    o = Outing(title=title.strip(), destination="paseo", departure_at=dep, guest_fee=fee, status="En reservas", max_crew=capacity, institutional_reserve=reserve_inst, min_crew=MIN_CREW)
     db.add(o)
     db.commit()
     db.refresh(o)
-    log(db, user.name, "nueva salida", f"{title.strip()} / salida vacía")
+    log(db, user.name, "nueva salida", f"{title.strip()} / tarifa invitado {fee} / salida vacía")
     return RedirectResponse(f"/admin?outing_id={o.id}&msg=salida_creada", status_code=303)
 
 def csv_response_excel(output: io.StringIO, filename: str):
