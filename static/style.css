@@ -1618,7 +1618,7 @@ button.neutralBtn,.mini.neutralBtn{background:#edf3f8!important;color:#425466!im
 .loginVersion,.appFooter,.qrFooter{letter-spacing:.01em!important;}
 
 /* =========================================================
-   v31.7.4 — Club premium real: login sin escudo, header con escudo en cápsula,
+   v31.7.5 — Club premium real: login sin escudo, header con escudo en cápsula,
    botones soft-depth solo en acciones principales, estados como indicadores.
    ========================================================= */
 :root{
@@ -5631,7 +5631,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .sheetVersionBadge{display:inline-flex;align-items:center;border:1px solid rgba(15,79,120,.24);background:#eef7fb;color:#0f4f78;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;margin:0 6px;}
 .versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px;}
 
-/* Fjord VI · v1.7.4 · corrección quirúrgica premium */
+/* Fjord VI · v1.7.5 · corrección quirúrgica premium */
 .appFooter,.socioFooter,.preflightVersion,.loginVersion{opacity:.42!important;color:#7d8793!important;font-size:11px!important;letter-spacing:.04em!important;}
 .captainOutingCard .qrQuick{min-width:54px!important;height:42px!important;border-radius:16px!important;box-shadow:0 6px 14px rgba(8,50,78,.16)!important;align-self:center!important;}
 .captainStickyTabs button,.captainStickyTabs .tabBtn{box-shadow:none!important;filter:saturate(.92)!important;}
@@ -5641,7 +5641,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .erpTop b + span,.erpVersion,.adminVersion{opacity:.72!important;}
 
 
-/* ===== Fjord VI · v1.7.4 · coherencia premium fina ===== */
+/* ===== Fjord VI · v1.7.5 · coherencia premium fina ===== */
 .socioApp.socioV51 .socioProProgress{
   margin-left:0!important;
   margin-right:0!important;
@@ -5680,7 +5680,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI · v1.7.4 · fix bottom nav activo visible ===== */
+/* ===== Fjord VI · v1.7.5 · fix bottom nav activo visible ===== */
 /* Corrige la pastilla azul vacía del primer tab activo sin tocar lógica ni navegación. */
 .bottom a,
 .socioV51Bottom a,
@@ -5732,7 +5732,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 }
 
 
-/* ===== Fjord VI · v1.7.4 · bottom nav sin pastilla fantasma ===== */
+/* ===== Fjord VI · v1.7.5 · bottom nav sin pastilla fantasma ===== */
 /* La barra inferior vuelve a mostrar el texto del tab activo.
    Se elimina cualquier pseudo-indicador o fondo oscuro heredado. */
 
@@ -5806,15 +5806,15 @@ html body .socioV51Bottom a[href="#inicio"].on{
   text-indent:0!important;
 }
 
-/* Fjord VI · v1.7.4 alta usuario feedback */
+/* Fjord VI · v1.7.5 alta usuario feedback */
 .formHint{margin:6px 0 0;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 #createUserForm button[type="submit"]{min-height:42px;font-weight:900}
 
-/* Fjord VI · v1.7.4 identidad socio DNI */
+/* Fjord VI · v1.7.5 identidad socio DNI */
 .formHint{margin:6px 0 10px;color:#607181;font-size:12px;font-weight:750;line-height:1.35}
 
 
-/* ===== Fjord VI · v1.7.4 · refinamiento UX conservador ===== */
+/* ===== Fjord VI · v1.7.5 · refinamiento UX conservador ===== */
 /* Corrige el tab azul vacío de la barra inferior y conserva el look premium. */
 
 html body .bottom,
@@ -5908,7 +5908,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   letter-spacing:.04em!important;
 }
 
-/* Fjord VI · v1.7.4 · fechas con día de semana y nav visible */
+/* Fjord VI · v1.7.5 · fechas con día de semana y nav visible */
 .socioV51Bottom a[href="#inicio"], .bottom a[href="#inicio"] {
   color:#0b5f8f!important; text-indent:0!important; opacity:1!important; visibility:visible!important;
   font-size:11px!important; font-weight:850!important; overflow:visible!important;
@@ -5921,7 +5921,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   white-space:normal!important; line-height:1.28!important;
 }
 
-/* Fjord VI · v1.7.4 · Participación protocolar */
+/* Fjord VI · v1.7.5 · Participación protocolar */
 .protoBadge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#eaf4ff;color:#0b5f8f;border:1px solid #b9d9ef;font-size:10px;font-weight:900;letter-spacing:.05em;vertical-align:middle}
 .protoForm,.protoSelfBox{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .protoForm input,.protoSelfBox input{min-width:190px;flex:1;border:1px solid #d7e5ee;border-radius:10px;padding:8px 10px;font-size:13px}
@@ -5931,7 +5931,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 .drawerForm .checkLine{display:flex;gap:8px;align-items:flex-start;line-height:1.25}
 .drawerForm .checkLine small{display:block;color:#607181;font-weight:650}
 
-/* Fjord VI · v1.7.4 · Protocolar ordenado */
+/* Fjord VI · v1.7.5 · Protocolar ordenado */
 .protoBadge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#eaf4ff;color:#0b5f8f;border:1px solid #b9d9ef;font-size:10px;font-weight:900;letter-spacing:.05em;vertical-align:middle}
 .protoSelfBox,.protoInlineForm{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .protoSelfBox input{min-width:190px;flex:1;border:1px solid #d7e5ee;border-radius:10px;padding:8px 10px;font-size:13px}
@@ -5944,7 +5944,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 .drawerForm .checkLine small{display:block;color:#607181;font-weight:650}
 .erpTable small{display:block;color:#607181;font-size:10.5px;margin-top:2px}
 
-/* Fjord VI · v1.7.4 · protocolar name visibility */
+/* Fjord VI · v1.7.5 · protocolar name visibility */
 .captainFastIdentityV65{
   display:flex!important;
   align-items:center!important;
@@ -5981,7 +5981,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   }
 }
 
-/* Fjord VI · v1.7.4 · login password toggle */
+/* Fjord VI · v1.7.5 · login password toggle */
 .passwordWrap{
   position:relative;
   display:flex;
@@ -6024,7 +6024,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
   }
 }
 
-/* Fjord VI · v1.7.4 · login eye icon */
+/* Fjord VI · v1.7.5 · login eye icon */
 .passwordWrap{
   position:relative;
   display:block;
@@ -6110,7 +6110,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 }
 
 
-/* Fjord VI · v1.7.4 · refined inline eye */
+/* Fjord VI · v1.7.5 · refined inline eye */
 .passwordWrap{
   position:relative;
 }
@@ -6153,7 +6153,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 
 
 
-/* LOGIN PASSWORD EYE ALIGNMENT · Fjord VI · v1.7.4 */
+/* LOGIN PASSWORD EYE ALIGNMENT · Fjord VI · v1.7.5 */
 
 .password-wrapper,
 .password-container,
@@ -6188,7 +6188,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
     padding-right: 56px !important;
 }
 
-/* Fjord VI · v1.7.4 · change password */
+/* Fjord VI · v1.7.5 · change password */
 .changePasswordCard .changeIntro{
   margin:18px 0 18px;
 }
@@ -6223,7 +6223,7 @@ html body .socioV51Bottom a[href="#inicio"].on{
 }
 
 
-/* Fjord VI · v1.7.4 · password management */
+/* Fjord VI · v1.7.5 · password management */
 .accountPasswordLink{
 display:inline-flex;
 align-items:center;
@@ -6255,7 +6255,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI · v1.7.4 · eye icon exact alignment
+/* Fjord VI · v1.7.5 · eye icon exact alignment
    Final override: centra el ojo dentro del campo sin depender de la altura real del input. */
 .loginForm .passwordWrap,
 .changePasswordForm .passwordWrap{
@@ -6350,7 +6350,7 @@ cursor:pointer;
   }
 }
 
-/* Fjord VI · v1.7.4 · visible account password links */
+/* Fjord VI · v1.7.5 · visible account password links */
 .profileActions{
   margin-top:12px;
   display:grid;
@@ -6401,7 +6401,7 @@ cursor:pointer;
   font-size:13px;
 }
 
-/* Fjord VI · v1.7.4 · password flow polish */
+/* Fjord VI · v1.7.5 · password flow polish */
 .passwordCloseLink{
   position:absolute;
   top:18px;
@@ -6460,7 +6460,7 @@ cursor:pointer;
   border-radius:999px;
 }
 
-/* Fjord VI · v1.7.4 · direct password toggle */
+/* Fjord VI · v1.7.5 · direct password toggle */
 .passwordWrap{
   position:relative!important;
 }
@@ -6484,7 +6484,7 @@ cursor:pointer;
   border-radius:999px;
 }
 
-/* Fjord VI · v1.7.4 · inline password toggle final */
+/* Fjord VI · v1.7.5 · inline password toggle final */
 .passwordWrap .passwordToggle{
   pointer-events:auto!important;
   touch-action:manipulation!important;
@@ -6507,7 +6507,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI · v1.7.4 · Mobile visual polish */
+/* Fjord VI · v1.7.5 · Mobile visual polish */
 .socioV51 .socioWrap{
   padding-bottom:92px!important;
 }
@@ -6779,7 +6779,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI · v1.7.4 · UI Compact Premium */
+/* Fjord VI · v1.7.5 · UI Compact Premium */
 .socioV51 .topbar,
 .socioV51 .header,
 .socioV51 .topHeader{
@@ -6932,7 +6932,7 @@ cursor:pointer;
 }
 
 
-/* Fjord VI · v1.7.4 Navigation Refactor */
+/* Fjord VI · v1.7.5 Navigation Refactor */
 
 .socioV51 .nextNavSection{
   display:flex;
@@ -7012,7 +7012,7 @@ cursor:pointer;
 
 
 
-/* Fjord VI · v1.7.4 · cirugía real de próximas navegaciones */
+/* Fjord VI · v1.7.5 · cirugía real de próximas navegaciones */
 .socioV51 .navCompactV161{
   padding:14px!important;
 }
@@ -7114,7 +7114,7 @@ cursor:pointer;
 }
 
 
-/* ===== V1.7.4 PREMIUM POLISH ===== */
+/* ===== V1.7.5 PREMIUM POLISH ===== */
 
 .section-title{
     letter-spacing:-0.4px;
@@ -7178,7 +7178,7 @@ button, .btn{
 
 
 
-/* Fjord VI · v1.7.4 · Visual System */
+/* Fjord VI · v1.7.5 · Visual System */
 :root{
   --fjord-ink:#102333;
   --fjord-ink-soft:#24394a;
@@ -7402,7 +7402,7 @@ button, .btn{
 .socioV51 .bottom.socioV51Bottom a.on{color:#fff!important;}
 
 
-/* Fjord VI · v1.7.4 · Visual Hierarchy Pass */
+/* Fjord VI · v1.7.5 · Visual Hierarchy Pass */
 
 :root{
   --hero-shadow:0 18px 42px rgba(0,45,90,.16);
@@ -7477,7 +7477,7 @@ button, .btn{
 
 
 
-/* Fjord VI · v1.7.4 · Final Fine Polish */
+/* Fjord VI · v1.7.5 · Final Fine Polish */
 
 :root{
   --fjord-primary:#0877a6;
@@ -7689,7 +7689,7 @@ button, .btn{
 }
 
 
-/* 1.7.4 micro refine */
+/* 1.7.5 micro refine */
 
 .socioV51 .moreTripsV161 summary::before{
   content:"+ ";
@@ -7756,7 +7756,7 @@ button, .btn{
 }
 
 
-/* Fjord VI · v1.7.4 · Plus / Historial final fix */
+/* Fjord VI · v1.7.5 · Plus / Historial final fix */
 
 /* El HTML queda como 'Más salidas'; el símbolo lo agrega solo este pseudo-elemento. */
 .socioV51 .moreTripsV161 summary{
@@ -7803,7 +7803,7 @@ button, .btn{
 }
 
 
-/* Fjord VI · v1.7.4 · Final UI Fix */
+/* Fjord VI · v1.7.5 · Final UI Fix */
 
 /* Fuente única: el HTML dice 'Más salidas'. El único + lo agrega esta regla. */
 .socioV51 .moreTripsV161 summary{
@@ -7860,7 +7860,7 @@ button, .btn{
 }
 
 
-/* ===== v1.7.4 socio visual system refinement ===== */
+/* ===== v1.7.5 socio visual system refinement ===== */
 
 :root{
   --badge-radius:999px;
@@ -7969,7 +7969,7 @@ button:active,
 
 
 
-/* v1.7.4 · Robustness Guard */
+/* v1.7.5 · Robustness Guard */
 .formSubmittingV173 {
   pointer-events: none;
 }
@@ -7993,4 +7993,298 @@ button:active,
 }
 @keyframes fjordSpinV173 {
   to { transform: rotate(360deg); }
+}
+
+
+/* =========================================================
+   Fjord VI v1.7.5 · UI STRUCTURE CLEANUP
+   Objetivo: evitar superposiciones en headers y controles críticos.
+   No toca lógica ni layout de contenido.
+   ========================================================= */
+
+/* ---------- Topbar estructural común ---------- */
+.appTopbar,
+.topbar,
+.headerBar,
+.socioTopBar,
+.captainTopBar,
+.capTop,
+.capHeader,
+.mobileHeader {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Grid estable para headers de Socio/Capitán:
+   izquierda = marca, centro = identidad, derecha = acciones. */
+.socioV51 .topbar,
+.socioV51 .socioTopBar,
+.socioV51 .mobileHeader,
+.captainV51 .topbar,
+.captainV51 .captainTopBar,
+.captainV51 .capTop,
+.captainV51 .capHeader,
+.capitanV51 .topbar,
+.capitanV51 .captainTopBar,
+.capitanV51 .capTop,
+.capitanV51 .capHeader {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  min-height: 54px !important;
+  box-sizing: border-box !important;
+}
+
+/* Marca/identidad nunca debe empujar ni invadir acciones. */
+.socioV51 .brand,
+.socioV51 .topBrand,
+.socioV51 .headerBrand,
+.captainV51 .brand,
+.captainV51 .topBrand,
+.captainV51 .headerBrand,
+.capitanV51 .brand,
+.capitanV51 .topBrand,
+.capitanV51 .headerBrand {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* Todo texto de usuario largo se corta con puntos suspensivos. */
+.socioV51 .userName,
+.socioV51 .memberName,
+.socioV51 .captainName,
+.socioV51 .headerUserName,
+.socioV51 .roleName,
+.captainV51 .userName,
+.captainV51 .memberName,
+.captainV51 .captainName,
+.captainV51 .headerUserName,
+.captainV51 .roleName,
+.capitanV51 .userName,
+.capitanV51 .memberName,
+.capitanV51 .captainName,
+.capitanV51 .headerUserName,
+.capitanV51 .roleName,
+.socioV51 header small,
+.captainV51 header small,
+.capitanV51 header small {
+  min-width: 0 !important;
+  max-width: 42vw !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Acciones del header con espacio reservado y sin overlay. */
+.socioV51 .topActions,
+.socioV51 .headerActions,
+.captainV51 .topActions,
+.captainV51 .headerActions,
+.capitanV51 .topActions,
+.capitanV51 .headerActions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 7px !important;
+  min-width: max-content !important;
+  flex: 0 0 auto !important;
+  position: static !important;
+  transform: none !important;
+}
+
+/* Botones Clave / Salir: nunca absolutos, nunca superpuestos. */
+.socioV51 a[href*="change_password"],
+.socioV51 a[href*="clave"],
+.socioV51 .changePasswordBtn,
+.socioV51 .keyBtn,
+.socioV51 .logoutBtn,
+.socioV51 a[href="/logout"],
+.captainV51 a[href*="change_password"],
+.captainV51 a[href*="clave"],
+.captainV51 .changePasswordBtn,
+.captainV51 .keyBtn,
+.captainV51 .logoutBtn,
+.captainV51 a[href="/logout"],
+.capitanV51 a[href*="change_password"],
+.capitanV51 a[href*="clave"],
+.capitanV51 .changePasswordBtn,
+.capitanV51 .keyBtn,
+.capitanV51 .logoutBtn,
+.capitanV51 a[href="/logout"] {
+  position: static !important;
+  transform: none !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  z-index: 2 !important;
+}
+
+/* Si el botón Clave fue una cápsula grande heredada, hacerlo compacto. */
+.socioV51 .keyBtn,
+.socioV51 .changePasswordBtn,
+.captainV51 .keyBtn,
+.captainV51 .changePasswordBtn,
+.capitanV51 .keyBtn,
+.capitanV51 .changePasswordBtn {
+  min-width: 58px !important;
+  max-width: 74px !important;
+  height: 36px !important;
+  padding: 0 13px !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+}
+
+/* Salir conserva su lugar, con ancho estable. */
+.socioV51 .logoutBtn,
+.socioV51 a[href="/logout"],
+.captainV51 .logoutBtn,
+.captainV51 a[href="/logout"],
+.capitanV51 .logoutBtn,
+.capitanV51 a[href="/logout"] {
+  min-width: 60px !important;
+  height: 36px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  font-weight: 850 !important;
+}
+
+/* Evitar cualquier overlay específico heredado de headers. */
+.socioV51 .headerPill,
+.socioV51 .namePill,
+.socioV51 .rolePill,
+.captainV51 .headerPill,
+.captainV51 .namePill,
+.captainV51 .rolePill,
+.capitanV51 .headerPill,
+.capitanV51 .namePill,
+.capitanV51 .rolePill {
+  position: static !important;
+  transform: none !important;
+  max-width: 44vw !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Android/Samsung: con viewport chico, compactar sin pisar. */
+@media (max-width: 390px) {
+  .socioV51 .topbar,
+  .socioV51 .socioTopBar,
+  .socioV51 .mobileHeader,
+  .captainV51 .topbar,
+  .captainV51 .captainTopBar,
+  .captainV51 .capTop,
+  .captainV51 .capHeader,
+  .capitanV51 .topbar,
+  .capitanV51 .captainTopBar,
+  .capitanV51 .capTop,
+  .capitanV51 .capHeader {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    gap: 5px !important;
+    padding-left: 7px !important;
+    padding-right: 7px !important;
+  }
+
+  .socioV51 .userName,
+  .socioV51 .memberName,
+  .socioV51 .captainName,
+  .socioV51 .headerUserName,
+  .socioV51 .roleName,
+  .captainV51 .userName,
+  .captainV51 .memberName,
+  .captainV51 .captainName,
+  .captainV51 .headerUserName,
+  .captainV51 .roleName,
+  .capitanV51 .userName,
+  .capitanV51 .memberName,
+  .capitanV51 .captainName,
+  .capitanV51 .headerUserName,
+  .capitanV51 .roleName,
+  .socioV51 header small,
+  .captainV51 header small,
+  .capitanV51 header small {
+    max-width: 36vw !important;
+  }
+
+  .socioV51 .keyBtn,
+  .socioV51 .changePasswordBtn,
+  .captainV51 .keyBtn,
+  .captainV51 .changePasswordBtn,
+  .capitanV51 .keyBtn,
+  .capitanV51 .changePasswordBtn {
+    min-width: 50px !important;
+    max-width: 58px !important;
+    height: 33px !important;
+    padding: 0 9px !important;
+    font-size: 12px !important;
+  }
+
+  .socioV51 .logoutBtn,
+  .socioV51 a[href="/logout"],
+  .captainV51 .logoutBtn,
+  .captainV51 a[href="/logout"],
+  .capitanV51 .logoutBtn,
+  .capitanV51 a[href="/logout"] {
+    min-width: 52px !important;
+    height: 33px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Estructura bottom nav: evitar desalineaciones del botón central. */
+.bottomNav,
+.socioV51 .bottomNav,
+.captainV51 .bottomNav,
+.capitanV51 .bottomNav {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: 0 !important;
+  overflow: visible !important;
+}
+
+.bottomNav a,
+.socioV51 .bottomNav a,
+.captainV51 .bottomNav a,
+.capitanV51 .bottomNav a {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Botones tipo pill: estructura mínima uniforme para reducir deformaciones. */
+.fvPill,
+.pill,
+.badgeTipo,
+.badgeAlert,
+.tripKindPill {
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+/* Cards: nunca desbordar por contenido largo. */
+.card,
+.heroCard,
+.calendarCard,
+.tripCard,
+.guestCard,
+.inviteCard,
+.socioV51 .card,
+.captainV51 .card,
+.capitanV51 .card {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
 }
