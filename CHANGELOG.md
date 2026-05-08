@@ -1,13 +1,10 @@
 # Changelog
 
-## 1.7.3
+## 1.7.4
 
-- Robustness Guard transversal.
-- Anti doble-submit en formularios desde frontend.
-- `X-Fjord-Request-ID` para detectar acciones duplicadas.
-- Middleware backend de bloqueo de POST duplicado por pocos segundos.
-- Handler global de excepción para evitar pantallas blancas.
-- Botones muestran `Procesando...` y se bloquean durante la acción.
-- Recuperación automática al volver con botón atrás del navegador.
-- Mensaje recuperable si una acción POST falla.
-- Sin cambios en reglas de reservas, cargos, cierres ni QR.
+- Database Integrity Guard.
+- Agrega creación segura de índices no únicos para usuarios, salidas, reservas, fichas, auditoría, actividad y cola de emails.
+- Agrega rollback automático de sesión ante excepciones.
+- Admin/Sistema muestra estado de índices requeridos.
+- El botón Revisar / aplicar reparación segura también aplica índices.
+- No cambia reglas de reservas, cupos, cargos, QR ni cierres.

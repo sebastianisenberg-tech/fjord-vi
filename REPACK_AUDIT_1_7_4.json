@@ -1,0 +1,10 @@
+{
+  "version": "1.7.4",
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "ensure_db_indexes_present": true,
+  "db_index_status_present": true,
+  "db_session_rollback_present": true,
+  "index_panel_present": true,
+  "bad_app_version_self_reference": false
+}

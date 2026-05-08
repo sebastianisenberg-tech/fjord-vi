@@ -1,10 +1,10 @@
-# Auditoría y corrección 1.7.3
+# Auditoría y corrección 1.7.4
 
-Base: Fjord VI · v1.7.3
+Base: Fjord VI · v1.7.4
 
 ## Cambios aplicados
 
-- `APP_VERSION = "1.7.3"` en `main.py`.
+- `APP_VERSION = "1.7.4"` en `main.py`.
 - Normalización de versiones visibles y metadata.
 - Revisión de actions POST de formularios contra rutas declaradas.
 - Corrección o limpieza de posible reset-password huérfano si estaba presente.
@@ -14,7 +14,7 @@ Base: Fjord VI · v1.7.3
 
 - Python syntax: True
 - Jinja templates: OK
-- Versiones detectadas: ['1.7.3', 'v1.7.3']
+- Versiones detectadas: ['1.7.4', 'v1.7.4']
 
 ## Formularios POST pendientes de revisión manual
 

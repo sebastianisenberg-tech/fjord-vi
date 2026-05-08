@@ -25,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.3"
+APP_VERSION = "1.7.4"
 
 
 # =========================
@@ -58,8 +58,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.3"
-RELEASE_LABEL = "Fjord VI · v1.7.3"
+APP_BUILD = "Fjord VI 1.7.4"
+RELEASE_LABEL = "Fjord VI · v1.7.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -563,6 +563,85 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT FALSE"))
 
 
+
+# =========================
+# DATABASE INTEGRITY GUARD
+# =========================
+DB_INDEXES_REQUIRED = [
+    ("idx_users_dni", "users", "dni"),
+    ("idx_users_member_no", "users", "member_no"),
+    ("idx_users_role_active", "users", "role, active"),
+    ("idx_outings_departure_at", "outings", "departure_at"),
+    ("idx_outings_status", "outings", "status"),
+    ("idx_reservations_outing_id", "reservations", "outing_id"),
+    ("idx_reservations_dni", "reservations", "dni"),
+    ("idx_reservations_outing_status", "reservations", "outing_id, status"),
+    ("idx_reservations_responsible", "reservations", "responsible_user_id"),
+    ("idx_reservations_created_at", "reservations", "created_at"),
+    ("idx_closing_sheets_outing_status", "closing_sheets", "outing_id, status"),
+    ("idx_audit_logs_created_at", "audit_logs", "created_at"),
+    ("idx_activity_log_created_at", "activity_log", "created_at"),
+    ("idx_activity_log_user_id", "activity_log", "user_id"),
+    ("idx_email_queue_status", "email_queue", "status"),
+    ("idx_email_queue_created_at", "email_queue", "created_at"),
+]
+
+def _sql_ident(name: str) -> str:
+    s = "".join(ch for ch in (name or "") if ch.isalnum() or ch == "_")
+    if not s:
+        raise ValueError("identificador vacío")
+    return s
+
+def ensure_db_indexes() -> dict:
+    """Crea índices no únicos para mejorar performance sin alterar datos."""
+    result = {"created_or_ok": [], "failed": []}
+    try:
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+    except Exception as e:
+        return {"created_or_ok": [], "failed": [f"inspect: {type(e).__name__}: {e}"]}
+
+    with engine.begin() as conn:
+        for idx_name, table_name, columns in DB_INDEXES_REQUIRED:
+            try:
+                table_safe = _sql_ident(table_name)
+                idx_safe = _sql_ident(idx_name)
+                if table_safe not in tables:
+                    result["failed"].append(f"{idx_safe}: tabla faltante {table_safe}")
+                    continue
+                existing_cols = {c["name"] for c in inspector.get_columns(table_safe)}
+                wanted_cols = [c.strip() for c in columns.split(",")]
+                missing_cols = [c for c in wanted_cols if c not in existing_cols]
+                if missing_cols:
+                    result["failed"].append(f"{idx_safe}: faltan columnas {', '.join(missing_cols)}")
+                    continue
+                cols_sql = ", ".join(_sql_ident(c) for c in wanted_cols)
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS {idx_safe} ON {table_safe} ({cols_sql})"))
+                result["created_or_ok"].append(idx_safe)
+            except Exception as e:
+                result["failed"].append(f"{idx_name}: {type(e).__name__}: {e}")
+    return result
+
+def db_index_status() -> list:
+    rows = []
+    try:
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+        for idx_name, table_name, columns in DB_INDEXES_REQUIRED:
+            if table_name not in tables:
+                rows.append({"table": table_name, "ok": False, "detail": f"{idx_name}: tabla faltante"})
+                continue
+            try:
+                names = {i.get("name") for i in inspector.get_indexes(table_name)}
+                ok = idx_name in names
+                rows.append({"table": table_name, "ok": ok, "detail": f"{idx_name}: {'OK' if ok else 'faltante'}"})
+            except Exception as e:
+                rows.append({"table": table_name, "ok": False, "detail": f"{idx_name}: {type(e).__name__}"})
+    except Exception as e:
+        rows.append({"table": "indexes", "ok": False, "detail": f"inspect: {type(e).__name__}"})
+    return rows
+
+
 def set_system_meta(key: str, value: str):
     try:
         with SessionLocal() as db:
@@ -603,6 +682,7 @@ def set_hidden_guest_candidate_dnis(db: Session, dnis: set[str]):
         row.updated_at = now_local()
 
 ensure_schema()
+ensure_db_indexes()
 set_system_meta("schema_version", "1")
 set_system_meta("last_schema_check", now_local().isoformat())
 try:
@@ -1095,6 +1175,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "counts_system": diag,
         "schema_rows": schema_required_status(),
         "integrity_rows": integrity_checks(db),
+        "index_rows": db_index_status(),
         "backup_info": {"exists": backup_exists, "path": str(JSON_BACKUP_PATH), "size": backup_size, "mtime": fmt_admin_datetime(backup_mtime) if backup_mtime else "", "pg_dump_available": bool(pg_dump_path), "pg_dump_path": pg_dump_path or "", "pg_dump_version": pg_dump_version_label(), "postgres_server_version": postgres_server_version(db), "pg_dump_compat": pg_dump_compatible_with_server(db)[1]},
         "missing_sheet_count": len(closed_outings_without_current_sheet(db)),
         "activity": activity_summary(db),
@@ -1107,6 +1188,12 @@ def db_session():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         db.close()
 
@@ -1115,7 +1202,7 @@ def norm_dni(v: str) -> str:
 
     Mantiene letras y números, elimina puntos, espacios, guiones y símbolos.
     Ejemplos:
-    - 41.7.3 -> 41325286
+    - 41.7.4 -> 41325286
     - AB 123456 -> AB123456
     - P-9087-X -> P9087X
     """
@@ -1316,7 +1403,7 @@ def persist_json(db: Session):
 def import_state(db: Session, data: dict, allow_destructive: bool = False):
     """Importa estado desde backup JSON.
 
-    Blindaje 1.7.3:
+    Blindaje 1.7.4:
     - Por defecto solo importa sobre base vacía.
     - Para borrar datos existentes debe llamarse con allow_destructive=True.
     - El flujo automático restore_json_if_db_empty usa el modo seguro.
@@ -1756,7 +1843,7 @@ def enforce_capacity(db: Session, outing: Outing) -> list:
 
     displaced = []
 
-    # Blindaje 1.7.3: la reserva institucional no puede ser ocupada por lista/reservas normales.
+    # Blindaje 1.7.4: la reserva institucional no puede ser ocupada por lista/reservas normales.
     # Si al bajar la capacidad pública quedan reservas normales excedidas, se mueve primero
     # a invitados/menores no presentes y luego a otros registros no presentes.
     while True:
@@ -5231,11 +5318,14 @@ def audit_csv(db: Session = Depends(db_session), user: User = Depends(require_ro
 @app.post("/admin/schema/check")
 def admin_schema_check(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     ensure_schema()
+    index_result = ensure_db_indexes()
     set_system_meta("schema_version", "1")
     set_system_meta("app_version", VERSION)
     set_system_meta("last_schema_check", now_local().isoformat())
-    log(db, user.name, "schema check", "Revisión técnica de esquema ejecutada desde Sistema")
-    return RedirectResponse("/admin?page=sistema&msg=schema_ok", status_code=303)
+    set_system_meta("last_index_check", json.dumps(index_result, ensure_ascii=False))
+    log(db, user.name, "schema/index check", f"Revisión técnica ejecutada desde Sistema / índices OK: {len(index_result.get('created_or_ok', []))} / fallas: {len(index_result.get('failed', []))}")
+    msg = "schema_ok" if not index_result.get("failed") else "schema_index_warn"
+    return RedirectResponse(f"/admin?page=sistema&msg={msg}", status_code=303)
 
 @app.get("/admin/blindaje.json")
 def admin_blindaje_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):

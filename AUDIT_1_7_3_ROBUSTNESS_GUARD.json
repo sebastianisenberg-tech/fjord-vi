@@ -1,5 +1,5 @@
 {
-  "version": "1.7.3",
+  "version": "1.7.4",
   "goal": "robustness_guard",
   "logic_rules_changed": false,
   "python_syntax_ok": true,
