@@ -187,7 +187,28 @@
     .dangerZone input{margin-top:6px}
     .dangerBtn{margin-top:12px;background:#b42323!important;color:#fff!important;border-color:#b42323!important}
 
-</style>
+
+    /* v1.9.0 Fase 8: UX operacional compacta en Sistema */
+    .systemQuickBar{position:sticky;top:82px;z-index:18;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 12px;padding:8px;border:1px solid #dbe8ef;background:rgba(246,250,253,.94);backdrop-filter:blur(8px);border-radius:14px;box-shadow:0 8px 22px rgba(20,40,55,.06)}
+    .systemQuickBar a,.systemQuickBar button{height:30px;border:1px solid #cfe0e9;border-radius:999px;background:#fff;color:#21465d;text-decoration:none;font-weight:900;font-size:12px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+    .systemQuickBar button{background:#0d5d88;color:#fff;border-color:#0d5d88}
+    .systemGridUx90{align-items:start}
+    .systemFold{transition:box-shadow .15s ease, transform .15s ease}
+    .systemFold>h3{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;margin-bottom:8px}
+    .systemFold>h3::after{content:'Contraer';margin-left:auto;font-size:11px;font-weight:950;color:#607080;background:#eef5f9;border:1px solid #dbe8ef;border-radius:999px;padding:4px 8px;text-transform:uppercase;letter-spacing:.35px}
+    .systemFold.is-collapsed>h3{margin-bottom:0}
+    .systemFold.is-collapsed>h3::after{content:'Abrir'}
+    .systemFold.is-collapsed>*:not(h3){display:none!important}
+    .systemFold:target{outline:3px solid rgba(15,103,150,.20);box-shadow:0 0 0 1px #8cc4e1,0 14px 32px rgba(20,40,55,.10)}
+    .systemFoldPriority{border-left:5px solid #0d7e45!important}
+    .systemFoldWarn{border-left:5px solid #d49b19!important}
+    .systemFoldDanger{border-left:5px solid #b03b3b!important}
+    .systemFold .systemCheckList{max-height:360px;overflow:auto;padding-right:2px}
+    .systemFold .systemCheckList.compact{max-height:220px}
+    .systemCompactNote{font-size:12px;color:#607080;font-weight:800;margin:-2px 0 8px}
+    @media(max-width:900px){.systemQuickBar{top:58px;overflow:auto;flex-wrap:nowrap}.systemQuickBar a,.systemQuickBar button{white-space:nowrap}.systemFold .systemCheckList{max-height:300px}}
+
+  </style>
 </head>
 <body class="adminERPBody">
 <div class="erpShell">
@@ -343,7 +364,7 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado de base de datos, integridad, backups y reset controlado. No es una pantalla operativa diaria.">i</span></h1><p>Consola técnica para soporte, backups, base de datos, esquema e integridad.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/release_check.txt">Release check</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: prioriza alertas y permite desplegar detalles solo cuando hace falta.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/release_check.txt">Release check</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
 
     <div class="systemHero">
       <article class="systemStatusCard"><span>Aplicación <span class="smartTip" data-tip="Versión instalada en Render. Sirve para soporte y control de cambios.">i</span></span><b>{{version}}</b><small>{{app_build}}</small></article>
@@ -352,7 +373,19 @@
       <article class="systemStatusCard"><span>Usuarios activos <span class="smartTip" data-tip="Estimación por actividad reciente, no conexión permanente. Últimos 5 minutos.">i</span></span><b>{{system_console.activity.active_5m}}</b><small>últimos 5 minutos</small></article>
     </div>
 
-    <div class="systemGrid">
+    <div class="systemQuickBar" aria-label="Navegación rápida de Sistema">
+      <button type="button" class="systemFoldAll" data-system-fold="close">Contraer todo</button>
+      <button type="button" class="systemFoldAll" data-system-fold="open">Expandir todo</button>
+      <a href="#system-release">Release</a>
+      <a href="#system-operativo">Operativo</a>
+      <a href="#system-arquitectura">Arquitectura</a>
+      <a href="#system-backups">Backups</a>
+      <a href="#system-integridad">Integridad</a>
+      <a href="#system-actividad">Actividad</a>
+      <a href="#system-reset">Reset</a>
+    </div>
+
+    <div class="systemGrid systemGridUx90">
       <article class="erpCard systemWide"><h3>Estado técnico</h3>
         <div class="systemKv"><span>Hora servidor</span><b>{{system_console.counts_system.server_time}}</b></div>
         <div class="systemKv"><span>URL pública</span><b>{{system_console.public_url}}</b></div>
@@ -590,5 +623,62 @@
 })();
 </script>
 <script src="/static/app.js?v={{version}}"></script>
+
+<script>
+(function(){
+  function norm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+  function setupSystemUX(){
+    const grid=document.querySelector('.systemGridUx90');
+    if(!grid) return;
+    const cards=[...grid.querySelectorAll(':scope > article.erpCard')];
+    const idMap=[
+      ['checklist de release','system-release'],
+      ['estado operativo','system-operativo'],
+      ['arquitectura modular','system-arquitectura'],
+      ['backups','system-backups'],
+      ['esquema','system-esquema'],
+      ['integridad de datos','system-integridad'],
+      ['indices de performance','system-indices'],
+      ['actividad y uso','system-actividad'],
+      ['actividad tecnica reciente','system-actividad-reciente'],
+      ['comunicaciones','system-comunicaciones'],
+      ['reset operativo total','system-reset'],
+      ['estado tecnico','system-tecnico'],
+      ['semaforo operativo global','system-semaforo']
+    ];
+    const openByDefault=['estado tecnico','semaforo operativo global','checklist de release','estado operativo'];
+    cards.forEach((card,idx)=>{
+      const h=card.querySelector('h3');
+      if(!h) return;
+      const title=norm(h.textContent);
+      card.classList.add('systemFold');
+      if(title.includes('reset operativo')) card.classList.add('systemFoldDanger');
+      else if(title.includes('checklist') || title.includes('estado operativo') || title.includes('semaforo')) card.classList.add('systemFoldPriority');
+      else if(title.includes('arquitectura')) card.classList.add('systemFoldWarn');
+      for(const [key,id] of idMap){ if(title.includes(key)){ card.id=id; break; } }
+      if(!openByDefault.some(k=>title.includes(k))) card.classList.add('is-collapsed');
+      h.setAttribute('tabindex','0');
+      h.setAttribute('role','button');
+      h.setAttribute('aria-expanded', String(!card.classList.contains('is-collapsed')));
+      h.addEventListener('click',()=>{card.classList.toggle('is-collapsed');h.setAttribute('aria-expanded', String(!card.classList.contains('is-collapsed')));});
+      h.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();h.click();}});
+    });
+    document.querySelectorAll('[data-system-fold]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const close=btn.getAttribute('data-system-fold')==='close';
+        cards.forEach(card=>{ if(card.querySelector('h3')) card.classList.toggle('is-collapsed', close); });
+      });
+    });
+    document.querySelectorAll('.systemQuickBar a[href^="#"]').forEach(a=>{
+      a.addEventListener('click',()=>{
+        const target=document.querySelector(a.getAttribute('href'));
+        if(target){ target.classList.remove('is-collapsed'); }
+      });
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', setupSystemUX); else setupSystemUX();
+})();
+</script>
+
 </body>
 </html>
