@@ -1,6 +1,8 @@
 {
   "name": "Fjord VI · Embarque",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "release": "Blindaje base etapa 1",
-  "notes": "Unifica versionado, corrige índices de notificaciones, agrega CSRF, cookies seguras en producción y bloqueo progresivo de login."
+  "notes": "Unifica versionado, corrige índices de notificaciones, agrega CSRF, cookies seguras en producción y bloqueo progresivo de login.",
+  "release_label": "Fjord VI · v1.8.3",
+  "phase": "Fase 2.1 hardening login y sesiones"
 }

@@ -27,7 +27,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.8.2"
+APP_VERSION = "1.8.3"
 
 
 # =========================
@@ -60,8 +60,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.2"
-RELEASE_LABEL = "Fjord VI · v1.8.2"
+APP_BUILD = "Fjord VI 1.8.3"
+RELEASE_LABEL = "Fjord VI · v1.8.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -78,6 +78,8 @@ RECENT_POST_TTL_SECONDS = 12
 LOGIN_LOCK_ATTEMPTS = int(os.getenv("LOGIN_LOCK_ATTEMPTS", "20"))
 LOGIN_LOCK_WINDOW_MINUTES = int(os.getenv("LOGIN_LOCK_WINDOW_MINUTES", "30"))
 LOGIN_LOCK_MINUTES = int(os.getenv("LOGIN_LOCK_MINUTES", "15"))
+LOGIN_LOCK_IP_ATTEMPTS = int(os.getenv("LOGIN_LOCK_IP_ATTEMPTS", "80"))
+SESSION_MAX_AGE_SECONDS = int(os.getenv("SESSION_MAX_AGE_SECONDS", "43200"))
 CSRF_COOKIE_NAME = "fjord_csrf"
 SESSION_COOKIE_NAME = "fjord_uid"
 
@@ -126,6 +128,9 @@ class User(Base):
     active = Column(Boolean, default=True)
     can_manage_protocolar = Column(Boolean, default=False)
     must_change_password = Column(Boolean, default=False)
+    session_version = Column(Integer, default=1)
+    last_login_at = Column(DateTime, nullable=True)
+    last_password_change_at = Column(DateTime, nullable=True)
 
 class Outing(Base):
     __tablename__ = "outings"
@@ -579,6 +584,12 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN can_manage_protocolar BOOLEAN DEFAULT FALSE"))
         if "must_change_password" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT FALSE"))
+        if "session_version" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1"))
+        if "last_login_at" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP"))
+        if "last_password_change_at" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN last_password_change_at TIMESTAMP"))
 
 
 
@@ -605,6 +616,7 @@ DB_INDEXES_REQUIRED = [
     ("idx_notification_log_created_at", "notification_log", "created_at"),
     ("idx_login_attempts_ident_created_at", "login_attempts", "ident_key, created_at"),
     ("idx_login_attempts_ip_created_at", "login_attempts", "ip_hash, created_at"),
+    ("idx_users_session_version", "users", "session_version"),
 ]
 
 def _sql_ident(name: str) -> str:
@@ -721,14 +733,20 @@ def _is_production_request(request: Optional[Request] = None) -> bool:
         return False
 
 
-def set_session_cookie(resp: Response, request: Optional[Request], user_id: int):
+def set_session_cookie(resp: Response, request: Optional[Request], user_id: int, session_version: int = 1):
+    """Cookie de sesión firmada con versión.
+
+    La versión permite invalidar sesiones anteriores cuando administración resetea
+    una clave o cuando el usuario cambia su contraseña.
+    """
+    payload = f"{int(user_id)}:{int(session_version or 1)}"
     resp.set_cookie(
         SESSION_COOKIE_NAME,
-        sign_value(str(user_id)),
+        sign_value(payload),
         httponly=True,
         samesite="lax",
         secure=_is_production_request(request),
-        max_age=43200,
+        max_age=SESSION_MAX_AGE_SECONDS,
         path="/",
     )
 
@@ -808,13 +826,23 @@ def login_ident_key(raw: str) -> str:
 
 
 def login_is_locked(db: Session, ident_key: str, ip_hash: str) -> bool:
+    """Bloqueo prudente para entorno social/institucional.
+
+    No bloquea agresivamente al tercer intento. Usa umbral alto por identidad
+    y un umbral mayor por IP para frenar automatismos sin castigar al socio que
+    prueba varias claves posibles.
+    """
     since = now_local() - timedelta(minutes=LOGIN_LOCK_WINDOW_MINUTES)
-    q = db.query(LoginAttempt).filter(LoginAttempt.created_at >= since, LoginAttempt.success == False)
+    base = db.query(LoginAttempt).filter(LoginAttempt.created_at >= since, LoginAttempt.success == False)
     if ident_key:
-        q = q.filter(LoginAttempt.ident_key == ident_key)
-    elif ip_hash:
-        q = q.filter(LoginAttempt.ip_hash == ip_hash)
-    return q.count() >= LOGIN_LOCK_ATTEMPTS
+        ident_failures = base.filter(LoginAttempt.ident_key == ident_key).count()
+        if ident_failures >= LOGIN_LOCK_ATTEMPTS:
+            return True
+    if ip_hash:
+        ip_failures = base.filter(LoginAttempt.ip_hash == ip_hash).count()
+        if ip_failures >= LOGIN_LOCK_IP_ATTEMPTS:
+            return True
+    return False
 
 
 def record_login_attempt(db: Session, ident_key: str, ip_hash: str, success: bool, detail: str = ""):
@@ -1656,12 +1684,29 @@ def log(db: Session, actor: str, action: str, detail: str = ""):
     db.commit()
     persist_json(db)
 
+def parse_session_cookie(raw_cookie: str) -> tuple[Optional[int], Optional[int]]:
+    payload = unsign_value(raw_cookie or "")
+    if not payload or ":" not in payload:
+        return None, None
+    try:
+        uid_s, sv_s = payload.split(":", 1)
+        return int(uid_s), int(sv_s)
+    except Exception:
+        return None, None
+
+
 def current_user(request: Request, db: Session = Depends(db_session)) -> Optional[User]:
-    uid = unsign_value(request.cookies.get(SESSION_COOKIE_NAME, ""))
+    uid, cookie_session_version = parse_session_cookie(request.cookies.get(SESSION_COOKIE_NAME, ""))
     if not uid:
         return None
     try:
-        return db.get(User, int(uid))
+        user = db.get(User, int(uid))
+        if not user or not getattr(user, "active", True):
+            return None
+        db_session_version = int(getattr(user, "session_version", 1) or 1)
+        if int(cookie_session_version or 0) != db_session_version:
+            return None
+        return user
     except Exception:
         return None
 
@@ -1692,11 +1737,13 @@ async def force_password_change_middleware(request: Request, call_next):
     )
     if not any(allowed):
         try:
-            uid = unsign_value(request.cookies.get(SESSION_COOKIE_NAME, ""))
+            uid, cookie_session_version = parse_session_cookie(request.cookies.get(SESSION_COOKIE_NAME, ""))
             if uid:
                 db = SessionLocal()
                 try:
                     u = db.get(User, int(uid))
+                    if u and int(cookie_session_version or 0) != int(getattr(u, "session_version", 1) or 1):
+                        return RedirectResponse("/logout", status_code=303)
                     if u and getattr(u, "must_change_password", False):
                         return RedirectResponse("/change-password", status_code=303)
                 finally:
@@ -3197,7 +3244,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True}
 
 @app.head("/")
 def head_index():
@@ -3259,11 +3306,15 @@ def login(request: Request, dni: str = Form(""), password: str = Form(...), db: 
     if is_temporary_password(password) and not getattr(user, "must_change_password", False):
         user.must_change_password = True
         db.commit()
+    user.last_login_at = now_local()
+    if not getattr(user, "session_version", None):
+        user.session_version = 1
+    db.commit()
     record_login_attempt(db, ident_key, ip_hash, True, "ok")
     log(db, user.name, "login", user.role)
     target = "/change-password" if getattr(user, "must_change_password", False) else "/"
     resp = RedirectResponse(target, status_code=303)
-    set_session_cookie(resp, request, user.id)
+    set_session_cookie(resp, request, user.id, getattr(user, "session_version", 1) or 1)
     return resp
 
 
@@ -3294,9 +3345,13 @@ def change_password_submit(
 
     user.password_hash = hash_password(new_password.strip())
     user.must_change_password = False
+    user.last_password_change_at = now_local()
+    user.session_version = int(getattr(user, "session_version", 1) or 1) + 1
     db.commit()
-    log(db, user.name, "cambio clave inicial", "clave personal definida")
-    return RedirectResponse("/", status_code=303)
+    log(db, user.name, "cambio clave inicial", "clave personal definida; sesiones anteriores invalidadas")
+    resp = RedirectResponse("/", status_code=303)
+    set_session_cookie(resp, request, user.id, user.session_version)
+    return resp
 
 
 
@@ -3333,10 +3388,14 @@ def account_password_submit(
 
     user.password_hash = hash_password(new_password.strip())
     user.must_change_password = False
+    user.last_password_change_at = now_local()
+    user.session_version = int(getattr(user, "session_version", 1) or 1) + 1
     db.commit()
 
-    log(db, user.name, "cambio clave usuario", "clave actualizada desde perfil")
-    return RedirectResponse("/?msg=clave_actualizada", status_code=303)
+    log(db, user.name, "cambio clave usuario", "clave actualizada desde perfil; sesiones anteriores invalidadas")
+    resp = RedirectResponse("/?msg=clave_actualizada", status_code=303)
+    set_session_cookie(resp, request, user.id, user.session_version)
+    return resp
 
 @app.post("/admin/user/reset-password/{user_id}")
 def admin_reset_password(
@@ -3350,6 +3409,8 @@ def admin_reset_password(
 
     target.password_hash = hash_password("demo1234")
     target.must_change_password = True
+    target.last_password_change_at = now_local()
+    target.session_version = int(getattr(target, "session_version", 1) or 1) + 1
     db.commit()
 
     log(db, user.name, "reset clave temporal", f"{target.name} ({target.member_no or target.dni})")
@@ -4908,6 +4969,8 @@ def reset_password(
 
     target.password_hash = hash_password("demo1234")
     target.must_change_password = True
+    target.last_password_change_at = now_local()
+    target.session_version = int(getattr(target, "session_version", 1) or 1) + 1
     db.commit()
     log(db, user.name, "reset clave temporal", f"{target.name} / {target.dni} / cambio obligatorio")
     return RedirectResponse("/admin?page=socios&msg=clave_reseteada", status_code=303)
@@ -4950,6 +5013,8 @@ def reset_all_passwords(
     for target in targets:
         target.password_hash = hash_password("demo1234")
         target.must_change_password = True
+        target.last_password_change_at = now_local()
+        target.session_version = int(getattr(target, "session_version", 1) or 1) + 1
     db.commit()
     log(db, user.name, "reset masivo claves temporales", f"{len(targets)} usuarios activos / cambio obligatorio")
     return RedirectResponse("/admin?page=socios&msg=claves_reseteadas", status_code=303)
