@@ -1,4 +1,4 @@
-# Sistema rápido 1.11.2
+# Sistema rápido 1.11.3
 
 La pantalla `/admin/sistema` carga primero una vista liviana para evitar esperas largas en móvil y PC.
 

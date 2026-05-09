@@ -408,6 +408,22 @@
         {% if system_console.db_error %}<p class="dangerNote">{{system_console.db_error}}</p>{% endif %}
       </article>
 
+      {% if system_console.fast_mode %}
+      <article class="erpCard systemWide"><h3>Sistema rápido activo <span class="smartTip" data-tip="Vista liviana: evita los controles pesados hasta que se pidan. Mejora la entrada desde celular y PC.">i</span></h3>
+        <div class="smartAlert success"><b>Entrada liviana</b><span>Se cargaron solo versión, base de datos, schema y estado básico. Los controles profundos quedan diferidos.</span></div>
+        <div class="systemMiniGrid"><div><span>Modo</span><b>rápido</b></div><div><span>Cache</span><b>{{system_console.get('cache_hit') and 'usado' or 'nuevo'}}</b></div><div><span>Checks pesados</span><b>diferidos</b></div><div><span>Próximo paso</span><b>cargar bajo demanda</b></div></div>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/health" target="_blank">Health JSON</a></div>
+      </article>
+      <article class="erpCard systemWide"><h3>Controles diferidos</h3>
+        <p>Para acelerar el arranque, no se calculan automáticamente integridad profunda, índices, backups, actividad, deploy history ni semáforos completos.</p>
+        <div class="systemCheckList">
+          <div class="checkRow ok"><b>Release check</b><span>Disponible bajo demanda.</span></div>
+          <div class="checkRow ok"><b>Estado operativo</b><span>Disponible al cargar checks completos.</span></div>
+          <div class="checkRow ok"><b>Backups e integridad</b><span>No bloquean la apertura inicial de Sistema.</span></div>
+        </div>
+      </article>
+      {% else %}
+
       <article class="erpCard systemWide"><h3>Semáforo operativo global <span class="smartTip" data-tip="Fase 7: resumen ejecutivo de operación, alertas, mantenimiento, métricas técnicas y preparación multi-barco.">i</span></h3>
         <div class="smartAlert {% if system_console.phase7.color == 'green' %}success{% elif system_console.phase7.color == 'yellow' %}warn{% else %}danger{% endif %}"><b>{{system_console.phase7.label}}</b><span>{{system_console.phase7.phase}} · alertas críticas {{system_console.phase7.bad_count}} · advertencias {{system_console.phase7.warn_count}}</span></div>
         <div class="systemMiniGrid"><div><span>Tiempo activo</span><b>{{system_console.phase7.metrics.uptime_label}}</b></div><div><span>Latencia DB</span><b>{{system_console.phase7.metrics.db_latency_label}}{% if system_console.phase7.metrics.db_latency_ms is not none %} · {{system_console.phase7.metrics.db_latency_ms}} ms{% endif %}</b></div><div><span>Memoria</span><b>{{system_console.phase7.metrics.memory_state}}{% if system_console.phase7.metrics.memory_mb_estimated %} · {{system_console.phase7.metrics.memory_mb_estimated}} MB{% endif %}</b></div><div><span>Embarcación</span><b>{{system_console.phase7.boat_prepare.boat_name}}</b></div></div>
@@ -489,6 +505,7 @@
       <article class="erpCard"><h3>Comunicaciones</h3><p>Módulo de comunicaciones preparado. Configuración, eventos y plantillas desde la pestaña Comunicaciones.</p><div class="systemKv"><span>SMTP</span><b>ver Comunicaciones</b></div><div class="systemKv"><span>Plantillas</span><b>editables</b></div><div class="systemKv"><span>Eventos</span><b>activables</b></div></article>
 
       <article class="erpCard dangerZone productionResetCard"><h3>Reset operativo total <span class="smartTip" data-tip="Uso excepcional para limpiar salidas y reservas de prueba. Conserva el padrón depurado y la configuración, pero borra todo lo operativo.">i</span></h3><p><b>Limpieza total operativa.</b> Borra salidas, reservas, invitados, fichas, cargos, auditoría, actividad y comunicaciones pendientes. Conserva usuarios, padrón depurado, configuración y conexión PostgreSQL.</p><div class="smartAlert danger"><b>Acción irreversible.</b><span>Usar solo después de descargar backup. Elimina viajes colgados y reservas huérfanas. Reinicia salida Nº 1 y ficha Nº 1.</span></div><p class="muted">Antes de borrar genera backup JSON y, si está disponible, backup PostgreSQL. Después no debe quedar ninguna salida ni reserva visible; reinicia numeración: salida Nº 1 y ficha Nº 1.</p><form method="post" action="/admin/production_reset" class="drawerForm productionResetForm" onsubmit="return confirm('ATENCIÓN: esto borra salidas, reservas, invitados, fichas y cargos operativos. No se puede deshacer sin backup. ¿Continuar?') && confirm('Confirmación final: ¿ejecutar RESET OPERATIVO TOTAL?');"><label>Para confirmar escribí exactamente:</label><div class="resetPhraseBox">RESET OPERATIVO FJORD VI</div><input name="reset_phrase" autocomplete="off" placeholder="Escribir frase exacta"><label class="checkLine"><input type="checkbox" name="understood"> Entiendo que se borran salidas, reservas, invitados, fichas, cargos y actividad operativa; el padrón queda conservado.</label><button class="erpBtn erpDanger">Ejecutar Reset operativo total</button></form></article>
+      {% endif %}
     </div>
     {% endif %}
   </main>
