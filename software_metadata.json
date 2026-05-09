@@ -1,10 +1,10 @@
 {
-  "version": "1.11.1",
-  "release_label": "Fjord VI · v1.11.1",
-  "phase": "Fase 12 · profesionalización interna sin cambio funcional",
+  "version": "1.11.3",
+  "release_label": "Fjord VI · v1.11.3",
+  "phase": "Fase 12B · Sistema rápido y seguridad base",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
-  "app_build": "Fjord VI 1.10.0",
+  "app_build": "Fjord VI 1.11.3",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",

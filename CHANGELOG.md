@@ -1,9 +1,18 @@
-# 1.11.1 - Fase 12B Acceso Sistema endurecido
+# 1.11.3 - Fase 12C Sistema rápido real y versión unificada
 
-- Corrige regresión de acceso a Sistema desde Inicio y Actividad.
-- Agrega ruta dura `/admin-system` como respaldo.
-- Refuerza enlaces de Sistema contra interferencias táctiles en Android.
-- Mantiene documentación, tests y profesionalización interna de 1.11.0.
+- Unifica numeración visible/runtime en 1.11.3.
+- Hace que Sistema cargue liviano por defecto.
+- Oculta/renderiza diferido los checks pesados hasta `?full=1`.
+- Reduce consultas iniciales de actividad/comunicaciones/arquitectura.
+- No toca reservas, invitados, cargos ni cierres.
+
+# 1.11.3 - Fase 12C Sistema rápido real y versión unificada
+
+- Arranque rápido de Sistema con cache corto.
+- Checks pesados diferidos disponibles con `?full=1`.
+- Headers básicos de seguridad.
+- Mantiene CSRF, sesiones y lógica operativa existentes.
+- No toca reservas, invitados, cargos ni cierres.
 
 # 1.11.0 - Fase 12 Profesionalización interna
 

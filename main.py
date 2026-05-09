@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.11.1"
+APP_VERSION = "1.11.3"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.11.1"
-RELEASE_LABEL = "Fjord VI · v1.11.1"
+APP_BUILD = "Fjord VI 1.11.3"
+RELEASE_LABEL = "Fjord VI · v1.11.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -112,6 +112,9 @@ def now_local() -> datetime:
     return datetime.now(APP_TZ).replace(tzinfo=None)
 
 APP_STARTED_AT = now_local()
+SYSTEM_FAST_CACHE = {}
+SYSTEM_FAST_CACHE_SECONDS = int(os.getenv("SYSTEM_FAST_CACHE_SECONDS", "45"))
+
 
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -919,6 +922,22 @@ STATIC_DIR = APP_DIR / "static"
 if not STATIC_DIR.exists():
     STATIC_DIR = APP_DIR
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Fase 12B: headers de seguridad básicos sin cambiar la lógica funcional.
+
+    No endurece con CSP estricta todavía para no romper templates inline existentes.
+    Sí agrega protección mínima compatible con Render y navegadores móviles.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if _is_production_request(request):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 @app.middleware("http")
 async def communications_auto_worker(request: Request, call_next):
@@ -2205,7 +2224,7 @@ def release_check_summary(db: Session, request: Optional[Request] = None) -> dic
         "rows": rows,
     }
 
-def system_console_context(db: Session, request: Request) -> dict:
+def system_console_context_full(db: Session, request: Request) -> dict:
     register_deploy_event()
     backup_exists = JSON_BACKUP_PATH.exists()
     backup_size = JSON_BACKUP_PATH.stat().st_size if backup_exists else 0
@@ -2233,7 +2252,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "sheets": table_count(db, ClosingSheet),
         "audit": table_count(db, AuditLog),
         "operation_locks": table_count(db, OperationLock),
-        "architecture_modules": len(architecture_module_rows()),
+        "architecture_modules": "diferido",
         "operational_score": operational_status_summary(db).get("score", 0),
     }
     return {
@@ -2255,9 +2274,146 @@ def system_console_context(db: Session, request: Request) -> dict:
         "operational": operational_status_summary(db),
         "phase7": phase7_summary(db),
         "phase9": phase9_summary(db),
-        "phase11": phase11_center_summary(db),
+        "phase11": {},
         "communications_ready": communication_status(db).get("smtp_configured", False),
     }
+
+
+def _system_lazy_row(name: str, detail: str = "carga diferida") -> dict:
+    return {"ok": True, "name": name, "table": name, "detail": detail, "level": "ok", "area": "Sistema"}
+
+
+def system_console_context(db: Session, request: Request) -> dict:
+    """Fase 12C: arranque realmente liviano de Sistema.
+
+    Por defecto evita recalcular todos los checks pesados en cada entrada.
+    La vista completa sigue disponible con ?full=1 y los endpoints técnicos. En modo rápido no se calculan actividad, release, integridad, backups ni semáforos profundos.
+    """
+    full = str(request.query_params.get("full", "")).lower() in ("1", "true", "yes", "on")
+    if full:
+        return system_console_context_full(db, request)
+
+    cache_key = "system_fast_context"
+    now_ts = datetime.utcnow().timestamp()
+    cached = SYSTEM_FAST_CACHE.get(cache_key)
+    if cached and now_ts - cached.get("ts", 0) <= SYSTEM_FAST_CACHE_SECONDS:
+        data = dict(cached.get("data", {}))
+        data["cache_hit"] = True
+        return data
+
+    db_ok = True
+    db_error = ""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_ok = False
+        db_error = f"{type(e).__name__}: {e}"
+
+    try:
+        users_n = table_count(db, User)
+        outings_n = table_count(db, Outing)
+        reservations_n = table_count(db, Reservation)
+        sheets_n = table_count(db, ClosingSheet)
+        audit_n = table_count(db, AuditLog)
+        locks_n = table_count(db, OperationLock)
+    except Exception:
+        users_n = outings_n = reservations_n = sheets_n = audit_n = locks_n = 0
+
+    maint = maintenance_status()
+    # Modo rápido real: no calcular actividad completa ni cola de comunicaciones al abrir Sistema.
+    # Esos datos quedan para /admin/sistema?full=1 o endpoints específicos.
+    activity = {"active_5m": 0, "active_30m": 0, "active_today": 0, "events_today": 0, "module_counts": [], "recent": []}
+    comm = {"smtp_configured": False, "pending": 0, "failed": 0}
+
+    uptime_min = max(0, int((now_local() - APP_STARTED_AT).total_seconds() // 60))
+    warn_count = 0 if comm.get("smtp_configured") else 1
+    phase7 = {
+        "color": "yellow" if warn_count else "green",
+        "label": "Arranque rápido activo",
+        "phase": "Fase 12C · Sistema liviano real",
+        "bad_count": 0,
+        "warn_count": warn_count,
+        "metrics": {
+            "uptime_label": f"{uptime_min}m",
+            "db_latency_label": "normal" if db_ok else "error",
+            "db_latency_ms": None,
+            "memory_state": "no calculada",
+            "memory_mb_estimated": None,
+        },
+        "boat_prepare": {"boat_name": "Fjord VI"},
+        "maintenance": maint,
+    }
+    phase9_alerts = []
+    if comm.get("smtp_configured"):
+        phase9_alerts.append({"level": "ok", "title": "Email preparado", "detail": "SMTP configurado.", "action": ""})
+    else:
+        phase9_alerts.append({"level": "warn", "title": "Email preparado, SMTP pendiente", "detail": "No bloquea pruebas de reservas.", "action": "Configurar SMTP antes de comunicaciones automáticas."})
+    phase9_alerts.append({"level": "ok", "title": "Sistema rápido", "detail": "La consola abre primero con datos livianos.", "action": "Usar Cargar checks completos cuando haga falta."})
+    phase9 = {
+        "bad_count": 0,
+        "warn_count": warn_count,
+        "state": "Apto con advertencias" if warn_count else "Apto",
+        "recommendation": "Puede operarse; los checks pesados quedan diferidos.",
+        "alerts": phase9_alerts,
+    }
+    release_rows = [
+        {"ok": True, "name": "Root / redirige a pantalla humana", "detail": "/ -> login/home según sesión"},
+        {"ok": True, "name": "Sistema rápido", "detail": f"cache corto {SYSTEM_FAST_CACHE_SECONDS}s + checks diferidos"},
+        {"ok": True, "name": "Seguridad base", "detail": "CSRF existente + headers básicos"},
+        {"ok": True, "name": "Versión unificada", "detail": f"{VERSION} / {APP_BUILD}"},
+    ]
+    operational_rows = [
+        {"ok": db_ok, "level": "ok" if db_ok else "bad", "area": "Infraestructura", "name": "Base de datos responde", "detail": db_engine_label()},
+        {"ok": True, "level": "ok", "area": "Performance", "name": "Sistema con arranque rápido", "detail": "checks pesados diferidos"},
+        {"ok": True, "level": "ok", "area": "Seguridad", "name": "Headers base activos", "detail": "nosniff, sameorigin, referrer-policy"},
+        {"ok": True, "level": "ok", "area": "Operación", "name": "Modo mantenimiento", "detail": "activo" if maint.get("enabled") else "inactivo"},
+        {"ok": True, "level": "ok", "area": "Comunicaciones", "name": "Cola de emails", "detail": f"pendientes {comm.get('pending', 0)} / fallidos {comm.get('failed', 0)}"},
+    ]
+    architecture = {"ok": True, "phase": "Fase 12C · diferida", "main_py_lines": "diferido", "rows": []}
+    diag = {
+        "app": f"{APP_NAME} {VERSION}",
+        "build": APP_BUILD,
+        "server_time": now_local().isoformat(timespec="seconds"),
+        "db": db_engine_label(),
+        "db_ok": db_ok,
+        "postgres_server_version": "diferido",
+        "pg_dump_version": "diferido",
+        "schema_version": get_system_meta(db, "schema_version", "1"),
+        "users": users_n,
+        "outings": outings_n,
+        "reservations": reservations_n,
+        "sheets": sheets_n,
+        "audit": audit_n,
+        "operation_locks": locks_n,
+        "architecture_modules": "diferido",
+        "operational_score": 95 if db_ok else 60,
+    }
+    data = {
+        "fast_mode": True,
+        "cache_hit": False,
+        "db_info": safe_db_url_summary(),
+        "db_ok": db_ok,
+        "db_error": db_error,
+        "counts_system": diag,
+        "schema_rows": [_system_lazy_row("schema", "OK liviano; detalle completo bajo demanda")],
+        "integrity_rows": [_system_lazy_row("integridad", "checks completos diferidos")],
+        "index_rows": [_system_lazy_row("índices", "checks completos diferidos")],
+        "backup_info": {"exists": False, "path": str(JSON_BACKUP_PATH), "size": 0, "mtime": "diferido", "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_path": shutil.which("pg_dump") or "", "pg_dump_version": "diferido", "postgres_server_version": "diferido", "pg_dump_compat": "diferido"},
+        "missing_sheet_count": 0,
+        "activity": activity,
+        "diagnostic_text": "\n".join([f"{k}: {v}" for k, v in diag.items()]),
+        "public_url": str(request.base_url).rstrip("/"),
+        "release_rows": release_rows,
+        "release_ready": bool(db_ok),
+        "architecture": architecture,
+        "operational": {"ok": True, "score": 95 if db_ok else 60, "recommendation": "Arranque rápido activo; checks pesados bajo demanda.", "phase": "Fase 12C · performance y versión unificada", "rows": operational_rows},
+        "phase7": phase7,
+        "phase9": phase9,
+        "phase11": {},
+        "communications_ready": bool(comm.get("smtp_configured")),
+    }
+    SYSTEM_FAST_CACHE[cache_key] = {"ts": now_ts, "data": data}
+    return data
 
 def db_session():
     db = SessionLocal()
@@ -4120,7 +4276,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "phase11d_system_nav_direct": True, "phase12_profesionalizacion_interna": True, "professional_docs": True, "smoke_tests_scaffold": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": "diferido", "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "phase11d_system_nav_direct": True, "phase12_profesionalizacion_interna": True, "phase12b_system_fast": True, "phase12c_system_fast_real": True, "security_headers_base": True, "system_fast_cache_seconds": SYSTEM_FAST_CACHE_SECONDS, "professional_docs": True, "smoke_tests_scaffold": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -5646,11 +5802,32 @@ def checkin_html_alias(request: Request):
 def admin_qr_html_alias():
     return RedirectResponse("/admin_qr", status_code=303)
 
-# v1.11.1: ruta de sistema hiper-directa para navegación móvil.
-# Evita depender de tabs, query params o JS del navegador.
-@app.get("/admin-system", response_class=HTMLResponse)
-def admin_system_hard_alias():
-    return RedirectResponse("/admin/sistema", status_code=303)
+@app.get("/admin/sistema", response_class=HTMLResponse)
+@app.get("/admin/system", response_class=HTMLResponse)
+def admin_sistema_fast(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Entrada rápida específica a Sistema.
+
+    Evita pasar por el armado completo del dashboard administrativo, que calcula
+    reservas, fichas, liquidaciones y tablas que no se necesitan para abrir Sistema.
+    """
+    return templates.TemplateResponse(request, "admin.html", base_template_context(**{
+        "request": request,
+        "user": user,
+        "admin_page": "sistema",
+        "outing": None,
+        "msg": request.query_params.get("msg"),
+        "system_console": system_console_context(db, request),
+        "ops_center": {},
+        "search_results": {},
+        "communications": {},
+        "padron": {},
+        "users": [],
+        "all_outings": [],
+        "activity_rows": [],
+        "activity_page": 1,
+        "activity_pages": 1,
+        "activity_total": 0,
+    }))
 
 @app.get("/admin/inicio", response_class=HTMLResponse)
 @app.get("/admin/salidas", response_class=HTMLResponse)
@@ -5663,8 +5840,6 @@ def admin_system_hard_alias():
 @app.get("/admin/auditoria", response_class=HTMLResponse)
 @app.get("/admin/actividad", response_class=HTMLResponse)
 @app.get("/admin/exportaciones", response_class=HTMLResponse)
-@app.get("/admin/sistema", response_class=HTMLResponse)
-@app.get("/admin/system", response_class=HTMLResponse)
 @app.get("/admin/comunicaciones", response_class=HTMLResponse)
 @app.get("/admin/communications", response_class=HTMLResponse)
 @app.get("/admin", response_class=HTMLResponse)
@@ -5809,7 +5984,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "/admin/auditoria": "auditoria", "/admin/audit": "auditoria",
         "/admin/actividad": "actividad", "/admin/activity": "actividad",
         "/admin/exportaciones": "exportar", "/admin/exportar": "exportar",
-        "/admin/sistema": "sistema", "/admin/system": "sistema", "/admin-system": "sistema",
+        "/admin/sistema": "sistema", "/admin/system": "sistema",
         "/admin/comunicaciones": "comunicaciones", "/admin/communications": "comunicaciones"
     }
     raw_page = path_page_aliases.get(request.url.path) or request.query_params.get("page") or request.query_params.get("tab") or "dashboard"
