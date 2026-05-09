@@ -368,6 +368,14 @@
         <div class="actions"><a class="erpBtn" href="/admin/release_check.json" target="_blank">Ver JSON</a><a class="erpBtn erpPrimary" href="/admin/release_check.txt">Descargar release check</a></div>
       </article>
 
+
+      <article class="erpCard systemWide"><h3>Estado operativo / preproducción <span class="smartTip" data-tip="Semáforo práctico para saber si el sistema está listo para piloto controlado: infraestructura, datos, roles, integridad, seguridad, locks y comunicaciones.">i</span></h3>
+        <p>Control ejecutivo de operación. No modifica datos; resume si la beta está en condiciones de usarse con usuarios reales controlados.</p>
+        <div class="smartAlert {% if system_console.operational.ok %}success{% else %}warn{% endif %}"><b>{% if system_console.operational.ok %}Piloto controlado apto{% else %}Hay bloqueantes operativos{% endif %}</b><span>Score {{system_console.operational.score}}% · {{system_console.operational.recommendation}} · {{system_console.operational.phase}}</span></div>
+        <div class="systemCheckList">{% for row in system_console.operational.rows %}<div class="checkRow {% if row.ok %}ok{% elif row.level == 'warn' %}warn{% else %}bad{% endif %}"><b>{{row.area}} · {{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
+        <div class="actions"><a class="erpBtn" href="/admin/operational_status.json" target="_blank">Ver JSON</a><a class="erpBtn erpPrimary" href="/admin/operational_status.txt">Descargar estado operativo</a></div>
+      </article>
+
       <article class="erpCard systemWide"><h3>Arquitectura modular <span class="smartTip" data-tip="Fase 5: prepara la separación del main.py en módulos sin alterar todavía las reglas visibles. Sirve para controlar que las fronteras técnicas existan antes de mover lógica crítica.">i</span></h3>
         <p>Mapa de módulos preparado para dividir el backend por etapas: configuración, base, seguridad, auditoría, servicios y routers.</p>
         <div class="smartAlert {% if system_console.architecture.ok %}success{% else %}warn{% endif %}"><b>{% if system_console.architecture.ok %}Arquitectura preparada{% else %}Arquitectura incompleta{% endif %}</b><span>{{system_console.architecture.phase}} · main.py: {{system_console.architecture.main_py_lines}} líneas.</span></div>
