@@ -1,6 +1,12 @@
 {
-  "version": "1.8.6",
-  "release_label": "Fjord VI · v1.8.6",
-  "stage": "Fase 4 - concurrencia e idempotencia operativa",
-  "notes": "Agrega lock operativo por salida para acciones críticas, mejora anti doble-submit y checklist release."
+  "version": "1.8.7",
+  "release_label": "Fjord VI · v1.8.7",
+  "phase": "Fase 5 · arquitectura modular controlada",
+  "generated_at": "2026-05-09",
+  "notes": [
+    "Scaffold modular app/core app/services app/routers",
+    "Mapa de arquitectura en Sistema",
+    "Endpoints admin/architecture.json y admin/architecture.txt",
+    "No cambia reglas de negocio visibles"
+  ]
 }

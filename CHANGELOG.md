@@ -26,3 +26,8 @@
 - Bloque superior de claves en Usuarios / Padrón Pro.
 - Reset masivo excepcional para usuarios activos, protegido con frase exacta.
 - Columna Acciones ampliada para evitar que el botón quede escondido.
+
+## 1.8.7
+- Fase 5: arquitectura modular controlada.
+- Scaffold app/core, app/services, app/routers.
+- Mapa de arquitectura en Sistema y endpoints admin/architecture.

@@ -28,7 +28,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.8.6"
+APP_VERSION = "1.8.7"
 
 
 # =========================
@@ -61,8 +61,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.6"
-RELEASE_LABEL = "Fjord VI · v1.8.6"
+APP_BUILD = "Fjord VI 1.8.7"
+RELEASE_LABEL = "Fjord VI · v1.8.7"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1562,9 +1562,53 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Cambio obligatorio de clave temporal", True, "demo1234 exige clave personal")
     add("Auditoría disponible", True, "audit_log + activity_log")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
+    arch = architecture_module_rows()
+    bad_arch = [r for r in arch if not r.get("ok")]
+    add("Arquitectura modular preparada", not bad_arch, "OK" if not bad_arch else f"{len(bad_arch)} módulos pendientes")
 
     return rows
 
+
+
+def architecture_module_rows() -> list:
+    """Mapa de modularización segura de Fase 5.
+
+    Esta fase prepara la separación del main.py sin cambiar reglas visibles.
+    Los módulos existen como fronteras estables para mover código por etapas:
+    config, database, security, audit, services y routers.
+    """
+    modules = [
+        ("app/core/config.py", "Configuración, versión y variables de entorno"),
+        ("app/core/database.py", "Conexión, sesión SQLAlchemy y esquema"),
+        ("app/core/security.py", "Sesiones, hashes, CSRF y login hardening"),
+        ("app/core/audit.py", "Auditoría institucional y activity log"),
+        ("app/services/reservations.py", "Reglas de reservas, cupos e invitados"),
+        ("app/services/outings.py", "Salidas, cierres, reaperturas y fichas"),
+        ("app/services/users.py", "Padrón, claves, roles y permisos"),
+        ("app/services/backups.py", "Backups, diagnóstico y recuperación"),
+        ("app/routers/auth.py", "Rutas de login, logout y cambio de clave"),
+        ("app/routers/admin.py", "Rutas administrativas y consola sistema"),
+        ("app/routers/socio.py", "Rutas del módulo socio"),
+        ("app/routers/captain.py", "Rutas del módulo capitán"),
+    ]
+    rows = []
+    for path, desc in modules:
+        exists = (APP_DIR / path).exists()
+        rows.append({"path": path, "description": desc, "ok": exists, "detail": "preparado" if exists else "pendiente"})
+    return rows
+
+
+def architecture_summary() -> dict:
+    rows = architecture_module_rows()
+    return {
+        "ok": all(r.get("ok") for r in rows),
+        "version": VERSION,
+        "release_label": RELEASE_LABEL,
+        "phase": "Fase 5 · modularización controlada",
+        "main_py_lines": sum(1 for _ in open(APP_DIR / "main.py", "r", encoding="utf-8")),
+        "strategy": "preparar fronteras de módulos sin cambiar comportamiento visible; mover lógica gradualmente con tests y release check",
+        "rows": rows,
+    }
 
 def release_check_summary(db: Session, request: Optional[Request] = None) -> dict:
     rows = release_check_rows(db, request)
@@ -1603,6 +1647,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "sheets": table_count(db, ClosingSheet),
         "audit": table_count(db, AuditLog),
         "operation_locks": table_count(db, OperationLock),
+        "architecture_modules": len(architecture_module_rows()),
     }
     return {
         "db_info": safe_db_url_summary(),
@@ -1619,6 +1664,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "public_url": str(request.base_url).rstrip("/"),
         "release_rows": release_check_rows(db, request),
         "release_ready": release_check_summary(db, request).get("ok", False),
+        "architecture": architecture_summary(),
         "communications_ready": False,
     }
 
@@ -3483,7 +3529,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows())}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -5967,6 +6013,29 @@ def admin_blindaje_json(db: Session = Depends(db_session), user: User = Depends(
     """Diagnóstico rápido de consistencia de datos. No modifica la base."""
     return data_blindaje_checks(db)
 
+
+
+@app.get("/admin/architecture.json")
+def admin_architecture_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Mapa técnico de Fase 5: modularización preparada. No modifica datos."""
+    return architecture_summary()
+
+
+@app.get("/admin/architecture.txt")
+def admin_architecture_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    summary = architecture_summary()
+    lines = [
+        "Fjord VI architecture map",
+        f"version: {summary['version']}",
+        f"phase: {summary['phase']}",
+        f"main_py_lines: {summary['main_py_lines']}",
+        f"ok: {summary['ok']}",
+        "",
+        "Módulos:",
+    ]
+    for row in summary["rows"]:
+        lines.append(f"- [{'OK' if row['ok'] else 'PENDIENTE'}] {row['path']} · {row['description']}")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_architecture_map.txt"})
 
 
 @app.get("/admin/release_check.json")
