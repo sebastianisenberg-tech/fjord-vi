@@ -8304,3 +8304,6 @@ button:active,
 .rowActions.userActions .btnDeleteUser:hover {
   background: #ffe4e4 !important;
 }
+/* v1.10.2: acceso directo robusto a Sistema en móvil */
+.erpSystemDirect{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;background:#e7f3fb;color:#0b5f8f!important;font-weight:800;text-decoration:none;margin-right:8px;white-space:nowrap}
+@media (max-width: 760px){.erpSystemDirect{display:inline-flex}.erpUser span{display:none}.erpTop{grid-template-columns:auto 1fr auto}.erpCommand{display:none}}
