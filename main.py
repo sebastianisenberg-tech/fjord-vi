@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.10.0"
+APP_VERSION = "1.10.1"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.10.0"
-RELEASE_LABEL = "Fjord VI · v1.10.0"
+APP_BUILD = "Fjord VI 1.10.1"
+RELEASE_LABEL = "Fjord VI · v1.10.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5646,6 +5646,17 @@ def checkin_html_alias(request: Request):
 def admin_qr_html_alias():
     return RedirectResponse("/admin_qr", status_code=303)
 
+@app.get("/admin/inicio", response_class=HTMLResponse)
+@app.get("/admin/salidas", response_class=HTMLResponse)
+@app.get("/admin/reservas", response_class=HTMLResponse)
+@app.get("/admin/usuarios", response_class=HTMLResponse)
+@app.get("/admin/historial", response_class=HTMLResponse)
+@app.get("/admin/cargos", response_class=HTMLResponse)
+@app.get("/admin/estadisticas", response_class=HTMLResponse)
+@app.get("/admin/fichas", response_class=HTMLResponse)
+@app.get("/admin/auditoria", response_class=HTMLResponse)
+@app.get("/admin/actividad", response_class=HTMLResponse)
+@app.get("/admin/exportaciones", response_class=HTMLResponse)
 @app.get("/admin/sistema", response_class=HTMLResponse)
 @app.get("/admin/system", response_class=HTMLResponse)
 @app.get("/admin/comunicaciones", response_class=HTMLResponse)
@@ -5780,7 +5791,21 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "comunicaciones": "comunicaciones", "communications": "comunicaciones",
         "sistema": "sistema", "system": "sistema",
     }
-    path_page_aliases = {"/admin/sistema": "sistema", "/admin/system": "sistema", "/admin/comunicaciones": "comunicaciones", "/admin/communications": "comunicaciones"}
+    path_page_aliases = {
+        "/admin/inicio": "dashboard", "/admin/home": "dashboard",
+        "/admin/salidas": "navegaciones", "/admin/outings": "navegaciones",
+        "/admin/reservas": "reservas", "/admin/reservations": "reservas",
+        "/admin/usuarios": "socios", "/admin/socios": "socios", "/admin/users": "socios",
+        "/admin/historial": "historial",
+        "/admin/cargos": "liquidacion", "/admin/liquidacion": "liquidacion",
+        "/admin/estadisticas": "estadisticas", "/admin/stats": "estadisticas",
+        "/admin/fichas": "fichas",
+        "/admin/auditoria": "auditoria", "/admin/audit": "auditoria",
+        "/admin/actividad": "actividad", "/admin/activity": "actividad",
+        "/admin/exportaciones": "exportar", "/admin/exportar": "exportar",
+        "/admin/sistema": "sistema", "/admin/system": "sistema",
+        "/admin/comunicaciones": "comunicaciones", "/admin/communications": "comunicaciones"
+    }
     raw_page = path_page_aliases.get(request.url.path) or request.query_params.get("page") or request.query_params.get("tab") or "dashboard"
     admin_page = page_aliases.get(str(raw_page).strip().lower(), str(raw_page).strip().lower())
     if admin_page not in allowed_admin_pages:
