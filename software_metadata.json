@@ -1,6 +1,6 @@
 {
-  "version": "1.8.9",
-  "release_label": "Fjord VI · v1.8.9",
+  "version": "1.9.0",
+  "release_label": "Fjord VI · v1.9.0",
   "phase": "Fase 7 · operaciones y alertas",
   "generated_at": "2026-05-09",
   "notes": [
@@ -9,5 +9,12 @@
     "Controles de infraestructura, datos, roles, integridad, seguridad, locks y comunicaciones",
     "No cambia reglas de negocio visibles"
   ],
-  "app_build": "Fjord VI 1.8.9"
+  "app_build": "Fjord VI 1.9.0",
+  "release": "Fase 8 UX Operacional",
+  "features": [
+    "controles_preproduccion_compactados",
+    "jerarquia_operacional",
+    "navegacion_interna_sistema",
+    "sistema_compacto_colapsable"
+  ]
 }
