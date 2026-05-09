@@ -378,7 +378,7 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>{% if system_console.fast_mode %}<div class="smartAlert success"><b>Arranque rápido activo</b><span>Vista liviana con cache corto. Para diagnóstico profundo usá “Cargar checks completos”.</span></div>{% endif %}</div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>{% if system_console.fast_mode %}<div class="smartAlert success"><b>Arranque rápido activo</b><span>Vista liviana con cache corto. Para diagnóstico profundo usá “Cargar checks completos”.<br><small>El botón Health técnico JSON abre datos crudos para soporte; no es una pantalla visual.</small></span></div>{% endif %}</div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico ZIP</a></div></section>
 
     <div class="systemHero">
       <article class="systemStatusCard"><span>Aplicación <span class="smartTip" data-tip="Versión instalada en Render. Sirve para soporte y control de cambios.">i</span></span><b>{{version}}</b><small>{{app_build}}</small></article>
@@ -390,13 +390,13 @@
     <div class="systemQuickBar" aria-label="Navegación rápida de Sistema">
       <button type="button" class="systemFoldAll" data-system-fold="close">Contraer todo</button>
       <button type="button" class="systemFoldAll" data-system-fold="open">Expandir todo</button>
-      <a href="#system-release">Release</a>
-      <a href="#system-operativo">Operativo</a>
-      <a href="#system-arquitectura">Arquitectura</a>
-      <a href="#system-backups">Backups</a>
-      <a href="#system-integridad">Integridad</a>
-      <a href="#system-actividad">Actividad</a>
-      <a href="#system-reset">Reset</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-release{% else %}#system-release{% endif %}">Release</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-operativo{% else %}#system-operativo{% endif %}">Operativo</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-arquitectura{% else %}#system-arquitectura{% endif %}">Arquitectura</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-backups{% else %}#system-backups{% endif %}">Backups</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-integridad{% else %}#system-integridad{% endif %}">Integridad</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-actividad{% else %}#system-actividad{% endif %}">Actividad</a>
+      <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-reset{% else %}#system-reset{% endif %}">Reset</a>
     </div>
 
     <div class="systemGrid systemGridUx90">
@@ -412,12 +412,12 @@
       <article class="erpCard systemWide"><h3>Sistema rápido activo <span class="smartTip" data-tip="Vista liviana: evita los controles pesados hasta que se pidan. Mejora la entrada desde celular y PC.">i</span></h3>
         <div class="smartAlert success"><b>Entrada liviana</b><span>Se cargaron solo versión, base de datos, schema y estado básico. Los controles profundos quedan diferidos.</span></div>
         <div class="systemMiniGrid"><div><span>Modo</span><b>rápido</b></div><div><span>Cache</span><b>{{system_console.get('cache_hit') and 'usado' or 'nuevo'}}</b></div><div><span>Checks pesados</span><b>diferidos</b></div><div><span>Próximo paso</span><b>cargar bajo demanda</b></div></div>
-        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/health" target="_blank">Health JSON</a></div>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT TXT</a><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a></div>
       </article>
       <article class="erpCard systemWide"><h3>Controles diferidos</h3>
         <p>Para acelerar el arranque, no se calculan automáticamente integridad profunda, índices, backups, actividad, deploy history ni semáforos completos.</p>
         <div class="systemCheckList">
-          <div class="checkRow ok"><b>Release check</b><span>Disponible bajo demanda.</span></div>
+          <div class="checkRow ok"><b>Release check TXT</b><span>Disponible bajo demanda.</span></div>
           <div class="checkRow ok"><b>Estado operativo</b><span>Disponible al cargar checks completos.</span></div>
           <div class="checkRow ok"><b>Backups e integridad</b><span>No bloquean la apertura inicial de Sistema.</span></div>
         </div>
@@ -698,15 +698,40 @@
     document.querySelectorAll('[data-system-fold]').forEach(btn=>{
       btn.addEventListener('click',()=>{
         const close=btn.getAttribute('data-system-fold')==='close';
-        cards.forEach(card=>{ if(card.querySelector('h3')) card.classList.toggle('is-collapsed', close); });
+        const foldables = cards.filter(card=>card.querySelector('h3') && card.classList.contains('systemFold'));
+        if(!foldables.length){
+          const aviso=document.createElement('div');
+          aviso.className='smartAlert warn';
+          aviso.innerHTML='<b>Controles diferidos</b><span>Para abrir estas secciones primero tocá “Cargar checks completos”.</span>';
+          grid.prepend(aviso);
+          setTimeout(()=>aviso.remove(), 3500);
+          return;
+        }
+        foldables.forEach(card=>{ card.classList.toggle('is-collapsed', close); });
       });
     });
+    function openHashTarget(){
+      if(!location.hash) return;
+      const target=document.querySelector(location.hash);
+      if(target){
+        target.classList.remove('is-collapsed');
+        const h=target.querySelector('h3');
+        if(h) h.setAttribute('aria-expanded','true');
+        setTimeout(()=>target.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+      }
+    }
     document.querySelectorAll('.systemQuickBar a[href^="#"]').forEach(a=>{
       a.addEventListener('click',()=>{
         const target=document.querySelector(a.getAttribute('href'));
-        if(target){ target.classList.remove('is-collapsed'); }
+        if(target){ 
+          target.classList.remove('is-collapsed');
+          const h=target.querySelector('h3');
+          if(h) h.setAttribute('aria-expanded','true');
+        }
       });
     });
+    window.addEventListener('hashchange', openHashTarget);
+    openHashTarget();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', setupSystemUX); else setupSystemUX();
 })();
