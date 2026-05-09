@@ -1,5 +1,14 @@
+# Changelog
 
-## 1.12.0 · Fase 13 Seguridad, tests y observabilidad
+## 1.13.0 · Fase 14 Validaciones backend y tests reales
+
+- Agrega validaciones de negocio puras en `app/core/business_rules.py`.
+- Agrega tests automáticos iniciales para cupos, duplicados, roles, estados e invitado responsable.
+- Mantiene UX y operatoria sin cambios.
+- Prepara conexión gradual de reglas al backend crítico.
+
+
+## 1.13.0 · Fase 13 Seguridad, tests y observabilidad
 
 - Observabilidad liviana por request-id y tiempo de respuesta.
 - Endpoints admin de seguridad y observabilidad.
