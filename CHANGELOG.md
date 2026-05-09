@@ -1,3 +1,15 @@
+
+# 1.15.0
+
+- observabilidad inicial profesional
+- endpoints /health/live y /health/ready
+- estructura inicial migraciones
+- nuevos tests fase 16
+- documentación observabilidad
+- estrategia formal de testing
+- preparación CI/CD futura
+
+
 # 1.14.0 · Fase 15 · Arquitectura, errores y services
 
 - Se agregan errores tipados centralizados.
