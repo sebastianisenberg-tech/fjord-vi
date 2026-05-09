@@ -1,0 +1,11 @@
+{
+  "version": "1.7.6",
+  "goal": "robustness_guard",
+  "logic_rules_changed": false,
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "duplicate_post_guard_present": true,
+  "global_exception_handler_present": true,
+  "frontend_lock_present": true,
+  "bad_app_version_self_reference": false
+}

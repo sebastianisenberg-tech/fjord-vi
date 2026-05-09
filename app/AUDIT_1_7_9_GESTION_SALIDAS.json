@@ -1,0 +1,12 @@
+{
+  "version": "1.7.9",
+  "name": "GESTION_SALIDAS",
+  "base": "1.7.8_RESET_OPERATIVO_TOTAL",
+  "changes": [
+    "Agrega edición administrativa de salidas existentes desde panel Salidas / navegaciones.",
+    "Permite cambiar nombre, destino, fecha/hora, capacidad operativa, reserva institucional, tarifa de invitado y observaciones internas.",
+    "Bloquea edición directa de salidas cerradas para preservar ficha/liquidación.",
+    "Valida que la nueva capacidad no sea menor que las reservas activas.",
+    "Audita los cambios y advierte si la salida editada tenía reservas activas."
+  ]
+}
