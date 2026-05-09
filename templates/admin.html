@@ -343,7 +343,7 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado de base de datos, integridad, backups y reset controlado. No es una pantalla operativa diaria.">i</span></h1><p>Consola técnica para soporte, backups, base de datos, esquema e integridad.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado de base de datos, integridad, backups y reset controlado. No es una pantalla operativa diaria.">i</span></h1><p>Consola técnica para soporte, backups, base de datos, esquema e integridad.</p></div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health JSON</a><a class="erpBtn" href="/admin/release_check.txt">Release check</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico</a></div></section>
 
     <div class="systemHero">
       <article class="systemStatusCard"><span>Aplicación <span class="smartTip" data-tip="Versión instalada en Render. Sirve para soporte y control de cambios.">i</span></span><b>{{version}}</b><small>{{app_build}}</small></article>
@@ -359,6 +359,13 @@
         <div class="systemKv"><span>Motor activo</span><b>{{system_console.db_info.engine}}</b></div>
         <div class="systemKv"><span>Base DB</span><b>{% if system_console.db_info.engine == 'postgres' %}Render PostgreSQL conectado{% else %}{{system_console.db_info.database or '-' }}{% endif %}</b></div>
         {% if system_console.db_error %}<p class="dangerNote">{{system_console.db_error}}</p>{% endif %}
+      </article>
+
+      <article class="erpCard systemWide"><h3>Checklist de release <span class="smartTip" data-tip="Control fijo antes de publicar una versión: redirección inicial, login, DB, esquema, integridad, estáticos, seguridad y ausencia de pantallas técnicas.">i</span></h3>
+        <p>Control previo al deploy operativo. Debe quedar todo en OK antes de pasar una beta a producción.</p>
+        <div class="smartAlert {% if system_console.release_ready %}success{% else %}warn{% endif %}"><b>{% if system_console.release_ready %}Release apto{% else %}Release con puntos a revisar{% endif %}</b><span>Versión {{version}} · root/login · PostgreSQL · integridad · archivos críticos · seguridad.</span></div>
+        <div class="systemCheckList">{% for row in system_console.release_rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
+        <div class="actions"><a class="erpBtn" href="/admin/release_check.json" target="_blank">Ver JSON</a><a class="erpBtn erpPrimary" href="/admin/release_check.txt">Descargar release check</a></div>
       </article>
 
       <article class="erpCard"><h3>Conteos principales</h3>
