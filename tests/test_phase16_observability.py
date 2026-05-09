@@ -7,4 +7,4 @@ def test_health_routes_present():
 
 def test_version_115_present():
     content = Path("main.py").read_text(encoding="utf-8")
-    assert '1.15.2' in content
+    assert '1.15.3' in content

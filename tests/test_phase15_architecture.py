@@ -32,13 +32,13 @@ def test_app_errors_are_typed():
 
 def test_settings_load_without_env_crash():
     settings = importlib.import_module("app.core.settings")
-    loaded = settings.load_settings("1.15.2")
-    assert loaded.app_version == "1.15.2"
+    loaded = settings.load_settings("1.15.3")
+    assert loaded.app_version == "1.15.3"
     assert loaded.session_max_age_seconds > 0
 
 
 def test_version_unified():
-    assert (ROOT / "VERSION.txt").read_text().strip() == "1.15.2"
+    assert (ROOT / "VERSION.txt").read_text().strip() == "1.15.3"
     main_text = (ROOT / "main.py").read_text()
-    assert 'APP_VERSION = "1.15.2"' in main_text
-    assert 'APP_BUILD = "Fjord VI 1.15.2"' in main_text
+    assert 'APP_VERSION = "1.15.3"' in main_text
+    assert 'APP_BUILD = "Fjord VI 1.15.3"' in main_text

@@ -378,7 +378,7 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>{% if system_console.fast_mode %}<div class="smartAlert success"><b>Arranque rápido activo</b><span>Vista liviana con cache corto. Para diagnóstico profundo usá “Cargar checks completos”.<br><small>El botón Health técnico JSON abre datos crudos para soporte; no es una pantalla visual.</small></span></div>{% endif %}</div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/admin/diagnostic.txt">Descargar diagnóstico ZIP</a></div></section>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>{% if system_console.fast_mode %}<div class="smartAlert success"><b>Arranque rápido activo</b><span>Vista liviana con cache corto. Para diagnóstico profundo usá “Cargar checks completos”.<br><small>El botón Health técnico JSON abre datos crudos para soporte; no es una pantalla visual.</small><br><small>Al tocar “Cargar checks completos” se carga la vista profunda de Sistema: release, integridad, backups, actividad, arquitectura y reset.</small></span></div>{% endif %}</div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a><a class="erpBtn erpPrimary" href="/admin/sistema?full=1" onclick="try{sessionStorage.setItem('fjordSystemLoadingChecks','1');this.textContent='Cargando checks...';this.style.opacity='.78';}catch(e){}">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/admin/diagnostic.zip" download>Descargar diagnóstico ZIP</a></div></section>
 
     <div class="systemHero">
       <article class="systemStatusCard"><span>Aplicación <span class="smartTip" data-tip="Versión instalada en Render. Sirve para soporte y control de cambios.">i</span></span><b>{{version}}</b><small>{{app_build}}</small></article>
@@ -412,7 +412,7 @@
       <article class="erpCard systemWide"><h3>Sistema rápido activo <span class="smartTip" data-tip="Vista liviana: evita los controles pesados hasta que se pidan. Mejora la entrada desde celular y PC.">i</span></h3>
         <div class="smartAlert success"><b>Entrada liviana</b><span>Se cargaron solo versión, base de datos, schema y estado básico. Los controles profundos quedan diferidos.</span></div>
         <div class="systemMiniGrid"><div><span>Modo</span><b>rápido</b></div><div><span>Cache</span><b>{{system_console.get('cache_hit') and 'usado' or 'nuevo'}}</b></div><div><span>Checks pesados</span><b>diferidos</b></div><div><span>Próximo paso</span><b>cargar bajo demanda</b></div></div>
-        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/sistema?full=1">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT TXT</a><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a></div>
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/sistema?full=1" onclick="try{sessionStorage.setItem('fjordSystemLoadingChecks','1');this.textContent='Cargando checks...';this.style.opacity='.78';}catch(e){}">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a></div>
       </article>
       <article class="erpCard systemWide"><h3>Controles diferidos</h3>
         <p>Para acelerar el arranque, no se calculan automáticamente integridad profunda, índices, backups, actividad, deploy history ni semáforos completos.</p>
@@ -663,6 +663,16 @@
     const grid=document.querySelector('.systemGridUx90');
     if(!grid) return;
     const cards=[...grid.querySelectorAll(':scope > article.erpCard')];
+    try{
+      if(sessionStorage.getItem('fjordSystemLoadingChecks') && new URLSearchParams(location.search).get('full')){
+        sessionStorage.removeItem('fjordSystemLoadingChecks');
+        const aviso=document.createElement('div');
+        aviso.className='smartAlert success';
+        aviso.innerHTML='<b>Checks completos cargados</b><span>Ya se abrió la vista profunda de Sistema: release, integridad, backups, actividad, arquitectura y reset.</span>';
+        grid.prepend(aviso);
+        setTimeout(()=>aviso.remove(), 5500);
+      }
+    }catch(e){}
     const idMap=[
       ['checklist de release','system-release'],
       ['estado operativo','system-operativo'],
