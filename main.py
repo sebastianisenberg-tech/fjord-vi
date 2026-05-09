@@ -26,8 +26,9 @@ from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.8.5"
+APP_VERSION = "1.8.6"
 
 
 # =========================
@@ -60,8 +61,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.5"
-RELEASE_LABEL = "Fjord VI · v1.8.5"
+APP_BUILD = "Fjord VI 1.8.6"
+RELEASE_LABEL = "Fjord VI · v1.8.6"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -75,6 +76,7 @@ APP_TZ = ZoneInfo(os.getenv("APP_TZ", "America/Argentina/Buenos_Aires"))
 # =========================
 RECENT_POST_KEYS = {}
 RECENT_POST_TTL_SECONDS = 12
+OPERATION_LOCK_TTL_SECONDS = int(os.getenv("OPERATION_LOCK_TTL_SECONDS", "30"))
 LOGIN_LOCK_ATTEMPTS = int(os.getenv("LOGIN_LOCK_ATTEMPTS", "20"))
 LOGIN_LOCK_WINDOW_MINUTES = int(os.getenv("LOGIN_LOCK_WINDOW_MINUTES", "30"))
 LOGIN_LOCK_MINUTES = int(os.getenv("LOGIN_LOCK_MINUTES", "15"))
@@ -211,6 +213,24 @@ class ActivityLog(Base):
     detail = Column(Text, default="")
     ip = Column(String, default="")
     user_agent = Column(Text, default="")
+
+
+
+
+class OperationLock(Base):
+    """Lock operativo liviano para evitar acciones simultáneas sobre la misma salida.
+
+    No reemplaza constraints de base ni validaciones de negocio: funciona como
+    cinturón de seguridad contra doble click, mala señal móvil o dos pantallas
+    tocando la misma salida a la vez.
+    """
+    __tablename__ = "operation_locks"
+    key = Column(String, primary_key=True)
+    created_at = Column(DateTime, default=now_local)
+    expires_at = Column(DateTime, nullable=False)
+    owner = Column(String, default="")
+    path = Column(String, default="")
+    detail = Column(Text, default="")
 
 
 class LoginAttempt(Base):
@@ -617,6 +637,7 @@ DB_INDEXES_REQUIRED = [
     ("idx_login_attempts_ident_created_at", "login_attempts", "ident_key, created_at"),
     ("idx_login_attempts_ip_created_at", "login_attempts", "ip_hash, created_at"),
     ("idx_users_session_version", "users", "session_version"),
+    ("idx_operation_locks_expires_at", "operation_locks", "expires_at"),
 ]
 
 def _sql_ident(name: str) -> str:
@@ -959,6 +980,141 @@ templates = SafeTemplates(TEMPLATES_DIR)
 
 
 
+
+
+def _path_rid(path: str) -> Optional[int]:
+    try:
+        m = re.search(r"/(\d+)(?:/[^/]*)?$", path or "")
+        return int(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
+def _outing_id_from_post(path: str, form_data: dict) -> Optional[int]:
+    """Detecta salida afectada por una acción POST para aplicar lock lógico."""
+    raw = form_data.get("outing_id") or form_data.get("selected_outing_id")
+    try:
+        if raw:
+            return int(str(raw))
+    except Exception:
+        pass
+    rid = _path_rid(path)
+    if not rid:
+        return None
+    # Rutas por reserva: /socio/cancel/{rid}, /captain/attendance/{rid}/...
+    if path.startswith("/socio/") or path.startswith("/captain/attendance") or path.startswith("/captain/reassign") or path.startswith("/socio/protocolar"):
+        try:
+            with SessionLocal() as db:
+                r = db.get(Reservation, rid)
+                return int(r.outing_id) if r else None
+        except Exception:
+            return None
+    # Rutas por salida directa.
+    if path.startswith("/admin/outing_status"):
+        return rid
+    return None
+
+
+def _critical_post_path(path: str) -> bool:
+    critical_prefixes = (
+        "/socio/add_self", "/socio/add_guest", "/socio/add_protocolar", "/socio/protocolar/",
+        "/socio/cancel/", "/socio/reactivate/",
+        "/captain/outing_status", "/captain/attendance/", "/captain/reassign/", "/captain/close",
+        "/admin/update_outing", "/admin/outing_status", "/admin/new_outing",
+        "/admin/schema/check", "/admin/system/repair_missing_sheets",
+    )
+    return any((path or "").startswith(x) for x in critical_prefixes)
+
+
+def cleanup_expired_operation_locks():
+    try:
+        with SessionLocal() as db:
+            db.query(OperationLock).filter(OperationLock.expires_at < now_local()).delete(synchronize_session=False)
+            db.commit()
+    except Exception:
+        pass
+
+
+def acquire_operation_lock(lock_key: str, owner: str, path: str, detail: str = "") -> bool:
+    """Intenta tomar un lock de DB con TTL corto. Devuelve False si ya hay una operación activa."""
+    if not lock_key:
+        return True
+    cleanup_expired_operation_locks()
+    try:
+        with SessionLocal() as db:
+            row = OperationLock(
+                key=lock_key,
+                created_at=now_local(),
+                expires_at=now_local() + timedelta(seconds=OPERATION_LOCK_TTL_SECONDS),
+                owner=(owner or "")[:120],
+                path=(path or "")[:240],
+                detail=(detail or "")[:500],
+            )
+            db.add(row)
+            db.commit()
+            return True
+    except IntegrityError:
+        return False
+    except Exception:
+        # Falla abierta: no impedimos operar si el lock técnico falló.
+        return True
+
+
+def release_operation_lock(lock_key: str):
+    if not lock_key:
+        return
+    try:
+        with SessionLocal() as db:
+            row = db.get(OperationLock, lock_key)
+            if row:
+                db.delete(row)
+                db.commit()
+    except Exception:
+        pass
+
+
+@app.middleware("http")
+async def operation_lock_middleware(request: Request, call_next):
+    """Lock de concurrencia para acciones críticas sobre una misma salida.
+
+    Cubre el caso típico móvil: doble toque, refresh durante POST o dos pantallas
+    operando la misma navegación. Si detecta una operación simultánea, vuelve a
+    la pantalla anterior en vez de ejecutar dos veces la mutación.
+    """
+    if request.method.upper() != "POST":
+        return await call_next(request)
+    path = request.url.path or ""
+    ctype = (request.headers.get("content-type") or "").lower()
+    if not _critical_post_path(path) or "application/x-www-form-urlencoded" not in ctype:
+        return await call_next(request)
+
+    body = await request.body()
+    parsed = parse_qs(body.decode("utf-8", errors="ignore"), keep_blank_values=True)
+    form_data = {k: (v[0] if v else "") for k, v in parsed.items()}
+    outing_id = _outing_id_from_post(path, form_data)
+    lock_key = f"outing:{outing_id}" if outing_id else ""
+    owner = request.cookies.get(SESSION_COOKIE_NAME, "anon")
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    locked_request = Request(request.scope, receive)
+    if not lock_key:
+        return await call_next(locked_request)
+
+    if not acquire_operation_lock(lock_key, owner, path, f"outing_id={outing_id}"):
+        resp = RedirectResponse(_safe_back_url(request), status_code=303)
+        resp.headers["X-Fjord-Operation-Lock"] = "busy"
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+    try:
+        resp = await call_next(locked_request)
+        resp.headers["X-Fjord-Operation-Lock"] = "ok"
+        return resp
+    finally:
+        release_operation_lock(lock_key)
+
+
 @app.middleware("http")
 async def csrf_protection_middleware(request: Request, call_next):
     """Protección CSRF por token firmado en formularios POST.
@@ -1208,6 +1364,7 @@ def schema_required_status() -> list:
         "closing_sheets": ["id", "outing_id", "sequence", "status", "payload"],
         "system_meta": ["key", "value", "updated_at"],
         "activity_log": ["id", "created_at", "user_id", "user_name", "role", "module", "action", "path"],
+        "operation_locks": ["key", "created_at", "expires_at", "owner", "path"],
     }
     inspector = inspect(engine)
     rows = []
@@ -1404,6 +1561,7 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Sesión con vencimiento", SESSION_MAX_AGE_SECONDS > 0, f"{SESSION_MAX_AGE_SECONDS}s")
     add("Cambio obligatorio de clave temporal", True, "demo1234 exige clave personal")
     add("Auditoría disponible", True, "audit_log + activity_log")
+    add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
 
     return rows
 
@@ -1444,6 +1602,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "reservations": table_count(db, Reservation),
         "sheets": table_count(db, ClosingSheet),
         "audit": table_count(db, AuditLog),
+        "operation_locks": table_count(db, OperationLock),
     }
     return {
         "db_info": safe_db_url_summary(),
@@ -3324,7 +3483,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
