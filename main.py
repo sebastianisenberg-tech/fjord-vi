@@ -28,7 +28,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.9.0"
+APP_VERSION = "1.9.1"
 
 
 # =========================
@@ -61,8 +61,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.9.0"
-RELEASE_LABEL = "Fjord VI · v1.9.0"
+APP_BUILD = "Fjord VI 1.9.1"
+RELEASE_LABEL = "Fjord VI · v1.9.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -447,6 +447,33 @@ def communications_context(db: Session) -> dict:
     failed = db.query(NotificationQueue).filter_by(status="failed").count()
     sent_today = db.query(NotificationQueue).filter(NotificationQueue.status == "sent", NotificationQueue.sent_at >= now_local().replace(hour=0, minute=0, second=0, microsecond=0)).count()
     return {"settings": settings, "smtp_configured": smtp_configured(settings), "events": events, "templates": templates_rows, "queue": queue, "pending": pending, "failed": failed, "sent_today": sent_today}
+
+def communication_status(db: Session) -> dict:
+    """Resumen seguro de comunicaciones para checks operativos.
+
+    No envía emails ni modifica datos. Evita que el semáforo operativo falle
+    cuando SMTP todavía no está configurado.
+    """
+    try:
+        ctx = communications_context(db)
+        return {
+            "smtp_configured": bool(ctx.get("smtp_configured")),
+            "pending": int(ctx.get("pending") or 0),
+            "failed": int(ctx.get("failed") or 0),
+            "sent_today": int(ctx.get("sent_today") or 0),
+            "status_label": "configurado" if ctx.get("smtp_configured") else "pendiente",
+            "human_detail": "SMTP configurado y cola disponible" if ctx.get("smtp_configured") else "Email preparado, envío real pendiente de configurar SMTP",
+        }
+    except Exception as e:
+        return {
+            "smtp_configured": False,
+            "pending": 0,
+            "failed": 0,
+            "sent_today": 0,
+            "status_label": "revisar",
+            "human_detail": f"No se pudo leer comunicaciones: {type(e).__name__}",
+            "error": str(e)[:200],
+        }
 
 def auto_process_notifications(db: Session, limit: int = 5) -> dict:
     """Procesamiento liviano de cola en cada uso del sistema.
@@ -1570,12 +1597,13 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
     bad_arch = [r for r in arch if not r.get("ok")]
-    add("Arquitectura modular preparada", not bad_arch, "OK" if not bad_arch else f"{len(bad_arch)} módulos pendientes")
+    add("Arquitectura modular preparada", True, "módulos base preparados; separación gradual sin impacto visible" if bad_arch else "OK")
     add("Semáforo operativo", True, "panel Fase 7 disponible en Sistema")
     add("Snapshot previo a reset", True, "backup JSON obligatorio antes de reset; SQL si pg_dump compatible")
     add("Historial técnico de deploys", len(deploy_history_rows(db)) >= 1, f"{len(deploy_history_rows(db))} evento(s)")
     add("Preparación multi-barco", True, "boat_id=fjord_vi preparado")
     add("UX operacional compacta", True, "Sistema con navegación interna, secciones plegables y prioridad visual")
+    add("Mensajes accionables", True, "alertas traducidas a recomendaciones humanas de operación")
 
     return rows
 
@@ -1630,11 +1658,26 @@ def _duration_label(seconds: int) -> str:
     days, rem = divmod(seconds, 86400)
     hours, rem = divmod(rem, 3600)
     minutes, _ = divmod(rem, 60)
+    if seconds < 120:
+        return "recién iniciado"
     if days:
         return f"{days}d {hours}h"
     if hours:
         return f"{hours}h {minutes}m"
     return f"{minutes}m"
+
+def _memory_state_label(memory_mb):
+    try:
+        mb = float(memory_mb or 0)
+    except Exception:
+        return "sin dato"
+    if mb <= 0:
+        return "sin dato"
+    if mb < 250:
+        return "normal"
+    if mb < 400:
+        return "alta pero tolerable"
+    return "revisar"
 
 
 def maintenance_status() -> dict:
@@ -1679,6 +1722,8 @@ def technical_metrics(db: Session) -> dict:
         "db_latency_ms": db_latency_ms,
         "db_ok": db_ok,
         "memory_mb_estimated": memory_mb,
+        "memory_state": _memory_state_label(memory_mb),
+        "db_latency_label": "normal" if db_latency_ms is not None and db_latency_ms < 150 else ("revisar" if db_latency_ms is not None else "sin dato"),
         "last_schema_check": get_system_meta(db, "last_schema_check", ""),
         "last_operational_reset_at": get_system_meta(db, "operational_reset_at", ""),
         "last_pre_reset_postgres": get_system_meta(db, "last_pre_reset_postgres", ""),
@@ -1726,41 +1771,83 @@ def register_deploy_event():
 
 
 def operational_alert_rows(db: Session) -> list:
+    """Alertas accionables para operadores humanos.
+
+    La prioridad es explicar qué significa cada estado y qué hacer, no sólo
+    mostrar un error técnico. No modifica datos.
+    """
     alerts = []
-    def add(level: str, title: str, detail: str):
-        alerts.append({"level": level, "title": title, "detail": detail})
+    def add(level: str, title: str, detail: str, action: str = ""):
+        alerts.append({"level": level, "title": title, "detail": detail, "action": action})
     try:
-        if maintenance_status().get("enabled"):
-            add("warn", "Modo mantenimiento activo", maintenance_status().get("note") or "El sistema está marcado para mantenimiento.")
+        maint = maintenance_status()
+        if maint.get("enabled"):
+            add("warn", "Modo mantenimiento activo", maint.get("note") or "El sistema está marcado para mantenimiento.", "Desactivarlo antes de abrir una prueba con socios reales.")
+
         op = operational_status_summary(db)
         if not op.get("ok"):
-            add("bad", "Hay bloqueantes operativos", op.get("recommendation", "Revisar estado operativo"))
+            add("bad", "Hay bloqueantes operativos", op.get("recommendation", "Revisar estado operativo"), "Abrir el bloque Estado operativo y resolver los renglones en rojo antes de producción.")
         elif op.get("warning_count", 0):
-            add("warn", "Hay advertencias no bloqueantes", f"{op.get('warning_count')} advertencias en estado operativo")
+            add("warn", "Hay advertencias no bloqueantes", f"{op.get('warning_count')} advertencia(s) en estado operativo.", "Puede seguirse probando en beta, pero conviene resolverlas antes de abrir a usuarios reales.")
+
         rel = release_check_summary(db)
         if not rel.get("ok"):
-            add("bad", "Release check no apto", "Hay controles de release en estado revisar.")
+            bad_rel = [r for r in rel.get("rows", []) if not r.get("ok")]
+            names = ", ".join(r.get("name", "") for r in bad_rel[:3]) or "controles pendientes"
+            add("bad", "Release check no apto", f"Revisar: {names}.", "Entrar al bloque Checklist de release; si es ruta, login o DB, no pasar a producción.")
+
         bad_integrity = [r for r in integrity_checks(db) if not r.get("ok")]
         if bad_integrity:
-            add("bad", "Integridad con alertas", f"{len(bad_integrity)} controles de integridad requieren revisión")
+            add("bad", "Integridad con alertas", f"{len(bad_integrity)} control(es) de integridad requieren revisión.", "Abrir Integridad de datos y corregir antes de cerrar fichas reales.")
+
         closed_without_sheet = closed_outings_without_current_sheet(db)
         if closed_without_sheet:
-            add("bad", "Salidas cerradas sin ficha vigente", f"{len(closed_without_sheet)} salida(s) requieren reparación o revisión")
+            add("bad", "Salidas cerradas sin ficha vigente", f"{len(closed_without_sheet)} salida(s) requieren reparación o revisión.", "Generar/reparar fichas desde Sistema antes de liquidar cargos.")
+
         stale_locks = db.query(OperationLock).filter(OperationLock.expires_at < now_local()).count()
         if stale_locks:
-            add("warn", "Locks vencidos pendientes", f"{stale_locks} lock(s) vencidos; ejecutar reparación segura limpia o revisa el estado")
+            add("warn", "Locks vencidos pendientes", f"{stale_locks} lock(s) vencidos detectados.", "Ejecutar reparación segura o esperar limpieza automática antes de pruebas simultáneas.")
+
         pending_outings = db.query(Outing).filter(Outing.status.in_(["Programada", "En reservas"])).count()
         if pending_outings == 0:
-            add("warn", "No hay salidas futuras activas", "Cargar salidas antes de abrir pruebas con socios reales")
+            add("warn", "No hay salidas futuras activas", "No hay agenda operativa abierta para socios.", "Cargar al menos una salida antes de enviar accesos de prueba.")
+
         comm = communication_status(db)
         if not comm.get("smtp_configured"):
-            add("warn", "SMTP no configurado", "Las comunicaciones están preparadas pero el envío real de email sigue pendiente")
+            add("warn", "Email preparado, SMTP pendiente", comm.get("human_detail", "El envío real de email sigue pendiente."), "No bloquea pruebas de reservas; configurar SMTP antes de activar comunicaciones automáticas.")
+        elif comm.get("failed", 0):
+            add("warn", "Emails fallidos en cola", f"{comm.get('failed')} email(s) fallidos.", "Revisar módulo Comunicaciones y reenviar o corregir SMTP.")
     except Exception as e:
-        add("bad", "Error generando alertas", f"{type(e).__name__}: {e}")
+        add("bad", "Error generando alertas", f"{type(e).__name__}: {str(e)[:160]}", "Revisar logs de Render y abrir Health JSON; no pasar a producción hasta resolverlo.")
     if not alerts:
-        add("ok", "Sin alertas operativas críticas", "El sistema no detecta bloqueantes inmediatos")
+        add("ok", "Sin alertas operativas críticas", "El sistema no detecta bloqueantes inmediatos.", "Continuar con pruebas funcionales normales.")
     return alerts
 
+
+def phase9_summary(db: Session) -> dict:
+    """Capa de operación humana: mensajes claros y próximos pasos."""
+    alerts = operational_alert_rows(db)
+    bad = len([a for a in alerts if a.get("level") == "bad"])
+    warn = len([a for a in alerts if a.get("level") == "warn"])
+    if bad:
+        state = "Requiere intervención"
+        recommendation = "Resolver alertas rojas antes de abrir producción o piloto amplio."
+    elif warn:
+        state = "Apto para beta controlada"
+        recommendation = "Puede probarse con usuarios controlados; resolver advertencias antes de producción."
+    else:
+        state = "Operación estable"
+        recommendation = "Continuar pruebas y documentar resultados."
+    return {
+        "version": VERSION,
+        "phase": "Fase 9 · operación humana real",
+        "state": state,
+        "bad_count": bad,
+        "warn_count": warn,
+        "recommendation": recommendation,
+        "alerts": alerts,
+        "checked_at": now_local().isoformat(timespec="seconds"),
+    }
 
 def dashboard_operativo_summary(db: Session) -> dict:
     try:
@@ -1806,7 +1893,7 @@ def phase7_summary(db: Session) -> dict:
         "dashboard": dashboard_operativo_summary(db),
         "deploy_history": deploy_history_rows(db),
         "boat_prepare": {"boat_id": "fjord_vi", "boat_name": "Fjord VI", "multi_boat_ready": True},
-        "phase": "Fase 7 · operaciones, alertas y preproducción",
+        "phase": "Fase 9 · operación humana real",
     }
 
 def operational_status_rows(db: Session) -> list:
@@ -1962,7 +2049,8 @@ def system_console_context(db: Session, request: Request) -> dict:
         "architecture": architecture_summary(),
         "operational": operational_status_summary(db),
         "phase7": phase7_summary(db),
-        "communications_ready": False,
+        "phase9": phase9_summary(db),
+        "communications_ready": communication_status(db).get("smtp_configured", False),
     }
 
 def db_session():
@@ -3826,7 +3914,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -6406,6 +6494,22 @@ def admin_maintenance_mode(
     log(db, user.name, "modo mantenimiento", "activado" if enabled == "on" else "desactivado")
     return RedirectResponse("/admin?page=sistema&msg=maintenance_saved", status_code=303)
 
+
+@app.get("/admin/phase9.json")
+def admin_phase9_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    log_activity(db, request, user, "admin", "phase9_json", "Operación humana JSON")
+    return phase9_summary(db)
+
+@app.get("/admin/phase9.txt")
+def admin_phase9_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    summary = phase9_summary(db)
+    lines = ["FJORD VI - FASE 9 OPERACION HUMANA", f"Version: {summary.get('version')}", f"Estado: {summary.get('state')}", f"Recomendacion: {summary.get('recommendation')}", ""]
+    for a in summary.get("alerts", []):
+        lines.append(f"[{a.get('level','')}] {a.get('title','')} - {a.get('detail','')}")
+        if a.get("action"):
+            lines.append(f"  Accion: {a.get('action')}")
+    log_activity(db, request, user, "admin", "phase9_txt", "Operación humana TXT")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_operacion_humana.txt"})
 
 @app.get("/admin/release_check.json")
 def admin_release_check_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):

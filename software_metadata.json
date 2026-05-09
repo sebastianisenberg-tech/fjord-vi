@@ -1,7 +1,7 @@
 {
-  "version": "1.9.0",
-  "release_label": "Fjord VI · v1.9.0",
-  "phase": "Fase 7 · operaciones y alertas",
+  "version": "1.9.1",
+  "release_label": "Fjord VI · v1.9.1",
+  "phase": "Fase 9 · operación humana real",
   "generated_at": "2026-05-09",
   "notes": [
     "Semáforo operativo en Sistema",
@@ -12,9 +12,10 @@
   "app_build": "Fjord VI 1.9.0",
   "release": "Fase 8 UX Operacional",
   "features": [
-    "controles_preproduccion_compactados",
-    "jerarquia_operacional",
-    "navegacion_interna_sistema",
-    "sistema_compacto_colapsable"
+    "mensajes accionables",
+    "communication_status seguro",
+    "semáforo con recomendaciones humanas",
+    "labels técnicos traducidos",
+    "endpoints phase9"
   ]
 }
