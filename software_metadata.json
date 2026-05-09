@@ -1,9 +1,9 @@
 {
-  "version": "1.10.2",
-  "release_label": "Fjord VI · v1.10.2",
-  "phase": "Fase 11B - Navegación directa y retorno a Sistema",
+  "version": "1.10.3",
+  "release_label": "Fjord VI · v1.10.3",
+  "phase": "Fase 11D - Acceso directo real a Sistema",
   "generated_at": "2026-05-09",
-  "notes": "Dashboard vivo, alertas humanas, timeline operativo, salud de datos y buscador universal. No modifica reglas de reservas, invitados, cargos ni cierres.",
+  "notes": "Reemplaza enlaces query/JS de Sistema por rutas directas y botones form GET para móvil.",
   "app_build": "Fjord VI 1.10.0",
   "features": [
     "dashboard vivo operacional",
