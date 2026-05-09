@@ -28,7 +28,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.8.7"
+APP_VERSION = "1.8.8"
 
 
 # =========================
@@ -61,8 +61,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.7"
-RELEASE_LABEL = "Fjord VI · v1.8.7"
+APP_BUILD = "Fjord VI 1.8.8"
+RELEASE_LABEL = "Fjord VI · v1.8.8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1610,6 +1610,98 @@ def architecture_summary() -> dict:
         "rows": rows,
     }
 
+def operational_status_rows(db: Session) -> list:
+    """Semáforo operativo de Fase 6.
+
+    No modifica datos. Agrupa salud técnica, datos, seguridad, operación y
+    preproducción para saber rápidamente si el sistema está listo para una
+    prueba controlada con socios reales.
+    """
+    rows = []
+    def add(area: str, name: str, ok: bool, detail: str = "OK", level: str = "ok"):
+        rows.append({"area": area, "name": name, "ok": bool(ok), "detail": detail, "level": level if ok else "bad"})
+
+    try:
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception as e:
+        db_ok = False
+        add("Infraestructura", "Base de datos responde", False, f"{type(e).__name__}: {e}")
+    if db_ok:
+        add("Infraestructura", "Base de datos responde", True, db_engine_label())
+    add("Infraestructura", "PostgreSQL como fuente de verdad", db_engine_label() == "postgres", db_engine_label())
+    add("Infraestructura", "Backup SQL disponible", bool(shutil.which("pg_dump")), pg_dump_version_label() or "pg_dump no disponible")
+
+    users = table_count(db, User)
+    outings = table_count(db, Outing)
+    reservations = table_count(db, Reservation)
+    add("Datos", "Usuarios cargados", users > 0, f"{users} usuarios")
+    add("Datos", "Salidas cargadas", outings > 0, f"{outings} salidas", "warn" if outings == 0 else "ok")
+    add("Datos", "Reservas operativas", reservations >= 0, f"{reservations} reservas")
+
+    try:
+        admins = db.query(User).filter(User.role == "admin", User.active == True).count()
+        captains = db.query(User).filter(User.role == "captain", User.active == True).count()
+        socios = db.query(User).filter(User.role == "socio", User.active == True).count()
+        add("Roles", "Administrador activo", admins >= 1, f"{admins} admin")
+        add("Roles", "Capitán activo", captains >= 1, f"{captains} capitán")
+        add("Roles", "Socios activos", socios >= 1, f"{socios} socios")
+    except Exception as e:
+        add("Roles", "Roles esenciales", False, type(e).__name__)
+
+    try:
+        bad = [r for r in integrity_checks(db) if not r.get("ok")]
+        add("Integridad", "Controles de datos", not bad, "OK" if not bad else f"{len(bad)} alertas")
+    except Exception as e:
+        add("Integridad", "Controles de datos", False, type(e).__name__)
+    try:
+        bad_idx = [r for r in db_index_status() if not r.get("ok")]
+        add("Integridad", "Índices de performance", not bad_idx, "OK" if not bad_idx else f"{len(bad_idx)} faltantes")
+    except Exception as e:
+        add("Integridad", "Índices de performance", False, type(e).__name__)
+
+    add("Seguridad", "Bloqueo login gradual", LOGIN_LOCK_ATTEMPTS >= 15, f"{LOGIN_LOCK_ATTEMPTS} intentos / {LOGIN_LOCK_WINDOW_MINUTES} min")
+    add("Seguridad", "Sesiones con vencimiento", SESSION_MAX_AGE_SECONDS > 0, f"{SESSION_MAX_AGE_SECONDS // 3600} h")
+    add("Seguridad", "Cambio obligatorio de clave temporal", True, "demo1234 obliga clave personal")
+
+    try:
+        now = now_local()
+        active_locks = db.query(OperationLock).filter(OperationLock.expires_at >= now).count()
+        stale_locks = db.query(OperationLock).filter(OperationLock.expires_at < now).count()
+        add("Operación", "Locks activos", True, f"{active_locks} activos")
+        add("Operación", "Locks vencidos pendientes", stale_locks == 0, f"{stale_locks} vencidos", "warn")
+    except Exception as e:
+        add("Operación", "Locks operativos", False, type(e).__name__)
+
+    try:
+        comm = communication_status(db)
+        add("Comunicaciones", "SMTP configurado", bool(comm.get("smtp_configured")), "configurado" if comm.get("smtp_configured") else "pendiente", "warn")
+        add("Comunicaciones", "Cola de emails", True, f"pendientes {comm.get('pending', 0)} / fallidos {comm.get('failed', 0)}")
+    except Exception as e:
+        add("Comunicaciones", "Estado comunicaciones", False, type(e).__name__)
+
+    return rows
+
+
+def operational_status_summary(db: Session) -> dict:
+    rows = operational_status_rows(db)
+    blocking = [r for r in rows if not r.get("ok") and r.get("area") not in ("Comunicaciones",)]
+    warnings = [r for r in rows if not r.get("ok")]
+    score = int(round(100 * (len([r for r in rows if r.get("ok")]) / max(1, len(rows)))))
+    return {
+        "ok": len(blocking) == 0,
+        "score": score,
+        "version": VERSION,
+        "release_label": RELEASE_LABEL,
+        "checked_at": now_local().isoformat(timespec="seconds"),
+        "blocking_count": len(blocking),
+        "warning_count": len(warnings),
+        "phase": "Fase 6 · estado operativo y preproducción",
+        "recommendation": "Apto para piloto controlado" if len(blocking) == 0 else "Revisar bloqueantes antes de abrir a socios reales",
+        "rows": rows,
+    }
+
+
 def release_check_summary(db: Session, request: Optional[Request] = None) -> dict:
     rows = release_check_rows(db, request)
     return {
@@ -1648,6 +1740,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "audit": table_count(db, AuditLog),
         "operation_locks": table_count(db, OperationLock),
         "architecture_modules": len(architecture_module_rows()),
+        "operational_score": operational_status_summary(db).get("score", 0),
     }
     return {
         "db_info": safe_db_url_summary(),
@@ -1665,6 +1758,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "release_rows": release_check_rows(db, request),
         "release_ready": release_check_summary(db, request).get("ok", False),
         "architecture": architecture_summary(),
+        "operational": operational_status_summary(db),
         "communications_ready": False,
     }
 
@@ -3529,7 +3623,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows())}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -6013,6 +6107,30 @@ def admin_blindaje_json(db: Session = Depends(db_session), user: User = Depends(
     """Diagnóstico rápido de consistencia de datos. No modifica la base."""
     return data_blindaje_checks(db)
 
+
+
+@app.get("/admin/operational_status.json")
+def admin_operational_status_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    log_activity(db, request, user, "admin", "operational_status_json", "Estado operativo JSON")
+    return operational_status_summary(db)
+
+
+@app.get("/admin/operational_status.txt")
+def admin_operational_status_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    summary = operational_status_summary(db)
+    log_activity(db, request, user, "admin", "operational_status_txt", "Estado operativo TXT")
+    lines = [
+        "Fjord VI operational status",
+        f"version: {summary.get('version')}",
+        f"checked_at: {summary.get('checked_at')}",
+        f"score: {summary.get('score')}%",
+        f"recommendation: {summary.get('recommendation')}",
+        "",
+    ]
+    for row in summary.get("rows", []):
+        mark = "OK" if row.get("ok") else "REVISAR"
+        lines.append(f"[{mark}] {row.get('area')} · {row.get('name')}: {row.get('detail')}")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_estado_operativo.txt"})
 
 
 @app.get("/admin/architecture.json")

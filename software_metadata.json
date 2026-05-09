@@ -1,12 +1,12 @@
 {
-  "version": "1.8.7",
-  "release_label": "Fjord VI · v1.8.7",
-  "phase": "Fase 5 · arquitectura modular controlada",
+  "version": "1.8.8",
+  "release_label": "Fjord VI · v1.8.8",
+  "phase": "Fase 6 · estado operativo y preproducción",
   "generated_at": "2026-05-09",
   "notes": [
-    "Scaffold modular app/core app/services app/routers",
-    "Mapa de arquitectura en Sistema",
-    "Endpoints admin/architecture.json y admin/architecture.txt",
+    "Semáforo operativo en Sistema",
+    "Endpoints admin/operational_status.json y admin/operational_status.txt",
+    "Controles de infraestructura, datos, roles, integridad, seguridad, locks y comunicaciones",
     "No cambia reglas de negocio visibles"
   ]
 }

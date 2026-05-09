@@ -31,3 +31,11 @@
 - Fase 5: arquitectura modular controlada.
 - Scaffold app/core, app/services, app/routers.
 - Mapa de arquitectura en Sistema y endpoints admin/architecture.
+
+
+## 1.8.8
+- Fase 6: estado operativo y preproducción.
+- Agrega semáforo ejecutivo en Sistema con score operativo.
+- Verifica infraestructura, datos mínimos, roles, integridad, seguridad, locks y comunicaciones.
+- Agrega endpoints admin/operational_status.json y admin/operational_status.txt.
+- No cambia reglas visibles de reservas.
