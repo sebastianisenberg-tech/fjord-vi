@@ -25,11 +25,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func, or_
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.9.3"
+APP_VERSION = "1.10.0"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.9.3"
-RELEASE_LABEL = "Fjord VI · v1.9.3"
+APP_BUILD = "Fjord VI 1.10.0"
+RELEASE_LABEL = "Fjord VI · v1.10.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1883,6 +1883,197 @@ def dashboard_operativo_summary(db: Session) -> dict:
     }
 
 
+
+
+def _outing_active_reservations(db: Session, outing_id: int) -> list:
+    return db.query(Reservation).filter(
+        Reservation.outing_id == outing_id,
+        ~Reservation.status.in_(["Cancelada", "Cancelado", "Baja", "Rechazada"])
+    ).order_by(Reservation.created_at.asc()).all()
+
+
+def _human_time_remaining(dt: datetime) -> str:
+    try:
+        delta = dt - now_local()
+        mins = int(delta.total_seconds() // 60)
+        if mins < 0:
+            return "vencido"
+        if mins < 60:
+            return f"{mins} min"
+        hrs = mins // 60
+        if hrs < 48:
+            return f"{hrs} h"
+        return f"{hrs//24} días"
+    except Exception:
+        return "-"
+
+
+def ops_next_outing_summary(db: Session) -> dict:
+    """Resumen vivo de la próxima salida. No modifica datos."""
+    now = now_local()
+    outing = db.query(Outing).filter(Outing.departure_at >= now).order_by(Outing.departure_at.asc()).first()
+    if not outing:
+        outing = db.query(Outing).order_by(Outing.departure_at.desc()).first()
+    if not outing:
+        return {"exists": False, "title": "Sin salida cargada", "state": "Cargar agenda", "items": []}
+    reservations = _outing_active_reservations(db, outing.id)
+    active_count = len(reservations)
+    guests = [r for r in reservations if r.kind in ("invitado", "hijo_menor_no_socio")]
+    socios = [r for r in reservations if r.kind == "socio"]
+    present = [r for r in reservations if r.attendance == "Presente"]
+    pending = [r for r in reservations if r.attendance in ("Por confirmar", "Pendiente", "")]
+    captain = db.query(User).filter(User.role == "captain", User.active == True).order_by(User.name.asc()).first()
+    freeze_at = outing.departure_at - timedelta(hours=48)
+    if outing.status in ("Cancelada", "Cerrada"):
+        state = outing.status
+    elif active_count >= outing.max_crew:
+        state = "Completa"
+    elif outing.departure_at < now:
+        state = "En ventana operativa"
+    else:
+        state = "Abierta"
+    return {
+        "exists": True,
+        "id": outing.id,
+        "title": outing.title,
+        "departure_label": fmt_admin_datetime(outing.departure_at),
+        "destination": outing.destination,
+        "status": outing.status,
+        "state": state,
+        "active_count": active_count,
+        "max_crew": outing.max_crew,
+        "available": max(0, int(outing.max_crew or 0) - active_count),
+        "socios": len(socios),
+        "guests": len(guests),
+        "present": len(present),
+        "pending": len(pending),
+        "captain_label": captain.name if captain else "Sin capitán activo",
+        "freeze_label": _human_time_remaining(freeze_at),
+        "departure_remaining": _human_time_remaining(outing.departure_at),
+        "href": f"/admin?page=reservas&outing_id={outing.id}",
+    }
+
+
+def ops_human_alerts(db: Session) -> list:
+    """Alertas de negocio/operación formuladas para humanos."""
+    alerts = []
+    def add(level, title, detail, action=""):
+        alerts.append({"level": level, "title": title, "detail": detail, "action": action})
+    try:
+        nexto = ops_next_outing_summary(db)
+        if not nexto.get("exists"):
+            add("warn", "No hay agenda operativa", "No hay salidas cargadas para los próximos días.", "Crear una salida antes de invitar usuarios de prueba.")
+        else:
+            if nexto.get("active_count", 0) >= nexto.get("max_crew", 9):
+                add("warn", "Salida completa", f"{nexto['title']} está en {nexto['active_count']}/{nexto['max_crew']} plazas.", "Revisar lista de espera y posibles cancelaciones antes del embarque.")
+            if nexto.get("guests", 0) and nexto.get("socios", 0) == 0:
+                add("bad", "Invitados sin socio activo", "Hay invitados registrados sin socio titular activo en la próxima salida.", "Abrir Reservas y revisar responsables antes de cerrar.")
+            if nexto.get("pending", 0) > 0:
+                add("warn", "Reservas pendientes", f"Hay {nexto['pending']} registro(s) pendientes de confirmación o embarque.", "Usar vista Capitán/Reservas para confirmar presentes o no embarcados.")
+            if nexto.get("captain_label") == "Sin capitán activo":
+                add("bad", "Sin capitán activo", "No se detecta usuario Capitán activo.", "Crear o activar al menos un capitán en Usuarios.")
+
+        # Calidad de datos de padrón
+        users_active = db.query(User).filter(User.active == True).count()
+        no_email = db.query(User).filter(User.active == True, or_(User.email == None, User.email == "")).count()
+        no_member = db.query(User).filter(User.active == True, User.role == "socio", or_(User.member_no == None, User.member_no == "")).count()
+        if users_active and no_email:
+            add("warn", "Padrón incompleto", f"{no_email} usuario(s) activo(s) sin email.", "Completar email antes de activar comunicaciones reales.")
+        if no_member:
+            add("warn", "Socios sin Nº de socio", f"{no_member} socio(s) activos no tienen Nº de socio.", "Completar padrón para evitar ambigüedades de login.")
+
+        # Operación técnica relevante ya expresada de forma humana
+        for a in operational_alert_rows(db):
+            if a.get("level") in ("bad", "warn"):
+                # Evita duplicar alertas demasiado técnicas si ya están cubiertas.
+                if "SMTP" in a.get("title", "") or "Email" in a.get("title", ""):
+                    continue
+                alerts.append(a)
+    except Exception as e:
+        add("bad", "No se pudieron calcular alertas humanas", f"{type(e).__name__}: {str(e)[:140]}", "Revisar logs y Health JSON.")
+    if not alerts:
+        add("ok", "Sin alertas humanas críticas", "La operación actual no muestra bloqueantes evidentes.", "Continuar pruebas controladas.")
+    return alerts[:12]
+
+
+def ops_timeline_rows(db: Session, limit: int = 12) -> list:
+    """Timeline simple mezclando actividad técnica y auditoría."""
+    rows = []
+    try:
+        for a in db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(limit).all():
+            rows.append({"when": a.created_at, "label": fmt_admin_datetime(a.created_at), "actor": a.user_name or "público", "kind": a.module or "actividad", "detail": a.path or a.action})
+        for au in db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all():
+            rows.append({"when": au.created_at, "label": fmt_admin_datetime(au.created_at), "actor": au.actor, "kind": "auditoría", "detail": f"{au.action}: {au.detail}"})
+        rows.sort(key=lambda r: r.get("when") or datetime.min, reverse=True)
+    except Exception:
+        pass
+    return rows[:limit]
+
+
+def data_health_summary(db: Session) -> dict:
+    """Centro de salud de datos del padrón y operación."""
+    checks = []
+    def add(name, ok, detail, action=""):
+        checks.append({"name": name, "ok": bool(ok), "detail": detail, "action": action})
+    try:
+        users = table_count(db, User)
+        no_email = db.query(User).filter(User.active == True, or_(User.email == None, User.email == "")).count()
+        no_phone = db.query(User).filter(User.active == True, or_(User.whatsapp == None, User.whatsapp == ""), or_(User.phone == None, User.phone == "")).count()
+        no_member = db.query(User).filter(User.active == True, User.role == "socio", or_(User.member_no == None, User.member_no == "")).count()
+        inactive = db.query(User).filter(User.active == False).count()
+        add("Usuarios cargados", users > 0, f"{users} usuarios")
+        add("Emails de contacto", no_email == 0, f"{no_email} sin email", "Completar para comunicaciones transaccionales.")
+        add("Teléfonos / WhatsApp", no_phone == 0, f"{no_phone} sin teléfono/WhatsApp", "Completar cuando se use soporte operativo.")
+        add("Nº de socio", no_member == 0, f"{no_member} socios sin Nº", "Completar para login institucional.")
+        add("Usuarios inactivos", True, f"{inactive} inactivos conservados")
+        dup_dni = db.execute(text("SELECT COUNT(*) FROM (SELECT dni FROM users GROUP BY dni HAVING COUNT(*) > 1) x")).scalar() or 0
+        add("DNI duplicados", dup_dni == 0, f"{dup_dni} grupos duplicados", "Corregir antes de importar padrón real.")
+    except Exception as e:
+        add("Salud de datos", False, f"{type(e).__name__}: {str(e)[:120]}")
+    score = int(100 * len([c for c in checks if c.get("ok")]) / max(1, len(checks)))
+    return {"score": score, "checks": checks, "ok": all(c.get("ok") for c in checks)}
+
+
+def phase11_center_summary(db: Session) -> dict:
+    nexto = ops_next_outing_summary(db)
+    alerts = ops_human_alerts(db)
+    health = data_health_summary(db)
+    bad = len([a for a in alerts if a.get("level") == "bad"])
+    warn = len([a for a in alerts if a.get("level") == "warn"])
+    state = "Listo para piloto controlado" if bad == 0 else "Requiere revisión operativa"
+    if warn and bad == 0:
+        state = "Apto con advertencias"
+    return {
+        "version": VERSION,
+        "phase": "Fase 11 · Centro Operativo Inteligente",
+        "state": state,
+        "bad_count": bad,
+        "warn_count": warn,
+        "next_outing": nexto,
+        "alerts": alerts,
+        "timeline": ops_timeline_rows(db, 12),
+        "data_health": health,
+        "checked_at": now_local().isoformat(timespec="seconds"),
+    }
+
+
+def universal_search_results(db: Session, q: str, limit: int = 8) -> dict:
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"query": q, "users": [], "outings": [], "reservations": [], "sheets": []}
+    like = f"%{q}%"
+    users = db.query(User).filter(or_(User.name.ilike(like), User.dni.ilike(like), User.member_no.ilike(like), User.email.ilike(like))).order_by(User.name.asc()).limit(limit).all()
+    outings = db.query(Outing).filter(or_(Outing.title.ilike(like), Outing.destination.ilike(like), Outing.status.ilike(like))).order_by(Outing.departure_at.desc()).limit(limit).all()
+    reservations = db.query(Reservation).filter(or_(Reservation.person_name.ilike(like), Reservation.dni.ilike(like), Reservation.kind.ilike(like), Reservation.status.ilike(like))).order_by(Reservation.created_at.desc()).limit(limit).all()
+    sheets = db.query(ClosingSheet).filter(or_(ClosingSheet.created_by.ilike(like), ClosingSheet.status.ilike(like))).order_by(ClosingSheet.created_at.desc()).limit(limit).all()
+    return {
+        "query": q,
+        "users": [{"id": u.id, "name": u.name, "role": u.role, "member_no": u.member_no, "dni": u.dni, "href": f"/admin?page=socios&q={u.name}"} for u in users],
+        "outings": [{"id": o.id, "title": o.title, "status": o.status, "departure": fmt_admin_datetime(o.departure_at), "href": f"/admin?page=reservas&outing_id={o.id}"} for o in outings],
+        "reservations": [{"id": r.id, "name": r.person_name, "kind": r.kind, "status": r.status, "href": f"/admin?page=reservas&outing_id={r.outing_id}"} for r in reservations],
+        "sheets": [{"id": sh.id, "status": sh.status, "created_by": sh.created_by, "created_at": fmt_admin_datetime(sh.created_at), "href": f"/cierre/{sh.id}"} for sh in sheets],
+    }
+
 def phase7_summary(db: Session) -> dict:
     op = operational_status_summary(db)
     rel = release_check_summary(db)
@@ -2064,6 +2255,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "operational": operational_status_summary(db),
         "phase7": phase7_summary(db),
         "phase9": phase9_summary(db),
+        "phase11": phase11_center_summary(db),
         "communications_ready": communication_status(db).get("smtp_configured", False),
     }
 
@@ -3928,7 +4120,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -5630,6 +5822,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "all_closing_sheets": all_closing_sheets,
         "all_closing_sheet_rows": all_closing_sheet_rows,
         "system_console": system_console_context(db, request) if admin_page == "sistema" else {},
+        "ops_center": phase11_center_summary(db),
+        "search_results": universal_search_results(db, request.query_params.get("q", "")),
         "communications": communications_context(db) if admin_page == "comunicaciones" else {},
         "activity_rows": activity_rows,
         "activity_page": activity_page,
@@ -6576,6 +6770,36 @@ def admin_phase9_txt(request: Request, db: Session = Depends(db_session), user: 
             lines.append(f"  Accion: {a.get('action')}")
     log_activity(db, request, user, "admin", "phase9_txt", "Operación humana TXT")
     return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_operacion_humana.txt"})
+
+@app.get("/admin/phase11.json")
+def admin_phase11_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    log_activity(db, request, user, "admin", "phase11_json", "Centro operativo JSON")
+    return phase11_center_summary(db)
+
+
+@app.get("/admin/phase11.txt")
+def admin_phase11_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    summary = phase11_center_summary(db)
+    lines = ["FJORD VI - FASE 11 CENTRO OPERATIVO", f"Version: {summary.get('version')}", f"Estado: {summary.get('state')}", ""]
+    nexto = summary.get("next_outing") or {}
+    lines.append(f"Proxima salida: {nexto.get('title','-')} / {nexto.get('departure_label','-')} / {nexto.get('active_count','-')}/{nexto.get('max_crew','-')}")
+    lines.append("")
+    lines.append("Alertas:")
+    for a in summary.get("alerts", []):
+        lines.append(f"[{a.get('level','')}] {a.get('title','')} - {a.get('detail','')}")
+        if a.get("action"):
+            lines.append(f"  Accion: {a.get('action')}")
+    log_activity(db, request, user, "admin", "phase11_txt", "Centro operativo TXT")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_centro_operativo.txt"})
+
+
+@app.get("/admin/search.json")
+def admin_search_json(q: str = "", request: Request = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    result = universal_search_results(db, q)
+    if request is not None:
+        log_activity(db, request, user, "admin", "universal_search", q[:80])
+    return result
+
 
 @app.get("/admin/release_check.json")
 def admin_release_check_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):

@@ -1,17 +1,19 @@
 {
-  "version": "1.9.3",
-  "release_label": "Fjord VI 1.9.3",
-  "phase": "FASE 10 - Routing guard y navegación humana",
+  "version": "1.10.0",
+  "release_label": "Fjord VI 1.10.0",
+  "phase": "FASE 11 - Centro Operativo Inteligente",
   "generated_at": "2026-05-09",
-  "notes": "Fase 10b: navegación Sistema reforzada para móvil, entradas directas y fallback visible.",
-  "app_build": "Fjord VI 1.9.0",
-  "release": "Fase 8 UX Operacional",
+  "notes": "Dashboard vivo, alertas humanas, timeline operativo, salud de datos y buscador universal. No modifica reglas de reservas, invitados, cargos ni cierres.",
+  "app_build": "Fjord VI 1.10.0",
   "features": [
-    "aliases /admin/system y /admin/sistema hacia Sistema",
-    "soporte page=system y tab=system",
-    "handler 404 humano sin JSON crudo en navegación",
-    "aliases comunicaciones en español/inglés",
-    "corrección de regresión de navegación desde 1.9.1"
-  ],
-  "created_at": "2026-05-09T12:33:54Z"
+    "dashboard vivo operacional",
+    "alertas humanas accionables",
+    "timeline operativo reciente",
+    "centro de salud de datos del padrón",
+    "buscador universal de usuarios, salidas, reservas y fichas",
+    "endpoints /admin/phase11.json y /admin/phase11.txt",
+    "endpoint /admin/search.json",
+    "preparación multi-barco mantenida",
+    "sin cambios en lógica de reservas/cargos/cierres"
+  ]
 }
