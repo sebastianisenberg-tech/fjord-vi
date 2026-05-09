@@ -1,9 +1,9 @@
 {
-  "version": "1.10.3",
-  "release_label": "Fjord VI · v1.10.3",
-  "phase": "Fase 11D - Acceso directo real a Sistema",
+  "version": "1.11.0",
+  "release_label": "Fjord VI · v1.11.0",
+  "phase": "Fase 12 · profesionalización interna sin cambio funcional",
   "generated_at": "2026-05-09",
-  "notes": "Reemplaza enlaces query/JS de Sistema por rutas directas y botones form GET para móvil.",
+  "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
   "app_build": "Fjord VI 1.10.0",
   "features": [
     "dashboard vivo operacional",

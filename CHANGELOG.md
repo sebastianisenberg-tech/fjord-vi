@@ -1,3 +1,13 @@
+# 1.11.0 - Fase 12 Profesionalización interna
+
+- Agrega documentación técnica en `docs/`.
+- Agrega `.env.example`.
+- Agrega `tests/test_smoke_static.py`.
+- Agrega `scripts/smoke_check.py`.
+- Prepara carpeta `migrations/`.
+- Actualiza versión a 1.11.0.
+- No modifica reglas operativas de reservas, invitados, cargos ni cierres.
+
 
 ## 1.8.9 · Fase 7 operaciones y alertas
 - Semáforo operativo global.
