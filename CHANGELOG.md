@@ -1,5 +1,22 @@
+# 1.15.2
 
-# 1.15.0
+- Rotulado claro de botones técnicos de Sistema.
+- Health JSON identificado como salida técnica cruda.
+- Release check identificado como TXT.
+- Diagnóstico identificado como ZIP.
+- Versión interna unificada.
+- Sin cambios en reglas operativas.
+
+# 1.15.2
+
+- Versión visible unificada.
+- Corrección de chips intermedios en Sistema.
+- En modo rápido, los chips cargan la vista completa y abren la sección correcta.
+- Mejor feedback para Contraer/Expandir cuando los controles están diferidos.
+- No toca reglas operativas.
+
+
+# 1.15.2
 
 - observabilidad inicial profesional
 - endpoints /health/live y /health/ready
@@ -10,7 +27,7 @@
 - preparación CI/CD futura
 
 
-# 1.14.0 · Fase 15 · Arquitectura, errores y services
+# 1.15.2 · Fase 15 · Arquitectura, errores y services
 
 - Se agregan errores tipados centralizados.
 - Se agrega logging base estructurable.
@@ -23,7 +40,7 @@
 
 # Changelog
 
-## 1.14.0 · Fase 14 Validaciones backend y tests reales
+## 1.15.2 · Fase 14 Validaciones backend y tests reales
 
 - Agrega validaciones de negocio puras en `app/core/business_rules.py`.
 - Agrega tests automáticos iniciales para cupos, duplicados, roles, estados e invitado responsable.
@@ -31,7 +48,7 @@
 - Prepara conexión gradual de reglas al backend crítico.
 
 
-## 1.14.0 · Fase 13 Seguridad, tests y observabilidad
+## 1.15.2 · Fase 13 Seguridad, tests y observabilidad
 
 - Observabilidad liviana por request-id y tiempo de respuesta.
 - Endpoints admin de seguridad y observabilidad.
