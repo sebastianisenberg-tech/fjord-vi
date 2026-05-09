@@ -1,8 +1,8 @@
 {
   "name": "Fjord VI · Embarque",
-  "version": "1.8.3",
-  "release": "Blindaje base etapa 1",
-  "notes": "Unifica versionado, corrige índices de notificaciones, agrega CSRF, cookies seguras en producción y bloqueo progresivo de login.",
-  "release_label": "Fjord VI · v1.8.3",
-  "phase": "Fase 2.1 hardening login y sesiones"
+  "version": "1.8.4",
+  "release": "Corrección de entrada raíz y login",
+  "notes": "Agrega redirección limpia de / a /login o al área correspondiente, GET /login explícito y defensa contra POST accidental en raíz para evitar pantallas técnicas visibles.",
+  "release_label": "Fjord VI · v1.8.4",
+  "phase": "Fase 2.1.1 UX de entrada y rutas seguras"
 }

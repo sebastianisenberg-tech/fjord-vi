@@ -27,7 +27,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.8.3"
+APP_VERSION = "1.8.4"
 
 
 # =========================
@@ -60,8 +60,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.3"
-RELEASE_LABEL = "Fjord VI · v1.8.3"
+APP_BUILD = "Fjord VI 1.8.4"
+RELEASE_LABEL = "Fjord VI · v1.8.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -3246,23 +3246,38 @@ def health():
         server_v = ""
     return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True}
 
+def _home_for_user(user: Optional[User]) -> str:
+    if not user:
+        return "/login"
+    if getattr(user, "must_change_password", False):
+        return "/change-password"
+    if user.role == "captain":
+        return "/captain"
+    if user.role == "admin":
+        return "/admin"
+    return "/socio"
+
 @app.head("/")
 def head_index():
     return Response(status_code=200)
 
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
-    if not user:
-        resp = templates.TemplateResponse(request, "login.html", {"request": request, "version": VERSION, "error": request.query_params.get("error")})
-        resp.headers["Cache-Control"] = "no-store"
-        return resp
-    if getattr(user, "must_change_password", False):
-        return RedirectResponse("/change-password", status_code=303)
-    if user.role == "captain":
-        return RedirectResponse("/captain", status_code=303)
-    if user.role == "admin":
-        return RedirectResponse("/admin", status_code=303)
-    return RedirectResponse("/socio", status_code=303)
+@app.get("/")
+def index(request: Request, user: Optional[User] = Depends(current_user)):
+    # Entrada humana limpia: nunca exponer JSON técnico ni Method Not Allowed en la raíz.
+    return RedirectResponse(_home_for_user(user), status_code=303)
+
+@app.post("/")
+def index_post_redirect():
+    # Defensa UX: si un navegador reintenta un POST contra raíz, vuelve al login.
+    return RedirectResponse("/login", status_code=303)
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
+    if user:
+        return RedirectResponse(_home_for_user(user), status_code=303)
+    resp = templates.TemplateResponse(request, "login.html", {"request": request, "version": VERSION, "release_label": RELEASE_LABEL, "error": request.query_params.get("error")})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.post("/login")
 def login(request: Request, dni: str = Form(""), password: str = Form(...), db: Session = Depends(db_session)):
@@ -3275,7 +3290,7 @@ def login(request: Request, dni: str = Form(""), password: str = Form(...), db: 
     purge_old_login_attempts(db)
     if login_is_locked(db, ident_key, ip_hash):
         log(db, "Sistema", "login bloqueado por intentos", f"ident={ident_key or 'sin_ident'}")
-        return RedirectResponse("/?error=bloqueado", status_code=303)
+        return RedirectResponse("/login?error=bloqueado", status_code=303)
 
     # Identidad blindada:
     # 1) si el dato coincide con Nº de socio, se prioriza Nº de socio;
@@ -3286,7 +3301,7 @@ def login(request: Request, dni: str = Form(""), password: str = Form(...), db: 
         member_matches = db.query(User).filter(User.member_no == ident_member, User.active == True).all()
         if len(member_matches) > 1:
             log(db, "Sistema", "login bloqueado", f"Nº socio duplicado: {ident_member}")
-            return RedirectResponse("/?error=duplicado_socio", status_code=303)
+            return RedirectResponse("/login?error=duplicado_socio", status_code=303)
         if member_matches:
             user = member_matches[0]
 
@@ -3302,7 +3317,7 @@ def login(request: Request, dni: str = Form(""), password: str = Form(...), db: 
 
     if not user or not verify_password(password, user.password_hash):
         record_login_attempt(db, ident_key, ip_hash, False, "credencial inválida")
-        return RedirectResponse("/?error=1", status_code=303)
+        return RedirectResponse("/login?error=1", status_code=303)
     if is_temporary_password(password) and not getattr(user, "must_change_password", False):
         user.must_change_password = True
         db.commit()
@@ -3321,7 +3336,7 @@ def login(request: Request, dni: str = Form(""), password: str = Form(...), db: 
 @app.get("/change-password", response_class=HTMLResponse)
 def change_password_page(request: Request, user: User = Depends(require_user)):
     if not getattr(user, "must_change_password", False):
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse(_home_for_user(user) if "user" in locals() else "/login", status_code=303)
     resp = templates.TemplateResponse(request, "change_password.html", {
         "request": request,
         "version": VERSION,
