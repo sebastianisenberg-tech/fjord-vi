@@ -1,14 +1,9 @@
 {
-  "version": "1.9.2",
-  "release_label": "Fjord VI · v1.9.2",
+  "version": "1.9.3",
+  "release_label": "Fjord VI 1.9.3",
   "phase": "FASE 10 - Routing guard y navegación humana",
   "generated_at": "2026-05-09",
-  "notes": [
-    "Semáforo operativo en Sistema",
-    "Endpoints admin/operational_status.json y admin/operational_status.txt",
-    "Controles de infraestructura, datos, roles, integridad, seguridad, locks y comunicaciones",
-    "No cambia reglas de negocio visibles"
-  ],
+  "notes": "Fase 10b: navegación Sistema reforzada para móvil, entradas directas y fallback visible.",
   "app_build": "Fjord VI 1.9.0",
   "release": "Fase 8 UX Operacional",
   "features": [

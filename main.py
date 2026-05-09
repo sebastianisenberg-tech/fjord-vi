@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.9.2"
+APP_VERSION = "1.9.3"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.9.2"
-RELEASE_LABEL = "Fjord VI · v1.9.2"
+APP_BUILD = "Fjord VI 1.9.3"
+RELEASE_LABEL = "Fjord VI · v1.9.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -3955,11 +3955,11 @@ def index_post_redirect():
     # Defensa UX: si un navegador reintenta un POST contra raíz, vuelve al login.
     return RedirectResponse("/login", status_code=303)
 
-@app.get("/admin/sistema")
+@app.get("/_admin_sistema_alias_legacy")
 def admin_sistema_alias():
     return RedirectResponse("/admin?page=sistema", status_code=303)
 
-@app.get("/admin/system")
+@app.get("/_admin_system_alias_legacy")
 def admin_system_alias():
     return RedirectResponse("/admin?page=sistema", status_code=303)
 
@@ -3971,11 +3971,11 @@ def sistema_alias():
 def system_alias():
     return RedirectResponse("/admin?page=sistema", status_code=303)
 
-@app.get("/admin/comunicaciones")
+@app.get("/_admin_comunicaciones_alias_legacy")
 def admin_comunicaciones_alias():
     return RedirectResponse("/admin?page=comunicaciones", status_code=303)
 
-@app.get("/admin/communications")
+@app.get("/_admin_communications_alias_legacy")
 def admin_communications_alias():
     return RedirectResponse("/admin?page=comunicaciones", status_code=303)
 
@@ -5454,6 +5454,10 @@ def checkin_html_alias(request: Request):
 def admin_qr_html_alias():
     return RedirectResponse("/admin_qr", status_code=303)
 
+@app.get("/admin/sistema", response_class=HTMLResponse)
+@app.get("/admin/system", response_class=HTMLResponse)
+@app.get("/admin/comunicaciones", response_class=HTMLResponse)
+@app.get("/admin/communications", response_class=HTMLResponse)
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     outings = visible_outings(db, outing_id)
@@ -5584,7 +5588,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "comunicaciones": "comunicaciones", "communications": "comunicaciones",
         "sistema": "sistema", "system": "sistema",
     }
-    raw_page = request.query_params.get("page") or request.query_params.get("tab") or "dashboard"
+    path_page_aliases = {"/admin/sistema": "sistema", "/admin/system": "sistema", "/admin/comunicaciones": "comunicaciones", "/admin/communications": "comunicaciones"}
+    raw_page = path_page_aliases.get(request.url.path) or request.query_params.get("page") or request.query_params.get("tab") or "dashboard"
     admin_page = page_aliases.get(str(raw_page).strip().lower(), str(raw_page).strip().lower())
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
