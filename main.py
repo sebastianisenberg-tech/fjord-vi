@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.11.0"
+APP_VERSION = "1.11.1"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.11.0"
-RELEASE_LABEL = "Fjord VI · v1.11.0"
+APP_BUILD = "Fjord VI 1.11.1"
+RELEASE_LABEL = "Fjord VI · v1.11.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5646,6 +5646,12 @@ def checkin_html_alias(request: Request):
 def admin_qr_html_alias():
     return RedirectResponse("/admin_qr", status_code=303)
 
+# v1.11.1: ruta de sistema hiper-directa para navegación móvil.
+# Evita depender de tabs, query params o JS del navegador.
+@app.get("/admin-system", response_class=HTMLResponse)
+def admin_system_hard_alias():
+    return RedirectResponse("/admin/sistema", status_code=303)
+
 @app.get("/admin/inicio", response_class=HTMLResponse)
 @app.get("/admin/salidas", response_class=HTMLResponse)
 @app.get("/admin/reservas", response_class=HTMLResponse)
@@ -5803,7 +5809,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "/admin/auditoria": "auditoria", "/admin/audit": "auditoria",
         "/admin/actividad": "actividad", "/admin/activity": "actividad",
         "/admin/exportaciones": "exportar", "/admin/exportar": "exportar",
-        "/admin/sistema": "sistema", "/admin/system": "sistema",
+        "/admin/sistema": "sistema", "/admin/system": "sistema", "/admin-system": "sistema",
         "/admin/comunicaciones": "comunicaciones", "/admin/communications": "comunicaciones"
     }
     raw_page = path_page_aliases.get(request.url.path) or request.query_params.get("page") or request.query_params.get("tab") or "dashboard"

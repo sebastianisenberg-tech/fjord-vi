@@ -1,3 +1,10 @@
+# 1.11.1 - Fase 12B Acceso Sistema endurecido
+
+- Corrige regresión de acceso a Sistema desde Inicio y Actividad.
+- Agrega ruta dura `/admin-system` como respaldo.
+- Refuerza enlaces de Sistema contra interferencias táctiles en Android.
+- Mantiene documentación, tests y profesionalización interna de 1.11.0.
+
 # 1.11.0 - Fase 12 Profesionalización interna
 
 - Agrega documentación técnica en `docs/`.

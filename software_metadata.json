@@ -1,6 +1,6 @@
 {
-  "version": "1.11.0",
-  "release_label": "Fjord VI · v1.11.0",
+  "version": "1.11.1",
+  "release_label": "Fjord VI · v1.11.1",
   "phase": "Fase 12 · profesionalización interna sin cambio funcional",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
