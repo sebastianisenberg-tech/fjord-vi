@@ -13,6 +13,8 @@ import subprocess
 import tempfile
 import traceback
 import uuid
+import re
+from urllib.parse import parse_qs
 import smtplib
 from email.message import EmailMessage
 from urllib.parse import urlparse
@@ -25,7 +27,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.8"
+APP_VERSION = "1.8.2"
 
 
 # =========================
@@ -58,8 +60,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.8"
-RELEASE_LABEL = "Fjord VI · v1.7.8"
+APP_BUILD = "Fjord VI 1.8.2"
+RELEASE_LABEL = "Fjord VI · v1.8.2"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -73,6 +75,12 @@ APP_TZ = ZoneInfo(os.getenv("APP_TZ", "America/Argentina/Buenos_Aires"))
 # =========================
 RECENT_POST_KEYS = {}
 RECENT_POST_TTL_SECONDS = 12
+LOGIN_LOCK_ATTEMPTS = int(os.getenv("LOGIN_LOCK_ATTEMPTS", "20"))
+LOGIN_LOCK_WINDOW_MINUTES = int(os.getenv("LOGIN_LOCK_WINDOW_MINUTES", "30"))
+LOGIN_LOCK_MINUTES = int(os.getenv("LOGIN_LOCK_MINUTES", "15"))
+CSRF_COOKIE_NAME = "fjord_csrf"
+SESSION_COOKIE_NAME = "fjord_uid"
+
 
 def _cleanup_recent_post_keys():
     """Limpieza liviana del guard anti doble-submit."""
@@ -198,6 +206,16 @@ class ActivityLog(Base):
     detail = Column(Text, default="")
     ip = Column(String, default="")
     user_agent = Column(Text, default="")
+
+
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=now_local)
+    ident_key = Column(String, default="")
+    ip_hash = Column(String, default="")
+    success = Column(Boolean, default=False)
+    detail = Column(Text, default="")
 
 
 class NotificationTemplate(Base):
@@ -582,8 +600,11 @@ DB_INDEXES_REQUIRED = [
     ("idx_audit_logs_created_at", "audit_logs", "created_at"),
     ("idx_activity_log_created_at", "activity_log", "created_at"),
     ("idx_activity_log_user_id", "activity_log", "user_id"),
-    ("idx_email_queue_status", "email_queue", "status"),
-    ("idx_email_queue_created_at", "email_queue", "created_at"),
+    ("idx_notification_queue_status", "notification_queue", "status"),
+    ("idx_notification_queue_created_at", "notification_queue", "created_at"),
+    ("idx_notification_log_created_at", "notification_log", "created_at"),
+    ("idx_login_attempts_ident_created_at", "login_attempts", "ident_key, created_at"),
+    ("idx_login_attempts_ip_created_at", "login_attempts", "ip_hash, created_at"),
 ]
 
 def _sql_ident(name: str) -> str:
@@ -690,6 +711,125 @@ try:
         ensure_communications_seed(_comm_db)
 except Exception:
     pass
+
+def _is_production_request(request: Optional[Request] = None) -> bool:
+    if APP_ENV in ("prod", "production"):
+        return True
+    try:
+        return bool(request and request.url.scheme == "https")
+    except Exception:
+        return False
+
+
+def set_session_cookie(resp: Response, request: Optional[Request], user_id: int):
+    resp.set_cookie(
+        SESSION_COOKIE_NAME,
+        sign_value(str(user_id)),
+        httponly=True,
+        samesite="lax",
+        secure=_is_production_request(request),
+        max_age=43200,
+        path="/",
+    )
+
+
+def clear_session_cookie(resp: Response):
+    resp.delete_cookie(SESSION_COOKIE_NAME, path="/")
+
+
+def _new_csrf_token() -> str:
+    return sign_value(secrets.token_urlsafe(32))
+
+
+def _valid_signed_token(value: str) -> bool:
+    return bool(value and unsign_value(value))
+
+
+def csrf_token_for_request(request: Optional[Request]) -> str:
+    if request is not None:
+        existing = request.cookies.get(CSRF_COOKIE_NAME, "")
+        if _valid_signed_token(existing):
+            return existing
+    return _new_csrf_token()
+
+
+def csrf_input(request: Optional[Request] = None) -> str:
+    token = csrf_token_for_request(request)
+    return f'<input type="hidden" name="csrf_token" value="{token}">'
+
+
+def inject_csrf_into_forms(html: str, request: Optional[Request]) -> tuple[str, Optional[str]]:
+    if not isinstance(html, str) or "<form" not in html.lower():
+        return html, None
+    token = csrf_token_for_request(request)
+    hidden = f'<input type="hidden" name="csrf_token" value="{token}">'
+
+    def repl(match):
+        tag = match.group(0)
+        if re.search(r'method\s*=\s*([\"\'])post\1', tag, flags=re.I):
+            return tag + hidden
+        return tag
+
+    return re.sub(r'<form\b[^>]*>', repl, html, flags=re.I), token
+
+
+def verify_csrf_from_body(request: Request, body: bytes) -> bool:
+    cookie_token = request.cookies.get(CSRF_COOKIE_NAME, "")
+    if not _valid_signed_token(cookie_token):
+        return False
+    header_token = request.headers.get("X-CSRF-Token", "")
+    if header_token and hmac.compare_digest(header_token, cookie_token):
+        return True
+    ctype = (request.headers.get("content-type") or "").lower()
+    if "application/x-www-form-urlencoded" not in ctype:
+        return True  # no bloquear uploads/multipart en esta etapa
+    try:
+        parsed = parse_qs(body.decode("utf-8"), keep_blank_values=True)
+        form_token = (parsed.get("csrf_token") or [""])[0]
+        return bool(form_token and hmac.compare_digest(form_token, cookie_token))
+    except Exception:
+        return False
+
+
+def client_ip_hash(request: Optional[Request]) -> str:
+    try:
+        forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() if request else ""
+        ip = forwarded or (request.client.host if request and request.client else "")
+    except Exception:
+        ip = ""
+    return hashlib.sha256((ip + SECRET_KEY).encode("utf-8")).hexdigest()[:32] if ip else ""
+
+
+def login_ident_key(raw: str) -> str:
+    raw = (raw or "").strip().lower()
+    nd = norm_dni(raw)
+    mk = member_key(raw)
+    return nd or mk or raw[:64]
+
+
+def login_is_locked(db: Session, ident_key: str, ip_hash: str) -> bool:
+    since = now_local() - timedelta(minutes=LOGIN_LOCK_WINDOW_MINUTES)
+    q = db.query(LoginAttempt).filter(LoginAttempt.created_at >= since, LoginAttempt.success == False)
+    if ident_key:
+        q = q.filter(LoginAttempt.ident_key == ident_key)
+    elif ip_hash:
+        q = q.filter(LoginAttempt.ip_hash == ip_hash)
+    return q.count() >= LOGIN_LOCK_ATTEMPTS
+
+
+def record_login_attempt(db: Session, ident_key: str, ip_hash: str, success: bool, detail: str = ""):
+    db.add(LoginAttempt(ident_key=ident_key or "", ip_hash=ip_hash or "", success=bool(success), detail=(detail or "")[:500]))
+    db.commit()
+
+
+def purge_old_login_attempts(db: Session):
+    try:
+        cutoff = now_local() - timedelta(days=30)
+        db.query(LoginAttempt).filter(LoginAttempt.created_at < cutoff).delete(synchronize_session=False)
+        db.commit()
+    except Exception:
+        db.rollback()
+
 app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
 
 STATIC_DIR = APP_DIR / "static"
@@ -752,7 +892,11 @@ class SafeTemplates:
 
         try:
             html = self.env.get_template(name).render(**context)
-            return HTMLResponse(html)
+            html, csrf_cookie_value = inject_csrf_into_forms(html, request)
+            resp = HTMLResponse(html)
+            if csrf_cookie_value:
+                resp.set_cookie(CSRF_COOKIE_NAME, csrf_cookie_value, httponly=True, samesite="lax", secure=_is_production_request(request), path="/", max_age=43200)
+            return resp
         except Exception as e:
             detail = f"{type(e).__name__}: {e}"
             html = f'''<!doctype html>
@@ -786,6 +930,32 @@ if not TEMPLATES_DIR.exists():
 templates = SafeTemplates(TEMPLATES_DIR)
 
 
+
+@app.middleware("http")
+async def csrf_protection_middleware(request: Request, call_next):
+    """Protección CSRF por token firmado en formularios POST.
+
+    Se aplica a formularios normales. Se excluyen uploads multipart para no afectar
+    importaciones de padrón en esta etapa de bajo riesgo.
+    """
+    if request.method.upper() == "POST":
+        path = request.url.path or ""
+        ctype = (request.headers.get("content-type") or "").lower()
+        if "application/x-www-form-urlencoded" in ctype and not path.startswith("/admin/padron/import"):
+            body = await request.body()
+            if not verify_csrf_from_body(request, body):
+                return HTMLResponse(
+                    "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fjord VI · Seguridad</title><style>body{font-family:Arial,sans-serif;background:#eef5f9;color:#102033;padding:24px}.box{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.12)}a{display:inline-block;margin-top:12px;background:#0b5f8f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}</style></head><body><div class='box'><h1>Acción no validada</h1><p>Por seguridad, recargá la pantalla y volvé a intentar.</p><a href='/'>Volver al sistema</a></div></body></html>",
+                    status_code=403,
+                    headers={"Cache-Control": "no-store"}
+                )
+
+            async def receive():
+                return {"type": "http.request", "body": body, "more_body": False}
+            request = Request(request.scope, receive)
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def duplicate_post_guard(request: Request, call_next):
     """Evita doble submit accidental desde móvil o mala conexión.
@@ -798,7 +968,7 @@ async def duplicate_post_guard(request: Request, call_next):
         if not path.startswith("/admin/padron/import") and not path.startswith("/admin/import"):
             rid = request.headers.get("X-Fjord-Request-ID", "").strip()
             if rid:
-                uid = request.cookies.get("fjord_uid", "")
+                uid = request.cookies.get(SESSION_COOKIE_NAME, "")
                 key = f"{uid}:{path}:{rid}"
                 now_ts = datetime.utcnow().timestamp()
                 _cleanup_recent_post_keys()
@@ -824,7 +994,7 @@ async def friendly_http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401 and "Sesión requerida" in detail:
         if request.method != "GET":
             resp = RedirectResponse("/?error=session", status_code=303)
-            resp.delete_cookie("fjord_uid")
+            clear_session_cookie(resp)
             resp.headers["Cache-Control"] = "no-store"
             return resp
         resp = templates.TemplateResponse(
@@ -834,7 +1004,7 @@ async def friendly_http_exception_handler(request: Request, exc: HTTPException):
         )
         resp.status_code = 401
         resp.headers["Cache-Control"] = "no-store"
-        resp.delete_cookie("fjord_uid")
+        clear_session_cookie(resp)
         return resp
 
     if exc.status_code == 403 and request.method == "GET":
@@ -923,6 +1093,7 @@ templates.env.globals.update({
     "fmt_admin_datetime_short": fmt_admin_datetime_short,
     "fjord_date_short": fjord_date_short,
     "fjord_weekday_short": fjord_weekday_short,
+    "csrf_input": csrf_input,
 })
 
 def base_template_context(**extra):
@@ -1486,7 +1657,7 @@ def log(db: Session, actor: str, action: str, detail: str = ""):
     persist_json(db)
 
 def current_user(request: Request, db: Session = Depends(db_session)) -> Optional[User]:
-    uid = unsign_value(request.cookies.get("fjord_uid", ""))
+    uid = unsign_value(request.cookies.get(SESSION_COOKIE_NAME, ""))
     if not uid:
         return None
     try:
@@ -1521,7 +1692,7 @@ async def force_password_change_middleware(request: Request, call_next):
     )
     if not any(allowed):
         try:
-            uid = unsign_value(request.cookies.get("fjord_uid", ""))
+            uid = unsign_value(request.cookies.get(SESSION_COOKIE_NAME, ""))
             if uid:
                 db = SessionLocal()
                 try:
@@ -1553,7 +1724,7 @@ async def activity_tracker(request: Request, call_next):
             if module:
                 db = SessionLocal()
                 try:
-                    uid = unsign_value(request.cookies.get("fjord_uid", ""))
+                    uid = unsign_value(request.cookies.get(SESSION_COOKIE_NAME, ""))
                     u = db.get(User, int(uid)) if uid else None
                     db.add(ActivityLog(
                         user_id=u.id if u else None,
@@ -3026,7 +3197,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "email_queue": True, "auto_queue_processing": True, "reminders_24h": True}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True}
 
 @app.head("/")
 def head_index():
@@ -3047,11 +3218,17 @@ def index(request: Request, db: Session = Depends(db_session), user: Optional[Us
     return RedirectResponse("/socio", status_code=303)
 
 @app.post("/login")
-def login(dni: str = Form(""), password: str = Form(...), db: Session = Depends(db_session)):
+def login(request: Request, dni: str = Form(""), password: str = Form(...), db: Session = Depends(db_session)):
     ident_raw = (dni or "").strip()
     ident_dni = norm_dni(ident_raw)
     ident_member = member_key(ident_raw)
     user = None
+    ident_key = login_ident_key(ident_raw)
+    ip_hash = client_ip_hash(request)
+    purge_old_login_attempts(db)
+    if login_is_locked(db, ident_key, ip_hash):
+        log(db, "Sistema", "login bloqueado por intentos", f"ident={ident_key or 'sin_ident'}")
+        return RedirectResponse("/?error=bloqueado", status_code=303)
 
     # Identidad blindada:
     # 1) si el dato coincide con Nº de socio, se prioriza Nº de socio;
@@ -3077,14 +3254,16 @@ def login(dni: str = Form(""), password: str = Form(...), db: Session = Depends(
             log(db, "Sistema", "login ambiguo resuelto", f"input {ident_raw}: prioridad Nº socio {user.member_no} sobre DNI de {dni_user.name}")
 
     if not user or not verify_password(password, user.password_hash):
+        record_login_attempt(db, ident_key, ip_hash, False, "credencial inválida")
         return RedirectResponse("/?error=1", status_code=303)
     if is_temporary_password(password) and not getattr(user, "must_change_password", False):
         user.must_change_password = True
         db.commit()
+    record_login_attempt(db, ident_key, ip_hash, True, "ok")
     log(db, user.name, "login", user.role)
     target = "/change-password" if getattr(user, "must_change_password", False) else "/"
     resp = RedirectResponse(target, status_code=303)
-    resp.set_cookie("fjord_uid", sign_value(str(user.id)), httponly=True, samesite="lax", max_age=43200)
+    set_session_cookie(resp, request, user.id)
     return resp
 
 
@@ -3180,7 +3359,7 @@ def admin_reset_password(
 @app.get("/logout")
 def logout():
     resp = RedirectResponse("/", status_code=303)
-    resp.delete_cookie("fjord_uid", path="/")
+    clear_session_cookie(resp)
     resp.headers["Cache-Control"] = "no-store"
     return resp
 

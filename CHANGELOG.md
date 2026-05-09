@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.2 - Blindaje base etapa 1
+- Unificación de versión visible, metadata y health check.
+- Corrección de índices de notification_queue.
+- Protección CSRF automática en formularios POST estándar.
+- Cookie de sesión con secure=True en producción.
+- Bloqueo progresivo de login luego de intentos fallidos repetidos.
+- Registro durable de intentos de login en base SQL.
+
 ## 1.7.6
 
 - Safe User Delete.
