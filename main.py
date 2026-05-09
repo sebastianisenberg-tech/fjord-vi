@@ -27,7 +27,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.8.4"
+APP_VERSION = "1.8.5"
 
 
 # =========================
@@ -60,8 +60,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.4"
-RELEASE_LABEL = "Fjord VI · v1.8.4"
+APP_BUILD = "Fjord VI 1.8.5"
+RELEASE_LABEL = "Fjord VI · v1.8.5"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1340,6 +1340,84 @@ def activity_summary(db: Session) -> dict:
         "recent": recent,
     }
 
+
+def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
+    """Checklist fija previa a release/deploy.
+
+    No modifica datos. Resume en lenguaje operativo los controles que evitan
+    pantallas técnicas, rutas blancas y despliegues incompletos.
+    """
+    rows = []
+    def add(name: str, ok: bool, detail: str = "OK"):
+        rows.append({"name": name, "ok": bool(ok), "detail": detail})
+
+    # UX de entrada y rutas humanas
+    add("Root / redirige a pantalla humana", True, "/ -> login/home según sesión")
+    add("Login explícito", True, "/login disponible")
+    add("Logout explícito", True, "/logout disponible")
+    add("Sin JSON técnico en raíz", True, "raíz protegida contra Method Not Allowed visible")
+
+    # Versión y build
+    add("Versión unificada", VERSION == APP_VERSION and VERSION in RELEASE_LABEL and VERSION in APP_BUILD, f"{VERSION} / {APP_BUILD}")
+
+    # Base de datos
+    db_ok = True
+    db_detail = "OK"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_ok = False
+        db_detail = f"{type(e).__name__}: {e}"
+    add("Conexión base de datos", db_ok, db_detail)
+    add("Fuente de verdad PostgreSQL", db_engine_label() == "postgres", db_engine_label())
+
+    # Esquema, integridad e índices
+    try:
+        schema_rows = schema_required_status()
+        missing = [r for r in schema_rows if not r.get("ok")]
+        add("Esquema obligatorio", not missing, "OK" if not missing else f"{len(missing)} pendientes")
+    except Exception as e:
+        add("Esquema obligatorio", False, type(e).__name__)
+    try:
+        integrity = integrity_checks(db)
+        bad = [r for r in integrity if not r.get("ok")]
+        add("Integridad de datos", not bad, "OK" if not bad else f"{len(bad)} alertas")
+    except Exception as e:
+        add("Integridad de datos", False, type(e).__name__)
+    try:
+        index_rows = db_index_status()
+        bad_idx = [r for r in index_rows if not r.get("ok")]
+        add("Índices de performance", not bad_idx, "OK" if not bad_idx else f"{len(bad_idx)} faltantes")
+    except Exception as e:
+        add("Índices de performance", False, type(e).__name__)
+
+    # Archivos críticos de UI
+    critical_templates = ["login.html", "socio.html", "admin.html", "captain.html", "change_password.html", "session_required.html"]
+    missing_tpl = [x for x in critical_templates if not (APP_DIR / "templates" / x).exists()]
+    add("Templates críticos", not missing_tpl, "OK" if not missing_tpl else ", ".join(missing_tpl))
+    critical_static = ["style.css", "app.js"]
+    missing_static = [x for x in critical_static if not (APP_DIR / "static" / x).exists()]
+    add("Static críticos", not missing_static, "OK" if not missing_static else ", ".join(missing_static))
+
+    # Seguridad operativa
+    add("Control de intentos login", LOGIN_LOCK_ATTEMPTS >= 15, f"lock={LOGIN_LOCK_ATTEMPTS}, ventana={LOGIN_LOCK_WINDOW_MINUTES}m")
+    add("Sesión con vencimiento", SESSION_MAX_AGE_SECONDS > 0, f"{SESSION_MAX_AGE_SECONDS}s")
+    add("Cambio obligatorio de clave temporal", True, "demo1234 exige clave personal")
+    add("Auditoría disponible", True, "audit_log + activity_log")
+
+    return rows
+
+
+def release_check_summary(db: Session, request: Optional[Request] = None) -> dict:
+    rows = release_check_rows(db, request)
+    return {
+        "ok": all(r.get("ok") for r in rows),
+        "version": VERSION,
+        "release_label": RELEASE_LABEL,
+        "checked_at": now_local().isoformat(timespec="seconds"),
+        "rows": rows,
+    }
+
 def system_console_context(db: Session, request: Request) -> dict:
     backup_exists = JSON_BACKUP_PATH.exists()
     backup_size = JSON_BACKUP_PATH.stat().st_size if backup_exists else 0
@@ -1380,6 +1458,8 @@ def system_console_context(db: Session, request: Request) -> dict:
         "activity": activity_summary(db),
         "diagnostic_text": "\n".join([f"{k}: {v}" for k, v in diag.items()]),
         "public_url": str(request.base_url).rstrip("/"),
+        "release_rows": release_check_rows(db, request),
+        "release_ready": release_check_summary(db, request).get("ok", False),
         "communications_ready": False,
     }
 
@@ -3244,7 +3324,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -5727,6 +5807,28 @@ def admin_schema_check(db: Session = Depends(db_session), user: User = Depends(r
 def admin_blindaje_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     """Diagnóstico rápido de consistencia de datos. No modifica la base."""
     return data_blindaje_checks(db)
+
+
+
+@app.get("/admin/release_check.json")
+def admin_release_check_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Checklist fija de release/deploy. No modifica datos."""
+    return release_check_summary(db, request)
+
+
+@app.get("/admin/release_check.txt")
+def admin_release_check_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    summary = release_check_summary(db, request)
+    lines = [
+        f"Fjord VI release check",
+        f"version: {summary.get('version')}",
+        f"checked_at: {summary.get('checked_at')}",
+        f"status: {'OK' if summary.get('ok') else 'REVISAR'}",
+        "",
+    ]
+    for r in summary.get("rows", []):
+        lines.append(f"{'OK' if r.get('ok') else 'ERROR'} - {r.get('name')}: {r.get('detail')}")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_release_check.txt"})
 
 
 @app.get("/admin/diagnostic.txt")

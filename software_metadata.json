@@ -1,8 +1,8 @@
 {
   "name": "Fjord VI · Embarque",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "release": "Corrección de entrada raíz y login",
   "notes": "Agrega redirección limpia de / a /login o al área correspondiente, GET /login explícito y defensa contra POST accidental en raíz para evitar pantallas técnicas visibles.",
-  "release_label": "Fjord VI · v1.8.4",
-  "phase": "Fase 2.1.1 UX de entrada y rutas seguras"
+  "release_label": "Fjord VI · v1.8.5",
+  "phase": "3_release_checklist_operational_hardening"
 }
