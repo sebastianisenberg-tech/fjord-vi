@@ -361,6 +361,14 @@
         {% if system_console.db_error %}<p class="dangerNote">{{system_console.db_error}}</p>{% endif %}
       </article>
 
+      <article class="erpCard systemWide"><h3>Semáforo operativo global <span class="smartTip" data-tip="Fase 7: resumen ejecutivo de operación, alertas, mantenimiento, métricas técnicas y preparación multi-barco.">i</span></h3>
+        <div class="smartAlert {% if system_console.phase7.color == 'green' %}success{% elif system_console.phase7.color == 'yellow' %}warn{% else %}danger{% endif %}"><b>{{system_console.phase7.label}}</b><span>{{system_console.phase7.phase}} · alertas críticas {{system_console.phase7.bad_count}} · advertencias {{system_console.phase7.warn_count}}</span></div>
+        <div class="systemMiniGrid"><div><span>Uptime</span><b>{{system_console.phase7.metrics.uptime_label}}</b></div><div><span>DB latency</span><b>{{system_console.phase7.metrics.db_latency_ms or '-'}} ms</b></div><div><span>Memoria estimada</span><b>{{system_console.phase7.metrics.memory_mb_estimated or '-'}} MB</b></div><div><span>Boat ID</span><b>{{system_console.phase7.boat_prepare.boat_id}}</b></div></div>
+        <div class="systemCheckList">{% for a in system_console.phase7.alerts %}<div class="checkRow {% if a.level == 'ok' %}ok{% elif a.level == 'warn' %}warn{% else %}bad{% endif %}"><b>{{a.title}}</b><span>{{a.detail}}</span></div>{% endfor %}</div>
+        <form method="post" action="/admin/maintenance_mode" class="drawerForm" style="margin-top:12px"><label class="checkLine"><input type="checkbox" name="enabled" {% if system_console.phase7.maintenance.enabled %}checked{% endif %}> Modo mantenimiento</label><input name="note" value="{{system_console.phase7.maintenance.note}}" placeholder="Nota visible interna para mantenimiento"><button class="erpBtn" type="submit">Guardar mantenimiento</button></form>
+        <div class="actions"><a class="erpBtn" href="/admin/phase7.json" target="_blank">Ver Fase 7 JSON</a><a class="erpBtn erpPrimary" href="/admin/phase7.txt">Descargar Fase 7</a><a class="erpBtn" href="/admin/deploy_history.json" target="_blank">Deploy history</a></div>
+      </article>
+
       <article class="erpCard systemWide"><h3>Checklist de release <span class="smartTip" data-tip="Control fijo antes de publicar una versión: redirección inicial, login, DB, esquema, integridad, estáticos, seguridad y ausencia de pantallas técnicas.">i</span></h3>
         <p>Control previo al deploy operativo. Debe quedar todo en OK antes de pasar una beta a producción.</p>
         <div class="smartAlert {% if system_console.release_ready %}success{% else %}warn{% endif %}"><b>{% if system_console.release_ready %}Release apto{% else %}Release con puntos a revisar{% endif %}</b><span>Versión {{version}} · root/login · PostgreSQL · integridad · archivos críticos · seguridad.</span></div>
