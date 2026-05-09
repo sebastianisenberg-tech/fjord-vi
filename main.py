@@ -21,6 +21,10 @@ from email.message import EmailMessage
 from urllib.parse import urlparse
 from typing import Optional
 
+from app.core.errors import AppError, render_app_error_html
+from app.core.logging_config import configure_logging, get_logger
+from app.core.settings import load_settings
+
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
@@ -30,7 +34,10 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.13.0"
+APP_VERSION = "1.14.0"
+APP_SETTINGS = load_settings(app_version=APP_VERSION)
+configure_logging(APP_SETTINGS.log_level)
+APP_LOGGER = get_logger("fjord.app")
 
 
 # =========================
@@ -63,8 +70,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.13.0"
-RELEASE_LABEL = "Fjord VI · v1.13.0"
+APP_BUILD = "Fjord VI 1.14.0"
+RELEASE_LABEL = "Fjord VI · v1.14.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1245,6 +1252,29 @@ async def duplicate_post_guard(request: Request, call_next):
 
 
 
+
+@app.exception_handler(AppError)
+async def fjord_app_error_handler(request: Request, exc: AppError):
+    """Fase 15: errores de aplicación centralizados y trazables.
+
+    Permite que servicios y repositorios levanten errores tipados sin exponer
+    tracebacks ni JSON crudo al usuario final.
+    """
+    request_id = request.headers.get("X-Fjord-Request-ID") or str(uuid.uuid4())[:8]
+    try:
+        APP_LOGGER.warning("app_error", extra={"fjord_request_id": request_id, "fjord_code": exc.code, "fjord_status": exc.status_code, "fjord_path": request.url.path})
+    except Exception:
+        pass
+    if request.method.upper() != "GET":
+        target = _safe_back_url(request)
+        sep = "&" if "?" in target else "?"
+        resp = RedirectResponse(f"{target}{sep}msg={exc.code}", status_code=303)
+        resp.headers["X-Fjord-Error-Code"] = exc.code
+        resp.headers["X-Fjord-Error-ID"] = request_id
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+    return HTMLResponse(render_app_error_html(exc, request_id=request_id), status_code=exc.status_code, headers={"Cache-Control": "no-store", "X-Fjord-Error-Code": exc.code, "X-Fjord-Error-ID": request_id})
+
 @app.exception_handler(StarletteHTTPException)
 async def friendly_http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Evita pantallas JSON crudas cuando vence o falta sesión.
@@ -1308,7 +1338,7 @@ async def friendly_unhandled_exception_handler(request: Request, exc: Exception)
     """
     request_id = str(uuid.uuid4())[:8]
     try:
-        print(f"[fjord-error:{request_id}] {request.method} {request.url.path}: {repr(exc)}")
+        APP_LOGGER.exception("unhandled_error", extra={"fjord_request_id": request_id, "fjord_path": request.url.path, "fjord_method": request.method})
         traceback.print_exc()
     except Exception:
         pass
@@ -4352,7 +4382,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": "diferido", "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "phase11d_system_nav_direct": True, "phase12_profesionalizacion_interna": True, "phase12b_system_fast": True, "phase12c_system_fast_real": True, "phase13_security_tests_observability": True, "security_headers_base": True, "system_fast_cache_seconds": SYSTEM_FAST_CACHE_SECONDS, "professional_docs": True, "smoke_tests_scaffold": True, "system_sections_collapsible": True, "request_observability": True, "admin_security_status_endpoint": True, "admin_observability_endpoint": True, "phase13_security_tests_observability": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": "diferido", "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "phase11d_system_nav_direct": True, "phase12_profesionalizacion_interna": True, "phase12b_system_fast": True, "phase12c_system_fast_real": True, "phase13_security_tests_observability": True, "security_headers_base": True, "system_fast_cache_seconds": SYSTEM_FAST_CACHE_SECONDS, "professional_docs": True, "smoke_tests_scaffold": True, "system_sections_collapsible": True, "request_observability": True, "admin_security_status_endpoint": True, "admin_observability_endpoint": True, "phase13_security_tests_observability": True, "phase14_validaciones_tests": True, "phase15_error_boundary": True, "phase15_repositories_scaffold": True, "phase15_services_scaffold": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:

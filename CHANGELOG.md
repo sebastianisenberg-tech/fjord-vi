@@ -1,6 +1,17 @@
+# 1.14.0 · Fase 15 · Arquitectura, errores y services
+
+- Se agregan errores tipados centralizados.
+- Se agrega logging base estructurable.
+- Se agrega settings centralizado.
+- Se agregan repositorios scaffold.
+- Se agrega middleware scaffold.
+- Se agrega servicio de operaciones.
+- Se mantiene Sistema rápido.
+- No se toca operación de reservas/cargos/cierres.
+
 # Changelog
 
-## 1.13.0 · Fase 14 Validaciones backend y tests reales
+## 1.14.0 · Fase 14 Validaciones backend y tests reales
 
 - Agrega validaciones de negocio puras en `app/core/business_rules.py`.
 - Agrega tests automáticos iniciales para cupos, duplicados, roles, estados e invitado responsable.
@@ -8,7 +19,7 @@
 - Prepara conexión gradual de reglas al backend crítico.
 
 
-## 1.13.0 · Fase 13 Seguridad, tests y observabilidad
+## 1.14.0 · Fase 13 Seguridad, tests y observabilidad
 
 - Observabilidad liviana por request-id y tiempo de respuesta.
 - Endpoints admin de seguridad y observabilidad.

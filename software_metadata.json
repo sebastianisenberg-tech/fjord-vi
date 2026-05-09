@@ -1,10 +1,10 @@
 {
-  "version": "1.13.0",
-  "release_label": "Fjord VI · v1.13.0",
-  "phase": "Fase 14 Validaciones backend y tests reales",
+  "version": "1.14.0",
+  "release_label": "Fjord VI · v1.14.0",
+  "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
-  "app_build": "Fjord VI 1.13.0",
+  "app_build": "Fjord VI 1.14.0",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -16,5 +16,10 @@
     "preparación multi-barco mantenida",
     "sin cambios en lógica de reservas/cargos/cierres"
   ],
-  "phase14_validaciones_tests": true
+  "phase14_validaciones_tests": true,
+  "system_fast": "preserved",
+  "error_boundary": "app.core.errors",
+  "repositories_scaffold": true,
+  "services_scaffold": true,
+  "logging_base": true
 }
