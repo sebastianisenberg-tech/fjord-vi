@@ -1,7 +1,7 @@
 {
-  "version": "1.9.1",
-  "release_label": "Fjord VI · v1.9.1",
-  "phase": "Fase 9 · operación humana real",
+  "version": "1.9.2",
+  "release_label": "Fjord VI · v1.9.2",
+  "phase": "FASE 10 - Routing guard y navegación humana",
   "generated_at": "2026-05-09",
   "notes": [
     "Semáforo operativo en Sistema",
@@ -12,10 +12,11 @@
   "app_build": "Fjord VI 1.9.0",
   "release": "Fase 8 UX Operacional",
   "features": [
-    "mensajes accionables",
-    "communication_status seguro",
-    "semáforo con recomendaciones humanas",
-    "labels técnicos traducidos",
-    "endpoints phase9"
-  ]
+    "aliases /admin/system y /admin/sistema hacia Sistema",
+    "soporte page=system y tab=system",
+    "handler 404 humano sin JSON crudo en navegación",
+    "aliases comunicaciones en español/inglés",
+    "corrección de regresión de navegación desde 1.9.1"
+  ],
+  "created_at": "2026-05-09T12:33:54Z"
 }

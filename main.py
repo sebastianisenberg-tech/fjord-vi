@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from typing import Optional
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -28,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.9.1"
+APP_VERSION = "1.9.2"
 
 
 # =========================
@@ -61,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.9.1"
-RELEASE_LABEL = "Fjord VI · v1.9.1"
+APP_BUILD = "Fjord VI 1.9.2"
+RELEASE_LABEL = "Fjord VI · v1.9.2"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1200,8 +1201,8 @@ async def duplicate_post_guard(request: Request, call_next):
 
 
 
-@app.exception_handler(HTTPException)
-async def friendly_http_exception_handler(request: Request, exc: HTTPException):
+@app.exception_handler(StarletteHTTPException)
+async def friendly_http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Evita pantallas JSON crudas cuando vence o falta sesión.
 
     En rutas de pantalla devuelve HTML amable.
@@ -1228,6 +1229,19 @@ async def friendly_http_exception_handler(request: Request, exc: HTTPException):
         return HTMLResponse(
             """<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fjord VI · Acceso no autorizado</title><style>body{font-family:Arial,sans-serif;background:#eef5f9;color:#102033;padding:24px}.box{max-width:520px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.12)}a{display:inline-block;margin-top:12px;background:#0b5f8f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}</style></head><body><div class='box'><h1>Acceso no autorizado</h1><p>Tu usuario no tiene permiso para esta pantalla.</p><a href='/'>Volver al inicio</a></div></body></html>""",
             status_code=403,
+            headers={"Cache-Control": "no-store"}
+        )
+
+    if exc.status_code == 404 and request.method == "GET":
+        path = request.url.path.rstrip("/").lower()
+        # Guard de navegación humana: evita JSON crudo/Not Found ante rutas viejas o tipeadas.
+        if path in ("/admin/system", "/admin/sistema", "/system", "/sistema"):
+            return RedirectResponse("/admin?page=sistema", status_code=303)
+        if path in ("/admin/communications", "/admin/comunicaciones", "/communications", "/comunicaciones"):
+            return RedirectResponse("/admin?page=comunicaciones", status_code=303)
+        return HTMLResponse(
+            """<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fjord VI · Pantalla no encontrada</title><style>body{font-family:Arial,sans-serif;background:#eef5f9;color:#102033;padding:24px}.box{max-width:560px;margin:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.12)}a{display:inline-block;margin-top:12px;background:#0b5f8f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}.soft{background:#eef6fb;color:#0b5f8f}</style></head><body><div class='box'><h1>Fjord VI</h1><p>La pantalla solicitada no existe o cambió de ubicación.</p><p>Volvé al sistema desde una entrada segura.</p><a href='/'>Ir al inicio</a> <a class='soft' href='/admin?page=sistema'>Sistema</a></div></body></html>""",
+            status_code=404,
             headers={"Cache-Control": "no-store"}
         )
 
@@ -3914,7 +3928,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "system_sections_collapsible": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -3940,6 +3954,38 @@ def index(request: Request, user: Optional[User] = Depends(current_user)):
 def index_post_redirect():
     # Defensa UX: si un navegador reintenta un POST contra raíz, vuelve al login.
     return RedirectResponse("/login", status_code=303)
+
+@app.get("/admin/sistema")
+def admin_sistema_alias():
+    return RedirectResponse("/admin?page=sistema", status_code=303)
+
+@app.get("/admin/system")
+def admin_system_alias():
+    return RedirectResponse("/admin?page=sistema", status_code=303)
+
+@app.get("/sistema")
+def sistema_alias():
+    return RedirectResponse("/admin?page=sistema", status_code=303)
+
+@app.get("/system")
+def system_alias():
+    return RedirectResponse("/admin?page=sistema", status_code=303)
+
+@app.get("/admin/comunicaciones")
+def admin_comunicaciones_alias():
+    return RedirectResponse("/admin?page=comunicaciones", status_code=303)
+
+@app.get("/admin/communications")
+def admin_communications_alias():
+    return RedirectResponse("/admin?page=comunicaciones", status_code=303)
+
+@app.get("/comunicaciones")
+def comunicaciones_alias():
+    return RedirectResponse("/admin?page=comunicaciones", status_code=303)
+
+@app.get("/communications")
+def communications_alias():
+    return RedirectResponse("/admin?page=comunicaciones", status_code=303)
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, db: Session = Depends(db_session), user: Optional[User] = Depends(current_user)):
@@ -5524,7 +5570,22 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             "invitados": (payload.get("summary") or {}).get("invitados", ""),
         })
     allowed_admin_pages = {"dashboard", "navegaciones", "reservas", "historial", "liquidacion", "socios", "auditoria", "estadisticas", "fichas", "exportar", "sistema", "actividad", "comunicaciones"}
-    admin_page = request.query_params.get("page", "dashboard")
+    page_aliases = {
+        "home": "dashboard", "inicio": "dashboard", "dashboard": "dashboard",
+        "salidas": "navegaciones", "navegaciones": "navegaciones", "outings": "navegaciones",
+        "reservas": "reservas", "reservations": "reservas",
+        "usuarios": "socios", "socios": "socios", "users": "socios",
+        "cargos": "liquidacion", "liquidacion": "liquidacion", "charges": "liquidacion",
+        "stats": "estadisticas", "estadisticas": "estadisticas",
+        "fichas": "fichas", "sheets": "fichas",
+        "auditoria": "auditoria", "audit": "auditoria",
+        "actividad": "actividad", "activity": "actividad",
+        "exportaciones": "exportar", "exportar": "exportar", "exports": "exportar",
+        "comunicaciones": "comunicaciones", "communications": "comunicaciones",
+        "sistema": "sistema", "system": "sistema",
+    }
+    raw_page = request.query_params.get("page") or request.query_params.get("tab") or "dashboard"
+    admin_page = page_aliases.get(str(raw_page).strip().lower(), str(raw_page).strip().lower())
     if admin_page not in allowed_admin_pages:
         admin_page = "dashboard"
 
