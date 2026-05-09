@@ -47,7 +47,7 @@ function fjordPasswordEnterFlow(e, nextId){
         <div class="boatName">FJORD VI</div>
         <div class="systemName">EMBARQUE</div>
       </div>
-      {% if error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
+      {% if error == 'bloqueado' %}<div class="alert bad">Demasiados intentos fallidos. Por seguridad, esperá unos minutos o pedí reset a Administración.</div>{% elif error == 'duplicado_socio' %}<div class="alert bad">Hay un Nº de socio duplicado en el padrón. Administración debe corregirlo antes de ingresar.</div>{% elif error %}<div class="alert bad">Nº de socio, documento o clave incorrectos</div>{% endif %}
       <form method="post" action="/login" class="loginForm" id="loginForm">
         <label for="loginDni">Nº de socio o documento</label>
         <input id="loginDni" name="dni" autocomplete="username" inputmode="text" enterkeyhint="next" required autofocus onkeydown="return fjordPasswordEnterFlow(event, 'loginPassword')">
