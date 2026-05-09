@@ -1,3 +1,13 @@
+
+## 1.12.0 · Fase 13 Seguridad, tests y observabilidad
+
+- Observabilidad liviana por request-id y tiempo de respuesta.
+- Endpoints admin de seguridad y observabilidad.
+- Cache no-store en áreas autenticadas.
+- Fronteras nuevas para validadores y métricas.
+- Documentación y plan de tests ampliados.
+- No cambia reglas de reservas, invitados, cargos ni cierres.
+
 # 1.11.3 - Fase 12C Sistema rápido real y versión unificada
 
 - Unifica numeración visible/runtime en 1.11.3.
