@@ -1,12 +1,13 @@
 {
-  "version": "1.8.8",
-  "release_label": "Fjord VI · v1.8.8",
-  "phase": "Fase 6 · estado operativo y preproducción",
+  "version": "1.8.9",
+  "release_label": "Fjord VI · v1.8.9",
+  "phase": "Fase 7 · operaciones y alertas",
   "generated_at": "2026-05-09",
   "notes": [
     "Semáforo operativo en Sistema",
     "Endpoints admin/operational_status.json y admin/operational_status.txt",
     "Controles de infraestructura, datos, roles, integridad, seguridad, locks y comunicaciones",
     "No cambia reglas de negocio visibles"
-  ]
+  ],
+  "app_build": "Fjord VI 1.8.9"
 }

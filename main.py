@@ -28,7 +28,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.8.8"
+APP_VERSION = "1.8.9"
 
 
 # =========================
@@ -61,8 +61,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.8.8"
-RELEASE_LABEL = "Fjord VI · v1.8.8"
+APP_BUILD = "Fjord VI 1.8.9"
+RELEASE_LABEL = "Fjord VI · v1.8.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -110,6 +110,8 @@ def _safe_back_url(request: Request) -> str:
 def now_local() -> datetime:
     return datetime.now(APP_TZ).replace(tzinfo=None)
 
+APP_STARTED_AT = now_local()
+
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
@@ -147,6 +149,7 @@ class Outing(Base):
     guest_fee = Column(Numeric(12,2), default=INVITED_FEE)
     notes = Column(Text, default="")
     created_at = Column(DateTime, default=now_local)
+    boat_id = Column(String, default="fjord_vi")
 
 class Reservation(Base):
     __tablename__ = "reservations"
@@ -583,6 +586,8 @@ def ensure_schema():
     with engine.begin() as conn:
         if "institutional_reserve" not in outing_columns:
             conn.execute(text("ALTER TABLE outings ADD COLUMN institutional_reserve INTEGER DEFAULT 0"))
+        if "boat_id" not in outing_columns:
+            conn.execute(text("ALTER TABLE outings ADD COLUMN boat_id VARCHAR DEFAULT 'fjord_vi'"))
 
     try:
         user_columns = [c["name"] for c in inspector.get_columns("users")]
@@ -622,6 +627,7 @@ DB_INDEXES_REQUIRED = [
     ("idx_users_role_active", "users", "role, active"),
     ("idx_outings_departure_at", "outings", "departure_at"),
     ("idx_outings_status", "outings", "status"),
+    ("idx_outings_boat_id", "outings", "boat_id"),
     ("idx_reservations_outing_id", "reservations", "outing_id"),
     ("idx_reservations_dni", "reservations", "dni"),
     ("idx_reservations_outing_status", "reservations", "outing_id, status"),
@@ -1358,7 +1364,7 @@ def table_count(db: Session, model) -> int:
 def schema_required_status() -> list:
     required = {
         "users": ["id", "name", "dni", "member_no", "email", "whatsapp", "phone", "category", "birth_date", "role", "active"],
-        "outings": ["id", "title", "destination", "departure_at", "status", "max_crew", "min_crew", "guest_fee"],
+        "outings": ["id", "title", "destination", "departure_at", "status", "max_crew", "min_crew", "guest_fee", "boat_id"],
         "reservations": ["id", "outing_id", "person_name", "dni", "kind", "responsible_user_id", "status", "attendance", "charge_amount", "birth_date"],
         "audit_logs": ["id", "created_at", "actor", "action", "detail"],
         "closing_sheets": ["id", "outing_id", "sequence", "status", "payload"],
@@ -1565,6 +1571,10 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     arch = architecture_module_rows()
     bad_arch = [r for r in arch if not r.get("ok")]
     add("Arquitectura modular preparada", not bad_arch, "OK" if not bad_arch else f"{len(bad_arch)} módulos pendientes")
+    add("Semáforo operativo", True, "panel Fase 7 disponible en Sistema")
+    add("Snapshot previo a reset", True, "backup JSON obligatorio antes de reset; SQL si pg_dump compatible")
+    add("Historial técnico de deploys", len(deploy_history_rows(db)) >= 1, f"{len(deploy_history_rows(db))} evento(s)")
+    add("Preparación multi-barco", True, "boat_id=fjord_vi preparado")
 
     return rows
 
@@ -1608,6 +1618,194 @@ def architecture_summary() -> dict:
         "main_py_lines": sum(1 for _ in open(APP_DIR / "main.py", "r", encoding="utf-8")),
         "strategy": "preparar fronteras de módulos sin cambiar comportamiento visible; mover lógica gradualmente con tests y release check",
         "rows": rows,
+    }
+
+
+def _duration_label(seconds: int) -> str:
+    try:
+        seconds = max(0, int(seconds))
+    except Exception:
+        seconds = 0
+    days, rem = divmod(seconds, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, _ = divmod(rem, 60)
+    if days:
+        return f"{days}d {hours}h"
+    if hours:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
+def maintenance_status() -> dict:
+    # Modo previsto para deploys o mantenimiento operativo. No bloquea todavía
+    # pantallas: queda como control visible de Fase 7 para no complicar reglas.
+    try:
+        with SessionLocal() as db:
+            enabled = get_system_meta(db, "maintenance_mode", "0") in ("1", "true", "on", "yes")
+            note = get_system_meta(db, "maintenance_note", "")
+            changed_at = get_system_meta(db, "maintenance_changed_at", "")
+            changed_by = get_system_meta(db, "maintenance_changed_by", "")
+    except Exception:
+        enabled, note, changed_at, changed_by = False, "", "", ""
+    return {"enabled": enabled, "note": note, "changed_at": changed_at, "changed_by": changed_by}
+
+
+def technical_metrics(db: Session) -> dict:
+    started = APP_STARTED_AT
+    now = now_local()
+    uptime_seconds = int((now - started).total_seconds())
+    db_latency_ms = None
+    db_ok = True
+    try:
+        t0 = datetime.now()
+        db.execute(text("SELECT 1"))
+        db_latency_ms = int((datetime.now() - t0).total_seconds() * 1000)
+    except Exception:
+        db_ok = False
+    memory_mb = None
+    try:
+        import resource
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # Linux devuelve KB; macOS bytes. Render/Linux: KB.
+        memory_mb = round(rss / 1024, 1)
+    except Exception:
+        memory_mb = None
+    return {
+        "app_started_at": started.isoformat(timespec="seconds"),
+        "checked_at": now.isoformat(timespec="seconds"),
+        "uptime_seconds": uptime_seconds,
+        "uptime_label": _duration_label(uptime_seconds),
+        "db_latency_ms": db_latency_ms,
+        "db_ok": db_ok,
+        "memory_mb_estimated": memory_mb,
+        "last_schema_check": get_system_meta(db, "last_schema_check", ""),
+        "last_operational_reset_at": get_system_meta(db, "operational_reset_at", ""),
+        "last_pre_reset_postgres": get_system_meta(db, "last_pre_reset_postgres", ""),
+        "last_pre_reset_json": get_system_meta(db, "last_pre_reset_json", ""),
+    }
+
+
+def deploy_history_rows(db: Session) -> list:
+    raw = get_system_meta(db, "deploy_history", "[]")
+    try:
+        rows = json.loads(raw or "[]")
+        if not isinstance(rows, list):
+            return []
+        return rows[:20]
+    except Exception:
+        return []
+
+
+def register_deploy_event():
+    try:
+        with SessionLocal() as db:
+            raw = get_system_meta(db, "deploy_history", "[]")
+            try:
+                rows = json.loads(raw or "[]")
+                if not isinstance(rows, list):
+                    rows = []
+            except Exception:
+                rows = []
+            event = {
+                "version": VERSION,
+                "release_label": RELEASE_LABEL,
+                "started_at": APP_STARTED_AT.isoformat(timespec="seconds"),
+                "schema_version": get_system_meta(db, "schema_version", "1"),
+                "source": "Render deploy/startup",
+            }
+            # Evita duplicar si Render reinicia muy seguido la misma versión.
+            if not rows or rows[0].get("version") != event["version"] or rows[0].get("started_at") != event["started_at"]:
+                rows.insert(0, event)
+                rows = rows[:20]
+                set_system_meta("deploy_history", json.dumps(rows, ensure_ascii=False))
+                set_system_meta("last_deploy_version", VERSION)
+                set_system_meta("last_deploy_started_at", event["started_at"])
+    except Exception:
+        pass
+
+
+def operational_alert_rows(db: Session) -> list:
+    alerts = []
+    def add(level: str, title: str, detail: str):
+        alerts.append({"level": level, "title": title, "detail": detail})
+    try:
+        if maintenance_status().get("enabled"):
+            add("warn", "Modo mantenimiento activo", maintenance_status().get("note") or "El sistema está marcado para mantenimiento.")
+        op = operational_status_summary(db)
+        if not op.get("ok"):
+            add("bad", "Hay bloqueantes operativos", op.get("recommendation", "Revisar estado operativo"))
+        elif op.get("warning_count", 0):
+            add("warn", "Hay advertencias no bloqueantes", f"{op.get('warning_count')} advertencias en estado operativo")
+        rel = release_check_summary(db)
+        if not rel.get("ok"):
+            add("bad", "Release check no apto", "Hay controles de release en estado revisar.")
+        bad_integrity = [r for r in integrity_checks(db) if not r.get("ok")]
+        if bad_integrity:
+            add("bad", "Integridad con alertas", f"{len(bad_integrity)} controles de integridad requieren revisión")
+        closed_without_sheet = closed_outings_without_current_sheet(db)
+        if closed_without_sheet:
+            add("bad", "Salidas cerradas sin ficha vigente", f"{len(closed_without_sheet)} salida(s) requieren reparación o revisión")
+        stale_locks = db.query(OperationLock).filter(OperationLock.expires_at < now_local()).count()
+        if stale_locks:
+            add("warn", "Locks vencidos pendientes", f"{stale_locks} lock(s) vencidos; ejecutar reparación segura limpia o revisa el estado")
+        pending_outings = db.query(Outing).filter(Outing.status.in_(["Programada", "En reservas"])).count()
+        if pending_outings == 0:
+            add("warn", "No hay salidas futuras activas", "Cargar salidas antes de abrir pruebas con socios reales")
+        comm = communication_status(db)
+        if not comm.get("smtp_configured"):
+            add("warn", "SMTP no configurado", "Las comunicaciones están preparadas pero el envío real de email sigue pendiente")
+    except Exception as e:
+        add("bad", "Error generando alertas", f"{type(e).__name__}: {e}")
+    if not alerts:
+        add("ok", "Sin alertas operativas críticas", "El sistema no detecta bloqueantes inmediatos")
+    return alerts
+
+
+def dashboard_operativo_summary(db: Session) -> dict:
+    try:
+        upcoming = db.query(Outing).filter(Outing.departure_at >= now_local()).count()
+        open_outings = db.query(Outing).filter(Outing.status.in_(["Programada", "En reservas"])).count()
+        closed_pending = len(closed_outings_without_current_sheet(db))
+        pending_queue = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").count()
+        active_locks = db.query(OperationLock).filter(OperationLock.expires_at >= now_local()).count()
+        reservations_active = db.query(Reservation).filter(Reservation.status.in_(["Confirmado", "Activa", "Pendiente"])).count()
+    except Exception:
+        upcoming = open_outings = closed_pending = pending_queue = active_locks = reservations_active = -1
+    return {
+        "upcoming_outings": upcoming,
+        "open_outings": open_outings,
+        "closed_without_sheet": closed_pending,
+        "pending_notifications": pending_queue,
+        "active_locks": active_locks,
+        "active_reservations": reservations_active,
+    }
+
+
+def phase7_summary(db: Session) -> dict:
+    op = operational_status_summary(db)
+    rel = release_check_summary(db)
+    alerts = operational_alert_rows(db)
+    bad = len([a for a in alerts if a.get("level") == "bad"])
+    warn = len([a for a in alerts if a.get("level") == "warn"])
+    if bad:
+        color, label = "red", "Revisión crítica"
+    elif warn or not rel.get("ok") or not op.get("ok"):
+        color, label = "yellow", "Apto con advertencias"
+    else:
+        color, label = "green", "Operativo estable"
+    return {
+        "color": color,
+        "label": label,
+        "ok": bad == 0,
+        "bad_count": bad,
+        "warn_count": warn,
+        "alerts": alerts,
+        "maintenance": maintenance_status(),
+        "metrics": technical_metrics(db),
+        "dashboard": dashboard_operativo_summary(db),
+        "deploy_history": deploy_history_rows(db),
+        "boat_prepare": {"boat_id": "fjord_vi", "boat_name": "Fjord VI", "multi_boat_ready": True},
+        "phase": "Fase 7 · operaciones, alertas y preproducción",
     }
 
 def operational_status_rows(db: Session) -> list:
@@ -1680,6 +1878,8 @@ def operational_status_rows(db: Session) -> list:
     except Exception as e:
         add("Comunicaciones", "Estado comunicaciones", False, type(e).__name__)
 
+    maint = maintenance_status()
+    add("Operación", "Modo mantenimiento", not maint.get("enabled"), "activo" if maint.get("enabled") else "inactivo", "warn" if maint.get("enabled") else "ok")
     return rows
 
 
@@ -1713,6 +1913,7 @@ def release_check_summary(db: Session, request: Optional[Request] = None) -> dic
     }
 
 def system_console_context(db: Session, request: Request) -> dict:
+    register_deploy_event()
     backup_exists = JSON_BACKUP_PATH.exists()
     backup_size = JSON_BACKUP_PATH.stat().st_size if backup_exists else 0
     backup_mtime = datetime.fromtimestamp(JSON_BACKUP_PATH.stat().st_mtime) if backup_exists else None
@@ -1759,6 +1960,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "release_ready": release_check_summary(db, request).get("ok", False),
         "architecture": architecture_summary(),
         "operational": operational_status_summary(db),
+        "phase7": phase7_summary(db),
         "communications_ready": False,
     }
 
@@ -3623,7 +3825,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": len(architecture_module_rows()), "operational_status": True, "phase7_operations_alerts": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -6154,6 +6356,54 @@ def admin_architecture_txt(request: Request, db: Session = Depends(db_session), 
     for row in summary["rows"]:
         lines.append(f"- [{'OK' if row['ok'] else 'PENDIENTE'}] {row['path']} · {row['description']}")
     return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_architecture_map.txt"})
+
+
+
+@app.get("/admin/phase7.json")
+def admin_phase7_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    log_activity(db, request, user, "admin", "phase7_json", "Fase 7 operaciones y alertas JSON")
+    return phase7_summary(db)
+
+
+@app.get("/admin/phase7.txt")
+def admin_phase7_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    summary = phase7_summary(db)
+    log_activity(db, request, user, "admin", "phase7_txt", "Fase 7 operaciones y alertas TXT")
+    lines = [
+        "Fjord VI - Fase 7 operaciones y alertas",
+        f"version: {VERSION}",
+        f"semaforo: {summary.get('label')} ({summary.get('color')})",
+        f"phase: {summary.get('phase')}",
+        "",
+        "ALERTAS",
+    ]
+    for a in summary.get("alerts", []):
+        lines.append(f"[{a.get('level')}] {a.get('title')}: {a.get('detail')}")
+    lines += ["", "METRICAS"]
+    for k, v in summary.get("metrics", {}).items():
+        lines.append(f"{k}: {v}")
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_fase7_operaciones.txt"})
+
+
+@app.get("/admin/deploy_history.json")
+def admin_deploy_history_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    log_activity(db, request, user, "admin", "deploy_history_json", "Historial técnico de deploys")
+    return {"version": VERSION, "rows": deploy_history_rows(db)}
+
+
+@app.post("/admin/maintenance_mode")
+def admin_maintenance_mode(
+    enabled: Optional[str] = Form(None),
+    note: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin")),
+):
+    set_system_meta("maintenance_mode", "1" if enabled == "on" else "0")
+    set_system_meta("maintenance_note", (note or "").strip())
+    set_system_meta("maintenance_changed_at", now_local().isoformat(timespec="seconds"))
+    set_system_meta("maintenance_changed_by", user.name)
+    log(db, user.name, "modo mantenimiento", "activado" if enabled == "on" else "desactivado")
+    return RedirectResponse("/admin?page=sistema&msg=maintenance_saved", status_code=303)
 
 
 @app.get("/admin/release_check.json")

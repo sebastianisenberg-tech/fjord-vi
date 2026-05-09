@@ -1,3 +1,11 @@
+
+## 1.8.9 · Fase 7 operaciones y alertas
+- Semáforo operativo global.
+- Alertas operativas y mantenimiento.
+- Métricas técnicas y deploy history.
+- Preparación multi-barco con boat_id.
+- Sin cambios en reglas visibles de reservas/cargos.
+
 # Changelog
 
 ## 1.8.2 - Blindaje base etapa 1
