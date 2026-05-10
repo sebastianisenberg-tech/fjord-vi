@@ -437,6 +437,22 @@
   {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
 </section>
 
+
+<section class="captainProfileMiniV1166">
+  <div class="captainMiniIdentityV1166">
+    <div class="captainMiniAvatarV1166">{{ (user.name[:1] if user.name else 'C')|upper }}</div>
+    <div>
+      <small>Capitán</small>
+      <b>{{ user.name }}</b>
+    </div>
+  </div>
+
+  <a class="captainMiniKeyPillV1166" href="/account/password">
+    <span aria-hidden="true">🔑</span>
+    Cambio de clave
+  </a>
+</section>
+
 <section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">🔒 La salida tiene ficha de cierre vigente. Liquidación consolidada en {{ 'LIQ-' ~ (current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026') ~ '-' ~ ('%06d'|format(current_sheet.id)) }}.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
 {% endif %}
 </main>

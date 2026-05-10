@@ -8572,3 +8572,76 @@ a.is-busy::after {
   font-weight:800;
 }
 .captainProtocolarTraceV1165 b{color:#7a6300;}
+
+
+/* 1.16.6 header cleanup capitán */
+.topKeyButton,
+.headerKeyButton,
+a[href="/account/password"].topAction{
+  display:none !important;
+}
+
+.topbar,
+.topHeader,
+.appHeader{
+  min-height:58px !important;
+  padding-top:6px !important;
+  padding-bottom:6px !important;
+}
+
+.captainProfileMiniV1166{
+  margin:10px 14px 14px;
+  padding:12px 14px;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid #dde7ee;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.captainMiniIdentityV1166{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.captainMiniAvatarV1166{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  background:#0c5b84;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+}
+
+.captainMiniIdentityV1166 small{
+  display:block;
+  font-size:11px;
+  color:#758390;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+
+.captainMiniIdentityV1166 b{
+  color:#173d59;
+  font-size:15px;
+}
+
+.captainMiniKeyPillV1166{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#eef7fb;
+  border:1px solid #d1e4ee;
+  color:#0d5678;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:900;
+}
