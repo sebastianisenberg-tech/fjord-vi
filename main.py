@@ -14,6 +14,7 @@ import tempfile
 import traceback
 import time
 import uuid
+import zipfile
 import re
 from urllib.parse import parse_qs
 import smtplib
@@ -34,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.15.2"
+APP_VERSION = "1.15.3"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -70,8 +71,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.15.2"
-RELEASE_LABEL = "Fjord VI · v1.15.2"
+APP_BUILD = "Fjord VI 1.15.3"
+RELEASE_LABEL = "Fjord VI · v1.15.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -7159,6 +7160,121 @@ def admin_diagnostic_txt(request: Request, db: Session = Depends(db_session), us
     for row in ctx.get("integrity_rows", []):
         lines.append(f"{'OK' if row['ok'] else 'ERROR'} - {row['name']}: {row['detail']}")
     return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_diagnostico.txt"})
+
+
+
+
+@app.get("/admin/diagnostic.zip")
+def admin_diagnostic_zip(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Paquete ZIP de diagnóstico para soporte.
+
+    No modifica datos. Reúne archivos técnicos útiles para revisar una instalación:
+    diagnóstico general, release check, estado operativo, arquitectura, actividad y auditoría.
+    """
+    ctx = system_console_context_full(db, request)
+    release = release_check_summary(db, request)
+    op = operational_status_summary(db)
+    arch = architecture_module_rows()
+
+    now = now_local().isoformat(timespec="seconds")
+    base_name = f"fjord_vi_diagnostico_{APP_VERSION}_{now.replace(':','-')}"
+
+    diag_lines = []
+    diag_lines.append("Fjord VI diagnóstico técnico")
+    diag_lines.append(f"version: {APP_VERSION}")
+    diag_lines.append(f"app_build: {APP_BUILD}")
+    diag_lines.append(f"release_label: {RELEASE_LABEL}")
+    diag_lines.append(f"generated_at: {now}")
+    diag_lines.append("")
+    diag_lines.append("ESTADO GENERAL")
+    diag_lines.append(f"database: {ctx.get('db_info', {}).get('engine')}")
+    diag_lines.append(f"db_ok: {ctx.get('db_ok')}")
+    diag_lines.append(f"schema: {ctx.get('schema_version')}")
+    diag_lines.append(f"fast_mode: {ctx.get('fast_mode')}")
+    diag_lines.append("")
+    diag_lines.append("RELEASE CHECK")
+    for row in release.get("rows", []):
+        diag_lines.append(f"{'OK' if row.get('ok') else 'ERROR'} - {row.get('name')}: {row.get('detail')}")
+    diag_lines.append("")
+    diag_lines.append("OPERATIVO")
+    diag_lines.append(f"ok: {op.get('ok')}")
+    diag_lines.append(f"score: {op.get('score')}")
+    diag_lines.append(f"blocking_count: {op.get('blocking_count')}")
+    diag_lines.append(f"warning_count: {op.get('warning_count')}")
+    diag_lines.append(f"recommendation: {op.get('recommendation')}")
+
+    def to_json_bytes(obj):
+        return json.dumps(obj, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+
+    def rows_to_csv_bytes(headers, rows):
+        buff = io.StringIO()
+        writer = csv.writer(buff)
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow(row)
+        return buff.getvalue().encode("utf-8-sig")
+
+    activity_rows = []
+    try:
+        recent_activity = db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(300).all()
+        for a in recent_activity:
+            activity_rows.append([
+                a.created_at.isoformat(timespec="seconds") if a.created_at else "",
+                a.user_name or "",
+                a.role or "",
+                a.module or "",
+                a.action or "",
+                a.route or "",
+            ])
+    except Exception as e:
+        activity_rows.append(["ERROR", str(e), "", "", "", ""])
+
+    audit_rows = []
+    try:
+        recent_audit = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(300).all()
+        for a in recent_audit:
+            audit_rows.append([
+                a.created_at.isoformat(timespec="seconds") if a.created_at else "",
+                a.actor or "",
+                a.action or "",
+                a.detail or "",
+            ])
+    except Exception as e:
+        audit_rows.append(["ERROR", str(e), "", ""])
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        z.writestr("00_LEEME.txt", (
+            "Paquete técnico de diagnóstico Fjord VI.\n"
+            "No contiene backup completo de base de datos.\n"
+            "Sirve para soporte, auditoría técnica y verificación de release.\n"
+            f"Generado: {now}\n"
+            f"Versión: {APP_VERSION}\n"
+        ))
+        z.writestr("01_diagnostico.txt", "\n".join(diag_lines).encode("utf-8"))
+        z.writestr("02_release_check.json", to_json_bytes(release))
+        z.writestr("03_estado_operativo.json", to_json_bytes(op))
+        z.writestr("04_arquitectura.json", to_json_bytes({"version": APP_VERSION, "rows": arch}))
+        z.writestr("05_sistema_contexto.json", to_json_bytes(ctx))
+        z.writestr("06_actividad_reciente.csv", rows_to_csv_bytes(["fecha", "usuario", "rol", "modulo", "accion", "ruta"], activity_rows))
+        z.writestr("07_auditoria_reciente.csv", rows_to_csv_bytes(["fecha", "actor", "accion", "detalle"], audit_rows))
+        z.writestr("08_metadata.json", to_json_bytes({
+            "app": "Fjord VI",
+            "version": APP_VERSION,
+            "build": APP_BUILD,
+            "release_label": RELEASE_LABEL,
+            "generated_at": now,
+            "public_url": ctx.get("public_url"),
+            "database_engine": ctx.get("db_info", {}).get("engine"),
+            "diagnostic_zip": True,
+        }))
+
+    log_activity(db, request, user, "admin", "diagnostic_zip", "Descarga diagnóstico ZIP")
+    return Response(
+        zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={base_name}.zip"}
+    )
 
 
 @app.post("/admin/system/repair_missing_sheets")
