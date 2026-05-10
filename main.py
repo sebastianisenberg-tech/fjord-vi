@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.15.3"
+APP_VERSION = "1.15.4"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -71,8 +71,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.15.3"
-RELEASE_LABEL = "Fjord VI · v1.15.3"
+APP_BUILD = "Fjord VI 1.15.4"
+RELEASE_LABEL = "Fjord VI · v1.15.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -6981,21 +6981,51 @@ def admin_operational_status_json(request: Request, db: Session = Depends(db_ses
 
 @app.get("/admin/operational_status.txt")
 def admin_operational_status_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    summary = operational_status_summary(db)
-    log_activity(db, request, user, "admin", "operational_status_txt", "Estado operativo TXT")
-    lines = [
-        "Fjord VI operational status",
-        f"version: {summary.get('version')}",
-        f"checked_at: {summary.get('checked_at')}",
-        f"score: {summary.get('score')}%",
-        f"recommendation: {summary.get('recommendation')}",
-        "",
-    ]
-    for row in summary.get("rows", []):
-        mark = "OK" if row.get("ok") else "REVISAR"
-        lines.append(f"[{mark}] {row.get('area')} · {row.get('name')}: {row.get('detail')}")
-    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_estado_operativo.txt"})
+    """Descarga TXT robusta del estado operativo.
 
+    Debe descargar siempre que el admin esté autenticado. Si algún subcontrol falla,
+    se informa dentro del TXT en vez de mostrar pantalla de error.
+    """
+    try:
+        summary = operational_status_summary(db)
+        lines = [
+            "Fjord VI estado operativo",
+            f"version: {summary.get('version', APP_VERSION)}",
+            f"checked_at: {summary.get('checked_at', now_local().isoformat(timespec='seconds'))}",
+            f"score: {summary.get('score', '-') }%",
+            f"status: {'OK' if summary.get('ok') else 'REVISAR'}",
+            f"recommendation: {summary.get('recommendation', '')}",
+            "",
+            "CONTROLES",
+        ]
+        for row in summary.get("rows", []):
+            mark = "OK" if row.get("ok") else "REVISAR"
+            lines.append(f"{mark} - {row.get('area','')} / {row.get('name','')}: {row.get('detail','')}")
+            if row.get("action"):
+                lines.append(f"  accion sugerida: {row.get('action')}")
+    except Exception as e:
+        lines = [
+            "Fjord VI estado operativo",
+            f"version: {APP_VERSION}",
+            f"checked_at: {now_local().isoformat(timespec='seconds')}",
+            "status: ERROR PARCIAL",
+            "",
+            "No se pudo generar el estado operativo completo.",
+            f"error: {type(e).__name__}: {e}",
+            "",
+            "La aplicacion sigue activa. Revisar logs de Render o descargar diagnostico ZIP.",
+        ]
+
+    try:
+        log_activity(db, request, user, "admin", "operational_status_txt", "Descarga estado operativo TXT")
+    except Exception:
+        pass
+
+    return Response(
+        "\n".join(lines),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=fjord_vi_estado_operativo.txt"}
+    )
 
 @app.get("/admin/architecture.json")
 def admin_architecture_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
@@ -7005,21 +7035,39 @@ def admin_architecture_json(request: Request, db: Session = Depends(db_session),
 
 @app.get("/admin/architecture.txt")
 def admin_architecture_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    summary = architecture_summary()
-    lines = [
-        "Fjord VI architecture map",
-        f"version: {summary['version']}",
-        f"phase: {summary['phase']}",
-        f"main_py_lines: {summary['main_py_lines']}",
-        f"ok: {summary['ok']}",
-        "",
-        "Módulos:",
-    ]
-    for row in summary["rows"]:
-        lines.append(f"- [{'OK' if row['ok'] else 'PENDIENTE'}] {row['path']} · {row['description']}")
-    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_architecture_map.txt"})
+    """Descarga TXT robusta del mapa técnico de arquitectura."""
+    try:
+        summary = architecture_summary()
+        lines = [
+            "Fjord VI architecture map",
+            f"version: {summary.get('version', APP_VERSION)}",
+            f"phase: {summary.get('phase', '')}",
+            f"main_py_lines: {summary.get('main_py_lines', '')}",
+            f"ok: {summary.get('ok', '')}",
+            "",
+            "MODULOS",
+        ]
+        for row in summary.get("rows", []):
+            lines.append(f"- [{'OK' if row.get('ok') else 'PENDIENTE'}] {row.get('path','')} · {row.get('description','')}")
+    except Exception as e:
+        lines = [
+            "Fjord VI architecture map",
+            f"version: {APP_VERSION}",
+            f"checked_at: {now_local().isoformat(timespec='seconds')}",
+            "status: ERROR PARCIAL",
+            f"error: {type(e).__name__}: {e}",
+        ]
 
+    try:
+        log_activity(db, request, user, "admin", "architecture_txt", "Descarga mapa tecnico TXT")
+    except Exception:
+        pass
 
+    return Response(
+        "\n".join(lines),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=fjord_vi_architecture_map.txt"}
+    )
 
 @app.get("/admin/phase7.json")
 def admin_phase7_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
@@ -7075,14 +7123,52 @@ def admin_phase9_json(request: Request, db: Session = Depends(db_session), user:
 
 @app.get("/admin/phase9.txt")
 def admin_phase9_txt(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
-    summary = phase9_summary(db)
-    lines = ["FJORD VI - FASE 9 OPERACION HUMANA", f"Version: {summary.get('version')}", f"Estado: {summary.get('state')}", f"Recomendacion: {summary.get('recommendation')}", ""]
-    for a in summary.get("alerts", []):
-        lines.append(f"[{a.get('level','')}] {a.get('title','')} - {a.get('detail','')}")
-        if a.get("action"):
-            lines.append(f"  Accion: {a.get('action')}")
-    log_activity(db, request, user, "admin", "phase9_txt", "Operación humana TXT")
-    return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_operacion_humana.txt"})
+    """Descarga TXT robusta de operación humana/Fase 9.
+
+    No debe caer a pantalla de error por alertas internas: si algo falla,
+    el error queda escrito dentro del TXT.
+    """
+    try:
+        summary = phase9_summary(db)
+        lines = [
+            "Fjord VI - operacion humana",
+            f"version: {summary.get('version', APP_VERSION)}",
+            f"checked_at: {summary.get('checked_at', now_local().isoformat(timespec='seconds'))}",
+            f"estado: {summary.get('state', '')}",
+            f"recomendacion: {summary.get('recommendation', '')}",
+            "",
+            "ALERTAS",
+        ]
+        alerts = summary.get("alerts", [])
+        if not alerts:
+            lines.append("OK - Sin alertas humanas.")
+        for a in alerts:
+            lines.append(f"{a.get('level','').upper()} - {a.get('title','')}: {a.get('detail','')}")
+            if a.get("action"):
+                lines.append(f"  accion sugerida: {a.get('action')}")
+    except Exception as e:
+        lines = [
+            "Fjord VI - operacion humana",
+            f"version: {APP_VERSION}",
+            f"checked_at: {now_local().isoformat(timespec='seconds')}",
+            "estado: ERROR PARCIAL",
+            "",
+            "No se pudo generar el informe de operacion humana completo.",
+            f"error: {type(e).__name__}: {e}",
+            "",
+            "La aplicacion sigue activa. Revisar logs de Render o descargar diagnostico ZIP.",
+        ]
+
+    try:
+        log_activity(db, request, user, "admin", "phase9_txt", "Descarga operacion humana TXT")
+    except Exception:
+        pass
+
+    return Response(
+        "\n".join(lines),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=fjord_vi_operacion_humana.txt"}
+    )
 
 @app.get("/admin/phase11.json")
 def admin_phase11_json(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
