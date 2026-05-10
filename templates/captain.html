@@ -368,6 +368,22 @@
         {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
         {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
       </div>
+      {% if v.show_responsible and captain_responsible_options|length > 0 and not closed and not outing_cancelled and not v.waitlisted and not (user.role == 'captain' and control_window.expired) %}
+      <details class="captainInlineReassignV1161">
+        <summary>Reasignar invitado</summary>
+        <div class="captainInlineReassignBodyV1161">
+          <div class="captainReassignHintV1161">Pasar este invitado a un socio presente:</div>
+          {% for opt in captain_responsible_options %}
+            {% if opt.id != r.responsible_user_id %}
+            <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+              <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
+              <button class="capAction reassignAction" data-busy-text="Reasignando...">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
+            </form>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
           <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
@@ -377,7 +393,7 @@
           <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
           <span class="tapCueV65">TAP</span>
           <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
-            <summary aria-label="Abrir menú de acciones">⋯</summary>
+            <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
             <div class="captainMoreOpsBody">
               {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
               {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
