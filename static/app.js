@@ -238,3 +238,103 @@
     };
   }
 })();
+
+
+/* Fjord VI 1.16.0 - Performance operativa
+   Anti doble toque global y feedback inmediato.
+   No bloquea links de descarga, links externos, GET simples ni botones expresamente marcados como libres.
+*/
+(function(){
+  if (window.__fjordOperationalGuardInstalled) return;
+  window.__fjordOperationalGuardInstalled = true;
+
+  const SUBMIT_LOCK_MS = 2200;
+  const CLICK_LOCK_MS = 1100;
+  const downloadSelectors = [
+    'a[download]',
+    'a[href$=".txt"]',
+    'a[href$=".csv"]',
+    'a[href$=".zip"]',
+    'a[href*="/admin/postgres_backup"]',
+    'a[target="_blank"]'
+  ].join(',');
+
+  function isFreeElement(el){
+    if(!el) return true;
+    return !!el.closest('[data-no-lock], .noLock, ' + downloadSelectors);
+  }
+
+  function setBusy(el, text){
+    if(!el || el.dataset.fjordBusy === '1') return;
+    el.dataset.fjordBusy = '1';
+    el.dataset.originalText = el.textContent || '';
+    el.classList.add('is-busy');
+    if(text && el.tagName !== 'INPUT') el.textContent = text;
+    el.setAttribute('aria-busy','true');
+  }
+
+  function releaseBusy(el){
+    if(!el) return;
+    if(el.dataset.originalText) el.textContent = el.dataset.originalText;
+    el.dataset.fjordBusy = '0';
+    el.classList.remove('is-busy');
+    el.removeAttribute('aria-busy');
+  }
+
+  document.addEventListener('submit', function(ev){
+    const form = ev.target;
+    if(!form || form.dataset.noLock === '1') return;
+
+    const method = (form.getAttribute('method') || 'GET').toUpperCase();
+    if(method !== 'POST') return;
+
+    if(form.dataset.fjordSubmitted === '1'){
+      ev.preventDefault();
+      ev.stopPropagation();
+      return false;
+    }
+
+    form.dataset.fjordSubmitted = '1';
+    const btn = form.querySelector('button[type="submit"], input[type="submit"]');
+    if(btn){
+      setBusy(btn, btn.dataset.busyText || 'Procesando...');
+      btn.disabled = true;
+    }
+
+    setTimeout(function(){
+      form.dataset.fjordSubmitted = '0';
+      if(btn){
+        btn.disabled = false;
+        releaseBusy(btn);
+      }
+    }, SUBMIT_LOCK_MS);
+  }, true);
+
+  document.addEventListener('click', function(ev){
+    const el = ev.target && ev.target.closest ? ev.target.closest('a,button') : null;
+    if(!el || isFreeElement(el)) return;
+
+    const href = el.getAttribute('href') || '';
+    const isHashOnly = href.startsWith('#');
+    const isGetNav = el.tagName === 'A' && href && !isHashOnly;
+    const isButton = el.tagName === 'BUTTON';
+
+    if(el.dataset.fjordClickLock === '1'){
+      ev.preventDefault();
+      ev.stopPropagation();
+      return false;
+    }
+
+    if(isButton || isGetNav){
+      el.dataset.fjordClickLock = '1';
+      if(isButton && !el.closest('form')) setBusy(el, el.dataset.busyText || el.textContent || 'Procesando...');
+      setTimeout(function(){
+        el.dataset.fjordClickLock = '0';
+        if(isButton && !el.closest('form')) releaseBusy(el);
+      }, CLICK_LOCK_MS);
+    }
+  }, true);
+
+  document.documentElement.classList.add('fjord-operational-light');
+})();
+

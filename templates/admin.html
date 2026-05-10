@@ -378,7 +378,19 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>{% if system_console.fast_mode %}<div class="smartAlert success"><b>Arranque rápido activo</b><span>Vista liviana con cache corto. Para diagnóstico profundo usá “Cargar checks completos”.<br><small>El botón Health técnico JSON abre datos crudos para soporte; no es una pantalla visual.</small><br><small>Al tocar “Cargar checks completos” se carga la vista profunda de Sistema: release, integridad, backups, actividad, arquitectura y reset.</small></span></div>{% endif %}</div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a><a class="erpBtn erpPrimary" href="/admin/sistema?full=1" onclick="try{sessionStorage.setItem('fjordSystemLoadingChecks','1');this.textContent='Cargando checks...';this.style.opacity='.78';}catch(e){}">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/admin/diagnostic.zip" download>Descargar diagnóstico ZIP</a></div></section>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>
+      <article class="erpCard systemWide perfPolicyCard"><h3>Política de performance operativa</h3>
+        <p>Socio y Capitán quedan protegidos como módulos livianos. Administración y Sistema cargan controles pesados sólo bajo demanda.</p>
+        <div class="perfPolicyList">
+          <div>Anti doble toque global: activo para acciones POST y botones críticos.</div>
+          <div>Descargas técnicas: no bloqueadas por el guard de doble toque.</div>
+          <div>Socio/Capitán: sin diagnósticos pesados en la carga inicial.</div>
+          <div>Sistema: checks completos diferidos y diagnóstico ZIP bajo demanda.</div>
+        </div>
+        <div class="actions"><a class="erpBtn" href="/admin/performance_policy.json" target="_blank">Ver política JSON</a></div>
+      </article>
+
+{% if system_console.fast_mode %}<div class="smartAlert success"><b>Arranque rápido activo</b><span>Vista liviana con cache corto. Para diagnóstico profundo usá “Cargar checks completos”.<br><small>El botón Health técnico JSON abre datos crudos para soporte; no es una pantalla visual.</small><br><small>Al tocar “Cargar checks completos” se carga la vista profunda de Sistema: release, integridad, backups, actividad, arquitectura y reset.</small></span></div>{% endif %}</div><div class="actions"><a class="erpBtn" href="/health" target="_blank">Health técnico JSON</a><a class="erpBtn erpPrimary" href="/admin/sistema?full=1" onclick="try{sessionStorage.setItem('fjordSystemLoadingChecks','1');this.textContent='Cargando checks...';this.style.opacity='.78';}catch(e){}">Cargar checks completos</a><a class="erpBtn" href="/admin/release_check.txt">Release check TXT</a><a class="erpBtn" href="/admin/diagnostic.zip" download>Descargar diagnóstico ZIP</a></div></section>
 
     <div class="systemHero">
       <article class="systemStatusCard"><span>Aplicación <span class="smartTip" data-tip="Versión instalada en Render. Sirve para soporte y control de cambios.">i</span></span><b>{{version}}</b><small>{{app_build}}</small></article>
