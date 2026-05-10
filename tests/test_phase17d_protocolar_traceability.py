@@ -2,7 +2,7 @@ from pathlib import Path
 
 def test_version_1163():
     main = Path("main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "1.16.3"' in main
+    assert 'APP_VERSION = "1.16.4"' in main
 
 def test_protocolar_traceability_ui():
     html = Path("templates/captain.html").read_text(encoding="utf-8")

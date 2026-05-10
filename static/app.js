@@ -240,7 +240,7 @@
 })();
 
 
-/* Fjord VI 1.16.3 - Performance operativa
+/* Fjord VI 1.16.4 - Performance operativa
    Anti doble toque global y feedback inmediato.
    No bloquea links de descarga, links externos, GET simples ni botones expresamente marcados como libres.
 */

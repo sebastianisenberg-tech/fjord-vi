@@ -354,7 +354,7 @@
     {% set reason_text = '' %}
     {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
-    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
+    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
         <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% endif %}
         <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>

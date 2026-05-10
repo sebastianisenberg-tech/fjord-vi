@@ -8309,7 +8309,7 @@ button:active,
 @media (max-width: 760px){.erpSystemDirect{display:inline-flex}.erpUser span{display:none}.erpTop{grid-template-columns:auto 1fr auto}.erpCommand{display:none}}
 
 
-/* Fjord VI 1.16.3 - Performance operativa */
+/* Fjord VI 1.16.4 - Performance operativa */
 .is-busy,
 button.is-busy,
 a.is-busy {
@@ -8358,7 +8358,7 @@ a.is-busy::after {
 
 
 
-/* Fjord VI 1.16.3 - Restauración visible de reasignación en Capitán */
+/* Fjord VI 1.16.4 - Restauración visible de reasignación en Capitán */
 .captainInlineReassignV1161{
   grid-column:1/-1;
   margin-top:8px;
@@ -8418,7 +8418,7 @@ a.is-busy::after {
 }
 
 
-/* Fjord VI 1.16.3 - Trazabilidad protocolar visible */
+/* Fjord VI 1.16.4 - Trazabilidad protocolar visible */
 .captainProtocolarTraceV1163{
   grid-column:1/-1;
   margin-top:7px;
@@ -8435,3 +8435,42 @@ a.is-busy::after {
 .captainProtocolarTraceV1163 b{
   color:#7a6300;
 }
+
+
+/* Fjord VI 1.16.4 - trazabilidad visible invitado/socio en Capitán */
+.captainResponsibleLegendV1164{
+  margin:0 0 10px;
+  padding:8px 10px;
+  border:1px solid #dbe8ef;
+  background:#f6fbfe;
+  border-radius:12px;
+  color:#365368;
+  font-size:12px;
+  font-weight:800;
+}
+.captainResponsibleTraceV1164{
+  margin-top:6px;
+  padding:7px 9px;
+  border-radius:12px;
+  border:1px solid #dbe8ef;
+  background:#f8fbfd;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  font-size:12px;
+  color:#315268;
+}
+.captainResponsibleTraceV1164 .captainResponsibleLabelV1164{
+  text-transform:uppercase;
+  letter-spacing:.35px;
+  font-size:10px;
+  font-weight:950;
+  color:#637789;
+}
+.captainResponsibleTraceV1164 b{color:#173f5f;font-weight:950;}
+.captainResponsibleTraceV1164 span{font-weight:850;}
+.captainResponsibleTraceV1164 small{width:100%;font-weight:850;color:#607080;}
+.captainResponsibleTraceV1164.present{border-color:#cce8d6;background:#f1fbf4;}
+.captainResponsibleTraceV1164.absent{border-color:#f0d6b8;background:#fff8ed;}
+.captainResponsibleTraceV1164.absent small{color:#965f16;}
