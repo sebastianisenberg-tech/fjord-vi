@@ -1,3 +1,12 @@
+# 1.16.7
+
+- Reformas operativas visibles.
+- Capitán: métricas más claras: A bordo, Ocupación y Reservas procesadas.
+- Protocolar: badge único, sin duplicación como invitado.
+- Ficha: resumen superior y grupos por socio más legibles.
+- Reasignación: se explicita socio original no embarcado.
+- Sin cambios en lógica de cargos, QR, cierre ni reasignación.
+
 # 1.16.5
 
 - Socio: cupos claros, sin ambigüedad entre ocupados y libres.

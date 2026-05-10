@@ -1,5 +1,5 @@
 {
-  "version": "1.16.6",
+  "version": "1.16.7",
   "release_label": "Fjord VI · v1.16.5",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
@@ -22,5 +22,5 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "Header Capitán limpio y clave compacta"
+  "release": "Fase 17G - cierre más claro, protocolar limpio y métricas operativas"
 }

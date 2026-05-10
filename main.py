@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.5"
+APP_VERSION = "1.16.7"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -71,7 +71,7 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.5"
+APP_BUILD = "Fjord VI 1.16.7"
 RELEASE_LABEL = "Fjord VI · v1.16.5"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -4048,7 +4048,7 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
         charge = float(v.get("charge", 0) or 0)
         person = {
             "name": r.person_name,
-            "tipo": display_kind(r.kind),
+            "tipo": "protocolar" if is_protocolar(r) else display_kind(r.kind),
             # Regla documental: socio visible por N° de socio; invitado visible por DNI.
             "member_no": (responsible.member_no if k == "socio" and responsible else "") or "",
             "dni": (r.dni or "") if k in ("invitado", "hijo_menor") else "",
@@ -4076,6 +4076,8 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
     subtotal_nav = sum(g["subtotal_navegacion"] for g in ordered_groups)
     subtotal_ns = sum(g["subtotal_no_show"] for g in ordered_groups)
     navegantes = sum(len(g["navegaron"]) for g in ordered_groups)
+    no_show_count = sum(len(g["no_show"]) for g in ordered_groups)
+    processed_count = navegantes + no_show_count
     socios_navegantes = sum(1 for r in reservations if canonical_kind(r.kind) == "socio" and reservation_view(outing, r)["embarked"])
     invitados_navegantes = max(navegantes - socios_navegantes, 0)
 
@@ -4096,6 +4098,9 @@ def build_closing_payload(db: Session, outing: Outing, reservations, sequence: i
         "generated_at": now_local().strftime("%d/%m/%Y %H:%M"),
         "summary": {
             "navegaron": navegantes,
+            "a_bordo": navegantes,
+            "no_show_count": no_show_count,
+            "processed_count": processed_count,
             "socios": socios_navegantes,
             "invitados": invitados_navegantes,
             "subtotal_navegacion": subtotal_nav,
