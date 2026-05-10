@@ -1,11 +1,21 @@
-# 1.16.1
+# 1.16.3
+
+- Regla protocolar corregida:
+  - Protocolar puede embarcar aunque no esté quien lo cargó.
+  - Protocolar no requiere reasignación.
+  - Protocolar siempre sin cargo, antes/después de 48 h, presente/ausente/no confirmado.
+  - Cierre y preflight ya no bloquean protocolares por socio responsable ausente.
+- Capitán muestra al protocolar como independiente y sin cargo.
+- Sin cambios en QR, cierre general, invitados normales ni cargos normales.
+
+# 1.16.3
 
 - Restauración visible de reasignación de invitados en Capitán.
 - Mantiene el backend existente `/captain/reassign/{rid}`.
 - Agrega bloque desplegable visible `Reasignar invitado` en cada invitado/menor con responsable.
 - Sin cambios en QR, cierre, cancelación, cargos ni fichas.
 
-# 1.16.1
+# 1.16.3
 
 - Performance operativa.
 - Anti doble toque global.
@@ -15,7 +25,7 @@
 - Checks y diagnósticos bajo demanda.
 - Sin cambios en Capitán, reservas, cargos ni cierres.
 
-# 1.16.1
+# 1.16.3
 
 - Feedback visual para Cargar checks completos.
 - Aclaración funcional del botón en Sistema.
@@ -23,7 +33,7 @@
 - Se mantiene diagnóstico TXT heredado.
 - No modifica lógica de reservas, Capitán, cargos ni cierres.
 
-# 1.16.1
+# 1.16.3
 
 - Rotulado claro de botones técnicos de Sistema.
 - Health JSON identificado como salida técnica cruda.
@@ -32,7 +42,7 @@
 - Versión interna unificada.
 - Sin cambios en reglas operativas.
 
-# 1.16.1
+# 1.16.3
 
 - Versión visible unificada.
 - Corrección de chips intermedios en Sistema.
@@ -41,7 +51,7 @@
 - No toca reglas operativas.
 
 
-# 1.16.1
+# 1.16.3
 
 - observabilidad inicial profesional
 - endpoints /health/live y /health/ready
@@ -52,7 +62,7 @@
 - preparación CI/CD futura
 
 
-# 1.16.1 · Fase 15 · Arquitectura, errores y services
+# 1.16.3 · Fase 15 · Arquitectura, errores y services
 
 - Se agregan errores tipados centralizados.
 - Se agrega logging base estructurable.
@@ -65,7 +75,7 @@
 
 # Changelog
 
-## 1.16.1 · Fase 14 Validaciones backend y tests reales
+## 1.16.3 · Fase 14 Validaciones backend y tests reales
 
 - Agrega validaciones de negocio puras en `app/core/business_rules.py`.
 - Agrega tests automáticos iniciales para cupos, duplicados, roles, estados e invitado responsable.
@@ -73,7 +83,7 @@
 - Prepara conexión gradual de reglas al backend crítico.
 
 
-## 1.16.1 · Fase 13 Seguridad, tests y observabilidad
+## 1.16.3 · Fase 13 Seguridad, tests y observabilidad
 
 - Observabilidad liviana por request-id y tiempo de respuesta.
 - Endpoints admin de seguridad y observabilidad.

@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.1"
+APP_VERSION = "1.16.3"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -71,8 +71,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.1"
-RELEASE_LABEL = "Fjord VI · v1.16.1"
+APP_BUILD = "Fjord VI 1.16.3"
+RELEASE_LABEL = "Fjord VI · v1.16.3"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -3608,6 +3608,10 @@ def actual_charge(outing: Outing, r: Reservation) -> float:
     """
     if not outing or not r:
         return 0.0
+    # Regla institucional dura: el protocolar nunca genera cargo,
+    # esté presente, ausente, cancelado, dentro o fuera de las 48 h.
+    if is_protocolar(r):
+        return 0.0
     if is_waitlisted(r) or is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r) or is_no_board_by_captain(r):
         return 0.0
     if not is_closed_outing(outing):
@@ -3641,6 +3645,9 @@ def projected_charge(outing: Outing, r: Reservation) -> float:
     por capitán, toda proyección pasa a $0.
     """
     if not outing or not r:
+        return 0.0
+    # Protocolar: sin cargo proyectado en cualquier estado o ventana.
+    if is_protocolar(r):
         return 0.0
     if is_waitlisted(r) or is_outing_cancelled_by_captain(outing) or is_captain_cancelled(r) or is_no_board_by_captain(r):
         return 0.0
@@ -5126,6 +5133,10 @@ def present_guest_without_present_responsible_errors(db: Session, outing: Outing
         k = canonical_kind(r.kind)
         if k not in ("invitado", "hijo_menor"):
             continue
+        # Protocolar: puede embarcar aunque no esté quien lo cargó.
+        # No depende de socio responsable y no requiere reasignación.
+        if is_protocolar(r):
+            continue
         if r.attendance != "Presente":
             continue
         if is_waitlisted(r) or r.cancelled_at is not None or r.status == "Cancelado" or is_captain_cancelled(r) or is_no_board_by_captain(r):
@@ -5196,16 +5207,20 @@ def close_preflight_analysis(db: Session, outing: Outing) -> dict:
         simulated_att = "Ausente" if att == "Por confirmar" else att
 
         if k in ("invitado", "hijo_menor"):
+            protocolar = is_protocolar(r)
             if not norm_dni(r.dni):
                 errors.append(f"{r.person_name}: invitado sin DNI/documento. Cargalo antes de cerrar.")
             elif dni_format_warning(r.dni):
                 warnings.append(f"{r.person_name}: documento corto o incompleto ({r.dni}). Revisar si es dato de prueba o documento real.")
 
-            if simulated_att == "Presente" and r.responsible_user_id not in present_socio_ids:
+            if (not protocolar) and simulated_att == "Presente" and r.responsible_user_id not in present_socio_ids:
                 suggestions.append(f"Corregir {r.person_name}: reasignar a un socio presente o marcar No embarca si no sube.")
 
             if simulated_att == "Presente":
-                if k == "invitado":
+                if protocolar:
+                    # Protocolar embarcado: ocupa plaza física si corresponde, pero siempre sin cargo.
+                    pass
+                elif k == "invitado":
                     invited_present_count += 1
                     estimated_navigation_total += float(outing.guest_fee or 0)
             elif simulated_att in ("Ausente", "No embarcable"):
@@ -5272,6 +5287,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     - Socio ausente/no-show: paga 70% de la tarifa de invitado.
     - Invitados de socio ausente: no embarcan, pero se cobran al socio ausente
       salvo que el capitán los haya reasignado a otro socio presente antes del cierre.
+    - Invitados protocolares: pueden embarcar aunque no esté quien los cargó y siempre son sin cargo.
     - No embarca por decisión del capitán: sin cargo.
     - Lista de espera: sin cargo.
     """
@@ -5289,6 +5305,20 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
 
         if is_waitlisted(r):
             r.charge_amount = 0
+            continue
+
+        # Regla institucional dura:
+        # Protocolar no depende del socio que lo cargó, puede embarcar aunque ese socio no esté,
+        # y nunca genera cargo ni no-show.
+        if is_protocolar(r):
+            r.charge_amount = 0
+            if r.attendance == "Presente":
+                r.cancel_reason = f"Participación protocolar · Sin cargo · Protocolar designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
+            elif r.attendance in ("Ausente", "No embarcable", "No embarca"):
+                r.cancel_reason = f"Protocolar no embarcado · Sin cargo · Protocolar designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
+            elif r.attendance == "Por confirmar":
+                r.attendance = "Ausente"
+                r.cancel_reason = f"Protocolar no confirmado al cierre · Sin cargo · Protocolar designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
             continue
 
         if is_captain_cancelled(r):
@@ -5524,7 +5554,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     if value in ("Presente", "Por confirmar"):
         # Blindaje: un invitado/menor no socio no puede ser marcado presente
         # si su socio responsable no está presente y activo.
-        if value == "Presente" and canonical_kind(r.kind) in ("invitado", "hijo_menor"):
+        if value == "Presente" and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not is_protocolar(r):
             responsible_row = responsible_reservation_for(db, r.outing_id, r.responsible_user_id)
             responsible_ok = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             if not responsible_ok:
