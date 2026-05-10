@@ -1,4 +1,4 @@
-# Auditoría 1.16.0
+# Auditoría 1.16.1
 
 Correcciones:
 - versión unificada en APP_BUILD, RELEASE_LABEL, VERSION.txt y metadata.
