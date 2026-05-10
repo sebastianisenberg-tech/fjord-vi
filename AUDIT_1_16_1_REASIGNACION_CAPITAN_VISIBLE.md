@@ -1,4 +1,4 @@
-# Auditoría 1.16.4
+# Auditoría 1.16.5
 
 Corrección puntual:
 - Se restaura la reasignación visible de invitados en la pantalla de Capitán.

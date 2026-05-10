@@ -1,10 +1,10 @@
 {
-  "version": "1.16.4",
-  "release_label": "Fjord VI · v1.16.4",
+  "version": "1.16.5",
+  "release_label": "Fjord VI · v1.16.5",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
-  "app_build": "Fjord VI 1.16.4",
+  "app_build": "Fjord VI 1.16.5",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -22,5 +22,5 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "Fase 17E - Capitán muestra pertenencia de invitados"
+  "release": "Fase 17F - claridad cupos, capitán invitado de, perfil compacto y protocolar limpio"
 }

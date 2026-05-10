@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.4"
+APP_VERSION = "1.16.5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -71,8 +71,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.4"
-RELEASE_LABEL = "Fjord VI · v1.16.4"
+APP_BUILD = "Fjord VI 1.16.5"
+RELEASE_LABEL = "Fjord VI · v1.16.5"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5317,12 +5317,12 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
         if is_protocolar(r):
             r.charge_amount = 0
             if r.attendance == "Presente":
-                r.cancel_reason = f"Participación protocolar · Sin cargo · Protocolar designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
+                r.cancel_reason = f"Protocolar · Designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
             elif r.attendance in ("Ausente", "No embarcable", "No embarca"):
-                r.cancel_reason = f"Protocolar no embarcado · Sin cargo · Protocolar designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
+                r.cancel_reason = f"Protocolar no embarcado · Designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
             elif r.attendance == "Por confirmar":
                 r.attendance = "Ausente"
-                r.cancel_reason = f"Protocolar no confirmado al cierre · Sin cargo · Protocolar designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
+                r.cancel_reason = f"Protocolar no confirmado al cierre · Designado por: {getattr(r, 'protocolar_by', None) or getattr(r, 'responsible_name', None) or 'Comisión Fjord VI'}"
             continue
 
         if is_captain_cancelled(r):
@@ -6040,7 +6040,11 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             responsible = responsible_users.get(r.responsible_user_id) if r.responsible_user_id else None
             own_reservation = bool(responsible and r.dni == responsible.dni)
             v["responsible_name"] = responsible.name if responsible else ""
+            v["responsible_member_no"] = (responsible.member_no or "") if responsible else ""
             v["responsible_dni"] = responsible.dni if responsible else ""
+            responsible_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=responsible.dni).first() if responsible else None
+            v["responsible_attendance"] = responsible_row.attendance if responsible_row else ""
+            v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
     captain_responsible_options = []
