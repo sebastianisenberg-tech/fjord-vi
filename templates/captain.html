@@ -295,8 +295,8 @@
     <span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}locked{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}🔒 Cerrada{% else %}Operativa{% endif %}</span>
   </div>
   <div class="captainStickyKpis">
-    <div><small>Presentes</small><b>{{present}}</b></div>
-    <div><small>Cupo</small><b>{{active_count}}/{{outing.max_crew}}</b></div>
+    <div><small>A bordo</small><b>{{present}}</b></div>
+    <div><small>Ocupación</small><b>{{present}}/{{outing.max_crew}}</b></div>
     <div><small>Espera</small><b>{{waitlist_count|default(0)}}</b></div>
   </div>
   {% set ns = namespace(presentes=[], pendientes=[], ausentes=[], noembarca=[]) %}
@@ -314,6 +314,8 @@
       {% endif %}
     {% endif %}
   {% endfor %}
+  {% set processed_total = ns.presentes|length + ns.ausentes|length + ns.noembarca|length + ns.pendientes|length %}
+  <div class="captainProcessedLineV1167">Reservas procesadas: <b>{{processed_total}}</b> · A bordo: <b>{{ns.presentes|length}}</b> · Ausentes con cargo: <b>{{ns.ausentes|length}}</b></div>
   <div class="captainMiniSummary" aria-label="Resumen de asistencia">
     <button type="button" onclick="captainOpenSummary('presentes')"><span>Presentes</span><b>{{ns.presentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('pendientes')"><span>Pendientes</span><b>{{ns.pendientes|length}}</b></button>
@@ -356,15 +358,14 @@
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
     <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
-        <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% endif %}
-        <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
+        <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
         {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}
         <div class="captainResponsibleTraceV1165 {% if v.responsible_is_present %}present{% else %}absent{% endif %}">
           <span class="captainResponsibleLabelV1165">Invitado de</span>
           <b>{{v.responsible_name}}</b>{% if v.responsible_member_no %}<span>Socio {{v.responsible_member_no}}</span>{% endif %}
           <small>{% if v.responsible_is_present %}socio presente{% else %}socio no presente / revisar reasignación{% endif %}</small>
         </div>
-        {% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<small>Protocolar · independiente del socio que lo cargó</small>{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
+        {% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<small>Protocolar</small>{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
         <div class="captainProtocolarTraceV1165">
           <div><b>Protocolar</b></div>
           {% if r.protocolar_by %}<div>Designado por: {{r.protocolar_by}}</div>{% endif %}

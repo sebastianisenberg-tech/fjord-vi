@@ -8574,7 +8574,7 @@ a.is-busy::after {
 .captainProtocolarTraceV1165 b{color:#7a6300;}
 
 
-/* 1.16.6 header cleanup capitán */
+/* 1.16.7 header cleanup capitán */
 .topKeyButton,
 .headerKeyButton,
 a[href="/account/password"].topAction{
@@ -8644,4 +8644,20 @@ a[href="/account/password"].topAction{
   text-decoration:none;
   font-size:12px;
   font-weight:900;
+}
+
+
+/* Fjord VI 1.16.7 - claridad operativa */
+.captainProcessedLineV1167{
+  margin:8px 0 10px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:#f5f9fb;
+  border:1px solid #dce8ef;
+  color:#34556b;
+  font-size:12px;
+  font-weight:850;
+}
+.protoOnlyV1167{
+  margin-left:6px;
 }
