@@ -430,7 +430,7 @@
         <div class="smartAlert {% if system_console.phase9.bad_count %}danger{% elif system_console.phase9.warn_count %}warn{% else %}success{% endif %}"><b>{{system_console.phase9.state}}</b><span>{{system_console.phase9.recommendation}}</span></div>
         <div class="systemCheckList">{% for a in system_console.phase9.alerts %}<div class="checkRow {% if a.level == 'ok' %}ok{% elif a.level == 'warn' %}warn{% else %}bad{% endif %}"><b>{{a.title}}</b><span>{{a.detail}}{% if a.action %}<br><small>Acción sugerida: {{a.action}}</small>{% endif %}</span></div>{% endfor %}</div>
         <form method="post" action="/admin/maintenance_mode" class="drawerForm" style="margin-top:12px"><label class="checkLine"><input type="checkbox" name="enabled" {% if system_console.phase7.maintenance.enabled %}checked{% endif %}> Modo mantenimiento</label><input name="note" value="{{system_console.phase7.maintenance.note}}" placeholder="Nota visible interna para mantenimiento"><button class="erpBtn" type="submit">Guardar mantenimiento</button></form>
-        <div class="actions"><a class="erpBtn" href="/admin/phase9.json" target="_blank">Ver Fase 9 JSON</a><a class="erpBtn erpPrimary" href="/admin/phase9.txt">Descargar operación humana</a><a class="erpBtn" href="/admin/deploy_history.json" target="_blank">Deploy history</a></div>
+        <div class="actions"><a class="erpBtn" href="/admin/phase9.json" target="_blank">Ver Fase 9 JSON</a><a class="erpBtn erpPrimary" href="/admin/phase9.txt">Descargar operación humana TXT</a><a class="erpBtn" href="/admin/deploy_history.json" target="_blank">Deploy history</a></div>
       </article>
 
       <article class="erpCard systemWide"><h3>Checklist de release <span class="smartTip" data-tip="Control fijo antes de publicar una versión: redirección inicial, login, DB, esquema, integridad, estáticos, seguridad y ausencia de pantallas técnicas.">i</span></h3>
@@ -445,14 +445,14 @@
         <p>Control ejecutivo de operación. No modifica datos; resume si la beta está en condiciones de usarse con usuarios reales controlados.</p>
         <div class="smartAlert {% if system_console.operational.ok %}success{% else %}warn{% endif %}"><b>{% if system_console.operational.ok %}Piloto controlado apto{% else %}Hay bloqueantes operativos{% endif %}</b><span>Score {{system_console.operational.score}}% · {{system_console.operational.recommendation}} · {{system_console.operational.phase}}</span></div>
         <div class="systemCheckList">{% for row in system_console.operational.rows %}<div class="checkRow {% if row.ok %}ok{% elif row.level == 'warn' %}warn{% else %}bad{% endif %}"><b>{{row.area}} · {{row.name}}</b><span>{{row.detail}}</span></div>{% endfor %}</div>
-        <div class="actions"><a class="erpBtn" href="/admin/operational_status.json" target="_blank">Ver JSON</a><a class="erpBtn erpPrimary" href="/admin/operational_status.txt">Descargar estado operativo</a></div>
+        <div class="actions"><a class="erpBtn" href="/admin/operational_status.json" target="_blank">Ver JSON</a><a class="erpBtn erpPrimary" href="/admin/operational_status.txt">Descargar estado operativo TXT</a></div>
       </article>
 
       <article class="erpCard systemWide"><h3>Arquitectura modular <span class="smartTip" data-tip="Fase 5: prepara la separación del main.py en módulos sin alterar todavía las reglas visibles. Sirve para controlar que las fronteras técnicas existan antes de mover lógica crítica.">i</span></h3>
         <p>Mapa de módulos preparado para dividir el backend por etapas: configuración, base, seguridad, auditoría, servicios y routers.</p>
         <div class="smartAlert {% if system_console.architecture.ok %}success{% else %}warn{% endif %}"><b>{% if system_console.architecture.ok %}Arquitectura preparada{% else %}Arquitectura en transición controlada{% endif %}</b><span>{{system_console.architecture.phase}} · módulos futuros preparados para migración gradual · main.py: {{system_console.architecture.main_py_lines}} líneas.</span></div>
         <div class="systemCheckList">{% for row in system_console.architecture.rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.path}}</b><span>{{row.description}}</span></div>{% endfor %}</div>
-        <div class="actions"><a class="erpBtn" href="/admin/architecture.json" target="_blank">Ver arquitectura JSON</a><a class="erpBtn erpPrimary" href="/admin/architecture.txt">Descargar mapa técnico</a></div>
+        <div class="actions"><a class="erpBtn" href="/admin/architecture.json" target="_blank">Ver arquitectura JSON</a><a class="erpBtn erpPrimary" href="/admin/architecture.txt">Descargar mapa técnico TXT</a></div>
       </article>
 
       <article class="erpCard"><h3>Conteos principales</h3>
