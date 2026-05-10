@@ -14,11 +14,11 @@ def test_security_observability_modules_present():
 
 
 def test_version_unified_text_files():
-    assert (ROOT / "VERSION.txt").read_text().strip() == "1.15.4"
+    assert (ROOT / "VERSION.txt").read_text().strip() == "1.15.5"
     main = (ROOT / "main.py").read_text()
-    assert 'APP_VERSION = "1.15.4"' in main
-    assert 'APP_BUILD = "Fjord VI 1.15.4"' in main
-    assert 'RELEASE_LABEL = "Fjord VI · v1.15.4"' in main
+    assert 'APP_VERSION = "1.15.5"' in main
+    assert 'APP_BUILD = "Fjord VI 1.15.5"' in main
+    assert 'RELEASE_LABEL = "Fjord VI · v1.15.5"' in main
 
 
 def test_admin_security_endpoints_declared():

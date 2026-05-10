@@ -2,9 +2,9 @@ from pathlib import Path
 
 def test_version_unified_1151():
     content = Path("main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "1.15.4"' in content
-    assert 'APP_BUILD = "Fjord VI 1.15.4"' in content
-    assert 'RELEASE_LABEL = "Fjord VI · v1.15.4"' in content
+    assert 'APP_VERSION = "1.15.5"' in content
+    assert 'APP_BUILD = "Fjord VI 1.15.5"' in content
+    assert 'RELEASE_LABEL = "Fjord VI · v1.15.5"' in content
 
 def test_system_quick_links_load_full_sections():
     content = Path("templates/admin.html").read_text(encoding="utf-8")

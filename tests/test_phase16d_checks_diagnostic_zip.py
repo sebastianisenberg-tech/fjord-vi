@@ -2,9 +2,9 @@ from pathlib import Path
 
 def test_version_1153_unified():
     main = Path("main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "1.15.4"' in main
-    assert 'APP_BUILD = "Fjord VI 1.15.4"' in main
-    assert 'RELEASE_LABEL = "Fjord VI · v1.15.4"' in main
+    assert 'APP_VERSION = "1.15.5"' in main
+    assert 'APP_BUILD = "Fjord VI 1.15.5"' in main
+    assert 'RELEASE_LABEL = "Fjord VI · v1.15.5"' in main
 
 def test_diagnostic_zip_endpoint_exists():
     main = Path("main.py").read_text(encoding="utf-8")
