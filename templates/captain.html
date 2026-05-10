@@ -358,7 +358,16 @@
       <div class="captainFastIdentityV65">
         <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% endif %}
         <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        {% if v.show_responsible %}<small>de {{v.responsible_name}}</small>{% endif %}{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
+        {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}<small>de {{v.responsible_name}}</small>{% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<small>Protocolar · independiente del socio que lo cargó · sin cargo permanente</small>{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
+        <div class="captainProtocolarTraceV1163">
+          <div><b>Protocolar</b> · Sin cargo permanente</div>
+          {% if r.protocolar_by %}<div>Designado por: {{r.protocolar_by}}</div>{% endif %}
+          {% if r.responsible_name %}<div>Socio referencia: {{r.responsible_name}}</div>{% endif %}
+          {% if r.dni %}<div>DNI: {{r.dni}}</div>{% endif %}
+          {% if r.protocolar_label %}<div>Motivo / etiqueta: {{r.protocolar_label}}</div>{% endif %}
+        </div>
+        {% endif %}
+{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>
       <div class="captainFastStateV65">
         {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
@@ -368,7 +377,7 @@
         {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
         {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
       </div>
-      {% if v.show_responsible and captain_responsible_options|length > 0 and not closed and not outing_cancelled and not v.waitlisted and not (user.role == 'captain' and control_window.expired) %}
+      {% if v.show_responsible and not reservation_views.get(r.id).protocolar and captain_responsible_options|length > 0 and not closed and not outing_cancelled and not v.waitlisted and not (user.role == 'captain' and control_window.expired) %}
       <details class="captainInlineReassignV1161">
         <summary>Reasignar invitado</summary>
         <div class="captainInlineReassignBodyV1161">

@@ -8309,7 +8309,7 @@ button:active,
 @media (max-width: 760px){.erpSystemDirect{display:inline-flex}.erpUser span{display:none}.erpTop{grid-template-columns:auto 1fr auto}.erpCommand{display:none}}
 
 
-/* Fjord VI 1.16.1 - Performance operativa */
+/* Fjord VI 1.16.3 - Performance operativa */
 .is-busy,
 button.is-busy,
 a.is-busy {
@@ -8358,7 +8358,7 @@ a.is-busy::after {
 
 
 
-/* Fjord VI 1.16.1 - Restauración visible de reasignación en Capitán */
+/* Fjord VI 1.16.3 - Restauración visible de reasignación en Capitán */
 .captainInlineReassignV1161{
   grid-column:1/-1;
   margin-top:8px;
@@ -8415,4 +8415,23 @@ a.is-busy::after {
 }
 @media (min-width:720px){
   .captainInlineReassignV1161{max-width:460px;}
+}
+
+
+/* Fjord VI 1.16.3 - Trazabilidad protocolar visible */
+.captainProtocolarTraceV1163{
+  grid-column:1/-1;
+  margin-top:7px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid #d7d9c5;
+  background:#fffde9;
+  color:#5f5221;
+  display:grid;
+  gap:3px;
+  font-size:12px;
+  font-weight:800;
+}
+.captainProtocolarTraceV1163 b{
+  color:#7a6300;
 }
