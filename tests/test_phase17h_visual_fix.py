@@ -1,9 +1,9 @@
 from pathlib import Path
 
 def test_version_unified():
-    assert Path("VERSION.txt").read_text().strip() == "1.16.8"
+    assert Path("VERSION.txt").read_text().strip() == "1.16.9"
     main = Path("main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "1.16.8"' in main
+    assert 'APP_VERSION = "1.16.9"' in main
 
 def test_header_key_hidden_css():
     css = Path("static/style.css").read_text(encoding="utf-8")
