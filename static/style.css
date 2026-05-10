@@ -8309,7 +8309,7 @@ button:active,
 @media (max-width: 760px){.erpSystemDirect{display:inline-flex}.erpUser span{display:none}.erpTop{grid-template-columns:auto 1fr auto}.erpCommand{display:none}}
 
 
-/* Fjord VI 1.16.5 - Performance operativa */
+/* Fjord VI 1.16.8 - Performance operativa */
 .is-busy,
 button.is-busy,
 a.is-busy {
@@ -8358,7 +8358,7 @@ a.is-busy::after {
 
 
 
-/* Fjord VI 1.16.5 - Restauración visible de reasignación en Capitán */
+/* Fjord VI 1.16.8 - Restauración visible de reasignación en Capitán */
 .captainInlineReassignV1161{
   grid-column:1/-1;
   margin-top:8px;
@@ -8418,7 +8418,7 @@ a.is-busy::after {
 }
 
 
-/* Fjord VI 1.16.5 - Trazabilidad protocolar visible */
+/* Fjord VI 1.16.8 - Trazabilidad protocolar visible */
 .captainProtocolarTraceV1163{
   grid-column:1/-1;
   margin-top:7px;
@@ -8437,7 +8437,7 @@ a.is-busy::after {
 }
 
 
-/* Fjord VI 1.16.5 - trazabilidad visible invitado/socio en Capitán */
+/* Fjord VI 1.16.8 - trazabilidad visible invitado/socio en Capitán */
 .captainResponsibleLegendV1164{
   margin:0 0 10px;
   padding:8px 10px;
@@ -8476,7 +8476,7 @@ a.is-busy::after {
 .captainResponsibleTraceV1164.absent small{color:#965f16;}
 
 
-/* Fjord VI 1.16.5 - compactación perfil socio y claridad de cupos */
+/* Fjord VI 1.16.8 - compactación perfil socio y claridad de cupos */
 .socioProfileCompactV1165{
   align-items:center;
 }
@@ -8521,7 +8521,7 @@ a.is-busy::after {
 }
 
 
-/* Fjord VI 1.16.5 - trazabilidad visible invitado/socio en Capitán */
+/* Fjord VI 1.16.8 - trazabilidad visible invitado/socio en Capitán */
 .captainResponsibleLegendV1165{
   margin:0 0 10px;
   padding:8px 10px;
@@ -8574,7 +8574,7 @@ a.is-busy::after {
 .captainProtocolarTraceV1165 b{color:#7a6300;}
 
 
-/* 1.16.7 header cleanup capitán */
+/* 1.16.8 header cleanup capitán */
 .topKeyButton,
 .headerKeyButton,
 a[href="/account/password"].topAction{
@@ -8647,7 +8647,7 @@ a[href="/account/password"].topAction{
 }
 
 
-/* Fjord VI 1.16.7 - claridad operativa */
+/* Fjord VI 1.16.8 - claridad operativa */
 .captainProcessedLineV1167{
   margin:8px 0 10px;
   padding:8px 10px;
@@ -8660,4 +8660,43 @@ a[href="/account/password"].topAction{
 }
 .protoOnlyV1167{
   margin-left:6px;
+}
+
+
+/* Fjord VI 1.16.8 - fix header Capitán, protocolar y badges vacíos */
+.topKeyButton,
+.headerKeyButton,
+.captainTopKey,
+.topbar a[href="/account/password"],
+.topHeader a[href="/account/password"],
+.appHeader a[href="/account/password"],
+.captainHeader a[href="/account/password"] {
+  display: none !important;
+}
+
+.captainProfileMiniV1166 a[href="/account/password"],
+.captainMiniKeyPillV1166 {
+  display: inline-flex !important;
+}
+
+.badgeTipo:empty,
+.statusBadge:empty,
+.captainStatus:empty,
+.captainAttendanceBadge:empty,
+.pill:empty,
+.badge:empty {
+  display: none !important;
+}
+
+.protoDetailV1168 {
+  display: block;
+  margin-top: 4px;
+  color: #5f5221;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.captainProtocolarTraceV1165 b,
+.captainProtocolarTraceV1167 b {
+  display: none !important;
 }
