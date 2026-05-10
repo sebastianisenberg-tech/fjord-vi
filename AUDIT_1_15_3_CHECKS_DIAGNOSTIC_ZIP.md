@@ -1,4 +1,4 @@
-# Auditoría 1.15.5
+# Auditoría 1.16.0
 
 Cambios:
 - `Cargar checks completos` ahora da feedback visual:

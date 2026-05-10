@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.15.5"
+APP_VERSION = "1.16.0"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -71,8 +71,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.15.5"
-RELEASE_LABEL = "Fjord VI · v1.15.5"
+APP_BUILD = "Fjord VI 1.16.0"
+RELEASE_LABEL = "Fjord VI · v1.16.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -4400,6 +4400,34 @@ def _home_for_user(user: Optional[User]) -> str:
 def head_index():
     return Response(status_code=200)
 
+
+
+@app.middleware("http")
+async def operational_performance_middleware(request: Request, call_next):
+    """Fase 17: performance operativa.
+
+    Mantiene Socio y Capitán livianos y evita cachear acciones sensibles.
+    No cambia reglas de negocio; sólo agrega cabeceras defensivas y trazabilidad básica.
+    """
+    response = await call_next(request)
+    path = request.url.path or ""
+
+    # Nunca cachear operaciones sensibles ni administración.
+    if request.method != "GET" or path.startswith(("/admin", "/captain", "/capitan", "/checkin", "/logout", "/login")):
+        response.headers.setdefault("Cache-Control", "no-store")
+    # Assets estáticos: pueden cachearse moderadamente en clientes móviles.
+    elif path.startswith("/static/"):
+        response.headers.setdefault("Cache-Control", "public, max-age=3600")
+    # Socio se mantiene fresco pero liviano.
+    elif path.startswith("/socio"):
+        response.headers.setdefault("Cache-Control", "private, max-age=15")
+    else:
+        response.headers.setdefault("Cache-Control", "no-cache")
+
+    response.headers.setdefault("X-Fjord-Performance-Mode", "operational-light")
+    return response
+
+
 @app.get("/")
 def index(request: Request, user: Optional[User] = Depends(current_user)):
     # Entrada humana limpia: nunca exponer JSON técnico ni Method Not Allowed en la raíz.
@@ -7248,6 +7276,36 @@ def admin_diagnostic_txt(request: Request, db: Session = Depends(db_session), us
     return Response("\n".join(lines), media_type="text/plain; charset=utf-8", headers={"Content-Disposition": "attachment; filename=fjord_vi_diagnostico.txt"})
 
 
+
+
+
+
+@app.get("/admin/performance_policy.json")
+def admin_performance_policy_json(request: Request, user: User = Depends(require_role("admin"))):
+    """Política operacional de performance.
+
+    Sirve para soporte y release check: define qué módulos deben ser livianos
+    y cuáles pueden cargar controles pesados bajo demanda.
+    """
+    return {
+        "version": APP_VERSION,
+        "policy": "operational_light",
+        "principles": [
+            "Socio y Capitán deben cargar sólo lo necesario para operar.",
+            "Sistema y Administración pueden tener controles pesados, pero bajo demanda.",
+            "Toda acción POST crítica debe tener protección anti doble toque.",
+            "Los botones visibles deben ejecutar acciones reales o explicar qué hacen.",
+            "Los diagnósticos técnicos no deben bloquear la operación.",
+        ],
+        "fast_modules": ["socio", "captain", "checkin", "login"],
+        "deferred_modules": ["sistema", "release_check", "diagnostic_zip", "integrity", "backups", "activity"],
+        "client_guards": {
+            "anti_double_submit": True,
+            "button_feedback": True,
+            "download_buttons_not_blocked": True,
+            "captain_and_socio_kept_light": True,
+        },
+    }
 
 
 @app.get("/admin/diagnostic.zip")
