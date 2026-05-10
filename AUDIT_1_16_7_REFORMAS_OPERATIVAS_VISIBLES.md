@@ -1,4 +1,4 @@
-# Auditoría 1.16.7
+# Auditoría 1.16.8
 
 Reformas visibles:
 - Capitán: KPI "Cupo" pasa a "Ocupación" y usa A bordo/cupo.

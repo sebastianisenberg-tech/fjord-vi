@@ -1,4 +1,4 @@
-# Auditoría 1.16.5
+# Auditoría 1.16.8
 
 Cambios:
 - Anti doble toque global en frontend.

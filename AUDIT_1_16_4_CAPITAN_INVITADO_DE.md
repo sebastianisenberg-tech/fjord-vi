@@ -1,4 +1,4 @@
-# Auditoría 1.16.5
+# Auditoría 1.16.8
 
 Corrección operativa en Capitán:
 - Cada invitado común muestra claramente a qué socio pertenece.

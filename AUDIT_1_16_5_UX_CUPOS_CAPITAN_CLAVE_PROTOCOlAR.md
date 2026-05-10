@@ -1,4 +1,4 @@
-# Auditoría 1.16.5
+# Auditoría 1.16.8
 
 Cambios incluidos:
 - Socio: elimina la etiqueta ambigua "Plazas disponibles X/9".

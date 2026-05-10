@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.7"
+APP_VERSION = "1.16.8"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -44,6 +44,14 @@ APP_LOGGER = get_logger("fjord.app")
 # =========================
 # FORMATO VISUAL / LEGIBILIDAD
 # =========================
+
+def nonempty_label_v1168(value, fallback="Pendiente"):
+    try:
+        value = (value or "").strip()
+    except Exception:
+        value = ""
+    return value if value else fallback
+
 def clean_join(*parts):
     cleaned = []
     for p in parts:
@@ -71,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.7"
-RELEASE_LABEL = "Fjord VI · v1.16.5"
+APP_BUILD = "Fjord VI 1.16.8"
+RELEASE_LABEL = "Fjord VI · v1.16.8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -474,7 +482,7 @@ def communication_status(db: Session) -> dict:
             "pending": int(ctx.get("pending") or 0),
             "failed": int(ctx.get("failed") or 0),
             "sent_today": int(ctx.get("sent_today") or 0),
-            "status_label": "configurado" if ctx.get("smtp_configured") else "pendiente",
+            "status_label": nonempty_label_v1168("configurado" if ctx.get("smtp_configured") else "pendiente"),
             "human_detail": "SMTP configurado y cola disponible" if ctx.get("smtp_configured") else "Email preparado, envío real pendiente de configurar SMTP",
         }
     except Exception as e:
@@ -483,7 +491,7 @@ def communication_status(db: Session) -> dict:
             "pending": 0,
             "failed": 0,
             "sent_today": 0,
-            "status_label": "revisar",
+            "status_label": nonempty_label_v1168("revisar"),
             "human_detail": f"No se pudo leer comunicaciones: {type(e).__name__}",
             "error": str(e)[:200],
         }
@@ -3860,7 +3868,7 @@ def reservation_view(outing: Outing, r: Reservation) -> dict:
         "embarked": is_embarked,
         "not_embarked": is_not_embarked,
         "waitlisted": is_waitlisted(r),
-        "status_label": status_label,
+        "status_label": nonempty_label_v1168(status_label),
         "status_class": status_class,
         "charge_label": human_money(charge),
         "charge_preview_label": human_money(charge_preview),
