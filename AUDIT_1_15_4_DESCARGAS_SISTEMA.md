@@ -1,4 +1,4 @@
-# Auditoría 1.16.3
+# Auditoría 1.16.4
 
 Corrección puntual:
 - `/admin/operational_status.txt` ahora es robusto y no debe caer a pantalla de error.
