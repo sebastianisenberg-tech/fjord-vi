@@ -47,12 +47,12 @@ function showSocioNotice(text){
 {% set display_name = (user.name.split()[0] ~ ' ' ~ user.name.split()[1]) if user.name and user.name.split()|length > 1 else user.name %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
 <section class="socioV51Dashboard" id="perfil" aria-label="Perfil del socio">
-  <div class="socioV51Hello">
+  <div class="socioV51Hello socioProfileCompactV1165">
     <div><span class="eyebrow">Perfil</span><h1>{{display_name}}</h1><small>{% if user.member_no %}Socio · {{user.member_no}}{% else %}Documento · {{user.dni}}{% endif %}</small></div>
-    <a class="socioV51Profile" href="/account/password" aria-label="Cambiar clave">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
-  </div>
-  <div class="profileActions">
-    <a class="accountPasswordLink" href="/account/password"><span>Cuenta</span><b>Cambiar mi clave</b><small>Actualizar contraseña personal</small><i aria-hidden="true">›</i></a>
+    <div class="socioProfileActionsV1165">
+      <a class="socioV51Profile" href="/account/password" aria-label="Cambiar clave">{{ (user.name[:1] if user.name else 'S')|upper }}</a>
+      <a class="socioKeyPillV1165" href="/account/password" aria-label="Cambiar clave"><span aria-hidden="true">🔑</span> Clave</a>
+    </div>
   </div>
 </section>
 {% set guest_ns = namespace(count=0) %}
@@ -71,10 +71,12 @@ function showSocioNotice(text){
     {% elif has_self %}<span class="miEmbState stateOk">Activo</span>
     {% else %}<span class="miEmbState stateWarn">Sin reserva</span>{% endif %}
   </div>
-  <div class="miEmbGrid socioProStats">
+  {% set free_slots = outing.max_crew - active_count %}
+  <div class="miEmbGrid socioProStats socioCapacityGridV1165">
     <div><small>Tu lugar</small><b>{% if self_view and self_view.waitlisted %}Lista de espera{% elif has_self %}Confirmado{% elif self_reservation %}Cancelada{% else %}Sin reserva{% endif %}</b></div>
     <div><small>Invitados <span class="helpDot" data-tip="El socio es responsable de sus invitados. Si no embarcan o no se presentan, el cargo se imputa al socio.">ⓘ</span></small><b>{{guest_ns.count}}</b></div>
-    <div><small>Plazas disponibles <span class="helpDot" data-tip="Plazas normales disponibles para socios e invitados. La reserva institucional, si existe, queda separada.">ⓘ</span></small><b>{{active_count}} / {{outing.max_crew}}{% if outing.institutional_reserve %}<small>Reserva institucional: {{outing.institutional_reserve}}</small>{% endif %}</b></div>
+    <div><small>Ocupación total <span class="helpDot" data-tip="Personas ya reservadas sobre el cupo físico de la salida.">ⓘ</span></small><b>{{active_count}} / {{outing.max_crew}}</b></div>
+    <div><small>Cupos libres <span class="helpDot" data-tip="Lugares físicos todavía libres en la salida.">ⓘ</span></small><b>{{ free_slots if free_slots > 0 else 0 }}{% if outing.institutional_reserve %}<small>Reserva institucional: {{outing.institutional_reserve}}</small>{% endif %}</b></div>
   </div>
   <div class="socioProProgress" aria-label="Ocupación de cupo"><i style="width: {{ ((active_count / outing.max_crew) * 100)|round(0, 'floor') if outing.max_crew else 0 }}%"></i></div>
   <div class="socioV51Crew" aria-label="Tripulación confirmada">

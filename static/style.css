@@ -8309,7 +8309,7 @@ button:active,
 @media (max-width: 760px){.erpSystemDirect{display:inline-flex}.erpUser span{display:none}.erpTop{grid-template-columns:auto 1fr auto}.erpCommand{display:none}}
 
 
-/* Fjord VI 1.16.4 - Performance operativa */
+/* Fjord VI 1.16.5 - Performance operativa */
 .is-busy,
 button.is-busy,
 a.is-busy {
@@ -8358,7 +8358,7 @@ a.is-busy::after {
 
 
 
-/* Fjord VI 1.16.4 - Restauración visible de reasignación en Capitán */
+/* Fjord VI 1.16.5 - Restauración visible de reasignación en Capitán */
 .captainInlineReassignV1161{
   grid-column:1/-1;
   margin-top:8px;
@@ -8418,7 +8418,7 @@ a.is-busy::after {
 }
 
 
-/* Fjord VI 1.16.4 - Trazabilidad protocolar visible */
+/* Fjord VI 1.16.5 - Trazabilidad protocolar visible */
 .captainProtocolarTraceV1163{
   grid-column:1/-1;
   margin-top:7px;
@@ -8437,7 +8437,7 @@ a.is-busy::after {
 }
 
 
-/* Fjord VI 1.16.4 - trazabilidad visible invitado/socio en Capitán */
+/* Fjord VI 1.16.5 - trazabilidad visible invitado/socio en Capitán */
 .captainResponsibleLegendV1164{
   margin:0 0 10px;
   padding:8px 10px;
@@ -8474,3 +8474,101 @@ a.is-busy::after {
 .captainResponsibleTraceV1164.present{border-color:#cce8d6;background:#f1fbf4;}
 .captainResponsibleTraceV1164.absent{border-color:#f0d6b8;background:#fff8ed;}
 .captainResponsibleTraceV1164.absent small{color:#965f16;}
+
+
+/* Fjord VI 1.16.5 - compactación perfil socio y claridad de cupos */
+.socioProfileCompactV1165{
+  align-items:center;
+}
+.socioProfileActionsV1165{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.socioKeyPillV1165{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-height:30px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#eef7fb;
+  border:1px solid #d2e5ef;
+  color:#0d5678;
+  font-weight:950;
+  font-size:12px;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.socioKeyPillV1165:active{transform:translateY(1px);}
+.socioCapacityGridV1165{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.socioCapacityGridV1165 b small{
+  display:block;
+  margin-top:2px;
+  font-size:10px;
+  line-height:1.15;
+  color:#6a7784;
+  text-transform:uppercase;
+  letter-spacing:.45px;
+}
+@media (max-width:390px){
+  .socioProfileActionsV1165{gap:6px;}
+  .socioKeyPillV1165{padding:5px 8px;font-size:11px;}
+}
+
+
+/* Fjord VI 1.16.5 - trazabilidad visible invitado/socio en Capitán */
+.captainResponsibleLegendV1165{
+  margin:0 0 10px;
+  padding:8px 10px;
+  border:1px solid #dbe8ef;
+  background:#f6fbfe;
+  border-radius:12px;
+  color:#365368;
+  font-size:12px;
+  font-weight:800;
+}
+.captainResponsibleTraceV1165{
+  margin-top:6px;
+  padding:7px 9px;
+  border-radius:12px;
+  border:1px solid #dbe8ef;
+  background:#f8fbfd;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  font-size:12px;
+  color:#315268;
+}
+.captainResponsibleTraceV1165 .captainResponsibleLabelV1165{
+  text-transform:uppercase;
+  letter-spacing:.35px;
+  font-size:10px;
+  font-weight:950;
+  color:#637789;
+}
+.captainResponsibleTraceV1165 b{color:#173f5f;font-weight:950;}
+.captainResponsibleTraceV1165 span{font-weight:850;}
+.captainResponsibleTraceV1165 small{width:100%;font-weight:850;color:#607080;}
+.captainResponsibleTraceV1165.present{border-color:#cce8d6;background:#f1fbf4;}
+.captainResponsibleTraceV1165.absent{border-color:#f0d6b8;background:#fff8ed;}
+.captainResponsibleTraceV1165.absent small{color:#965f16;}
+.captainProtocolarTraceV1165{
+  grid-column:1/-1;
+  margin-top:7px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid #d7d9c5;
+  background:#fffde9;
+  color:#5f5221;
+  display:grid;
+  gap:3px;
+  font-size:12px;
+  font-weight:800;
+}
+.captainProtocolarTraceV1165 b{color:#7a6300;}

@@ -358,9 +358,15 @@
       <div class="captainFastIdentityV65">
         <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% endif %}
         <span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>
-        {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}<small>de {{v.responsible_name}}</small>{% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<small>Protocolar · independiente del socio que lo cargó · sin cargo permanente</small>{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
-        <div class="captainProtocolarTraceV1163">
-          <div><b>Protocolar</b> · Sin cargo permanente</div>
+        {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}
+        <div class="captainResponsibleTraceV1165 {% if v.responsible_is_present %}present{% else %}absent{% endif %}">
+          <span class="captainResponsibleLabelV1165">Invitado de</span>
+          <b>{{v.responsible_name}}</b>{% if v.responsible_member_no %}<span>Socio {{v.responsible_member_no}}</span>{% endif %}
+          <small>{% if v.responsible_is_present %}socio presente{% else %}socio no presente / revisar reasignación{% endif %}</small>
+        </div>
+        {% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<small>Protocolar · independiente del socio que lo cargó</small>{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
+        <div class="captainProtocolarTraceV1165">
+          <div><b>Protocolar</b></div>
           {% if r.protocolar_by %}<div>Designado por: {{r.protocolar_by}}</div>{% endif %}
           {% if r.responsible_name %}<div>Socio referencia: {{r.responsible_name}}</div>{% endif %}
           {% if r.dni %}<div>DNI: {{r.dni}}</div>{% endif %}

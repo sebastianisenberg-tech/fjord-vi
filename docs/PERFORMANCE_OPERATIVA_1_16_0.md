@@ -1,4 +1,4 @@
-# Performance operativa 1.16.4
+# Performance operativa 1.16.5
 
 ## Principio
 Socio y Capitán deben ser los módulos más rápidos del sistema. Administración y Sistema pueden tener herramientas pesadas, pero siempre diferidas o bajo demanda.
