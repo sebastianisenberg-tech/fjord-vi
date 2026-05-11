@@ -18,7 +18,7 @@
   <main class="wrap">
     <section class="card">
       <h1>Importar padrón oficial</h1>
-      <p>Subí un CSV estándar Fjord VI. Primero se hace una <b>previsualización</b>: no se modifica la base hasta confirmar.</p>
+      <p>Subí un CSV estándar Fjord VI o el archivo <b>usuarios.csv</b> exportado desde otro Fjord. Primero se hace una <b>previsualización</b>: no se modifica la base hasta confirmar.</p>
       <div class="actions"><a class="btn secondary" href="/admin/users.csv">Descargar padrón actual antes de importar</a></div>
     </section>
 
@@ -26,18 +26,18 @@
       <article class="card ok">
         <h2>Reglas de seguridad</h2>
         <ul>
-          <li>No borra socios existentes.</li>
-          <li>Actualiza por <b>Nº de socio</b>.</li>
-          <li>Si no hay DNI, genera identificador técnico interno del socio.</li>
+          <li>No borra usuarios existentes.</li>
+          <li>Actualiza por <b>Nº de socio</b> o <b>DNI</b>.</li>
+          <li>Si el CSV trae <b>rol</b>, lo normaliza a socio / captain / admin.</li>
           <li>Si coincide DNI con otro registro, lo advierte en la previsualización.</li>
-          <li>WhatsApp queda separado de teléfono de línea.</li>
+          <li>Todas las claves importadas quedan en <b>demo1234</b> y exigen cambio al ingresar.</li>
         </ul>
       </article>
       <article class="card warn">
         <h2>Formato estándar</h2>
         <p>Columnas recomendadas:</p>
-        <div class="mono">nro_socio,nombre_completo,categoria,email,whatsapp,telefono,dni,estado</div>
-        <p>También acepta variantes como <b>Número de Socio</b>, <b>Apellido, Nombre</b>, <b>Tipo de socio</b>, <b>Celular</b>.</p>
+        <div class="mono">nro_socio,nombre_completo,categoria,email,whatsapp,telefono,dni,estado,rol,fecha_nacimiento</div>
+        <p>También acepta el <b>usuarios.csv</b> exportado desde otro Fjord, incluyendo columnas como <b>nombre</b>, <b>rol</b> y <b>activo</b>.</p>
       </article>
     </section>
 
@@ -59,9 +59,10 @@
 
     <section class="card">
       <h2>Ejemplo mínimo</h2>
-      <div class="mono">nro_socio,nombre_completo,categoria,email,whatsapp,telefono,dni,estado
-17145,"Cabral, Mariano",activo,mariano@email.com,5491112345678,,26653587,activo
-20001,"García, Segundo",vitalicio,,5491199999999,,,activo</div>
+      <div class="mono">nro_socio,nombre_completo,categoria,email,whatsapp,telefono,dni,estado,rol
+17145,"Cabral, Mariano",activo,mariano@email.com,5491112345678,,26653587,activo,socio
+ADM01,"Admin Club",,admin@example.com,,27999111,activo,admin
+CAP01,"Capitán Martín",,capitan@example.com,,30999111,activo,captain</div>
     </section>
   </main>
 </body>
