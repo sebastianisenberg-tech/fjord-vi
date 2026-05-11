@@ -347,8 +347,12 @@
 
 <section class="card premiumCard captainV65Card" id="tripulacion">
   <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No embarcó. Las acciones excepcionales quedan en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
-  <div class="captainV65Hint">Tap sobre la persona: Presente ↔ No embarcó. Acciones excepcionales en ⋯. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
-  <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
+  <div class="captainV65Hint">Tocá una persona para alternar Presente / No embarcó. Usá ⋯ para acciones excepcionales. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
+  <div class="captainFilterShellV11612" aria-label="Filtros de tripulación">
+    <span class="captainFilterArrowV11612 left" aria-hidden="true">‹</span>
+    <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
+    <span class="captainFilterArrowV11612 right" aria-hidden="true">›</span>
+  </div>
   <div class="captainPeopleList captainPeopleListV65">
   {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
     {% set group_role_v11611 = v.captain_group_role if v and v.captain_group_role else ('institutional' if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar else 'guest') %}
@@ -374,22 +378,6 @@
         {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
         {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
       </div>
-      {% if v.show_responsible and not reservation_views.get(r.id).protocolar and captain_responsible_options|length > 0 and not closed and not outing_cancelled and not v.waitlisted and not (user.role == 'captain' and control_window.expired) %}
-      <details class="captainInlineReassignV1161">
-        <summary>Reasignar invitado</summary>
-        <div class="captainInlineReassignBodyV1161">
-          <div class="captainReassignHintV1161">Pasar este invitado a un socio presente:</div>
-          {% for opt in captain_responsible_options %}
-            {% if opt.id != r.responsible_user_id %}
-            <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
-              <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
-              <button class="capAction reassignAction" data-busy-text="Reasignando...">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
-            </form>
-            {% endif %}
-          {% endfor %}
-        </div>
-      </details>
-      {% endif %}
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
           <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
@@ -397,7 +385,6 @@
           <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
           <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
           <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
-          <span class="tapCueV65">TAP</span>
           <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
             <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
             <div class="captainMoreOpsBody">
@@ -438,10 +425,26 @@
     </div>
   </div>
 
-  <a class="captainMiniKeyPillV1166" href="/account/password">
-    <span aria-hidden="true">🔑</span>
-    Cambio de clave
-  </a>
+  <div class="captainMiniActionsV11612">
+    <a class="captainMiniKeyPillV1166" href="/account/password">
+      <span aria-hidden="true">🔑</span>
+      Cambio de clave
+    </a>
+    <details class="captainQuickGuideV11612">
+      <summary>Guía rápida</summary>
+      <div class="captainQuickGuidePanelV11612">
+        <b>Operación del Capitán</b>
+        <ul>
+          <li>Tocá una persona para alternar Presente / No embarcó.</li>
+          <li>Usá ⋯ para No embarca/sin cargo, reactivar o reasignar invitados.</li>
+          <li>Los invitados comunes dependen del socio titular del grupo.</li>
+          <li>Los institucionales están separados al final y no dependen de un socio.</li>
+          <li>Cancelar por capitán suspende la salida y no genera cargos.</li>
+          <li>Cerrar salida genera la ficha de navegación para Administración.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
 </section>
 
 <section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">🔒 La salida tiene ficha de cierre vigente. Liquidación consolidada en {{ 'LIQ-' ~ (current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026') ~ '-' ~ ('%06d'|format(current_sheet.id)) }}.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
