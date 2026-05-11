@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import traceback
 import uuid
+import zipfile
 import smtplib
 from email.message import EmailMessage
 from urllib.parse import urlparse
@@ -25,7 +26,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-APP_VERSION = "1.7.8"
+APP_VERSION = "1.7.9"
 
 
 # =========================
@@ -58,8 +59,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.7.8"
-RELEASE_LABEL = "Fjord VI · v1.7.8"
+APP_BUILD = "Fjord VI 1.7.9"
+RELEASE_LABEL = "Fjord VI · v1.7.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5572,6 +5573,120 @@ def admin_backup(db: Session = Depends(db_session), user: User = Depends(require
 def export_data_json(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     data = json.dumps(export_state(db), ensure_ascii=False, indent=2)
     return Response(data, media_type="application/json", headers={"Content-Disposition": "attachment; filename=fjord_vi_backup.json"})
+
+
+# =========================
+# MIGRACIÓN OPERATIVA / CLONACIÓN CONTROLADA
+# =========================
+
+def migration_counts(db: Session) -> dict:
+    return {
+        "users": db.query(User).count(),
+        "outings": db.query(Outing).count(),
+        "reservations": db.query(Reservation).count(),
+        "closing_sheets": db.query(ClosingSheet).count(),
+        "audit_logs": db.query(AuditLog).count(),
+        "system_meta": db.query(SystemMeta).count(),
+    }
+
+
+def migration_integrity_report(db: Session) -> dict:
+    users = {u.id: u for u in db.query(User).all()}
+    outings = {o.id: o for o in db.query(Outing).all()}
+    reservations = db.query(Reservation).all()
+    sheets = db.query(ClosingSheet).all()
+    errors = []
+    warnings = []
+
+    for r in reservations:
+        if r.outing_id not in outings:
+            errors.append(f"Reserva {r.id} sin salida existente: outing_id={r.outing_id}")
+        if r.responsible_user_id and r.responsible_user_id not in users:
+            errors.append(f"Reserva {r.id} sin socio responsable existente: user_id={r.responsible_user_id}")
+    for cs in sheets:
+        if cs.outing_id not in outings:
+            errors.append(f"Ficha {cs.id} sin salida existente: outing_id={cs.outing_id}")
+
+    vigentes = {}
+    for cs in sheets:
+        if (cs.status or "").upper() == "VIGENTE":
+            vigentes.setdefault(cs.outing_id, 0)
+            vigentes[cs.outing_id] += 1
+    for outing_id, n in vigentes.items():
+        if n > 1:
+            errors.append(f"Salida {outing_id} tiene {n} fichas vigentes")
+
+    return {
+        "generated_at": now_local().isoformat(),
+        "version": APP_VERSION,
+        "counts": migration_counts(db),
+        "ok": not errors,
+        "errors": errors,
+        "warnings": warnings,
+    }
+
+
+def _csv_text_from_rows(headers, rows) -> str:
+    out = io.StringIO()
+    w = csv.writer(out, delimiter=';')
+    w.writerow(headers)
+    for row in rows:
+        w.writerow(row)
+    return "\ufeff" + out.getvalue()
+
+
+def migration_package_bytes(db: Session, actor: str = "") -> bytes:
+    state = export_state(db)
+    report = migration_integrity_report(db)
+    generated = now_local().strftime("%Y-%m-%d %H:%M:%S")
+    metadata = {
+        "package_type": "fjord_vi_operational_migration",
+        "app": "Fjord VI",
+        "version": APP_VERSION,
+        "generated_at": generated,
+        "generated_by": actor or "sistema",
+        "counts": report.get("counts", {}),
+        "safe_note": "Paquete operativo para clonar beta/staging. Importar en Blindaje desde Exportaciones / Clonar entorno.",
+    }
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        z.writestr("00_LEEME.txt", (
+            "Fjord VI - paquete operativo de migración/clonación.\n"
+            "Contiene usuarios, salidas, reservas, fichas y auditoría para importar en Blindaje.\n"
+            "No es un pg_dump técnico. Para recuperación de desastre usar Backup PostgreSQL.\n"
+            f"Generado: {generated}\nVersión: {APP_VERSION}\n"
+        ))
+        z.writestr("metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))
+        z.writestr("export_state.json", json.dumps(state, ensure_ascii=False, indent=2))
+        z.writestr("integrity_report.json", json.dumps(report, ensure_ascii=False, indent=2))
+        z.writestr("usuarios.csv", _csv_text_from_rows(
+            ["id", "nombre", "dni", "nro_socio", "email", "telefono", "rol", "activo"],
+            [[u.get("id"), u.get("name"), u.get("dni"), u.get("member_no"), u.get("email"), u.get("phone"), u.get("role"), u.get("active")] for u in state.get("users", [])]
+        ))
+        z.writestr("salidas.csv", _csv_text_from_rows(
+            ["id", "titulo", "destino", "fecha", "estado", "capacidad", "tarifa", "creada"],
+            [[o.get("id"), o.get("title"), o.get("destination"), o.get("departure_at"), o.get("status"), o.get("max_crew"), o.get("guest_fee"), o.get("created_at")] for o in state.get("outings", [])]
+        ))
+        z.writestr("reservas.csv", _csv_text_from_rows(
+            ["id", "salida_id", "nombre", "dni", "tipo", "responsable_id", "estado", "asistencia", "cargo"],
+            [[r.get("id"), r.get("outing_id"), r.get("person_name"), r.get("dni"), r.get("kind"), r.get("responsible_user_id"), r.get("status"), r.get("attendance"), r.get("charge_amount")] for r in state.get("reservations", [])]
+        ))
+    return buf.getvalue()
+
+
+@app.get("/admin/migration/export")
+def admin_migration_export(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    data = migration_package_bytes(db, user.name)
+    filename = f"fjord_vi_migracion_{APP_VERSION}_{now_local().strftime('%Y%m%d_%H%M')}.zip"
+    log(db, user.name, "export migration package", filename)
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@app.get("/admin/migration/report")
+def admin_migration_report(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    report = migration_integrity_report(db)
+    return Response(json.dumps(report, ensure_ascii=False, indent=2), media_type="application/json; charset=utf-8")
+
 
 
 
