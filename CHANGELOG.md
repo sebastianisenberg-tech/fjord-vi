@@ -1,4 +1,9 @@
-## 1.18.11
+## 1.18.12
+
+- Hotfix de deploy para exportación PDF de Estadísticas.
+- Agrega `reportlab==4.2.2` a `requirements.txt` y `app/requirements.txt`.
+- Mantiene intacta la lógica operativa, reapertura, reasignación, cierre y ficha.
+
 - Estadísticas orientadas a escritorio de administración con wording ejecutivo refinado.
 - Nuevo botón Informe PDF reunión en la pestaña Estadísticas.
 - Exportación PDF ejecutiva de uso, recaudación, evolución mensual y rankings.
