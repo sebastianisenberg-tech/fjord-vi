@@ -1,11 +1,3 @@
-# 1.16.9
-
-- Capitán: se elimina el acceso duplicado “Clave” de la barra superior.
-- Capitán: la tripulación se agrupa por socio titular, con sus invitados debajo.
-- Capitán: invitados institucionales/protocolares quedan al final como bloque independiente, sin cargo y sin dependencia operativa del socio de referencia.
-- Capitán: los filtros superiores siguen funcionando sobre la lista agrupada.
-- No cambia reglas de cargos, cierre, reapertura ni liquidación.
-
 # 1.16.8
 
 - Capitán: se elimina visualmente "Clave" del header azul.
