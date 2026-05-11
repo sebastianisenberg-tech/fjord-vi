@@ -1,5 +1,5 @@
 {
-  "version": "1.16.11",
+  "version": "1.16.12",
   "release_label": "Fjord VI · v1.16.11",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
@@ -22,5 +22,7 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "Fase 17H - pulido visual Capitán, protocolar y versión unificada"
+  "release": "Fase 17H - pulido visual Capitán, protocolar y versión unificada",
+  "name": "Fjord VI Sistema de Reservas",
+  "build_note": "Capitán UX refinada: filtros visibles, menos ruido, acciones contextuales, guía rápida y contraste operativo."
 }
