@@ -358,7 +358,7 @@
     {% set group_role_v11611 = v.captain_group_role if v and v.captain_group_role else ('institutional' if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar else 'guest') %}
     {% set group_index_v11611 = v.captain_group_index if v and v.captain_group_index else 1 %}
     {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
-    {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
+    {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) %}
     {% set reason_text = '' %}
     {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
@@ -382,7 +382,7 @@
       </div>
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
-          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Sin acción{% else %}Bloqueado{% endif %}</span>
+          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% else %}Bloqueado{% endif %}</span>
         {% else %}
           <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
           <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
@@ -392,8 +392,8 @@
             <div class="captainMoreOpsBody">
               {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<div class="captainMoreInfo"><b>Institucional del club</b>{% if v.protocolar_reference_name %}<br>Referente: {{v.protocolar_reference_name}}{% endif %}</div>{% elif v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
               {% if reason_text and not (reservation_views.get(r.id) and reservation_views.get(r.id).protocolar) %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
-              <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>
-              {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
+              {% if not v.waitlisted %}<form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>{% endif %}
+              {% if v.waitlisted and v.captain_can_activate_from_waitlist %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Subir desde espera / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Saca a la persona de lista de espera cuando ya hay vacante real y la deja operable para completar el embarque.">i</span></button></form>{% elif v.not_embarked or v.cancelled or r.attendance == 'Ausente' or r.attendance == 'No embarca' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <div class="captainReassignBlock">
                 <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>

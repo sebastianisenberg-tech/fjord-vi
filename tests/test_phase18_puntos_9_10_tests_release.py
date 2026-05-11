@@ -29,6 +29,7 @@ def test_release_script_checks_expected_items():
         'tests/test_phase18_blindaje_monolito.py',
         'tests/test_phase18_puntos_6_7_locks_auditoria.py',
         'tests/test_phase18_puntos_9_10_tests_release.py',
+        'tests/test_phase18_reapertura_reasignacion_fix.py',
         'software_metadata.json',
         'README.md',
         'render.yaml',
