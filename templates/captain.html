@@ -351,28 +351,18 @@
   <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
   <div class="captainPeopleList captainPeopleListV65">
   {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
+    {% set group_role_v11611 = v.captain_group_role if v and v.captain_group_role else ('institutional' if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar else 'guest') %}
+    {% set group_index_v11611 = v.captain_group_index if v and v.captain_group_index else 1 %}
     {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
     {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
     {% set reason_text = '' %}
     {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
-    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
+    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 captainGroupV11611 groupColor{{group_index_v11611}} groupRole-{{group_role_v11611}} {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
         <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
-        {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}
-        <div class="captainResponsibleTraceV1165 {% if v.responsible_is_present %}present{% else %}absent{% endif %}">
-          <span class="captainResponsibleLabelV1165">Invitado de</span>
-          <b>{{v.responsible_name}}</b>{% if v.responsible_member_no %}<span>Socio {{v.responsible_member_no}}</span>{% endif %}
-          <small>{% if v.responsible_is_present %}socio presente{% else %}socio no presente / revisar reasignación{% endif %}</small>
-        </div>
-        {% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
-        <div class="captainProtocolarTraceV1165">
-          <div class="protoDetailV1168">Institucional</div>
-          {% if r.protocolar_by %}<div>Designado por: {{r.protocolar_by}}</div>{% endif %}
-          {% if r.responsible_name %}<div>Socio referencia: {{r.responsible_name}}</div>{% endif %}
-          {% if r.dni %}<div>DNI: {{r.dni}}</div>{% endif %}
-          {% if r.protocolar_label %}<div>Motivo / etiqueta: {{r.protocolar_label}}</div>{% endif %}
-        </div>
+        {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
+        <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Institucional</div>
         {% endif %}
 {% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>

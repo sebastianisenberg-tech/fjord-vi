@@ -8709,3 +8709,130 @@ a[href="/account/password"].topAction{
 .fastStateChipV65{font-weight:700!important;border-width:1px!important;}
 .captainFastRowV65{border:1px solid rgba(10,35,60,.10)!important;}
 .captainTripCount,.captainProcessedLineV1167{color:#163247!important;font-weight:600!important;}
+
+
+/* Fjord VI 1.16.11 - Capitán: grupos visuales por socio, menos lectura y mejor celular */
+.captainPeopleListV65{gap:8px!important;}
+.captainGroupV11611{
+  position:relative!important;
+  background:#fff!important;
+  border:1px solid #d8e4ec!important;
+  box-shadow:0 5px 14px rgba(15,35,55,.08)!important;
+  color:#102334!important;
+}
+.captainGroupV11611::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:7px;
+  border-radius:14px 0 0 14px;
+  background:var(--group-color,#0b6f96);
+}
+.captainGroupV11611.groupRole-owner{
+  margin-top:7px!important;
+  padding-left:15px!important;
+  min-height:52px!important;
+}
+.captainGroupV11611.groupRole-guest{
+  margin-left:15px!important;
+  padding-left:17px!important;
+  min-height:43px!important;
+  border-radius:12px!important;
+  background:#fbfdff!important;
+}
+.captainGroupV11611.groupRole-guest::before{width:5px;border-radius:12px 0 0 12px;opacity:.86;}
+.captainGroupV11611.groupRole-institutional{
+  margin-top:10px!important;
+  padding-left:15px!important;
+  background:#f7fbff!important;
+  border-color:#b9d8ea!important;
+}
+.captainGroupV11611.groupRole-institutional::before{background:#456579!important;}
+.captainGroupV11611 .captainFastIdentityV65{align-items:flex-start!important;gap:4px 7px!important;}
+.captainGroupV11611 .captainPersonName{
+  color:#132b3a!important;
+  max-width:100%!important;
+  flex:1 1 auto!important;
+}
+.captainGroupV11611.groupRole-owner .captainPersonName{
+  font-size:15.6px!important;
+  font-weight:950!important;
+  letter-spacing:-.01em!important;
+}
+.captainGroupV11611.groupRole-guest .captainPersonName{
+  font-size:13.4px!important;
+  font-weight:850!important;
+  color:#263d4d!important;
+}
+.captainGroupV11611.groupRole-guest .badgeTipo{
+  font-size:9px!important;
+  color:#365064!important;
+  background:#eef4f8!important;
+  border:1px solid #cfdae2!important;
+  opacity:1!important;
+}
+.captainGroupV11611.groupRole-owner .badgeTipo{
+  font-size:9.5px!important;
+  color:#0d4770!important;
+  background:#e6f3fb!important;
+  border:1px solid #bfdbea!important;
+  opacity:1!important;
+}
+.captainGroupV11611 .captainResponsibleTraceV1165{display:none!important;}
+.compactInstitutionalV11611{
+  display:inline-flex!important;
+  width:auto!important;
+  grid-column:auto!important;
+  margin:0!important;
+  padding:3px 7px!important;
+  border-radius:999px!important;
+  background:#e5f1f8!important;
+  border:1px solid #b8d4e5!important;
+  color:#163e57!important;
+  font-size:9.5px!important;
+  font-weight:950!important;
+  letter-spacing:.04em!important;
+  text-transform:uppercase!important;
+}
+.captainGroupV11611 .captainDniTrace{display:none!important;}
+.captainGroupV11611.groupColor1{--group-color:#1976a3;}
+.captainGroupV11611.groupColor2{--group-color:#26835f;}
+.captainGroupV11611.groupColor3{--group-color:#b86b1d;}
+.captainGroupV11611.groupColor4{--group-color:#7b61b8;}
+.captainGroupV11611.groupColor5{--group-color:#b43f68;}
+.captainGroupV11611.groupColor6{--group-color:#4b7d2d;}
+.captainGroupV11611.groupColor7{--group-color:#9a6a15;}
+.captainGroupV11611.groupColor8{--group-color:#2f6f8f;}
+.captainGroupV11611.statePresent{background:linear-gradient(90deg,rgba(34,197,94,.08),#fff 42%)!important;}
+.captainGroupV11611.stateAbsent{background:linear-gradient(90deg,rgba(239,68,68,.09),#fff 44%)!important;}
+.captainGroupV11611.stateNoBoard{background:linear-gradient(90deg,rgba(100,116,139,.08),#fff 44%)!important;}
+.captainGroupV11611.statePending{background:linear-gradient(90deg,rgba(250,204,21,.08),#fff 44%)!important;}
+.captainGroupV11611.statePresent::after,.captainGroupV11611.stateAbsent::after,.captainGroupV11611.stateNoBoard::after,.captainGroupV11611.statePending::after{
+  content:'';position:absolute;left:7px;top:0;bottom:0;width:3px;background:var(--state-color,transparent);opacity:.85;
+}
+.captainGroupV11611.statePresent{--state-color:#22c55e;}
+.captainGroupV11611.stateAbsent{--state-color:#ef4444;}
+.captainGroupV11611.stateNoBoard{--state-color:#94a3b8;}
+.captainGroupV11611.statePending{--state-color:#eab308;}
+.captainGroupV11611 .fastStateChipV65{
+  color:#102334!important;
+  background:#f4f7fa!important;
+  border-color:#ccd8e1!important;
+}
+.captainGroupV11611 .fastStateChipV65.present{color:#0f5f38!important;background:#e9f8ef!important;border-color:#b9e7c8!important;}
+.captainGroupV11611 .fastStateChipV65.absent{color:#982121!important;background:#fff0f0!important;border-color:#f3c0c0!important;}
+.captainGroupV11611 .fastStateChipV65.noboard,.captainGroupV11611 .fastStateChipV65.neutral{color:#334155!important;background:#eef2f6!important;border-color:#ccd6e0!important;}
+.captainGroupV11611 .fastStateChipV65.pending,.captainGroupV11611 .fastStateChipV65.wait{color:#7a5600!important;background:#fff8db!important;border-color:#ead68a!important;}
+.captainGroupV11611 .tapCueV65{
+  color:#526879!important;
+  background:#f5f8fa!important;
+  border-color:#d5e0e7!important;
+}
+.captainGroupV11611.groupRole-institutional .protoBadge{display:none!important;}
+@media (max-width:420px){
+  .captainGroupV11611{grid-template-columns:minmax(0,1fr) auto auto!important;}
+  .captainGroupV11611.groupRole-owner .captainPersonName{font-size:15px!important;max-width:46vw!important;}
+  .captainGroupV11611.groupRole-guest .captainPersonName{font-size:13px!important;max-width:43vw!important;}
+  .captainGroupV11611.groupRole-guest{margin-left:12px!important;}
+  .compactInstitutionalV11611{font-size:9px!important;padding:2px 6px!important;}
+}

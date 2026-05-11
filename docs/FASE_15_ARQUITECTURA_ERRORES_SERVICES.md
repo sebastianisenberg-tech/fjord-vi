@@ -1,6 +1,6 @@
 # Fase 15 · Arquitectura backend, errores y servicios
 
-Versión: 1.16.8
+Versión: 1.16.11
 
 Objetivo: profesionalizar la estructura interna sin modificar la operación visible de reservas, invitados, cargos ni cierres.
 
@@ -13,7 +13,7 @@ Objetivo: profesionalizar la estructura interna sin modificar la operación visi
 - Scaffold de middleware separado en `app/middleware/`.
 - Servicio de operaciones en `app/services/operations.py`.
 - Handler global para `AppError` integrado en `main.py`.
-- Versión unificada a `1.16.8`.
+- Versión unificada a `1.16.11`.
 - Tests de estructura para verificar que la arquitectura profesional esté presente.
 
 ## Qué mejora
