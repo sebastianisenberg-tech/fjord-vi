@@ -380,7 +380,7 @@
       </div>
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
-          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
+          <span class="captainLockedPill">{% if closed %}🔒{% else %}Bloqueado{% endif %}</span>
         {% else %}
           <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
           <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
