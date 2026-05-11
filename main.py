@@ -5050,16 +5050,17 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             vv = views.get(rr.id)
             if not vv:
                 continue
-            if is_protocolar(rr):
-                vv["captain_group_index"] = 0
-                vv["captain_group_role"] = "institutional"
-                continue
             key = rr.responsible_user_id or f"row-{rr.id}"
             if key not in group_index_by_key:
                 group_seq += 1
                 group_index_by_key[key] = ((group_seq - 1) % 8) + 1
             vv["captain_group_index"] = group_index_by_key[key]
-            vv["captain_group_role"] = "owner" if canonical_kind(rr.kind) == "socio" else "guest"
+            if is_protocolar(rr):
+                # Institucional/protocolar: se distingue por texto y sección,
+                # pero mantiene el color del socio que lo cargó para lectura rápida.
+                vv["captain_group_role"] = "institutional"
+            else:
+                vv["captain_group_role"] = "owner" if canonical_kind(rr.kind) == "socio" else "guest"
     captain_responsible_options = []
     if outing and reservations:
         # Socios presentes y activos disponibles para tomar invitados a cargo en el momento del embarque.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.16.13 - Capitán alineado y colores por grupo
+
+- Tripulación de Capitán alineada a la izquierda para lectura rápida en celular.
+- Eliminadas las barras laterales múltiples y los desplazamientos visuales que generaban ruido.
+- Socio e invitados comparten un único color lateral de grupo.
+- Institucionales y espera conservan el color del socio responsable para trazabilidad visual.
+- Se mantiene versión 1.16.13 centralizada en `VERSION.txt` y `main.py`.
+
 ## 1.16.13 - Capitán grupos operativos conservadores
 - Tripulación del Capitán reorganizada visualmente por socio responsable.
 - Invitados comunes indentados debajo del socio correspondiente.
