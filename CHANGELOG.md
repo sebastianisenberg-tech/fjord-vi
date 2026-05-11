@@ -1,3 +1,9 @@
+# Fjord VI 1.18.6 · Blindaje 182
+
+- Corrige unificación de versión visible y metadata del release.
+- Alinea VERSION.txt, README, software_metadata.json, APP_BUILD y RELEASE_LABEL.
+- Mantiene la lógica operativa existente.
+
 # Fjord VI 1.18.3 · Pruebas lógicas Capitán en Sistema
 
 - Agrega diagnóstico aislado de reglas críticas del módulo Capitán dentro de Sistema.
