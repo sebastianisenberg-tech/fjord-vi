@@ -1,3 +1,14 @@
+# Changelog
+
+## 1.16.13 - Capitán grupos operativos conservadores
+- Tripulación del Capitán reorganizada visualmente por socio responsable.
+- Invitados comunes indentados debajo del socio correspondiente.
+- Institucionales/protocolares separados en bloque propio al final.
+- Lista de espera separada al final, indicando de qué socio depende cada persona.
+- Badge Socio integrado junto al nombre, no alejado a la derecha.
+- Guía rápida responsive y versión 1.16.13 unificada en sistema, ficha y PDF.
+- Ajuste conservador del PDF para evitar segunda hoja en blanco en la impresión móvil.
+
 
 ## 1.16.13 - Capitán UX refinada
 - Elimina indicador TAP redundante; el menú ⋯ queda como acción excepcional.
