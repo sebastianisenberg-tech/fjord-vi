@@ -1,6 +1,6 @@
 # Fjord VI · Sistema de Reservas y Embarque
 
-Versión: 1.16.12
+Versión: 1.16.13
 
 Sistema web interno para gestionar salidas de fin de semana del Fjord VI, con foco en uso real desde celular para socios y capitán, y administración más completa desde escritorio.
 
@@ -28,13 +28,13 @@ El sistema prioriza eficacia, velocidad, claridad y prevención de errores. Las 
 
 La pantalla Capitán es un tablero operativo, no un formulario administrativo. Debe permitir ver rápido quién viene, marcar estados tocando, distinguir socios de invitados y evitar lectura redundante.
 
-Desde 1.16.12 la tripulación se agrupa visualmente por socio: el socio titular aparece con mayor jerarquía y sus invitados debajo con la misma banda de color. Los institucionales quedan separados al final con banda neutra.
+Desde 1.16.13 la tripulación se agrupa visualmente por socio: el socio titular aparece con mayor jerarquía y sus invitados debajo con la misma banda de color. Los institucionales quedan separados al final con banda neutra.
 
 ## Deploy
 
 Proyecto FastAPI/Jinja. Archivos principales: `main.py`, `templates/`, `static/`, `requirements.txt`, `render.yaml`, `Procfile`.
 
 
-## Nota de versión 1.16.12
+## Nota de versión 1.16.13
 
 Refinamiento de pantalla Capitán para uso móvil: se eliminó el indicador redundante TAP, se dejó la reasignación dentro del menú de acciones, se reforzó la lectura de filtros desplazables, se agregó Guía rápida y se ajustó el contraste/jerarquía visual sin cambiar reglas de negocio.

@@ -1,5 +1,5 @@
 
-## 1.16.12 - Capitán UX refinada
+## 1.16.13 - Capitán UX refinada
 - Elimina indicador TAP redundante; el menú ⋯ queda como acción excepcional.
 - Reasignar invitado queda contextualizado dentro del menú ⋯ para reducir ruido vertical.
 - Agrega indicador visual de scroll en filtros superiores.
@@ -9,7 +9,7 @@
 
 # CHANGELOG consolidado
 
-## 1.16.11
+## 1.16.13
 - Capitán: agrupación visual por socio con banda de color compartida.
 - Socio titular con más jerarquía tipográfica.
 - Invitados subordinados con menos texto redundante.
