@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.8"
+APP_VERSION = "1.16.11"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.8"
-RELEASE_LABEL = "Fjord VI · v1.16.8"
+APP_BUILD = "Fjord VI 1.16.11"
+RELEASE_LABEL = "Fjord VI · v1.16.11"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5041,6 +5041,25 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
+
+        # Vista Capitán: metadatos visuales livianos para agrupar cada socio con sus invitados.
+        # No modifica reglas de cargo ni liquidación; solo reduce lectura en celular.
+        group_index_by_key = {}
+        group_seq = 0
+        for rr in reservations:
+            vv = views.get(rr.id)
+            if not vv:
+                continue
+            if is_protocolar(rr):
+                vv["captain_group_index"] = 0
+                vv["captain_group_role"] = "institutional"
+                continue
+            key = rr.responsible_user_id or f"row-{rr.id}"
+            if key not in group_index_by_key:
+                group_seq += 1
+                group_index_by_key[key] = ((group_seq - 1) % 8) + 1
+            vv["captain_group_index"] = group_index_by_key[key]
+            vv["captain_group_role"] = "owner" if canonical_kind(rr.kind) == "socio" else "guest"
     captain_responsible_options = []
     if outing and reservations:
         # Socios presentes y activos disponibles para tomar invitados a cargo en el momento del embarque.

@@ -1,197 +1,35 @@
-# Fjord VI Embarque
+# Fjord VI · Sistema de Reservas y Embarque
 
-Sistema web operativo para la gestión de reservas, embarque, check-in, cierre de navegación y liquidación del barco **Fjord VI** del Yacht Club Argentino.
+Versión: 1.16.11
 
-Versión actual: **Fjord VI · v1.7.6**
+Sistema web interno para gestionar salidas de fin de semana del Fjord VI, con foco en uso real desde celular para socios y capitán, y administración más completa desde escritorio.
 
-## Propósito
+## Filosofía operativa
 
-La aplicación centraliza el flujo completo de una navegación programada:
+El sistema prioriza eficacia, velocidad, claridad y prevención de errores. Las pantallas de Socio y Capitán deben ser livianas, rápidas y legibles en celulares pequeños, incluso con luz de día o durante una operación real de embarque. Administración puede ser más completa porque se usa como backoffice.
 
-- publicación de salidas;
-- reserva de socios;
-- carga de invitados;
-- lista de espera;
-- check-in y control del Capitán;
-- cierre de navegación;
-- generación de ficha;
-- liquidación de cargos;
-- trazabilidad de cambios y fichas anuladas.
+## Roles
 
-El objetivo es reemplazar procesos manuales dispersos por un sistema web rápido, claro, auditable y usable desde celular o computadora.
+- Socio: consulta salidas, reserva lugar, agrega invitados y cancela su lugar dentro de las reglas.
+- Capitán: controla embarque, marca presentes, ausentes y no embarca; puede cancelar la salida por causa operativa, reabrir una salida y cerrar generando ficha.
+- Administración: gestiona salidas, padrón, fichas, auditoría, liquidaciones, exportaciones y correcciones de backoffice.
 
-## Roles principales
+## Reglas funcionales principales
 
-### Socio
+- El socio que embarca no paga.
+- El socio que no embarca después de la ventana reglamentaria puede generar cargo.
+- El invitado común depende del socio responsable y no debe embarcar si el socio responsable no está presente, salvo reasignación válida.
+- Los invitados institucionales/protocolares son una excepción: no dependen del socio para embarcar, no son desplazables por socios y no generan cargo.
+- Si el capitán marca “No embarca / sin cargo”, se interpreta como decisión operativa o de seguridad y no genera cargo.
+- Si el capitán cancela la salida por clima, rotura, marea u otra causa operativa, la salida no genera cargos mientras permanezca cancelada.
+- El cierre genera ficha de navegación y liquidación consolidada. Si se reabre, la ficha vigente se anula y queda historial.
 
-Permite al socio:
+## UX del Capitán
 
-- ingresar con Nº de socio o documento;
-- ver salidas disponibles;
-- reservar su lugar;
-- agregar invitados;
-- cancelar su lugar o invitados;
-- consultar estado de cupo, cargos y reglas;
-- operar desde celular con interfaz simplificada.
+La pantalla Capitán es un tablero operativo, no un formulario administrativo. Debe permitir ver rápido quién viene, marcar estados tocando, distinguir socios de invitados y evitar lectura redundante.
 
-### Capitán
+Desde 1.16.11 la tripulación se agrupa visualmente por socio: el socio titular aparece con mayor jerarquía y sus invitados debajo con la misma banda de color. Los institucionales quedan separados al final con banda neutra.
 
-Permite al Capitán:
+## Deploy
 
-- seleccionar la salida a controlar;
-- marcar presentes, pendientes, no embarcó o sin cargo;
-- generar QR de embarque;
-- cerrar la navegación;
-- reabrir dentro de la ventana operativa;
-- ver ficha vigente e historial de fichas.
-
-El Capitán no modifica la planificación previa de la salida ni la capacidad operativa definida por Administración.
-
-### Administración
-
-Permite a Administración:
-
-- crear salidas;
-- definir fecha, hora, capacidad operativa y reserva institucional;
-- cargar y editar usuarios;
-- asignar roles;
-- consultar reservas;
-- revisar fichas de cierre;
-- exportar datos;
-- mantener trazabilidad operativa.
-
-## Participación protocolar
-
-El sistema incorpora participación protocolar como una marca especial de reserva.
-
-Una participación protocolar:
-
-- ocupa plaza;
-- no genera cargo;
-- no genera deuda por no embarcar;
-- no depende económicamente de un socio anfitrión;
-- puede corresponder a un socio o a una persona externa;
-- queda auditada como autorizada por Comisión Fjord VI.
-
-La función se gestiona mediante permiso institucional **Comisión Fjord VI**, asignable desde Administración en sección avanzada.
-
-## Capacidad operativa y reserva institucional
-
-Cada salida puede tener:
-
-- **Capacidad operativa**: cantidad total máxima de personas habilitadas para esa navegación, sin contar al Capitán.
-- **Reserva institucional**: plazas reservadas para participación protocolar.
-
-La lista de espera normal no consume la reserva institucional.
-
-Esto permite manejar situaciones institucionales sin desplazar socios y sin mezclar cupos públicos con plazas reservadas.
-
-## Cierre y liquidación
-
-Al cerrar una navegación, el sistema genera una ficha de cierre con:
-
-- navegantes;
-- socios;
-- invitados;
-- cargos por invitados navegados;
-- cargos por no-show o cancelación tardía;
-- participaciones protocolares sin cargo;
-- total general a liquidar;
-- trazabilidad documental.
-
-Si una salida se reabre y se vuelve a cerrar, la ficha anterior queda anulada y se genera una nueva ficha vigente.
-
-
-## Seguridad de credenciales
-
-La versión 1.7.6 incorpora **cambio obligatorio de clave inicial**.
-
-Cuando un usuario entra por primera vez con clave temporal, el sistema lo deriva a una pantalla premium para definir su clave personal antes de acceder a Socio, Capitán o Administración.
-
-Reglas mínimas:
-
-- mínimo 6 caracteres;
-- repetir clave correctamente;
-- no usar la clave temporal;
-- no usar Nº de socio;
-- no usar documento.
-
-La clave se guarda hasheada y el usuario queda habilitado para operar normalmente después del cambio.
-
-## Stack técnico
-
-- Python
-- FastAPI
-- Jinja2
-- SQLAlchemy
-- SQLite o PostgreSQL mediante `DATABASE_URL`
-- HTML/CSS/JavaScript
-- Deploy compatible con Render
-
-## Archivos principales
-
-```text
-main.py
-templates/
-static/
-requirements.txt
-Procfile
-Dockerfile
-docker-compose.yml
-render.yaml
-start.sh
-```
-
-## Variables de entorno recomendadas
-
-```text
-SECRET_KEY
-DATABASE_URL
-APP_ENV
-MAX_CREW
-MIN_CREW
-INVITED_FEE
-```
-
-En producción, `SECRET_KEY` debe ser una clave aleatoria fuerte.
-
-## Deploy en Render
-
-El repositorio incluye archivos compatibles con Render:
-
-- `render.yaml`
-- `Procfile`
-- `requirements.txt`
-- `start.sh`
-
-La base de datos recomendada para uso real es PostgreSQL mediante `DATABASE_URL`.
-
-## Limpieza del repositorio
-
-Este ZIP corresponde a una versión limpia de producción/repo.
-
-No incluye:
-
-- archivos `AUDIT_*.txt`;
-- `__pycache__`;
-- archivos `.pyc`;
-- residuos temporales de desarrollo.
-
-Las auditorías históricas fueron útiles durante el desarrollo, pero no son necesarias para ejecutar ni desplegar el sistema.
-
-## Autor
-
-Software desarrollado para uso operativo del Fjord VI.
-
-Autor registrado en metadata interna: **Sebastián Isenberg**.
-
-
-## Gestión de claves
-
-La versión 1.7.6 incorpora:
-
-- cambio voluntario de clave desde Perfil;
-- verificación de clave actual;
-- reset administrativo de clave temporal;
-- obligación de redefinir clave luego del reset;
-- auditoría de cambios y resets.
+Proyecto FastAPI/Jinja. Archivos principales: `main.py`, `templates/`, `static/`, `requirements.txt`, `render.yaml`, `Procfile`.
