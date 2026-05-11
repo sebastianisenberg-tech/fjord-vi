@@ -1,4 +1,18 @@
 
+## 1.18.2 - Capitán: cascada operativa y económica
+- Restaura cascada de invitados comunes cuando el socio responsable no embarca.
+- Socio ausente/con cargo: invitados comunes quedan Ausente con cargo al socio original, salvo reasignación.
+- Socio No embarca/sin cargo: invitados comunes quedan No embarca sin cargo, salvo reasignación.
+- Institucionales/protocolares quedan fuera de la cascada económica y operativa del socio.
+- Cierre aplica la misma cascada antes de validar y liquidar.
+
+
+## v1.18.1
+- Capitán: separación visual más clara entre grupos operativos por socio responsable.
+- Se mantiene intacta la lógica de embarque, cierre, reapertura, espera y liquidación.
+- Versión actualizada a 1.18.1.
+
+
 ## 1.16.12 - Capitán UX refinada
 - Elimina indicador TAP redundante; el menú ⋯ queda como acción excepcional.
 - Reasignar invitado queda contextualizado dentro del menú ⋯ para reducir ruido vertical.

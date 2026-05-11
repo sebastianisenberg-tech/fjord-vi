@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.0"
+APP_VERSION = "1.18.2"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.0"
-RELEASE_LABEL = "Fjord VI · v1.18.0"
+APP_BUILD = "Fjord VI 1.18.1"
+RELEASE_LABEL = "Fjord VI · v1.18.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -2942,27 +2942,60 @@ def dependent_reservations_for(db: Session, outing_id: int, socio_reservation: R
     ).all()
 
 
-def cascade_no_board_dependents(db: Session, outing: Outing, socio_reservation: Reservation, reason: str = "No embarcado: socio responsable no embarca") -> list:
-    """Baja operativamente a todos los invitados de un socio que no embarca.
+def cascade_dependents_for_responsible_status(
+    db: Session,
+    outing: Outing,
+    socio_reservation: Reservation,
+    *,
+    mode: str,
+) -> list:
+    """Aplica la cascada crítica de Capitán sobre invitados comunes/menores.
 
-    Regla blindada: un invitado/menor no socio no puede quedar embarcado si
-    su socio responsable no embarca. Esta cascada no genera cargo por sí misma,
-    porque la persona queda impedida por dependencia reglamentaria del titular.
+    No toca protocolares/institucionales: conservan referencia del socio que los cargó,
+    pero no entran en la cascada económica ni operativa del socio.
+
+    mode="absent_charged": socio ausente/no-show. Sus invitados comunes no embarcan
+    y quedan con cargo al socio original, salvo reasignación previa.
+
+    mode="no_board_free": el capitán decide que el socio no embarca sin cargo. Sus
+    invitados comunes tampoco pueden embarcar bajo ese socio y quedan sin cargo, salvo
+    reasignación manual a otro socio presente.
     """
     changed = []
     if not outing or not socio_reservation or canonical_kind(socio_reservation.kind) != "socio":
         return changed
+
     for dep in dependent_reservations_for(db, outing.id, socio_reservation):
+        if is_protocolar(dep):
+            continue
         if is_waitlisted(dep):
             continue
         if dep.cancelled_at is not None or dep.status == "Cancelado":
             continue
-        if dep.attendance != "No embarca" or (dep.cancel_reason or "") != reason:
-            dep.attendance = "No embarca"
-            dep.cancel_reason = reason
-            dep.charge_amount = 0
+
+        if mode == "absent_charged":
+            new_attendance = "Ausente"
+            new_reason = "No embarcó por ausencia del socio responsable"
+            new_charge = reservation_charge(outing, dep) if late_window_passed(outing) else 0
+        elif mode == "no_board_free":
+            new_attendance = "No embarca"
+            new_reason = "No embarcado: socio responsable no embarca / sin cargo por decisión del capitán"
+            new_charge = 0
+        else:
+            continue
+
+        if dep.attendance != new_attendance or (dep.cancel_reason or "") != new_reason or float(dep.charge_amount or 0) != float(new_charge or 0):
+            dep.attendance = new_attendance
+            dep.cancel_reason = new_reason
+            dep.charge_amount = new_charge
             changed.append(dep.person_name)
+
     return changed
+
+
+def cascade_no_board_dependents(db: Session, outing: Outing, socio_reservation: Reservation, reason: str = "No embarcado: socio responsable no embarca") -> list:
+    """Compatibilidad histórica: cascada sin cargo por decisión del capitán."""
+    return cascade_dependents_for_responsible_status(db, outing, socio_reservation, mode="no_board_free")
 
 
 def enforce_responsible_dependency(db: Session, outing: Outing, reservations=None) -> list:
@@ -2983,17 +3016,24 @@ def enforce_responsible_dependency(db: Session, outing: Outing, reservations=Non
         responsible = users_by_id.get(r.responsible_user_id)
         responsible_row = by_dni.get(responsible.dni) if responsible else None
         responsible_present = bool(responsible_row and canonical_kind(responsible_row.kind) == "socio" and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
-        if not responsible_present and r.attendance == "Presente":
+        if not responsible_present and r.attendance in ("Presente", "Por confirmar"):
             if responsible_row and responsible_row.attendance == "Ausente":
-                # Socio ausente: el invitado no embarca, pero la plaza se cobra al socio
-                # salvo reasignación previa a otro socio presente.
+                # Socio ausente/no-show: el invitado común no embarca, pero queda
+                # con cargo al socio original salvo reasignación previa.
                 r.attendance = "Ausente"
                 r.cancel_reason = "No embarcó por ausencia del socio responsable"
                 r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
-            else:
-                # No embarca por decisión/impedimento operativo: no genera cargo.
+            elif responsible_row and is_no_board_by_captain(responsible_row):
+                # El capitán impidió el embarque del socio: sus invitados comunes
+                # tampoco pueden embarcar bajo ese socio, pero no generan cargo.
                 r.attendance = "No embarca"
-                r.cancel_reason = "No embarcado: socio responsable no embarca"
+                r.cancel_reason = "No embarcado: socio responsable no embarca / sin cargo por decisión del capitán"
+                r.charge_amount = 0
+            else:
+                # Sin socio responsable presente verificable: por seguridad operativa
+                # no se permite embarque. Se deja sin cargo hasta corrección/reasignación.
+                r.attendance = "No embarca"
+                r.cancel_reason = "No embarcado: socio responsable no presente"
                 r.charge_amount = 0
             changed.append(r.person_name)
     return changed
@@ -5668,10 +5708,12 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.attendance = value
     elif value == "Ausente":
         # Ausente verdadero: no embarcó y queda como plaza perdida con cargo reglamentario.
-        # Si venía de una reasignación, se conserva la traza y se agrega el estado final.
+        # Si es socio titular, sus invitados comunes quedan impedidos y con cargo
+        # al socio original, salvo reasignación manual previa a otro socio presente.
         r.attendance = "Ausente"
         r.cancel_reason = (previous_trace + " · Ausente / no se presentó") if previous_trace else "Ausente / no se presentó"
         r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
+        cascade_dependents_for_responsible_status(db, outing, r, mode="absent_charged")
     elif value == "No embarca":
         # Decisión operativa del capitán: no es no-show y no genera cargo.
         r.cancelled_at = None
@@ -5679,8 +5721,10 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         r.attendance = "No embarca"
         r.cancel_reason = (previous_trace + " · No embarcado por decisión del capitán") if previous_trace else "No embarcado por decisión del capitán"
         r.charge_amount = 0
-        # Si el titular no embarca, sus invitados/menores no pueden quedar a bordo.
-        cascade_no_board_dependents(db, outing, r)
+        # Si el titular no embarca por decisión del capitán, sus invitados comunes
+        # tampoco pueden navegar bajo ese socio y quedan sin cargo. Los institucionales
+        # no entran en la cascada.
+        cascade_dependents_for_responsible_status(db, outing, r, mode="no_board_free")
 
     # Reaplica la dependencia antes de recalcular cupos/promociones.
     enforce_responsible_dependency(db, outing)
@@ -5810,6 +5854,15 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
     auto_confirm_active_for_close(db, outing, active)
+    # Capa crítica Capitán: después de consolidar pendientes, un socio ausente
+    # o bajado sin cargo debe arrastrar a sus invitados comunes antes de validar
+    # y liquidar. Institucionales/protocolares no entran en esta cascada.
+    for socio_row in [x for x in reservations if canonical_kind(x.kind) == "socio"]:
+        if socio_row.attendance == "Ausente":
+            cascade_dependents_for_responsible_status(db, outing, socio_row, mode="absent_charged")
+        elif is_no_board_by_captain(socio_row):
+            cascade_dependents_for_responsible_status(db, outing, socio_row, mode="no_board_free")
+
     # Validación final después de convertir pendientes a Ausente: evita que un invitado
     # navegado quede cargado a un socio que finalmente no embarcó.
     final_errors = present_guest_without_present_responsible_errors(db, outing, reservations)

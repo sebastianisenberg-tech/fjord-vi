@@ -9101,3 +9101,28 @@ a[href="/account/password"].topAction{
 .captainQuickGuideV11612[open] > summary{position:relative;z-index:5001;}
 .captainQuickGuidePanelV11612 li{overflow-wrap:break-word;}
 .captainLockedPill{white-space:nowrap;}
+
+
+/* Fjord VI v1.18.1 - Capitán: separación visual entre grupos operativos
+   El color identifica responsable; el espacio separa equipos sin tocar lógica de embarque. */
+.captainPeopleListV65{
+  gap:8px!important;
+}
+.captainPeopleListV65 .captainGroupV11611.groupRole-owner{
+  margin-top:18px!important;
+}
+.captainPeopleListV65 .captainGroupV11611.groupRole-owner:first-child{
+  margin-top:4px!important;
+}
+.captainPeopleListV65 .captainGroupV11611.groupRole-owner + .captainGroupV11611.groupRole-guest,
+.captainPeopleListV65 .captainGroupV11611.groupRole-owner + .captainGroupV11611.groupRole-institutional{
+  margin-top:6px!important;
+}
+@media (max-width:420px){
+  .captainPeopleListV65 .captainGroupV11611.groupRole-owner{
+    margin-top:16px!important;
+  }
+  .captainPeopleListV65 .captainGroupV11611.groupRole-owner:first-child{
+    margin-top:4px!important;
+  }
+}
