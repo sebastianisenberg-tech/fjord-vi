@@ -129,10 +129,6 @@
         b.classList.add('on');
         const f = b.dataset.filter;
         people.forEach(p => { p.classList.toggle('is-hidden-v43', !(f === 'all' || p.classList.contains(f))); });
-        document.querySelectorAll('.captainGroupCardV1169').forEach(function(g){
-          const visible = Array.from(g.querySelectorAll('.captainPerson')).some(function(p){ return !p.classList.contains('is-hidden-v43'); });
-          g.classList.toggle('is-hidden-v43', !visible);
-        });
       });
     }
 
@@ -244,95 +240,6 @@
     if(overlay){ overlay.classList.add('hidden'); }
   }
   </script>
-
-{% macro captain_person_row(r) -%}
-  {% set v = reservation_views.get(r.id) %}
-    {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
-    {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
-    {% set reason_text = '' %}
-    {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
-    {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
-    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
-      <div class="captainFastIdentityV65">
-        <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
-        {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}
-        <div class="captainResponsibleTraceV1165 {% if v.responsible_is_present %}present{% else %}absent{% endif %}">
-          <span class="captainResponsibleLabelV1165">Invitado de</span>
-          <b>{{v.responsible_name}}</b>{% if v.responsible_member_no %}<span>Socio {{v.responsible_member_no}}</span>{% endif %}
-          <small>{% if v.responsible_is_present %}socio presente{% else %}socio no presente / revisar reasignación{% endif %}</small>
-        </div>
-        {% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<small>Invitación institucional</small>{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
-        <div class="captainProtocolarTraceV1165">
-          <div class="protoDetailV1168">Invitación institucional</div>
-          {% if r.protocolar_by %}<div>Designado por: {{r.protocolar_by}}</div>{% endif %}
-          {% if r.responsible_name %}<div>Socio referencia: {{r.responsible_name}}</div>{% endif %}
-          {% if r.dni %}<div>DNI: {{r.dni}}</div>{% endif %}
-          {% if r.protocolar_label %}<div>Motivo / etiqueta: {{r.protocolar_label}}</div>{% endif %}
-        </div>
-        {% endif %}
-{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
-      </div>
-      <div class="captainFastStateV65">
-        {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
-        {% elif outing_cancelled %}<span class="fastStateChipV65 neutral">Sin cargo</span>
-        {% elif r.attendance == 'Presente' %}<span class="fastStateChipV65 present">Presente</span>
-        {% elif r.attendance == 'Ausente' %}<span class="fastStateChipV65 absent">No embarcó</span>
-        {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
-        {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
-      </div>
-      {% if v.show_responsible and not reservation_views.get(r.id).protocolar and captain_responsible_options|length > 0 and not closed and not outing_cancelled and not v.waitlisted and not (user.role == 'captain' and control_window.expired) %}
-      <details class="captainInlineReassignV1161">
-        <summary>Reasignar invitado</summary>
-        <div class="captainInlineReassignBodyV1161">
-          <div class="captainReassignHintV1161">Pasar este invitado a un socio presente:</div>
-          {% for opt in captain_responsible_options %}
-            {% if opt.id != r.responsible_user_id %}
-            <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
-              <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
-              <button class="capAction reassignAction" data-busy-text="Reasignando...">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
-            </form>
-            {% endif %}
-          {% endfor %}
-        </div>
-      </details>
-      {% endif %}
-      <div class="captainFastActionsV65" aria-label="Estados operativos">
-        {% if locked_v65 %}
-          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
-        {% else %}
-          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
-          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
-          <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
-          <span class="tapCueV65">TAP</span>
-          <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
-            <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
-            <div class="captainMoreOpsBody">
-              {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
-              {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
-              <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>
-              {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
-              {% if v.show_responsible and captain_responsible_options|length > 0 %}
-              <div class="captainReassignBlock">
-                <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>
-                {% for opt in captain_responsible_options %}
-                  {% if opt.id != r.responsible_user_id %}
-                  <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
-                    <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
-                    <button class="capAction reassignAction">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
-                  </form>
-                  {% endif %}
-                {% endfor %}
-              </div>
-              {% endif %}
-            </div>
-          </details>
-        {% endif %}
-      </div>
-    </div>
-  
-
-{%- endmacro %}
-
 </head>
 <body class="captainProBody" data-msg="{{msg or ''}}"><div class="app captainProApp">
 <header class="top topGreen premiumTop appHeaderPremium captainTop">
@@ -443,25 +350,90 @@
   <div class="captainV65Hint">Tap sobre la persona: Presente ↔ No embarcó. Acciones excepcionales en ⋯. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
   <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
   <div class="captainPeopleList captainPeopleListV65">
-  {% if captain_groups %}
-    {% for group in captain_groups %}
-      <section class="captainGroupCardV1169 {{ group.kind }}" data-group-kind="{{ group.kind }}">
-        <div class="captainGroupHeaderV1169">
-          <div>
-            <span class="captainGroupKickerV1169">{{ group.kicker }}</span>
-            <b>{{ group.title }}</b>
-            {% if group.subtitle %}<small>{{ group.subtitle }}</small>{% endif %}
-          </div>
-          <span class="captainGroupCountV1169">{{ group.rows|length }}</span>
+  {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
+    {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
+    {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
+    {% set reason_text = '' %}
+    {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
+    {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
+    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
+      <div class="captainFastIdentityV65">
+        <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
+        {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}
+        <div class="captainResponsibleTraceV1165 {% if v.responsible_is_present %}present{% else %}absent{% endif %}">
+          <span class="captainResponsibleLabelV1165">Invitado de</span>
+          <b>{{v.responsible_name}}</b>{% if v.responsible_member_no %}<span>Socio {{v.responsible_member_no}}</span>{% endif %}
+          <small>{% if v.responsible_is_present %}socio presente{% else %}socio no presente / revisar reasignación{% endif %}</small>
         </div>
-        <div class="captainGroupRowsV1169">
-          {% for r in group.rows %}{{ captain_person_row(r) }}{% endfor %}
+        {% elif reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}{% endif %}{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
+        <div class="captainProtocolarTraceV1165">
+          <div class="protoDetailV1168">Institucional</div>
+          {% if r.protocolar_by %}<div>Designado por: {{r.protocolar_by}}</div>{% endif %}
+          {% if r.responsible_name %}<div>Socio referencia: {{r.responsible_name}}</div>{% endif %}
+          {% if r.dni %}<div>DNI: {{r.dni}}</div>{% endif %}
+          {% if r.protocolar_label %}<div>Motivo / etiqueta: {{r.protocolar_label}}</div>{% endif %}
         </div>
-      </section>
-    {% endfor %}
-  {% else %}
-    {% for r in reservations %}{{ captain_person_row(r) }}{% endfor %}
-  {% endif %}
+        {% endif %}
+{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
+      </div>
+      <div class="captainFastStateV65">
+        {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
+        {% elif outing_cancelled %}<span class="fastStateChipV65 neutral">Sin cargo</span>
+        {% elif r.attendance == 'Presente' %}<span class="fastStateChipV65 present">Presente</span>
+        {% elif r.attendance == 'Ausente' %}<span class="fastStateChipV65 absent">No embarcó</span>
+        {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
+        {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
+      </div>
+      {% if v.show_responsible and not reservation_views.get(r.id).protocolar and captain_responsible_options|length > 0 and not closed and not outing_cancelled and not v.waitlisted and not (user.role == 'captain' and control_window.expired) %}
+      <details class="captainInlineReassignV1161">
+        <summary>Reasignar invitado</summary>
+        <div class="captainInlineReassignBodyV1161">
+          <div class="captainReassignHintV1161">Pasar este invitado a un socio presente:</div>
+          {% for opt in captain_responsible_options %}
+            {% if opt.id != r.responsible_user_id %}
+            <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+              <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
+              <button class="capAction reassignAction" data-busy-text="Reasignando...">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
+            </form>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+      <div class="captainFastActionsV65" aria-label="Estados operativos">
+        {% if locked_v65 %}
+          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
+        {% else %}
+          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
+          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
+          <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
+          <span class="tapCueV65">TAP</span>
+          <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
+            <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
+            <div class="captainMoreOpsBody">
+              {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
+              {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
+              <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>
+              {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
+              {% if v.show_responsible and captain_responsible_options|length > 0 %}
+              <div class="captainReassignBlock">
+                <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>
+                {% for opt in captain_responsible_options %}
+                  {% if opt.id != r.responsible_user_id %}
+                  <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+                    <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
+                    <button class="capAction reassignAction">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
+                  </form>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </details>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
   </div>
   {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
 </section>
