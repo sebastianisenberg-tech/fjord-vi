@@ -1,8 +1,8 @@
-# Fjord VI 1.18.10
+# Fjord VI 1.18.11
 
 Versión operativa actual del sistema web de reservas y embarque del Fjord VI con blindaje monolítico reforzado.
 
-- Release unificado en versión 1.18.10.
+- Release unificado en versión 1.18.11.
 - Base de datos PostgreSQL como fuente de verdad en Render.
 - Diagnóstico operativo, release check y estado humano disponibles desde Sistema.
 - Mantiene la lógica operativa vigente de socio, capitán, administración, cierres, reaperturas, cargos e institucionales.
@@ -16,3 +16,5 @@ Sistema web interno para gestionar salidas de fin de semana del Fjord VI, con fo
 - Ejecutar `python scripts/release_check.py`.
 - El script valida versión unificada, compileall, caches Python, archivos críticos y corre los tests mínimos de negocio/release.
 - El ZIP no debería considerarse oficial si ese script falla.
+
+- Exportación PDF ejecutiva del módulo Estadísticas para reuniones de Comisión Directiva.

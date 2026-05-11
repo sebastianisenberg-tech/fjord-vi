@@ -1,10 +1,10 @@
 {
-  "version": "1.18.10",
-  "release_label": "Fjord VI · v1.18.10",
+  "version": "1.18.11",
+  "release_label": "Fjord VI · v1.18.11",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-11",
-  "notes": "Rediseño profesional del módulo Estadísticas: tablero descriptivo de uso y economía basado en ficha vigente, con rankings, evolución mensual y composición de recaudación.",
-  "app_build": "Fjord VI 1.18.10",
+  "notes": "Pulido final del módulo Estadísticas para escritorio de administración, con wording ejecutivo, exportaciones CSV y nuevo informe PDF resumido para reuniones.",
+  "app_build": "Fjord VI 1.18.11",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -17,7 +17,10 @@
     "sin cambios en lógica de reservas/cargos/cierres",
     "estadísticas descriptivas de uso y economía",
     "ranking económico por socio responsable",
-    "evolución mensual por ficha vigente"
+    "evolución mensual por ficha vigente",
+    "exportación PDF ejecutiva de estadísticas",
+    "botón Informe PDF reunión",
+    "ajustes desktop-first en Estadísticas"
   ],
   "phase14_validaciones_tests": true,
   "system_fast": "preserved",
@@ -25,8 +28,8 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v1.18.10 - Estadísticas profesionales",
+  "release": "v1.18.11 - Estadísticas escritorio + PDF ejecutivo",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "1.18.10"
+  "app_version": "1.18.11"
 }

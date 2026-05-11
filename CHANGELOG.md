@@ -1,3 +1,9 @@
+## 1.18.11
+- Estadísticas orientadas a escritorio de administración con wording ejecutivo refinado.
+- Nuevo botón Informe PDF reunión en la pestaña Estadísticas.
+- Exportación PDF ejecutiva de uso, recaudación, evolución mensual y rankings.
+- Corrección de enlaces administrativos con querystring en Fichas, Exportaciones y Actividad.
+
 ## 1.18.10
 - Pestaña Estadísticas rediseñada con foco profesional: uso del barco, rankings por navegadas e invitados, evolución mensual, top salidas y composición económica.
 - Ranking económico por socio responsable con gasto total consolidado por invitados, no-show propio y no-show de invitados.

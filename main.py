@@ -22,6 +22,11 @@ from email.message import EmailMessage
 from urllib.parse import urlparse
 from typing import Optional
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
+
 from app.core.errors import AppError, render_app_error_html
 from app.core.logging_config import configure_logging, get_logger
 from app.core.settings import load_settings
@@ -35,7 +40,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.10"
+APP_VERSION = "1.18.11"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +84,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.9"
-RELEASE_LABEL = "Fjord VI · v1.18.9"
+APP_BUILD = "Fjord VI 1.18.11"
+RELEASE_LABEL = "Fjord VI · v1.18.11"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -4462,7 +4467,7 @@ def build_statistics_context(db: Session) -> dict:
         top_alerts.append({"title": "Mayor uso del barco", "detail": f"{t['name']} lidera con {t['navigations']} navegadas efectivas."})
     if top_spenders:
         t = top_spenders[0]
-        top_alerts.append({"title": "Mayor gasto asociado", "detail": f"{t['name']} generó $ {t['total_label']} por todos los conceptos consolidados."})
+        top_alerts.append({"title": "Mayor recaudación asociada", "detail": f"{t['name']} consolidó $ {t['total_label']} por todos los conceptos finales."})
     if outings_with_waitlist:
         top_alerts.append({"title": "Demanda con espera", "detail": f"{outings_with_waitlist} salida(s) cerradas terminaron con lista de espera final."})
     if annulled_sheets:
@@ -4510,6 +4515,234 @@ def build_statistics_context(db: Session) -> dict:
             "periodo_hasta": fmt_admin_datetime(closed_outings[-1].departure_at) if closed_outings else "-",
         }
     }
+
+
+
+def _pdf_text_line(c, text, x, y, *, font="Helvetica", size=9, color=colors.HexColor("#223243")):
+    c.setFont(font, size)
+    c.setFillColor(color)
+    c.drawString(x, y, str(text))
+
+
+def _pdf_metric_box(c, x, y, w, h, title, value):
+    c.setStrokeColor(colors.HexColor("#d7e2ea"))
+    c.setFillColor(colors.white)
+    c.roundRect(x, y, w, h, 4, stroke=1, fill=1)
+    _pdf_text_line(c, title, x + 4*mm, y + h - 5.5*mm, font="Helvetica-Bold", size=8, color=colors.HexColor("#607080"))
+    _pdf_text_line(c, value, x + 4*mm, y + h/2 - 1*mm, font="Helvetica-Bold", size=14, color=colors.HexColor("#102a43"))
+
+
+def _pdf_wrapped_lines(text, max_chars=90):
+    words = str(text or "").split()
+    if not words:
+        return [""]
+    lines = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = current + " " + word
+        if len(candidate) <= max_chars:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def _pdf_draw_kv_table(c, x, y_top, width, rows, *, title=None, row_h=7.2*mm, max_rows=None):
+    y = y_top
+    if title:
+        _pdf_text_line(c, title, x, y, font="Helvetica-Bold", size=11, color=colors.HexColor("#102a43"))
+        y -= 5.5*mm
+    header_h = 8*mm
+    c.setFillColor(colors.HexColor("#f2f7fb"))
+    c.setStrokeColor(colors.HexColor("#d7e2ea"))
+    c.rect(x, y - header_h, width, header_h, fill=1, stroke=1)
+    _pdf_text_line(c, "Indicador", x + 3*mm, y - 5.6*mm, font="Helvetica-Bold", size=8)
+    _pdf_text_line(c, "Valor", x + width*0.62, y - 5.6*mm, font="Helvetica-Bold", size=8)
+    y -= header_h
+    visible = rows[:max_rows] if max_rows else rows
+    for idx, (label, value) in enumerate(visible):
+        fill = colors.white if idx % 2 == 0 else colors.HexColor("#fbfdff")
+        c.setFillColor(fill)
+        c.setStrokeColor(colors.HexColor("#e2e8ee"))
+        c.rect(x, y - row_h, width, row_h, fill=1, stroke=1)
+        _pdf_text_line(c, label, x + 3*mm, y - 5.2*mm, size=8.5)
+        _pdf_text_line(c, value, x + width*0.62, y - 5.2*mm, font="Helvetica-Bold", size=8.5)
+        y -= row_h
+    return y
+
+
+def _pdf_draw_simple_table(c, x, y_top, width, columns, rows, *, title=None, row_h=7*mm, header_fill="#f2f7fb", max_rows=None):
+    y = y_top
+    if title:
+        _pdf_text_line(c, title, x, y, font="Helvetica-Bold", size=11, color=colors.HexColor("#102a43"))
+        y -= 5.5*mm
+    widths = [width * col[1] for col in columns]
+    x_positions = [x]
+    for w in widths[:-1]:
+        x_positions.append(x_positions[-1] + w)
+    c.setFillColor(colors.HexColor(header_fill))
+    c.setStrokeColor(colors.HexColor("#d7e2ea"))
+    c.rect(x, y - row_h, width, row_h, fill=1, stroke=1)
+    for i, (label, _) in enumerate(columns):
+        _pdf_text_line(c, label, x_positions[i] + 2.5*mm, y - 4.9*mm, font="Helvetica-Bold", size=7.6)
+    y -= row_h
+    visible = rows[:max_rows] if max_rows else rows
+    for ridx, row in enumerate(visible):
+        fill = colors.white if ridx % 2 == 0 else colors.HexColor("#fbfdff")
+        c.setFillColor(fill)
+        c.setStrokeColor(colors.HexColor("#e2e8ee"))
+        c.rect(x, y - row_h, width, row_h, fill=1, stroke=1)
+        for i, (_, _) in enumerate(columns):
+            value = row[i] if i < len(row) else ""
+            tx = x_positions[i] + 2.5*mm
+            _pdf_text_line(c, value, tx, y - 4.9*mm, size=7.6, font="Helvetica-Bold" if i == 0 else "Helvetica")
+        y -= row_h
+    return y
+
+
+def build_statistics_pdf_bytes(statistics: dict, *, generated_by: str = "Administración") -> bytes:
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+    margin = 14 * mm
+
+    def draw_header(page_title: str, page_no: int):
+        c.setFillColor(colors.HexColor("#0d5884"))
+        c.rect(0, height - 22*mm, width, 22*mm, fill=1, stroke=0)
+        _pdf_text_line(c, "YACHT CLUB ARGENTINO", margin, height - 10*mm, font="Helvetica-Bold", size=9, color=colors.white)
+        _pdf_text_line(c, "Fjord VI - Informe ejecutivo de estadísticas", margin, height - 16*mm, font="Helvetica-Bold", size=16, color=colors.white)
+        _pdf_text_line(c, page_title, width - 70*mm, height - 10*mm, font="Helvetica-Bold", size=9, color=colors.white)
+        _pdf_text_line(c, f"Generado: {fmt_admin_datetime(now_local())}", width - 70*mm, height - 16*mm, size=8, color=colors.white)
+        _pdf_text_line(c, f"Emitido por: {generated_by}", margin, 10*mm, size=7.5, color=colors.HexColor("#607080"))
+        _pdf_text_line(c, f"{RELEASE_LABEL} - página {page_no}", width - 55*mm, 10*mm, size=7.5, color=colors.HexColor("#607080"))
+
+    cards = statistics.get("cards", {})
+    econ = statistics.get("economics", {})
+    meta = statistics.get("meta", {})
+    alerts = statistics.get("alerts", [])
+
+    # Page 1
+    draw_header("Resumen para Comisión Directiva", 1)
+    y = height - 32*mm
+    subtitle = f"Período: {meta.get('periodo_desde','-')} a {meta.get('periodo_hasta','-')}"
+    _pdf_text_line(c, subtitle, margin, y, size=9, color=colors.HexColor("#44576a"))
+    y -= 9*mm
+
+    card_titles = [
+        ("Salidas realizadas", str(cards.get("salidas_realizadas", 0))),
+        ("Ocupación promedio", str(cards.get("ocupacion_promedio", "0%"))),
+        ("Socios embarcados", str(cards.get("socios_navegaron", 0))),
+        ("Invitados embarcados", str(cards.get("invitados_navegaron", 0))),
+        ("Recaudación total", f"$ {cards.get('recaudacion_total', '0')}") ,
+        ("Promedio por salida", f"$ {cards.get('recaudacion_promedio', '0')}") ,
+    ]
+    box_w = (width - 2*margin - 10*mm) / 3
+    box_h = 18*mm
+    for i, (title, value) in enumerate(card_titles):
+        row = i // 3
+        col = i % 3
+        x = margin + col * (box_w + 5*mm)
+        yy = y - row * (box_h + 4*mm) - box_h
+        _pdf_metric_box(c, x, yy, box_w, box_h, title, value)
+    y -= 2 * (box_h + 4*mm) + 3*mm
+
+    left_rows = [
+        ("Salidas realizadas", str(cards.get("salidas_realizadas", 0))),
+        ("Salidas canceladas", str(cards.get("salidas_canceladas", 0))),
+        ("Ocupación promedio", str(cards.get("ocupacion_promedio", "0%"))),
+        ("Navegantes totales", str(cards.get("navegantes_totales", 0))),
+        ("Socios embarcados", str(cards.get("socios_navegaron", 0))),
+        ("Invitados embarcados", str(cards.get("invitados_navegaron", 0))),
+        ("Tasa no-show", str(cards.get("no_show_rate", "0%"))),
+        ("Reaperturas registradas", str(cards.get("reaperturas", 0))),
+        ("Salidas con espera", str(cards.get("salidas_con_espera", 0))),
+        ("Salidas completas", str(cards.get("salidas_completas", 0))),
+    ]
+    right_rows = [
+        ("Recaudación total", f"$ {econ.get('total_label', '0')}"),
+        ("Invitados", f"$ {econ.get('invited_label', '0')}"),
+        ("No-show socios", f"$ {econ.get('noshow_socios_label', '0')}"),
+        ("No-show invitados", f"$ {econ.get('noshow_invitados_label', '0')}"),
+        ("Otros cargos", f"$ {econ.get('otros_label', '0')}"),
+        ("Socios únicos embarcados", str(meta.get('socios_unicos', 0))),
+        ("Invitados embarcados", str(meta.get('invitados_registrados', 0))),
+    ]
+    left_w = (width - 2*margin - 6*mm) * 0.56
+    right_w = (width - 2*margin - 6*mm) * 0.44
+    top_y = y
+    bottom_left = _pdf_draw_kv_table(c, margin, top_y, left_w, left_rows, title="Resumen ejecutivo")
+    comp_rows = right_rows
+    bottom_right = _pdf_draw_kv_table(c, margin + left_w + 6*mm, top_y, right_w, comp_rows, title="Composición económica")
+    y = min(bottom_left, bottom_right) - 6*mm
+
+    alert_lines = []
+    for a in alerts[:4]:
+        detail = f"{a.get('title','')}: {a.get('detail','')}"
+        alert_lines.extend(_pdf_wrapped_lines(detail, 92))
+    if not alert_lines:
+        alert_lines = ["Sin observaciones destacadas para el período analizado."]
+    c.setFillColor(colors.HexColor("#f8fbfd"))
+    c.setStrokeColor(colors.HexColor("#d7e2ea"))
+    box_h2 = max(20*mm, (len(alert_lines) + 2) * 5.2*mm)
+    c.roundRect(margin, y - box_h2, width - 2*margin, box_h2, 4, fill=1, stroke=1)
+    _pdf_text_line(c, "Observaciones para reunión", margin + 4*mm, y - 6*mm, font="Helvetica-Bold", size=11, color=colors.HexColor("#102a43"))
+    yy = y - 12*mm
+    for line in alert_lines:
+        _pdf_text_line(c, f"- {line}" if not line.startswith("-") else line, margin + 5*mm, yy, size=8.5)
+        yy -= 5*mm
+
+    c.showPage()
+
+    # Page 2
+    draw_header("Uso, recaudación y rankings", 2)
+    y = height - 32*mm
+    monthly_rows = []
+    for r in statistics.get("monthly_rows", [])[:8]:
+        monthly_rows.append((r.get("label",""), str(r.get("salidas",0)), r.get("ocupacion_label","0%"), str(r.get("navegantes",0)), f"$ {r.get('recaudacion_label','0')}", str(r.get("reaperturas",0))))
+    if not monthly_rows:
+        monthly_rows = [("Sin datos", "-", "-", "-", "-", "-")]
+    y = _pdf_draw_simple_table(c, margin, y, width - 2*margin, [("Mes",0.26),("Sal.",0.10),("Ocup.",0.14),("Nav.",0.12),("Recaudación",0.22),("Reap.",0.16)], monthly_rows, title="Evolución mensual", max_rows=8)
+    y -= 6*mm
+
+    top_nav_rows = []
+    for r in statistics.get("top_navigators", [])[:5]:
+        top_nav_rows.append((r.get("name",""), str(r.get("member_no","-")), str(r.get("navigations",0)), str(r.get("guest_count",0)), str(r.get("last_navigation","-"))))
+    if not top_nav_rows:
+        top_nav_rows = [("Sin datos", "-", "-", "-", "-")]
+    top_spend_rows = []
+    for r in statistics.get("top_spenders", [])[:5]:
+        top_spend_rows.append((r.get("name",""), str(r.get("member_no","-")), f"$ {r.get('total_label','0')}", f"$ {r.get('invited_label','0')}", str(r.get("charge_outings",0))))
+    if not top_spend_rows:
+        top_spend_rows = [("Sin datos", "-", "-", "-", "-")]
+
+    left_w = (width - 2*margin - 6*mm) / 2
+    right_w = left_w
+    bottom_left = _pdf_draw_simple_table(c, margin, y, left_w, [("Socio",0.42),("N°",0.13),("Nav.",0.12),("Inv.",0.11),("Última",0.22)], top_nav_rows, title="Top socios por navegadas", max_rows=5)
+    bottom_right = _pdf_draw_simple_table(c, margin + left_w + 6*mm, y, right_w, [("Socio",0.40),("N°",0.12),("Total",0.20),("Inv.",0.16),("Sal.",0.12)], top_spend_rows, title="Ranking económico por socio responsable", max_rows=5)
+    y = min(bottom_left, bottom_right) - 6*mm
+
+    top_out_rows = []
+    for r in statistics.get("top_outings_revenue", [])[:6]:
+        top_out_rows.append((r.get("date",""), r.get("title",""), r.get("occupancy",""), f"$ {r.get('revenue_total_label','0')}", str(r.get("waitlist",0))))
+    if not top_out_rows:
+        top_out_rows = [("Sin datos", "-", "-", "-", "-")]
+    _pdf_draw_simple_table(c, margin, y, width - 2*margin, [("Fecha",0.18),("Salida",0.38),("Ocupación",0.14),("Recaudación",0.18),("Espera",0.12)], top_out_rows, title="Top salidas por recaudación", max_rows=6)
+
+    c.save()
+    return buf.getvalue()
+
+
+@app.get("/admin/estadisticas.pdf")
+def admin_statistics_pdf(request: Request, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    statistics = build_statistics_context(db)
+    payload = build_statistics_pdf_bytes(statistics, generated_by=user.name or "Administración")
+    filename = f"fjord_vi_estadisticas_resumen_{now_local().strftime('%Y%m%d_%H%M')}.pdf"
+    db.add(ActivityLog(user_id=user.id, user_name=user.name, role=user.role, module="estadisticas", action="statistics_pdf", path="/admin/estadisticas.pdf", detail="Descarga informe ejecutivo PDF", ip=(request.client.host if request and request.client else ""), user_agent=(request.headers.get("user-agent") or "")[:500]))
+    db.commit()
+    return Response(payload, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
 
 def charge_summary(outing: Outing, rows) -> dict:
     socio_items = []
