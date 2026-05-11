@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.8"
+APP_VERSION = "1.18.9"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.8"
-RELEASE_LABEL = "Fjord VI · v1.18.8"
+APP_BUILD = "Fjord VI 1.18.9"
+RELEASE_LABEL = "Fjord VI · v1.18.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -4179,6 +4179,322 @@ def reservation_views(outing: Outing, rows) -> dict:
     return {r.id: reservation_view(outing, r) for r in rows}
 
 
+def build_statistics_context(db: Session) -> dict:
+    """Tablero descriptivo para Administración.
+
+    Fuente de verdad:
+    - salidas cerradas + ficha vigente
+    - estados finales consolidados
+    - fichas anuladas excluidas de economía y uso histórico
+    """
+    users = db.query(User).order_by(User.name.asc()).all()
+    users_by_id = {u.id: u for u in users}
+    outings = db.query(Outing).order_by(Outing.departure_at.asc()).all()
+    reservations = db.query(Reservation).all()
+    reservations_by_outing = {}
+    for r in reservations:
+        reservations_by_outing.setdefault(r.outing_id, []).append(r)
+
+    current_sheets = db.query(ClosingSheet).filter(ClosingSheet.status == "VIGENTE").all()
+    current_sheet_by_outing = {s.outing_id: s for s in current_sheets}
+    annulled_sheets = db.query(ClosingSheet).filter(ClosingSheet.status == "ANULADA").all()
+
+    closed_outings = []
+    cancelled_outings = []
+    outings_with_waitlist = 0
+    full_outings = 0
+    total_capacity = 0
+    total_navigants = 0
+    total_socios_nav = 0
+    total_invitados_nav = 0
+    total_no_show = 0
+    processed_total = 0
+    total_revenue = 0.0
+    revenue_invited = 0.0
+    revenue_socio_noshow = 0.0
+    revenue_guest_noshow = 0.0
+    revenue_other = 0.0
+    unique_socios_nav = set()
+    unique_invitados_nav = set()
+    monthly = {}
+    outings_revenue_rows = []
+    user_usage = {}
+    user_spend = {}
+    top_alerts = []
+
+    def usage_bucket(uid: int, fallback_name: str = ""):
+        b = user_usage.get(uid)
+        if not b:
+            u = users_by_id.get(uid)
+            b = {
+                "user_id": uid,
+                "name": (u.name if u else fallback_name) or f"Usuario #{uid}",
+                "member_no": (u.member_no if u else "") or "-",
+                "navigations": 0,
+                "reservations": 0,
+                "no_shows": 0,
+                "guest_trips": 0,
+                "guest_count": 0,
+                "avg_guests": "0,0",
+                "last_navigation": "-",
+            }
+            user_usage[uid] = b
+        return b
+
+    def spend_bucket(uid: int, fallback_name: str = ""):
+        b = user_spend.get(uid)
+        if not b:
+            u = users_by_id.get(uid)
+            b = {
+                "user_id": uid,
+                "name": (u.name if u else fallback_name) or f"Usuario #{uid}",
+                "member_no": (u.member_no if u else "") or "-",
+                "total": 0.0,
+                "total_label": "0",
+                "invitados": 0.0,
+                "invited_label": "0",
+                "noshow_propio": 0.0,
+                "noshow_own_label": "0",
+                "noshow_invitados": 0.0,
+                "noshow_guest_label": "0",
+                "otros": 0.0,
+                "otros_label": "0",
+                "charge_outings": 0,
+                "avg_per_outing": "0",
+                "last_charge_date": "-",
+            }
+            user_spend[uid] = b
+        return b
+
+    for o in outings:
+        rows = reservations_by_outing.get(o.id, [])
+        if is_outing_cancelled_by_captain(o):
+            cancelled_outings.append(o)
+            label = month_label_es(o.departure_at)
+            m = monthly.setdefault(label, {"label": label, "sort": o.departure_at or datetime.min, "salidas": 0, "canceladas": 0, "ocupacion_sum": 0.0, "ocupacion_count": 0, "navegantes": 0, "socios": 0, "invitados": 0, "no_show": 0, "recaudacion": 0.0, "recaudacion_invitados": 0.0, "recaudacion_no_show": 0.0, "reaperturas": 0})
+            m["canceladas"] += 1
+            continue
+
+        sheet = current_sheet_by_outing.get(o.id)
+        if not (is_closed_outing(o) and sheet):
+            continue
+
+        closed_outings.append(o)
+        total_capacity += int(o.max_crew or 0)
+        payload = sheet_payload(sheet)
+        sheet_summary = payload.get("summary") or {}
+        nav = int(sheet_summary.get("navegaron") or 0)
+        socios_nav = int(sheet_summary.get("socios") or 0)
+        invitados_nav = int(sheet_summary.get("invitados") or 0)
+        no_show_count = int(sheet_summary.get("no_show_count") or 0)
+        processed = int(sheet_summary.get("processed_count") or 0)
+        total_sheet = float(sheet_summary.get("total") or 0)
+        total_navigants += nav
+        total_socios_nav += socios_nav
+        total_invitados_nav += invitados_nav
+        total_no_show += no_show_count
+        processed_total += processed
+        total_revenue += total_sheet
+        if nav >= int(o.max_crew or 0) and int(o.max_crew or 0) > 0:
+            full_outings += 1
+        if any(is_waitlisted(r) for r in rows):
+            outings_with_waitlist += 1
+
+        label = month_label_es(o.departure_at)
+        m = monthly.setdefault(label, {"label": label, "sort": o.departure_at or datetime.min, "salidas": 0, "canceladas": 0, "ocupacion_sum": 0.0, "ocupacion_count": 0, "navegantes": 0, "socios": 0, "invitados": 0, "no_show": 0, "recaudacion": 0.0, "recaudacion_invitados": 0.0, "recaudacion_no_show": 0.0, "reaperturas": 0})
+        m["salidas"] += 1
+        if int(o.max_crew or 0) > 0:
+            m["ocupacion_sum"] += (nav / float(o.max_crew)) * 100.0
+            m["ocupacion_count"] += 1
+        m["navegantes"] += nav
+        m["socios"] += socios_nav
+        m["invitados"] += invitados_nav
+        m["no_show"] += no_show_count
+        m["recaudacion"] += total_sheet
+        m["reaperturas"] += max(0, db.query(ClosingSheet).filter(ClosingSheet.outing_id == o.id, ClosingSheet.status == "ANULADA").count())
+
+        outing_charge_total = 0.0
+        invited_total = 0.0
+        noshow_total = 0.0
+        outing_charge_users = set()
+
+        for r in rows:
+            v = reservation_view(o, r)
+            charge = float(v.get("charge", 0) or 0)
+            k = canonical_kind(r.kind)
+            uid = r.responsible_user_id or 0
+            if k == "socio" and uid:
+                ub = usage_bucket(uid)
+                ub["reservations"] += 1
+                if v.get("embarked"):
+                    ub["navigations"] += 1
+                    ub["last_navigation"] = fmt_admin_datetime(o.departure_at)
+                    unique_socios_nav.add(uid)
+                elif v.get("not_embarked") and charge > 0:
+                    ub["no_shows"] += 1
+            if uid and k in ("invitado", "hijo_menor") and v.get("embarked"):
+                ub = usage_bucket(uid)
+                ub["guest_count"] += 1
+                unique_invitados_nav.add(f"{o.id}:{r.dni}")
+
+            if v.get("embarked") and k in ("invitado", "hijo_menor"):
+                unique_invitados_nav.add(f"{o.id}:{r.dni}")
+
+            if charge <= 0:
+                continue
+            outing_charge_total += charge
+            if uid:
+                outing_charge_users.add(uid)
+                sb = spend_bucket(uid)
+                sb["total"] += charge
+                sb["last_charge_date"] = fmt_admin_datetime(o.departure_at)
+            else:
+                sb = None
+
+            if v.get("embarked"):
+                invited_total += charge
+                revenue_invited += charge
+                m["recaudacion_invitados"] += charge
+                if sb:
+                    sb["invitados"] += charge
+            elif k == "socio":
+                noshow_total += charge
+                revenue_socio_noshow += charge
+                m["recaudacion_no_show"] += charge
+                if sb:
+                    sb["noshow_propio"] += charge
+            elif k in ("invitado", "hijo_menor"):
+                noshow_total += charge
+                revenue_guest_noshow += charge
+                m["recaudacion_no_show"] += charge
+                if sb:
+                    sb["noshow_invitados"] += charge
+            else:
+                revenue_other += charge
+                if sb:
+                    sb["otros"] += charge
+
+        for uid in outing_charge_users:
+            spend_bucket(uid)["charge_outings"] += 1
+
+        guest_count_by_uid = {}
+        for r in rows:
+            if canonical_kind(r.kind) in ("invitado", "hijo_menor") and reservation_view(o, r).get("embarked") and r.responsible_user_id:
+                guest_count_by_uid[r.responsible_user_id] = guest_count_by_uid.get(r.responsible_user_id, 0) + 1
+        for uid, count in guest_count_by_uid.items():
+            usage_bucket(uid)["guest_trips"] += 1
+
+        outings_revenue_rows.append({
+            "date": fmt_admin_datetime(o.departure_at),
+            "title": o.title,
+            "status": o.status,
+            "occupancy": f"{nav}/{int(o.max_crew or 0)}",
+            "navigantes": nav,
+            "socios": socios_nav,
+            "invitados": invitados_nav,
+            "no_show": no_show_count,
+            "revenue_total": total_sheet,
+            "revenue_total_label": human_money(total_sheet),
+            "revenue_invited": invited_total,
+            "revenue_invited_label": human_money(invited_total),
+            "revenue_noshow": noshow_total,
+            "revenue_noshow_label": human_money(noshow_total),
+            "waitlist": sum(1 for r in rows if is_waitlisted(r)),
+            "reopenings": max(0, db.query(ClosingSheet).filter(ClosingSheet.outing_id == o.id, ClosingSheet.status == "ANULADA").count()),
+        })
+
+    for bucket in user_usage.values():
+        trips = int(bucket["guest_trips"] or 0)
+        guests = int(bucket["guest_count"] or 0)
+        bucket["avg_guests"] = str(round((guests / trips), 1)).replace('.', ',') if trips else "0,0"
+
+    for bucket in user_spend.values():
+        outings_count = int(bucket["charge_outings"] or 0)
+        bucket["total_label"] = human_money(bucket["total"])
+        bucket["invited_label"] = human_money(bucket["invitados"])
+        bucket["noshow_own_label"] = human_money(bucket["noshow_propio"])
+        bucket["noshow_guest_label"] = human_money(bucket["noshow_invitados"])
+        bucket["otros_label"] = human_money(bucket["otros"])
+        bucket["avg_per_outing"] = human_money(bucket["total"] / outings_count) if outings_count else "0"
+
+    monthly_rows = []
+    for row in sorted(monthly.values(), key=lambda x: x["sort"], reverse=True):
+        occ = (row["ocupacion_sum"] / row["ocupacion_count"]) if row["ocupacion_count"] else 0.0
+        monthly_rows.append({
+            "label": row["label"],
+            "salidas": row["salidas"],
+            "canceladas": row["canceladas"],
+            "ocupacion_label": f"{occ:.1f}%",
+            "navegantes": row["navegantes"],
+            "socios": row["socios"],
+            "invitados": row["invitados"],
+            "no_show": row["no_show"],
+            "recaudacion_label": human_money(row["recaudacion"]),
+            "recaudacion_invitados_label": human_money(row["recaudacion_invitados"]),
+            "recaudacion_no_show_label": human_money(row["recaudacion_no_show"]),
+            "reaperturas": row["reaperturas"],
+        })
+
+    top_navigators = sorted(user_usage.values(), key=lambda x: (x["navigations"], x["guest_count"]), reverse=True)[:20]
+    top_guest_hosts = sorted(user_usage.values(), key=lambda x: (x["guest_count"], x["guest_trips"], x["navigations"]), reverse=True)[:20]
+    top_spenders = sorted(user_spend.values(), key=lambda x: (x["total"], x["invitados"], x["noshow_invitados"]), reverse=True)[:20]
+    outings_revenue_rows.sort(key=lambda x: x["revenue_total"], reverse=True)
+
+    top_alerts = []
+    if top_navigators:
+        t = top_navigators[0]
+        top_alerts.append({"title": "Mayor uso del barco", "detail": f"{t['name']} lidera con {t['navigations']} navegadas efectivas."})
+    if top_spenders:
+        t = top_spenders[0]
+        top_alerts.append({"title": "Mayor gasto asociado", "detail": f"{t['name']} generó $ {t['total_label']} por todos los conceptos consolidados."})
+    if outings_with_waitlist:
+        top_alerts.append({"title": "Demanda con espera", "detail": f"{outings_with_waitlist} salida(s) cerradas terminaron con lista de espera final."})
+    if annulled_sheets:
+        top_alerts.append({"title": "Reaperturas registradas", "detail": f"{len(annulled_sheets)} ficha(s) anuladas por reapertura o recierre operativo."})
+
+    return {
+        "cards": {
+            "salidas_realizadas": len(closed_outings),
+            "salidas_canceladas": len(cancelled_outings),
+            "ocupacion_promedio": pct_text(total_navigants, total_capacity),
+            "navegantes_totales": total_navigants,
+            "socios_navegaron": total_socios_nav,
+            "invitados_navegaron": total_invitados_nav,
+            "no_show_rate": pct_text(total_no_show, processed_total),
+            "reaperturas": len(annulled_sheets),
+            "salidas_con_espera": outings_with_waitlist,
+            "salidas_completas": full_outings,
+            "recaudacion_total": human_money(total_revenue),
+            "recaudacion_invitados": human_money(revenue_invited),
+            "recaudacion_no_show": human_money(revenue_socio_noshow + revenue_guest_noshow),
+            "recaudacion_promedio": human_money(total_revenue / len(closed_outings)) if closed_outings else "0",
+        },
+        "economics": {
+            "total": total_revenue,
+            "total_label": human_money(total_revenue),
+            "invitados": revenue_invited,
+            "invited_label": human_money(revenue_invited),
+            "noshow_socios": revenue_socio_noshow,
+            "noshow_socios_label": human_money(revenue_socio_noshow),
+            "noshow_invitados": revenue_guest_noshow,
+            "noshow_invitados_label": human_money(revenue_guest_noshow),
+            "otros": revenue_other,
+            "otros_label": human_money(revenue_other),
+        },
+        "monthly_rows": monthly_rows[:18],
+        "top_navigators": top_navigators,
+        "top_guest_hosts": top_guest_hosts,
+        "top_spenders": top_spenders,
+        "top_outings_revenue": outings_revenue_rows[:20],
+        "alerts": top_alerts,
+        "meta": {
+            "socios_unicos": len(unique_socios_nav),
+            "invitados_registrados": len(unique_invitados_nav),
+            "periodo_desde": fmt_admin_datetime(closed_outings[0].departure_at) if closed_outings else "-",
+            "periodo_hasta": fmt_admin_datetime(closed_outings[-1].departure_at) if closed_outings else "-",
+        }
+    }
+
 def charge_summary(outing: Outing, rows) -> dict:
     socio_items = []
     guest_items = []
@@ -6693,6 +7009,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     if activity_page > activity_pages:
         activity_page = activity_pages
     activity_rows = db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).offset((activity_page - 1) * activity_per_page).limit(activity_per_page).all()
+    statistics = build_statistics_context(db) if admin_page == "estadisticas" else {}
 
     return templates.TemplateResponse(request, "admin.html", base_template_context(**{
         "request": request, "user": user, "admin_page": admin_page, "outing": outing, "outings": outings, "history_groups": history_groups, "counts": counts, "active_counts": active_counts,
@@ -6721,6 +7038,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
         "ops_center": phase11_center_summary(db),
         "search_results": universal_search_results(db, request.query_params.get("q", "")),
         "communications": communications_context(db) if admin_page == "comunicaciones" else {},
+        "statistics": statistics,
         "activity_rows": activity_rows,
         "activity_page": activity_page,
         "activity_pages": activity_pages,

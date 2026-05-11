@@ -1,4 +1,9 @@
-## 1.18.8
+## 1.18.9
+- Pestaña Estadísticas rediseñada con foco profesional: uso del barco, rankings por navegadas e invitados, evolución mensual, top salidas y composición económica.
+- Ranking económico por socio responsable con gasto total consolidado por invitados, no-show propio y no-show de invitados.
+- Métricas basadas en ficha vigente y salidas cerradas para evitar duplicación por reaperturas o fichas anuladas.
+
+## 1.18.7
 - Fase 18: puntos 9 y 10.
 - Se agregan tests mínimos de negocio y script automático de release check.
 - Se integra el release check externo al semáforo interno sin cambiar UX ni reglas funcionales.
