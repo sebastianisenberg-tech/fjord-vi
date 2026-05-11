@@ -1,17 +1,22 @@
 # Fjord VI · Checklist fija de release/deploy
 
-Antes de pasar una versión beta a producción debe verificarse:
+Antes de considerar oficial un ZIP o deploy, correr primero:
 
-1. `/` redirige a una pantalla humana (`/login` o home según sesión), sin JSON ni Method Not Allowed visible.
-2. `/login` abre correctamente.
-3. Login, logout, reset de clave y cambio obligatorio de clave funcionan.
-4. Sesiones viejas se invalidan cuando cambia o se resetea la clave.
-5. UX móvil vertical y horizontal no muestra pantallas blancas ni elementos críticos ocultos.
-6. Toasts y alertas son visibles y legibles.
-7. PostgreSQL conecta y es la fuente única de verdad.
-8. `/health` devuelve `ok=true` y versión correcta.
-9. Esquema, integridad e índices están en OK desde Sistema.
-10. Links internos principales funcionan y no exponen rutas técnicas al usuario final.
-11. Backup PostgreSQL disponible antes de importaciones o cambios masivos.
+```bash
+python scripts/release_check.py
+```
 
-La versión 1.8.5 agrega este control dentro de Sistema como “Checklist de release”.
+El release no debe considerarse apto si ese script falla.
+
+Controles mínimos:
+
+1. Versión unificada en `VERSION.txt`, `main.py`, `software_metadata.json` y `README.md`.
+2. `compileall` OK sobre código principal.
+3. No hay `__pycache__` ni `.pyc` en el paquete.
+4. Templates críticos y static críticos presentes.
+5. `render.yaml` y `software_metadata.json` presentes.
+6. Manejo de `DATABASE_URL` previsto para producción.
+7. Tests mínimos de negocio y release en verde.
+8. Root, login, logout y cambio de clave siguen disponibles.
+9. PostgreSQL y checks internos siguen visibles desde Sistema.
+10. El ZIP final no contiene basura técnica evitable.

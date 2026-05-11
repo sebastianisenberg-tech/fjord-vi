@@ -1,3 +1,8 @@
+## 1.18.7
+- Fase 18: puntos 9 y 10.
+- Se agregan tests mínimos de negocio y script automático de release check.
+- Se integra el release check externo al semáforo interno sin cambiar UX ni reglas funcionales.
+
 # Fjord VI 1.18.6 · Blindaje 182
 
 - Corrige unificación de versión visible y metadata del release.

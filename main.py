@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.6"
+APP_VERSION = "1.18.7"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.6"
-RELEASE_LABEL = "Fjord VI · v1.18.6"
+APP_BUILD = "Fjord VI 1.18.7"
+RELEASE_LABEL = "Fjord VI · v1.18.7"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1115,6 +1115,7 @@ def _critical_post_path(path: str) -> bool:
         "/socio/cancel/", "/socio/reactivate/",
         "/captain/outing_status", "/captain/attendance/", "/captain/reassign/", "/captain/close",
         "/admin/update_outing", "/admin/outing_status", "/admin/new_outing",
+        "/admin/user/reset-password/", "/admin/reset_password/", "/admin/reset_all_passwords",
         "/admin/schema/check", "/admin/system/repair_missing_sheets",
     )
     return any((path or "").startswith(x) for x in critical_prefixes)
@@ -1129,8 +1130,12 @@ def cleanup_expired_operation_locks():
         pass
 
 
-def acquire_operation_lock(lock_key: str, owner: str, path: str, detail: str = "") -> bool:
-    """Intenta tomar un lock de DB con TTL corto. Devuelve False si ya hay una operación activa."""
+def acquire_operation_lock(lock_key: str, owner: str, path: str, detail: str = "", strict: bool = False) -> bool:
+    """Intenta tomar un lock de DB con TTL corto. Devuelve False si ya hay una operación activa.
+
+    En acciones operativas críticas se usa strict=True: si el lock técnico falla,
+    se bloquea el POST en vez de permitir dos mutaciones simultáneas.
+    """
     if not lock_key:
         return True
     cleanup_expired_operation_locks()
@@ -1149,9 +1154,12 @@ def acquire_operation_lock(lock_key: str, owner: str, path: str, detail: str = "
             return True
     except IntegrityError:
         return False
-    except Exception:
-        # Falla abierta: no impedimos operar si el lock técnico falló.
-        return True
+    except Exception as exc:
+        try:
+            APP_LOGGER.warning("operation_lock_failed", extra={"fjord_path": path, "fjord_lock_key": lock_key, "fjord_error": type(exc).__name__})
+        except Exception:
+            pass
+        return False if strict else True
 
 
 def release_operation_lock(lock_key: str):
@@ -1187,6 +1195,11 @@ async def operation_lock_middleware(request: Request, call_next):
     form_data = {k: (v[0] if v else "") for k, v in parsed.items()}
     outing_id = _outing_id_from_post(path, form_data)
     lock_key = f"outing:{outing_id}" if outing_id else ""
+    if not lock_key and path.startswith("/admin/reset_all_passwords"):
+        lock_key = "admin:reset_all_passwords"
+    elif not lock_key and (path.startswith("/admin/user/reset-password/") or path.startswith("/admin/reset_password/")):
+        rid = _path_rid(path)
+        lock_key = f"user:reset_password:{rid}" if rid else "admin:reset_password"
     owner = request.cookies.get(SESSION_COOKIE_NAME, "anon")
 
     async def receive():
@@ -1196,7 +1209,7 @@ async def operation_lock_middleware(request: Request, call_next):
     if not lock_key:
         return await call_next(locked_request)
 
-    if not acquire_operation_lock(lock_key, owner, path, f"outing_id={outing_id}"):
+    if not acquire_operation_lock(lock_key, owner, path, f"outing_id={outing_id}", strict=True):
         resp = RedirectResponse(_safe_back_url(request), status_code=303)
         resp.headers["X-Fjord-Operation-Lock"] = "busy"
         resp.headers["Cache-Control"] = "no-store"
@@ -1694,6 +1707,8 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Headers de seguridad", True, "nosniff, sameorigin, referrer-policy, permissions-policy")
     add("Trazabilidad request", True, "X-Fjord-Request-ID + response time")
     add("Tests scaffold", (APP_DIR / "tests").exists(), "pytest/smoke preparado")
+    add("Tests críticos de negocio", (APP_DIR / "tests" / "test_phase18_puntos_9_10_tests_release.py").exists(), "mínimos de reservas/cierre/reapertura/roles/release")
+    add("Script externo de release", (APP_DIR / "scripts" / "release_check.py").exists(), "python scripts/release_check.py")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
     bad_arch = [r for r in arch if not r.get("ok")]
@@ -2929,6 +2944,57 @@ def log(db: Session, actor: str, action: str, detail: str = ""):
     db.add(AuditLog(actor=actor, action=action, detail=detail))
     db.commit()
     persist_json(db)
+
+
+def _audit_value(value):
+    try:
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        return value
+    except Exception:
+        return str(value)
+
+
+def audit_event(
+    db: Session,
+    actor_user,
+    action: str,
+    detail: str = "",
+    request: Optional[Request] = None,
+    outing_id: Optional[int] = None,
+    reservation_id: Optional[int] = None,
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
+):
+    """Auditoría institucional enriquecida sin migrar esquema.
+
+    El modelo actual solo tiene actor/action/detail. Para no tocar base ni UX,
+    se guarda un payload compacto dentro de detail con ids afectados, estado
+    anterior/nuevo, request id e información mínima del cliente.
+    """
+    actor_name = getattr(actor_user, "name", None) or str(actor_user or "Sistema")
+    actor_role = getattr(actor_user, "role", "") or ""
+    payload = {
+        "detail": detail or "",
+        "role": actor_role,
+        "outing_id": outing_id,
+        "reservation_id": reservation_id,
+        "before": {k: _audit_value(v) for k, v in (before or {}).items()},
+        "after": {k: _audit_value(v) for k, v in (after or {}).items()},
+    }
+    if request is not None:
+        payload["request_id"] = request.headers.get("X-Fjord-Request-ID", "")
+        try:
+            payload["ip"] = request.client.host if request.client else ""
+        except Exception:
+            payload["ip"] = ""
+        payload["user_agent"] = (request.headers.get("user-agent") or "")[:180]
+    clean = {k: v for k, v in payload.items() if v not in (None, {}, "")}
+    try:
+        compact = json.dumps(clean, ensure_ascii=False, separators=(",", ":"))
+    except Exception:
+        compact = detail or ""
+    log(db, actor_name, action, compact)
 
 def parse_session_cookie(raw_cookie: str) -> tuple[Optional[int], Optional[int]]:
     payload = unsign_value(raw_cookie or "")
@@ -4819,6 +4885,7 @@ def account_password_submit(
 
 @app.post("/admin/user/reset-password/{user_id}")
 def admin_reset_password(
+    request: Request,
     user_id: int,
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
@@ -4833,7 +4900,7 @@ def admin_reset_password(
     target.session_version = int(getattr(target, "session_version", 1) or 1) + 1
     db.commit()
 
-    log(db, user.name, "reset clave temporal", f"{target.name} ({target.member_no or target.dni})")
+    audit_event(db, user, "reset clave temporal", f"{target.name} ({target.member_no or target.dni})", request=request, before={"session_version": (target.session_version or 1) - 1}, after={"session_version": target.session_version})
     return RedirectResponse("/admin?page=socios&msg=clave_reseteada", status_code=303)
 
 
@@ -5133,6 +5200,9 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     ensure_outing_editable(outing)
     if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
+
+    if not reservation_is_active(r):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
     now = now_local()
     was_waitlisted = is_waitlisted(r)
@@ -5434,6 +5504,66 @@ def present_guest_without_present_responsible_errors(db: Session, outing: Outing
                 "Reasignar a un socio presente o marcar No embarca / No embarcó antes de cerrar."
             )
     return errors
+
+def captain_cancel_final_validation(db: Session, outing: Outing) -> tuple[bool, str]:
+    """Validación final inmediatamente antes de cancelar por capitán.
+
+    No confía en el estado visto en pantalla. Se reevalúa contra DB dentro del
+    request crítico para evitar dobles cancelaciones o anulaciones inconsistentes.
+    """
+    if not outing:
+        return False, "salida_inexistente"
+    if outing.status == "Cancelada por capitán":
+        return False, "salida_ya_cancelada"
+    if outing.status not in ("En reservas", "Embarque cerrado", "Realizada"):
+        return False, "estado_no_cancelable"
+    return True, "ok"
+
+
+def captain_reopen_final_validation(db: Session, outing: Outing) -> tuple[bool, str]:
+    """Validación final inmediatamente antes de reabrir una salida."""
+    if not outing:
+        return False, "salida_inexistente"
+    if outing.status == "En reservas":
+        return False, "salida_ya_abierta"
+    if outing.status not in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
+        return False, "estado_no_reabrible"
+    return True, "ok"
+
+
+def captain_close_final_validation(db: Session, outing: Outing) -> tuple[bool, str, Optional[ClosingSheet]]:
+    """Validación final dura antes del cierre operativo.
+
+    La UI/preflight puede haber quedado vieja; acá se vuelve a mirar el estado
+    real para que un reintento o un request repetido no duplique ficha ni cierre.
+    """
+    if not outing:
+        return False, "salida_inexistente", None
+    current_sheet = closing_sheet_current(db, outing.id)
+    if outing.status == "Cancelada por capitán":
+        return False, "salida_cancelada", current_sheet
+    if outing.status in ("Embarque cerrado", "Realizada"):
+        return False, "salida_ya_cerrada", current_sheet
+    if current_sheet and outing.status not in ("Embarque cerrado", "Realizada"):
+        return False, "ficha_vigente_duplicada", current_sheet
+    return True, "ok", current_sheet
+
+
+def attendance_idempotent_noop(r: Reservation, value: str) -> bool:
+    """True si el estado pedido ya es el estado final actual de la reserva."""
+    current = (r.attendance or "").strip()
+    if current != value:
+        return False
+    if value == "Presente":
+        return reservation_is_active(r) and not is_waitlisted(r) and not is_captain_cancelled(r)
+    if value == "Ausente":
+        return current == "Ausente"
+    if value == "Por confirmar":
+        return current == "Por confirmar" and reservation_is_active(r)
+    if value == "No embarca":
+        return is_no_board_by_captain(r) or current == "No embarca"
+    return False
+
 
 def close_preflight_analysis(db: Session, outing: Outing) -> dict:
     """Análisis previo al cierre: detecta errores bloqueantes y sugiere correcciones.
@@ -5740,6 +5870,7 @@ def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reserva
 
 @app.post("/captain/outing_status")
 def outing_status(
+    request: Request,
     outing_id: Optional[int] = Form(None),
     status: str = Form(...),
     db: Session = Depends(db_session),
@@ -5761,6 +5892,13 @@ def outing_status(
 
     # ===== CANCELAR =====
     if status == "Cancelada":
+        ok, code = captain_cancel_final_validation(db, outing)
+        if not ok and code == "salida_ya_cancelada":
+            audit_event(db, user, "cancelación idempotente", f"{outing.title} ya estaba cancelada", request=request, outing_id=outing.id, before={"status": outing.status}, after={"status": outing.status})
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
+        if not ok:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=accion_invalida", status_code=303)
+
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
 
         # Si existía ficha vigente, queda anulada: nunca se pisa ni se borra.
@@ -5776,7 +5914,7 @@ def outing_status(
         outing.status = "Cancelada por capitán"
 
         db.commit()
-        log(db, user.name, "cancelación", f"{outing.title} / desde {old_status}")
+        audit_event(db, user, "cancelación", f"{outing.title} / desde {old_status}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "charges_zeroed": len(reservations)})
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
     # ===== CERRAR =====
@@ -5787,19 +5925,26 @@ def outing_status(
 
     # ===== REABRIR =====
     if status == "Reservas abiertas":
+        ok, code = captain_reopen_final_validation(db, outing)
+        if not ok and code == "salida_ya_abierta":
+            audit_event(db, user, "reapertura idempotente", f"{outing.title} ya estaba abierta", request=request, outing_id=outing.id, before={"status": outing.status}, after={"status": outing.status})
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reapertura_ok", status_code=303)
+        if not ok:
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=accion_invalida", status_code=303)
+
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
         annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por capitán")
         outing.status = "En reservas"
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         promoted = promote_waitlist(db, outing)
         db.commit()
-        log(db, user.name, "reapertura", f"{outing.title} / desde {old_status} / preliquidaciones recalculadas / promovidos {', '.join(promoted) if promoted else '-'}")
+        audit_event(db, user, "reapertura", f"{outing.title} / desde {old_status} / preliquidaciones recalculadas / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "promovidos": promoted})
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reapertura_ok", status_code=303)
 
     return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
 
 @app.post("/captain/attendance/{rid}/{value}")
-def attendance(rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     r = db.get(Reservation, rid)
     if not r or value not in ["Presente", "Ausente", "Por confirmar", "No embarca"]:
         return RedirectResponse("/captain?msg=accion_invalida", status_code=303)
@@ -5822,6 +5967,10 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     if is_waitlisted(r):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
 
+    if attendance_idempotent_noop(r, value):
+        audit_event(db, user, "asistencia idempotente", f"{r.person_name}: {value} ya aplicado / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0)}, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0)})
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
+
     # Blindaje de cupo en operación: no permite superar el máximo de presentes.
     # Antes el preflight lo frenaba al cierre; ahora también se bloquea al tocar.
     if value == "Presente" and r.attendance != "Presente":
@@ -5834,6 +5983,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         if present_count >= (outing.max_crew or MAX_CREW):
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cupo_lleno", status_code=303)
 
+    before_attendance = {"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""}
     previous_trace = reassignment_trace_only(r.cancel_reason or "")
 
     if value in ("Presente", "Por confirmar"):
@@ -5877,12 +6027,13 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
     enforce_capacity(db, outing)
     db.commit()
-    log(db, user.name, "asistencia", f"{r.person_name}: {value} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}")
+    audit_event(db, user, "asistencia", f"{r.person_name}: {value} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 
 @app.post("/captain/reassign/{rid}")
 def captain_reassign_guest(
+    request: Request,
     rid: int,
     new_responsible_user_id: int = Form(...),
     db: Session = Depends(db_session),
@@ -5924,10 +6075,14 @@ def captain_reassign_guest(
     if new_responsible_row.attendance != "Presente":
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=socio_reasignacion_no_presente", status_code=303)
 
+    before_reassign = {"responsible_user_id": r.responsible_user_id, "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""}
     old_responsible_id = r.responsible_user_id
     old_responsible = db.get(User, old_responsible_id) if old_responsible_id else None
     if old_responsible_id == new_responsible.id:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_sin_cambios", status_code=303)
+
+    if r.attendance == "Presente" and reservation_is_active(r):
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
     # Blindaje operativo: una reasignación por invitado y por salida.
     # Evita cadenas A -> B -> C que complican la auditoría y la liquidación.
@@ -5949,7 +6104,7 @@ def captain_reassign_guest(
 
     enforce_capacity(db, outing)
     db.commit()
-    log(db, user.name, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name} / {outing.title}")
+    audit_event(db, user, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_reassign, after={"responsible_user_id": r.responsible_user_id, "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
 
@@ -5970,7 +6125,7 @@ def captain_preflight(outing_id: Optional[int] = None, request: Request = None, 
     return templates.TemplateResponse(request, "captain_preflight.html", {"request": request, "user": user, "outing": outing, "analysis": analysis})
 
 @app.post("/captain/close")
-def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     outing, reservations, active, present, *_ = outing_context(db, outing_id)
     if not outing:
         return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
@@ -5980,8 +6135,16 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=ventana_finalizada", status_code=303)
         if w["before_departure"]:
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_anticipado", status_code=303)
-    if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
+    ok, close_code, current_sheet = captain_close_final_validation(db, outing)
+    if not ok and close_code == "salida_cancelada":
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cancelada", status_code=303)
+    if not ok and close_code == "salida_ya_cerrada":
+        if current_sheet:
+            audit_event(db, user, "cierre idempotente", f"{outing.title} ya estaba cerrada / ficha {current_sheet.sequence}", request=request, outing_id=outing.id, before={"status": outing.status, "sheet_id": current_sheet.id}, after={"status": outing.status, "sheet_id": current_sheet.id})
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={current_sheet.id}", status_code=303)
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
+    if not ok:
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=accion_invalida", status_code=303)
 
     enforce_capacity(db, outing)
     preflight = close_preflight_analysis(db, outing)
@@ -6022,7 +6185,7 @@ def close_boarding(outing_id: Optional[int] = Form(None), db: Session = Depends(
     present = sum(1 for r in reservations if r.attendance == "Presente" and reservation_is_active(r))
     sheet = create_closing_sheet(db, outing, reservations, user.name)
     db.commit()
-    log(db, user.name, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}")
+    audit_event(db, user, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}", request=request, outing_id=outing.id, after={"status": outing.status, "presentes": present, "activos": active_count, "sheet_id": sheet.id, "sheet_sequence": sheet.sequence})
     admin_email = smtp_settings(db).get("admin_email")
     if admin_email:
         total_label = sheet_payload(sheet).get("summary", {}).get("total_label", "0")
@@ -6579,6 +6742,7 @@ def create_user(
 
 @app.post("/admin/reset_password/{uid}")
 def reset_password(
+    request: Request,
     uid: int,
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
@@ -6592,7 +6756,7 @@ def reset_password(
     target.last_password_change_at = now_local()
     target.session_version = int(getattr(target, "session_version", 1) or 1) + 1
     db.commit()
-    log(db, user.name, "reset clave temporal", f"{target.name} / {target.dni} / cambio obligatorio")
+    audit_event(db, user, "reset clave temporal", f"{target.name} / {target.dni} / cambio obligatorio", request=request, before={"session_version": (target.session_version or 1) - 1}, after={"session_version": target.session_version})
     return RedirectResponse("/admin?page=socios&msg=clave_reseteada", status_code=303)
 
 
@@ -6622,6 +6786,7 @@ def can_hard_delete_user(db: Session, target: User, actor: User) -> tuple[bool, 
 
 @app.post("/admin/reset_all_passwords")
 def reset_all_passwords(
+    request: Request,
     confirm_phrase: str = Form(""),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
@@ -6636,7 +6801,7 @@ def reset_all_passwords(
         target.last_password_change_at = now_local()
         target.session_version = int(getattr(target, "session_version", 1) or 1) + 1
     db.commit()
-    log(db, user.name, "reset masivo claves temporales", f"{len(targets)} usuarios activos / cambio obligatorio")
+    audit_event(db, user, "reset masivo claves temporales", f"{len(targets)} usuarios activos / cambio obligatorio", request=request, after={"usuarios_afectados": len(targets)})
     return RedirectResponse("/admin?page=socios&msg=claves_reseteadas", status_code=303)
 
 
@@ -7063,6 +7228,7 @@ def users_json(
 
 @app.post("/admin/update_outing")
 def update_outing(
+    request: Request,
     outing_id: int = Form(...),
     title: str = Form(...),
     destination: str = Form("paseo"),
@@ -7131,12 +7297,13 @@ def update_outing(
     detail = f"{outing.id}: {old} -> {new}"
     if active_count:
         detail += f" / advertencia: tenía {active_count} reservas activas"
-    log(db, user.name, "edición administrativa salida", detail)
+    audit_event(db, user, "edición administrativa salida", detail, request=request, outing_id=outing.id, before={"snapshot": old}, after={"snapshot": new, "reservas_activas": active_count})
     return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=salida_actualizada", status_code=303)
 
 
 @app.post("/admin/outing_status")
 def admin_outing_status(
+    request: Request,
     outing_id: int = Form(...),
     status: str = Form(...),
     db: Session = Depends(db_session),
@@ -7164,11 +7331,12 @@ def admin_outing_status(
     else:
         return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     db.commit()
-    log(db, user.name, "control administrativo salida", detail)
+    audit_event(db, user, "control administrativo salida", detail, request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status})
     return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
 @app.post("/admin/new_outing")
 def new_outing(
+    request: Request,
     title: str = Form(...),
     departure_at: str = Form(...),
     max_crew: int = Form(MAX_CREW),
@@ -7191,7 +7359,7 @@ def new_outing(
     db.add(o)
     db.commit()
     db.refresh(o)
-    log(db, user.name, "nueva salida", f"{title.strip()} / tarifa invitado {fee} / salida vacía")
+    audit_event(db, user, "nueva salida", f"{title.strip()} / tarifa invitado {fee} / salida vacía", request=request, outing_id=o.id, after={"status": o.status, "departure_at": o.departure_at, "max_crew": o.max_crew, "guest_fee": float(o.guest_fee or 0)})
     return RedirectResponse(f"/admin?outing_id={o.id}&msg=salida_creada", status_code=303)
 
 def csv_response_excel(output: io.StringIO, filename: str):
