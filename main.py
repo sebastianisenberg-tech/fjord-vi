@@ -3707,7 +3707,21 @@ def is_synthetic_member_dni(dni: str) -> bool:
     return str(dni or "").upper().startswith("SOCIO-")
 
 def padron_standard_headers() -> list[str]:
-    return ["nro_socio", "nombre_completo", "categoria", "email", "whatsapp", "telefono", "dni", "estado"]
+    return ["nro_socio", "nombre_completo", "nombre", "apellido", "categoria", "email", "whatsapp", "telefono", "dni", "estado", "rol", "fecha_nacimiento"]
+
+def normalize_import_role(value: str) -> str:
+    raw = (value or "").strip().lower()
+    if not raw:
+        return "socio"
+    trans = str.maketrans("áéíóúüñ", "aeiouun")
+    v = raw.translate(trans).replace("/", " ").replace("-", " ").replace(".", " ")
+    v = "_".join(v.split())
+    aliases = {
+        "socio": "socio", "socios": "socio", "user": "socio", "usuario": "socio",
+        "captain": "captain", "capitan": "captain", "capitan_de_fjord": "captain", "capitan_fjord": "captain",
+        "admin": "admin", "administrador": "admin", "administracion": "admin", "adm": "admin", "admin_club": "admin",
+    }
+    return aliases.get(v, "socio")
 
 def normalize_import_header(h: str) -> str:
     raw = (h or "").strip().lower()
@@ -3723,6 +3737,8 @@ def normalize_import_header(h: str) -> str:
         "telefono": "telefono", "tel": "telefono", "telefono_linea": "telefono",
         "dni": "dni", "documento": "dni", "numero_documento": "dni",
         "estado": "estado", "activo": "estado",
+        "rol": "rol", "role": "rol",
+        "fecha_nacimiento": "fecha_nacimiento", "birth_date": "fecha_nacimiento",
     }
     return aliases.get(v, v)
 
@@ -7685,17 +7701,21 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
             name = raw_nombre or raw_apellido
         dni_clean = norm_dni(row.get("dni", ""))
         category = normalize_category(row.get("categoria", ""))
+        role = normalize_import_role(row.get("rol", ""))
         email = (row.get("email") or "").strip()
         whatsapp = (row.get("whatsapp") or "").strip()
         phone = (row.get("telefono") or row.get("phone") or "").strip()
+        birth_date = (row.get("fecha_nacimiento") or "").strip()
         estado_raw = (row.get("estado") or "activo").strip().lower()
-        active = not any(x in estado_raw for x in ("inactivo", "baja", "suspend"))
+        active = not any(x in estado_raw for x in ("inactivo", "baja", "suspend", "no"))
         errors = []
         warnings = []
-        if not member_no:
+        if role == "socio" and not member_no:
             errors.append("falta nro_socio")
         if not name:
             errors.append("falta nombre_completo")
+        if role in ("admin", "captain") and not dni_clean:
+            errors.append("falta DNI para rol administrativo")
         if email and not valid_email_syntax(email):
             warnings.append("email dudoso")
         if member_no and member_no in seen_members:
@@ -7722,8 +7742,8 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
         if category: cats[category_label(category)] = cats.get(category_label(category), 0) + 1
         clean = {
             "line": i, "member_no": member_no, "name": name, "dni": dni_clean,
-            "category": category, "email": email, "whatsapp": whatsapp, "phone": phone,
-            "active": active, "action": action, "errors": errors, "warnings": warnings,
+            "category": category, "role": role, "email": email, "whatsapp": whatsapp, "phone": phone,
+            "birth_date": birth_date, "active": active, "action": action, "errors": errors, "warnings": warnings,
         }
         clean_rows.append(clean)
         if len(preview) < 80:
@@ -7794,28 +7814,38 @@ def padron_import_confirm(
             if member_owner and (not target or member_owner.id != target.id):
                 skipped += 1
                 continue
+        import_role = normalize_import_role(row.get("role") or row.get("rol") or "")
+        import_birth_date = (row.get("birth_date") or row.get("fecha_nacimiento") or "").strip() or None
         if target:
             target.name = row.get("name") or target.name
-            target.member_no = member_no or target.member_no
+            target.member_no = member_no or (None if import_role != "socio" else target.member_no)
             target.dni = final_dni or target.dni
-            target.category = row.get("category") or target.category
+            target.category = row.get("category") or (target.category if import_role == "socio" else None)
             target.email = row.get("email") or target.email
             target.whatsapp = row.get("whatsapp") or target.whatsapp
             target.phone = row.get("phone") or target.phone
-            target.role = "socio"
+            target.birth_date = import_birth_date or target.birth_date
+            target.role = import_role
+            if import_role != "socio":
+                target.category = None
+                target.member_no = member_no or target.member_no
+            target.password_hash = hash_password("demo1234")
+            target.must_change_password = True
             target.active = bool(row.get("active", True))
             updated += 1
         else:
             db.add(User(
-                name=row.get("name") or "Socio sin nombre",
+                name=row.get("name") or "Usuario sin nombre",
                 dni=final_dni,
                 member_no=member_no or None,
-                category=row.get("category") or None,
+                category=(row.get("category") or None) if import_role == "socio" else None,
                 email=row.get("email") or None,
                 whatsapp=row.get("whatsapp") or None,
                 phone=row.get("phone") or None,
-                role="socio",
+                birth_date=import_birth_date,
+                role=import_role,
                 password_hash=hash_password("demo1234"),
+                must_change_password=True,
                 active=bool(row.get("active", True)),
             ))
             created += 1
@@ -7823,7 +7853,7 @@ def padron_import_confirm(
     meta = db.get(SystemMeta, f"pending_padron_import:{token}")
     if meta:
         db.delete(meta)
-    log(db, user.name, "importa padrón oficial", f"creados {created}, actualizados {updated}, omitidos {skipped}")
+    log(db, user.name, "importa padrón oficial", f"creados {created}, actualizados {updated}, omitidos {skipped} / clave inicial demo1234 / roles normalizados")
     db.commit()
     return RedirectResponse(f"/admin?page=socios&msg=padron_importado&created={created}&updated={updated}&skipped={skipped}", status_code=303)
 

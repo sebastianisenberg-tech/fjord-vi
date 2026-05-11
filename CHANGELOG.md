@@ -1,4 +1,4 @@
-## 1.18.12
+## 1.18.13
 
 - Hotfix de deploy para exportación PDF de Estadísticas.
 - Agrega `reportlab==4.2.2` a `requirements.txt` y `app/requirements.txt`.
