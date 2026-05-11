@@ -366,8 +366,10 @@
       <div class="captainFastIdentityV65">
         <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
         {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
-        <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Institucional</div>
+        <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Invitado institucional del club</div>
         {% endif %}
+{% if v.show_responsible and not reservation_views.get(r.id).protocolar %}<div class="captainResponsibleTraceV11613">Invitado de {{v.responsible_name}}</div>{% endif %}
+{% if v.waitlisted and v.show_responsible %}<div class="captainResponsibleTraceV11613 waitOwner">En espera de lugar por {{v.responsible_name}}</div>{% endif %}
 {% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>
       <div class="captainFastStateV65">
@@ -380,7 +382,7 @@
       </div>
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
-          <span class="captainLockedPill">{% if closed %}🔒{% else %}Bloqueado{% endif %}</span>
+          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}En espera{% else %}Bloqueado{% endif %}</span>
         {% else %}
           <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
           <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
