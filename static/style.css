@@ -9185,3 +9185,55 @@ a[href="/account/password"].topAction{
   .captainGroupV11611.groupRole-guest .captainPersonName,
   .captainGroupV11611.groupRole-institutional .captainPersonName{font-size:13.7px!important;}
 }
+
+/* Fjord VI 1.16.13 hotfix - Capitán alineado y color único por grupo */
+.captainGroupedListV11613 .captainGroupV11611,
+.captainGroupedListV11613 .captainGroupV11611.groupRole-owner,
+.captainGroupedListV11613 .captainGroupV11611.groupRole-guest,
+.captainGroupedListV11613 .captainGroupV11611.groupRole-institutional{
+  margin-left:0!important;
+  margin-right:0!important;
+  padding-left:16px!important;
+  background:#fff!important;
+  border-color:#d8e4ec!important;
+  box-shadow:0 5px 14px rgba(15,35,55,.08)!important;
+}
+.captainGroupedListV11613 .captainGroupV11611::before{
+  width:7px!important;
+  background:var(--group-color,#0b6f96)!important;
+  opacity:1!important;
+}
+.captainGroupedListV11613 .captainGroupV11611::after{
+  display:none!important;
+}
+.captainGroupedListV11613 .captainDependentsV11613{
+  margin-left:0!important;
+  padding-left:0!important;
+  border-left:0!important;
+}
+.captainGroupedListV11613 .captainPersonName{
+  display:inline!important;
+  vertical-align:baseline!important;
+}
+.captainGroupedListV11613 .badgeTipo,
+.captainGroupedListV11613 .protoBadge{
+  display:inline-flex!important;
+  vertical-align:baseline!important;
+  margin-left:6px!important;
+  position:static!important;
+}
+.captainGroupedListV11613 .captainGroupV11611.groupRole-owner .captainPersonName{
+  font-size:16px!important;
+  font-weight:950!important;
+}
+.captainGroupedListV11613 .captainGroupV11611.groupRole-guest .captainPersonName,
+.captainGroupedListV11613 .captainGroupV11611.groupRole-institutional .captainPersonName{
+  font-size:13.5px!important;
+  font-weight:850!important;
+}
+.captainGroupedListV11613 .captainGroupV11611.groupRole-institutional::before{
+  background:var(--group-color,#0b6f96)!important;
+}
+@media (max-width:420px){
+  .captainGroupedListV11613 .captainGroupV11611.groupRole-guest{margin-left:0!important;}
+}

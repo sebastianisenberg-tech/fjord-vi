@@ -354,6 +354,7 @@
     <span class="captainFilterArrowV11612 right" aria-hidden="true">›</span>
   </div>
   {% macro captain_row(r) -%}
+    {% set v = reservation_views.get(r.id) %}
     {% set group_role_v11611 = v.captain_group_role if v and v.captain_group_role else ('institutional' if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar else 'guest') %}
     {% set group_index_v11611 = v.captain_group_index if v and v.captain_group_index else 1 %}
     {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
