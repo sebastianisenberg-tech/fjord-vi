@@ -378,7 +378,7 @@
     {% endif %}
 
     {% if admin_page == 'sistema' %}
-    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: abre rápido y difiere los controles pesados hasta que se pidan.</p>
+    <section class="erpTitle"><div><h1>Sistema <span class="smartTip" data-tip="Panel de soporte: estado, release, integridad, backups, actividad y reset controlado. Vista compacta para evitar scroll operativo infinito.">i</span></h1><p>Consola técnica compacta: estado del sistema, release, integridad, backups, actividad y diagnósticos bajo demanda.</p>
       <article class="erpCard systemWide perfPolicyCard"><h3>Política de performance operativa</h3>
         <p>Socio y Capitán quedan protegidos como módulos livianos. Administración y Sistema cargan controles pesados sólo bajo demanda.</p>
         <div class="perfPolicyList">
@@ -424,13 +424,17 @@
 
       <article class="erpCard systemWide" id="system-captain-tests"><h3>Pruebas lógicas Capitán <span class="smartTip" data-tip="Diagnóstico aislado. No crea salidas, no modifica reservas, no genera fichas ni cargos reales.">i</span></h3>
         {% set ct = system_console.captain_logic_tests %}
-        <div class="smartAlert {% if ct.ok %}success{% else %}danger{% endif %}"><b>{% if ct.ok %}Reglas críticas OK{% else %}Revisar reglas críticas{% endif %}</b><span>{{ct.summary}} · {{ct.note}}</span></div>
+        <div class="smartAlert {% if not ct.ran %}warn{% elif ct.ok %}success{% else %}danger{% endif %}"><b>{% if not ct.ran %}Pruebas no ejecutadas{% elif ct.ok %}Reglas críticas OK{% else %}Revisar reglas críticas{% endif %}</b><span>{{ct.summary}} · {{ct.note}}</span></div>
+        {% if ct.ran %}
         <div class="systemCheckList">
           {% for row in ct.rows %}
           <div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}{% if row.expected or row.got %}<br><small>Esperado: {{row.expected}} · Obtenido: {{row.got}}</small>{% endif %}</span></div>
           {% endfor %}
         </div>
-        <div class="actions"><a class="erpBtn" href="/admin/captain_logic_tests.json" target="_blank">Ver JSON</a><a class="erpBtn" href="/admin/captain_logic_tests.txt" target="_blank">Ver TXT</a></div>
+        {% else %}
+        <p class="mutedHint">Estas pruebas se ejecutan solamente bajo demanda. Sirven para validar cascadas, reasignaciones, institucionales y liquidación sin tocar datos reales.</p>
+        {% endif %}
+        <div class="actions"><a class="erpBtn erpPrimary" href="/admin/sistema?full=1&run_captain_tests=1#system-captain-tests">Ejecutar pruebas</a><a class="erpBtn" href="/admin/captain_logic_tests.json" target="_blank">Ver JSON</a><a class="erpBtn" href="/admin/captain_logic_tests.txt" target="_blank">Ver TXT</a></div>
       </article>
 
       {% if system_console.fast_mode %}
@@ -449,8 +453,8 @@
       </article>
       {% else %}
 
-      <article class="erpCard systemWide"><h3>Semáforo operativo global <span class="smartTip" data-tip="Fase 7: resumen ejecutivo de operación, alertas, mantenimiento, métricas técnicas y preparación multi-barco.">i</span></h3>
-        <div class="smartAlert {% if system_console.phase7.color == 'green' %}success{% elif system_console.phase7.color == 'yellow' %}warn{% else %}danger{% endif %}"><b>{{system_console.phase7.label}}</b><span>{{system_console.phase7.phase}} · alertas críticas {{system_console.phase7.bad_count}} · advertencias {{system_console.phase7.warn_count}}</span></div>
+      <article class="erpCard systemWide"><h3>Semáforo operativo global <span class="smartTip" data-tip="Resumen ejecutivo de operación, alertas reales, mantenimiento, métricas técnicas y preparación multi-barco.">i</span></h3>
+        <div class="smartAlert {% if system_console.phase7.color == 'green' %}success{% elif system_console.phase7.color == 'yellow' %}warn{% else %}danger{% endif %}"><b>{{system_console.phase7.label}}</b><span>{{system_console.phase7.phase}} · críticas {{system_console.phase7.bad_count}} · advertencias {{system_console.phase7.warn_count}}</span></div>
         <div class="systemMiniGrid"><div><span>Tiempo activo</span><b>{{system_console.phase7.metrics.uptime_label}}</b></div><div><span>Latencia DB</span><b>{{system_console.phase7.metrics.db_latency_label}}{% if system_console.phase7.metrics.db_latency_ms is not none %} · {{system_console.phase7.metrics.db_latency_ms}} ms{% endif %}</b></div><div><span>Memoria</span><b>{{system_console.phase7.metrics.memory_state}}{% if system_console.phase7.metrics.memory_mb_estimated %} · {{system_console.phase7.metrics.memory_mb_estimated}} MB{% endif %}</b></div><div><span>Embarcación</span><b>{{system_console.phase7.boat_prepare.boat_name}}</b></div></div>
         <div class="smartAlert {% if system_console.phase9.bad_count %}danger{% elif system_console.phase9.warn_count %}warn{% else %}success{% endif %}"><b>{{system_console.phase9.state}}</b><span>{{system_console.phase9.recommendation}}</span></div>
         <div class="systemCheckList">{% for a in system_console.phase9.alerts %}<div class="checkRow {% if a.level == 'ok' %}ok{% elif a.level == 'warn' %}warn{% else %}bad{% endif %}"><b>{{a.title}}</b><span>{{a.detail}}{% if a.action %}<br><small>Acción sugerida: {{a.action}}</small>{% endif %}</span></div>{% endfor %}</div>
@@ -473,7 +477,7 @@
         <div class="actions"><a class="erpBtn" href="/admin/operational_status.json" target="_blank">Ver JSON</a><a class="erpBtn erpPrimary" href="/admin/operational_status.txt">Descargar estado operativo TXT</a></div>
       </article>
 
-      <article class="erpCard systemWide"><h3>Arquitectura modular <span class="smartTip" data-tip="Fase 5: prepara la separación del main.py en módulos sin alterar todavía las reglas visibles. Sirve para controlar que las fronteras técnicas existan antes de mover lógica crítica.">i</span></h3>
+      <article class="erpCard systemWide"><h3>Arquitectura modular <span class="smartTip" data-tip="Mapa técnico de módulos preparados para una migración gradual sin alterar reglas visibles.">i</span></h3>
         <p>Mapa de módulos preparado para dividir el backend por etapas: configuración, base, seguridad, auditoría, servicios y routers.</p>
         <div class="smartAlert {% if system_console.architecture.ok %}success{% else %}warn{% endif %}"><b>{% if system_console.architecture.ok %}Arquitectura preparada{% else %}Arquitectura en transición controlada{% endif %}</b><span>{{system_console.architecture.phase}} · módulos futuros preparados para migración gradual · main.py: {{system_console.architecture.main_py_lines}} líneas.</span></div>
         <div class="systemCheckList">{% for row in system_console.architecture.rows %}<div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.path}}</b><span>{{row.description}}</span></div>{% endfor %}</div>

@@ -48,3 +48,10 @@
 
 ## Memoria de diseño
 El proyecto separa tres experiencias: Socio simple, Capitán operativo y Administración completa. La prioridad es evitar confusión y mantener velocidad real de uso.
+
+
+## 1.18.4
+- Sistema ordenado sin rediseño visual.
+- Pruebas lógicas Capitán bajo demanda desde Sistema.
+- Limpieza de textos/checks obsoletos de fases internas.
+- Advertencia no bloqueante principal: SMTP pendiente.

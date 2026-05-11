@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.3"
+APP_VERSION = "1.18.4"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.1"
-RELEASE_LABEL = "Fjord VI · v1.18.1"
+APP_BUILD = "Fjord VI 1.18.4"
+RELEASE_LABEL = "Fjord VI · v1.18.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1871,58 +1871,45 @@ def register_deploy_event():
 
 
 def operational_alert_rows(db: Session) -> list:
-    """Alertas accionables para operadores humanos.
+    """Alertas humanas visibles en Sistema.
 
-    La prioridad es explicar qué significa cada estado y qué hacer, no sólo
-    mostrar un error técnico. No modifica datos.
+    En v1.18.4 se limpian advertencias antiguas de fases internas para evitar
+    fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
+    operativa vigente de comunicaciones SMTP.
     """
     alerts = []
     def add(level: str, title: str, detail: str, action: str = ""):
         alerts.append({"level": level, "title": title, "detail": detail, "action": action})
     try:
-        maint = maintenance_status()
-        if maint.get("enabled"):
-            add("warn", "Modo mantenimiento activo", maint.get("note") or "El sistema está marcado para mantenimiento.", "Desactivarlo antes de abrir una prueba con socios reales.")
-
-        op = operational_status_summary(db)
-        if not op.get("ok"):
-            add("bad", "Hay bloqueantes operativos", op.get("recommendation", "Revisar estado operativo"), "Abrir el bloque Estado operativo y resolver los renglones en rojo antes de producción.")
-        elif op.get("warning_count", 0):
-            add("warn", "Hay advertencias no bloqueantes", f"{op.get('warning_count')} advertencia(s) en estado operativo.", "Puede seguirse probando en beta, pero conviene resolverlas antes de abrir a usuarios reales.")
-
-        rel = release_check_summary(db)
-        if not rel.get("ok"):
-            bad_rel = [r for r in rel.get("rows", []) if not r.get("ok")]
-            names = ", ".join(r.get("name", "") for r in bad_rel[:3]) or "controles pendientes"
-            add("bad", "Release check no apto", f"Revisar: {names}.", "Entrar al bloque Checklist de release; si es ruta, login o DB, no pasar a producción.")
+        # Bloqueantes reales: DB, integridad y fichas cerradas sin ficha vigente.
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as e:
+            add("bad", "Base de datos sin respuesta", f"{type(e).__name__}: {str(e)[:160]}", "No operar hasta recuperar PostgreSQL.")
 
         bad_integrity = [r for r in integrity_checks(db) if not r.get("ok")]
         if bad_integrity:
-            add("bad", "Integridad con alertas", f"{len(bad_integrity)} control(es) de integridad requieren revisión.", "Abrir Integridad de datos y corregir antes de cerrar fichas reales.")
+            add("bad", "Integridad con alertas", f"{len(bad_integrity)} control(es) requieren revisión.", "Abrir Integridad de datos y corregir antes de cerrar fichas reales.")
 
         closed_without_sheet = closed_outings_without_current_sheet(db)
         if closed_without_sheet:
-            add("bad", "Salidas cerradas sin ficha vigente", f"{len(closed_without_sheet)} salida(s) requieren reparación o revisión.", "Generar/reparar fichas desde Sistema antes de liquidar cargos.")
+            add("bad", "Salidas cerradas sin ficha vigente", f"{len(closed_without_sheet)} salida(s) requieren reparación o revisión.", "Reparar desde Sistema antes de liquidar cargos.")
 
-        stale_locks = db.query(OperationLock).filter(OperationLock.expires_at < now_local()).count()
-        if stale_locks:
-            add("warn", "Locks vencidos pendientes", f"{stale_locks} lock(s) vencidos detectados.", "Ejecutar reparación segura o esperar limpieza automática antes de pruebas simultáneas.")
+        maint = maintenance_status()
+        if maint.get("enabled"):
+            add("bad", "Modo mantenimiento activo", maint.get("note") or "El sistema está marcado para mantenimiento.", "Desactivarlo antes de abrir a socios.")
 
-        pending_outings = db.query(Outing).filter(Outing.status.in_(["Programada", "En reservas"])).count()
-        if pending_outings == 0:
-            add("warn", "No hay salidas futuras activas", "No hay agenda operativa abierta para socios.", "Cargar al menos una salida antes de enviar accesos de prueba.")
-
+        # Única advertencia no bloqueante esperada en esta etapa: SMTP pendiente.
         comm = communication_status(db)
         if not comm.get("smtp_configured"):
-            add("warn", "Email preparado, SMTP pendiente", comm.get("human_detail", "El envío real de email sigue pendiente."), "No bloquea pruebas de reservas; configurar SMTP antes de activar comunicaciones automáticas.")
+            add("warn", "Email SMTP no configurado", "Las notificaciones automáticas y recuperación por correo están deshabilitadas.", "Configurar SMTP en Comunicaciones cuando se activen emails reales.")
         elif comm.get("failed", 0):
-            add("warn", "Emails fallidos en cola", f"{comm.get('failed')} email(s) fallidos.", "Revisar módulo Comunicaciones y reenviar o corregir SMTP.")
+            add("warn", "Emails fallidos en cola", f"{comm.get('failed')} email(s) fallidos.", "Revisar Comunicaciones y reenviar o corregir SMTP.")
     except Exception as e:
-        add("bad", "Error generando alertas", f"{type(e).__name__}: {str(e)[:160]}", "Revisar logs de Render y abrir Health JSON; no pasar a producción hasta resolverlo.")
+        add("bad", "Error generando alertas", f"{type(e).__name__}: {str(e)[:160]}", "Revisar logs y Health técnico JSON.")
     if not alerts:
-        add("ok", "Sin alertas operativas críticas", "El sistema no detecta bloqueantes inmediatos.", "Continuar con pruebas funcionales normales.")
+        add("ok", "Sin alertas activas", "No hay bloqueantes ni advertencias operativas visibles.", "Continuar pruebas funcionales normales.")
     return alerts
-
 
 def phase9_summary(db: Session) -> dict:
     """Capa de operación humana: mensajes claros y próximos pasos."""
@@ -1940,7 +1927,7 @@ def phase9_summary(db: Session) -> dict:
         recommendation = "Continuar pruebas y documentar resultados."
     return {
         "version": VERSION,
-        "phase": "Fase 9 · operación humana real",
+        "phase": "Operación humana",
         "state": state,
         "bad_count": bad,
         "warn_count": warn,
@@ -2184,7 +2171,7 @@ def phase7_summary(db: Session) -> dict:
         "dashboard": dashboard_operativo_summary(db),
         "deploy_history": deploy_history_rows(db),
         "boat_prepare": {"boat_id": "fjord_vi", "boat_name": "Fjord VI", "multi_boat_ready": True},
-        "phase": "Fase 9 · operación humana real",
+        "phase": "Operación humana",
     }
 
 def operational_status_rows(db: Session) -> list:
@@ -2275,7 +2262,7 @@ def operational_status_summary(db: Session) -> dict:
         "checked_at": now_local().isoformat(timespec="seconds"),
         "blocking_count": len(blocking),
         "warning_count": len(warnings),
-        "phase": "Fase 6 · estado operativo y preproducción",
+        "phase": "Estado operativo y preproducción",
         "recommendation": "Apto para piloto controlado" if len(blocking) == 0 else "Revisar bloqueantes antes de abrir a socios reales",
         "rows": rows,
     }
@@ -2392,6 +2379,7 @@ def captain_logic_diagnostic_tests() -> dict:
     ok_count = sum(1 for r in rows if r.get('ok'))
     bad_count = len(rows) - ok_count
     return {
+        'ran': True,
         'ok': bad_count == 0,
         'version': VERSION,
         'checked_at': now_local().isoformat(timespec='seconds'),
@@ -2400,6 +2388,20 @@ def captain_logic_diagnostic_tests() -> dict:
         'bad_count': bad_count,
         'rows': rows,
         'note': 'Diagnóstico aislado: no crea, modifica ni borra datos reales.',
+    }
+
+
+def captain_logic_tests_idle() -> dict:
+    return {
+        'ran': False,
+        'ok': True,
+        'version': VERSION,
+        'checked_at': '',
+        'summary': 'Pruebas no ejecutadas',
+        'ok_count': 0,
+        'bad_count': 0,
+        'rows': [],
+        'note': 'No modifica datos reales. Ejecutar solo bajo demanda desde Sistema.',
     }
 
 
@@ -2454,7 +2456,7 @@ def system_console_context_full(db: Session, request: Request) -> dict:
         "phase7": phase7_summary(db),
         "phase9": phase9_summary(db),
         "phase11": {},
-        "captain_logic_tests": captain_logic_diagnostic_tests(),
+        "captain_logic_tests": captain_logic_diagnostic_tests() if str(request.query_params.get("run_captain_tests", "")).lower() in ("1", "true", "yes", "on") else captain_logic_tests_idle(),
         "communications_ready": communication_status(db).get("smtp_configured", False),
     }
 
@@ -2510,7 +2512,7 @@ def system_console_context(db: Session, request: Request) -> dict:
     phase7 = {
         "color": "yellow" if warn_count else "green",
         "label": "Arranque rápido activo",
-        "phase": "Fase 12C · Sistema liviano real",
+        "phase": "Sistema liviano real",
         "bad_count": 0,
         "warn_count": warn_count,
         "metrics": {
@@ -2587,11 +2589,11 @@ def system_console_context(db: Session, request: Request) -> dict:
         "release_rows": release_rows,
         "release_ready": bool(db_ok),
         "architecture": architecture,
-        "operational": {"ok": True, "score": 95 if db_ok else 60, "recommendation": "Arranque rápido activo; checks pesados bajo demanda.", "phase": "Fase 12C · performance y versión unificada", "rows": operational_rows},
+        "operational": {"ok": True, "score": 95 if db_ok else 60, "recommendation": "Arranque rápido activo; checks pesados bajo demanda.", "phase": "Sistema liviano y versión unificada", "rows": operational_rows},
         "phase7": phase7,
         "phase9": phase9,
         "phase11": {},
-        "captain_logic_tests": captain_logic_diagnostic_tests(),
+        "captain_logic_tests": captain_logic_tests_idle(),
         "communications_ready": bool(comm.get("smtp_configured")),
     }
     SYSTEM_FAST_CACHE[cache_key] = {"ts": now_ts, "data": data}

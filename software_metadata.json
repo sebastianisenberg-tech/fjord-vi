@@ -1,10 +1,10 @@
 {
-  "version": "1.18.3",
-  "release_label": "Fjord VI 1.18.3 · Sistema con pruebas lógicas Capitán",
+  "version": "1.18.4",
+  "release_label": "Fjord VI 1.18.4 · Sistema ordenado",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
-  "app_build": "Fjord VI 1.18.0",
+  "app_build": "Fjord VI 1.18.4",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -22,8 +22,8 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v1.18.0 - Capitán grupos operativos por responsable",
+  "release": "v1.18.4 - Sistema ordenado",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "Capitán: color único por socio responsable operativo, alineación izquierda y eliminación de barras múltiples sin tocar reglas de negocio.",
-  "app_version": "1.18.2"
+  "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
+  "app_version": "1.18.4"
 }
