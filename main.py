@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.9"
+APP_VERSION = "1.18.10"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -1399,6 +1399,22 @@ def fjord_weekday_short(dt: datetime) -> str:
     if not dt:
         return ""
     return WEEKDAY_ES[dt.weekday()]
+
+def month_label_es(dt: datetime) -> str:
+    if not dt:
+        return "Sin fecha"
+    meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    return f"{meses[dt.month-1]} {dt.year}"
+
+def pct_text(part, total) -> str:
+    try:
+        part_v = float(part or 0)
+        total_v = float(total or 0)
+    except Exception:
+        return '0%'
+    if total_v <= 0:
+        return '0%'
+    return f"{(part_v * 100.0 / total_v):.1f}%".replace('.', ',')
 
 def default_new_outing_datetime() -> datetime:
     base = now_local().date()
