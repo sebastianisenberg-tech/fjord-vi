@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.4"
+APP_VERSION = "1.18.6"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -2775,21 +2775,30 @@ def export_state(db: Session) -> dict:
         "exported_at": now_local().isoformat(),
         "users": [
             {"id": u.id, "name": u.name, "dni": u.dni, "member_no": u.member_no,
-             "email": u.email or "", "phone": u.phone or "", "birth_date": u.birth_date or "", "role": u.role,
-             "password_hash": u.password_hash, "active": bool(u.active), "must_change_password": bool(getattr(u, "must_change_password", False))}
+             "email": u.email or "", "whatsapp": getattr(u, "whatsapp", None) or "", "phone": u.phone or "",
+             "category": getattr(u, "category", None) or "", "birth_date": u.birth_date or "", "role": u.role,
+             "password_hash": u.password_hash, "active": bool(u.active),
+             "can_manage_protocolar": bool(getattr(u, "can_manage_protocolar", False)),
+             "must_change_password": bool(getattr(u, "must_change_password", False)),
+             "session_version": int(getattr(u, "session_version", 1) or 1),
+             "last_login_at": dt_to_str(getattr(u, "last_login_at", None)),
+             "last_password_change_at": dt_to_str(getattr(u, "last_password_change_at", None))}
             for u in db.query(User).order_by(User.id).all()
         ],
         "outings": [
             {"id": o.id, "title": o.title, "destination": o.destination, "departure_at": dt_to_str(o.departure_at),
              "status": o.status, "max_crew": o.max_crew, "min_crew": o.min_crew, "guest_fee": float(o.guest_fee or 0),
-             "notes": o.notes or "", "created_at": dt_to_str(o.created_at)}
+             "notes": o.notes or "", "created_at": dt_to_str(o.created_at), "boat_id": getattr(o, "boat_id", None) or "fjord_vi"}
             for o in db.query(Outing).order_by(Outing.id).all()
         ],
         "reservations": [
             {"id": r.id, "outing_id": r.outing_id, "person_name": r.person_name, "dni": r.dni, "kind": r.kind,
              "responsible_user_id": r.responsible_user_id, "status": r.status, "attendance": r.attendance,
              "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "",
-             "birth_date": r.birth_date or "", "created_at": dt_to_str(r.created_at), "cancelled_at": dt_to_str(r.cancelled_at)}
+             "birth_date": r.birth_date or "", "created_at": dt_to_str(r.created_at), "cancelled_at": dt_to_str(r.cancelled_at),
+             "protocolar": bool(getattr(r, "protocolar", False)),
+             "protocolar_by_user_id": getattr(r, "protocolar_by_user_id", None),
+             "protocolar_reason": getattr(r, "protocolar_reason", "") or ""}
             for r in db.query(Reservation).order_by(Reservation.id).all()
         ],
         "audit_logs": [
@@ -2802,6 +2811,10 @@ def export_state(db: Session) -> dict:
              "annulled_at": dt_to_str(cs.annulled_at), "annulled_by": cs.annulled_by or "",
              "annul_reason": cs.annul_reason or "", "payload": cs.payload or "{}"}
             for cs in db.query(ClosingSheet).order_by(ClosingSheet.id).all()
+        ],
+        "system_meta": [
+            {"key": m.key, "value": m.value or "", "updated_at": dt_to_str(m.updated_at)}
+            for m in db.query(SystemMeta).order_by(SystemMeta.key).all()
         ],
     }
 
@@ -2841,19 +2854,28 @@ def import_state(db: Session, data: dict, allow_destructive: bool = False):
         db.query(Reservation).delete()
         db.query(Outing).delete()
         db.query(User).delete()
+        # Clonación real: también se limpian metadatos del entorno anterior.
+        # El paquete importado vuelve a cargar los metadatos que correspondan.
+        try:
+            db.query(SystemMeta).delete()
+        except Exception:
+            pass
         db.commit()
     for u in data.get("users", []):
         db.add(User(id=u.get("id"), name=u.get("name") or "", dni=norm_dni(u.get("dni") or ""),
-                    member_no=u.get("member_no"), email=u.get("email") or None, phone=u.get("phone") or None,
-                    birth_date=u.get("birth_date") or None, role=u.get("role") or "socio",
-                    password_hash=u.get("password_hash") or hash_password("demo1234"), active=bool(u.get("active", True))))
+                    member_no=u.get("member_no"), email=u.get("email") or None, whatsapp=u.get("whatsapp") or None,
+                    phone=u.get("phone") or None, category=u.get("category") or None, birth_date=u.get("birth_date") or None,
+                    role=u.get("role") or "socio", password_hash=u.get("password_hash") or hash_password("demo1234"),
+                    active=bool(u.get("active", True)), can_manage_protocolar=bool(u.get("can_manage_protocolar", False)),
+                    must_change_password=bool(u.get("must_change_password", False)), session_version=int(u.get("session_version") or 1),
+                    last_login_at=str_to_dt(u.get("last_login_at")), last_password_change_at=str_to_dt(u.get("last_password_change_at"))))
     db.commit()
     for o in data.get("outings", []):
         db.add(Outing(id=o.get("id"), title=o.get("title") or "Salida", destination=o.get("destination") or "",
                       departure_at=str_to_dt(o.get("departure_at")) or now_local(), status=o.get("status") or "En reservas",
                       max_crew=int(o.get("max_crew") or MAX_CREW), min_crew=int(o.get("min_crew") or MIN_CREW),
                       guest_fee=float(o.get("guest_fee") or INVITED_FEE), notes=o.get("notes") or "",
-                      created_at=str_to_dt(o.get("created_at")) or now_local()))
+                      created_at=str_to_dt(o.get("created_at")) or now_local(), boat_id=o.get("boat_id") or "fjord_vi"))
     db.commit()
     for r in data.get("reservations", []):
         db.add(Reservation(id=r.get("id"), outing_id=r.get("outing_id"), person_name=r.get("person_name") or "",
@@ -2862,7 +2884,10 @@ def import_state(db: Session, data: dict, allow_destructive: bool = False):
                            attendance=r.get("attendance") or "Por confirmar", charge_amount=float(r.get("charge_amount") or 0),
                            cancel_reason=r.get("cancel_reason") or "", birth_date=r.get("birth_date") or None,
                            created_at=str_to_dt(r.get("created_at")) or now_local(),
-                           cancelled_at=str_to_dt(r.get("cancelled_at"))))
+                           cancelled_at=str_to_dt(r.get("cancelled_at")),
+                           protocolar=bool(r.get("protocolar", False)),
+                           protocolar_by_user_id=r.get("protocolar_by_user_id"),
+                           protocolar_reason=r.get("protocolar_reason") or ""))
     db.commit()
     for l in data.get("audit_logs", []):
         db.add(AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or now_local(),
@@ -2874,6 +2899,11 @@ def import_state(db: Session, data: dict, allow_destructive: bool = False):
                             created_by=cs.get("created_by") or "", annulled_at=str_to_dt(cs.get("annulled_at")),
                             annulled_by=cs.get("annulled_by") or None, annul_reason=cs.get("annul_reason") or "",
                             payload=cs.get("payload") or "{}"))
+    db.commit()
+    for m in data.get("system_meta", []):
+        if not m.get("key"):
+            continue
+        db.merge(SystemMeta(key=m.get("key"), value=m.get("value") or "", updated_at=str_to_dt(m.get("updated_at")) or now_local()))
     db.commit()
     persist_json(db)
 
@@ -7861,6 +7891,308 @@ def export_data_json(db: Session = Depends(db_session), user: User = Depends(req
     return Response(data, media_type="application/json", headers={"Content-Disposition": "attachment; filename=fjord_vi_backup.json"})
 
 
+
+
+# =========================
+# MIGRACIÓN OPERATIVA / CLONACIÓN CONTROLADA
+# =========================
+MIGRATION_IMPORT_PHRASE = "CLONAR ENTORNO FJORD VI"
+
+
+def migration_counts(db: Session) -> dict:
+    return {
+        "users": db.query(User).count(),
+        "outings": db.query(Outing).count(),
+        "reservations": db.query(Reservation).count(),
+        "closing_sheets": db.query(ClosingSheet).count(),
+        "audit_logs": db.query(AuditLog).count(),
+        "system_meta": db.query(SystemMeta).count(),
+    }
+
+
+def migration_integrity_report(db: Session) -> dict:
+    users = {u.id: u for u in db.query(User).all()}
+    outings = {o.id: o for o in db.query(Outing).all()}
+    reservations = db.query(Reservation).all()
+    sheets = db.query(ClosingSheet).all()
+    errors = []
+    warnings = []
+
+    for r in reservations:
+        if r.outing_id not in outings:
+            errors.append(f"Reserva {r.id} sin salida existente: outing_id={r.outing_id}")
+        if r.responsible_user_id and r.responsible_user_id not in users:
+            errors.append(f"Reserva {r.id} sin socio responsable existente: user_id={r.responsible_user_id}")
+        if getattr(r, "protocolar_by_user_id", None) and r.protocolar_by_user_id not in users:
+            warnings.append(f"Reserva institucional {r.id} conserva referencia no encontrada: user_id={r.protocolar_by_user_id}")
+    for cs in sheets:
+        if cs.outing_id not in outings:
+            errors.append(f"Ficha {cs.id} sin salida existente: outing_id={cs.outing_id}")
+
+    # Invariante simple: una sola ficha vigente por salida.
+    vigentes = {}
+    for cs in sheets:
+        if (cs.status or "").upper() == "VIGENTE":
+            vigentes.setdefault(cs.outing_id, 0)
+            vigentes[cs.outing_id] += 1
+    for outing_id, n in vigentes.items():
+        if n > 1:
+            errors.append(f"Salida {outing_id} tiene {n} fichas vigentes")
+
+    return {
+        "generated_at": now_local().isoformat(),
+        "version": APP_VERSION,
+        "counts": migration_counts(db),
+        "ok": not errors,
+        "errors": errors,
+        "warnings": warnings,
+    }
+
+
+def _csv_text_from_rows(headers, rows) -> str:
+    out = io.StringIO()
+    w = csv.writer(out, delimiter=';')
+    w.writerow(headers)
+    for row in rows:
+        w.writerow(row)
+    return "\ufeff" + out.getvalue()
+
+
+def migration_package_bytes(db: Session, actor: str = "") -> bytes:
+    state = export_state(db)
+    report = migration_integrity_report(db)
+    generated = now_local().strftime("%Y-%m-%d %H:%M:%S")
+    metadata = {
+        "package_type": "fjord_vi_operational_migration",
+        "app": "Fjord VI",
+        "version": APP_VERSION,
+        "generated_at": generated,
+        "generated_by": actor or "sistema",
+        "counts": report.get("counts", {}),
+        "safe_note": "Paquete operativo para clonar beta/staging. Importar solo con confirmación explícita.",
+    }
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        z.writestr("00_LEEME.txt", (
+            "Fjord VI - paquete operativo de migración/clonación.\n"
+            "Contiene usuarios, salidas, reservas, fichas, auditoría y configuración básica.\n"
+            "No es un pg_dump técnico. Para recuperación de desastre usar Backup PostgreSQL.\n"
+            f"Generado: {generated}\nVersión: {APP_VERSION}\n"
+        ))
+        z.writestr("metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))
+        z.writestr("export_state.json", json.dumps(state, ensure_ascii=False, indent=2))
+        z.writestr("integrity_report.json", json.dumps(report, ensure_ascii=False, indent=2))
+        z.writestr("usuarios.csv", _csv_text_from_rows(
+            ["id", "nombre", "dni", "nro_socio", "categoria", "email", "whatsapp", "telefono", "rol", "activo"],
+            [[u.get("id"), u.get("name"), u.get("dni"), u.get("member_no"), u.get("category"), u.get("email"), u.get("whatsapp"), u.get("phone"), u.get("role"), u.get("active")] for u in state.get("users", [])]
+        ))
+        z.writestr("salidas.csv", _csv_text_from_rows(
+            ["id", "titulo", "destino", "fecha", "estado", "capacidad", "tarifa", "creada"],
+            [[o.get("id"), o.get("title"), o.get("destination"), o.get("departure_at"), o.get("status"), o.get("max_crew"), o.get("guest_fee"), o.get("created_at")] for o in state.get("outings", [])]
+        ))
+        z.writestr("reservas.csv", _csv_text_from_rows(
+            ["id", "salida_id", "nombre", "dni", "tipo", "responsable_id", "estado", "asistencia", "cargo", "protocolar", "ref_protocolar"],
+            [[r.get("id"), r.get("outing_id"), r.get("person_name"), r.get("dni"), r.get("kind"), r.get("responsible_user_id"), r.get("status"), r.get("attendance"), r.get("charge_amount"), r.get("protocolar"), r.get("protocolar_by_user_id")] for r in state.get("reservations", [])]
+        ))
+    return buf.getvalue()
+
+
+def read_migration_payload(raw: bytes, filename: str = "") -> dict:
+    name = (filename or "").lower()
+    if name.endswith(".zip") or raw[:2] == b"PK":
+        with zipfile.ZipFile(io.BytesIO(raw), "r") as z:
+            candidates = [n for n in z.namelist() if n.endswith("export_state.json")]
+            if not candidates:
+                raise RuntimeError("El ZIP no contiene export_state.json")
+            return json.loads(z.read(candidates[0]).decode("utf-8"))
+    return json.loads(raw.decode("utf-8"))
+
+
+@app.get("/admin/migration/export")
+def admin_migration_export(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    data = migration_package_bytes(db, user.name)
+    filename = f"fjord_vi_migracion_{APP_VERSION}_{now_local().strftime('%Y%m%d_%H%M')}.zip"
+    log(db, user.name, "export migration package", filename)
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@app.get("/admin/migration/report")
+def admin_migration_report(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    report = migration_integrity_report(db)
+    return Response(json.dumps(report, ensure_ascii=False, indent=2), media_type="application/json; charset=utf-8")
+
+
+
+MIGRATION_IMPORT_MODES = {
+    "replace_full": "Clonar completo: limpia usuarios, salidas, reservas, fichas, auditoría y metadatos antes de importar.",
+    "replace_operational": "Reemplazo operativo: limpia salidas, reservas y fichas; conserva accesos/admins locales y actualiza padrón incluido.",
+    "merge_safe": "Agregar/actualizar: no borra datos; solo agrega o actualiza IDs existentes. Uso excepcional.",
+    "dry_run": "Validar paquete: lee el archivo y muestra diagnóstico sin modificar datos.",
+}
+
+
+def _user_from_export(u: dict) -> User:
+    return User(id=u.get("id"), name=u.get("name") or "", dni=norm_dni(u.get("dni") or ""),
+                member_no=u.get("member_no"), email=u.get("email") or None, whatsapp=u.get("whatsapp") or None,
+                phone=u.get("phone") or None, category=u.get("category") or None, birth_date=u.get("birth_date") or None,
+                role=u.get("role") or "socio", password_hash=u.get("password_hash") or hash_password("demo1234"),
+                active=bool(u.get("active", True)), can_manage_protocolar=bool(u.get("can_manage_protocolar", False)),
+                must_change_password=bool(u.get("must_change_password", False)), session_version=int(u.get("session_version") or 1),
+                last_login_at=str_to_dt(u.get("last_login_at")), last_password_change_at=str_to_dt(u.get("last_password_change_at")))
+
+
+def _outing_from_export(o: dict) -> Outing:
+    return Outing(id=o.get("id"), title=o.get("title") or "Salida", destination=o.get("destination") or "",
+                  departure_at=str_to_dt(o.get("departure_at")) or now_local(), status=o.get("status") or "En reservas",
+                  max_crew=int(o.get("max_crew") or MAX_CREW), min_crew=int(o.get("min_crew") or MIN_CREW),
+                  guest_fee=float(o.get("guest_fee") or INVITED_FEE), notes=o.get("notes") or "",
+                  created_at=str_to_dt(o.get("created_at")) or now_local(), boat_id=o.get("boat_id") or "fjord_vi")
+
+
+def _reservation_from_export(r: dict) -> Reservation:
+    return Reservation(id=r.get("id"), outing_id=r.get("outing_id"), person_name=r.get("person_name") or "",
+                       dni=norm_dni(r.get("dni") or ""), kind=r.get("kind") or "invitado",
+                       responsible_user_id=r.get("responsible_user_id"), status=r.get("status") or "Confirmado",
+                       attendance=r.get("attendance") or "Por confirmar", charge_amount=float(r.get("charge_amount") or 0),
+                       cancel_reason=r.get("cancel_reason") or "", birth_date=r.get("birth_date") or None,
+                       created_at=str_to_dt(r.get("created_at")) or now_local(),
+                       cancelled_at=str_to_dt(r.get("cancelled_at")), protocolar=bool(r.get("protocolar", False)),
+                       protocolar_by_user_id=r.get("protocolar_by_user_id"), protocolar_reason=r.get("protocolar_reason") or "")
+
+
+def _closing_sheet_from_export(cs: dict) -> ClosingSheet:
+    return ClosingSheet(id=cs.get("id"), outing_id=cs.get("outing_id"), sequence=int(cs.get("sequence") or 1),
+                        status=cs.get("status") or "VIGENTE", created_at=str_to_dt(cs.get("created_at")) or now_local(),
+                        created_by=cs.get("created_by") or "", annulled_at=str_to_dt(cs.get("annulled_at")),
+                        annulled_by=cs.get("annulled_by") or None, annul_reason=cs.get("annul_reason") or "",
+                        payload=cs.get("payload") or "{}")
+
+
+def _audit_log_from_export(l: dict) -> AuditLog:
+    return AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or now_local(),
+                    actor=l.get("actor") or "sistema", action=l.get("action") or "import", detail=l.get("detail") or "")
+
+
+def migration_payload_report(data: dict) -> dict:
+    return {
+        "users": len(data.get("users", [])),
+        "outings": len(data.get("outings", [])),
+        "reservations": len(data.get("reservations", [])),
+        "closing_sheets": len(data.get("closing_sheets", [])),
+        "audit_logs": len(data.get("audit_logs", [])),
+        "system_meta": len(data.get("system_meta", [])),
+    }
+
+
+def import_state_flexible(db: Session, data: dict, mode: str = "replace_full") -> dict:
+    """Importador operativo para migración/clonación.
+
+    Modos:
+    - replace_full: clon completo, limpia todo lo operativo y metadatos.
+    - replace_operational: conserva accesos/admins/metadatos locales, reemplaza salidas/reservas/fichas y actualiza padrón.
+    - merge_safe: no borra; agrega/actualiza por ID. Uso excepcional.
+    - dry_run: no modifica, solo devuelve conteos del paquete.
+    """
+    mode = mode if mode in MIGRATION_IMPORT_MODES else "replace_full"
+    if mode == "dry_run":
+        return {"mode": mode, "changed": False, "package_counts": migration_payload_report(data), "message": "Validación sin cambios."}
+
+    if mode == "replace_full":
+        import_state(db, data, allow_destructive=True)
+        return {"mode": mode, "changed": True, "package_counts": migration_payload_report(data), "message": "Clon completo importado."}
+
+    if mode == "replace_operational":
+        # Borra solo lo operativo dependiente para evitar duplicados de salidas/reservas/fichas.
+        try:
+            db.query(ClosingSheet).delete()
+        except Exception:
+            pass
+        db.query(Reservation).delete()
+        db.query(Outing).delete()
+        # Se conserva AuditLog y SystemMeta locales; el padrón se actualiza por ID.
+        db.commit()
+
+    # replace_operational y merge_safe: upsert por ID, sin borrar usuarios locales salvo colisión actualizada.
+    for u in data.get("users", []):
+        db.merge(_user_from_export(u))
+    db.commit()
+    for o in data.get("outings", []):
+        db.merge(_outing_from_export(o))
+    db.commit()
+    for r in data.get("reservations", []):
+        db.merge(_reservation_from_export(r))
+    db.commit()
+    if mode != "merge_safe":
+        for cs in data.get("closing_sheets", []):
+            db.merge(_closing_sheet_from_export(cs))
+        db.commit()
+    else:
+        for cs in data.get("closing_sheets", []):
+            db.merge(_closing_sheet_from_export(cs))
+        db.commit()
+    # Auditoría: solo se importa en merge/operativo si viene incluida, sin limpiar auditoría local.
+    for l in data.get("audit_logs", []):
+        db.merge(_audit_log_from_export(l))
+    db.commit()
+    if mode == "merge_safe":
+        for m in data.get("system_meta", []):
+            if m.get("key"):
+                db.merge(SystemMeta(key=m.get("key"), value=m.get("value") or "", updated_at=str_to_dt(m.get("updated_at")) or now_local()))
+        db.commit()
+    persist_json(db)
+    return {"mode": mode, "changed": True, "package_counts": migration_payload_report(data), "message": MIGRATION_IMPORT_MODES[mode]}
+
+@app.post("/admin/migration/import")
+async def admin_migration_import(
+    package_file: UploadFile = File(...),
+    confirm_phrase: str = Form(""),
+    import_mode: str = Form("replace_full"),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin")),
+):
+    actor_name = user.name
+    if (confirm_phrase or "").strip().upper() != MIGRATION_IMPORT_PHRASE:
+        raise HTTPException(400, f"Confirmación inválida. Para importar debe escribir exactamente: {MIGRATION_IMPORT_PHRASE}")
+    raw = await package_file.read()
+    if not raw:
+        raise HTTPException(400, "Paquete vacío")
+    try:
+        payload = read_migration_payload(raw, package_file.filename or "")
+    except Exception as exc:
+        raise HTTPException(400, f"No se pudo leer el paquete: {type(exc).__name__}: {exc}")
+
+    import_mode = import_mode if import_mode in MIGRATION_IMPORT_MODES else "replace_full"
+
+    if import_mode == "dry_run":
+        result = import_state_flexible(db, payload, mode="dry_run")
+        report = {
+            "ok": True,
+            "mode": import_mode,
+            "mode_label": MIGRATION_IMPORT_MODES[import_mode],
+            "package_file": package_file.filename or "paquete",
+            "package_counts": result.get("package_counts", {}),
+            "current_counts": migration_counts(db),
+            "message": "Validación completada. No se modificó ningún dato real.",
+        }
+        return Response(json.dumps(report, ensure_ascii=False, indent=2), media_type="application/json; charset=utf-8")
+
+    # Backup previo obligatorio antes de cualquier importación con cambios.
+    backups = create_pre_reset_backups(db)
+    if not backups.get("json"):
+        raise HTTPException(500, "Importación bloqueada: no se pudo generar backup previo.")
+
+    try:
+        result = import_state_flexible(db, payload, mode=import_mode)
+        set_system_meta("last_migration_import_at", now_local().isoformat())
+        set_system_meta("last_migration_import_by", actor_name)
+        set_system_meta("last_migration_import_file", package_file.filename or "paquete")
+        set_system_meta("last_migration_import_mode", import_mode)
+        set_system_meta("last_pre_import_json", backups.get("json", ""))
+        log(db, actor_name, "import migration package", f"{package_file.filename or 'paquete'} / modo {import_mode} / backup previo {backups.get('json')}")
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(500, f"Importación fallida: {type(exc).__name__}: {exc}")
+    return RedirectResponse("/logout", status_code=303)
 
 @app.post("/admin/communications/settings")
 def admin_communications_settings(

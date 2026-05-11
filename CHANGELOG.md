@@ -55,3 +55,18 @@ El proyecto separa tres experiencias: Socio simple, Capitán operativo y Adminis
 - Pruebas lógicas Capitán bajo demanda desde Sistema.
 - Limpieza de textos/checks obsoletos de fases internas.
 - Advertencia no bloqueante principal: SMTP pendiente.
+
+## v1.18.5
+- Exportaciones pasa a "Exportaciones e importaciones" sin rediseñar el módulo.
+- Nuevo bloque de Migración operativa: exporta paquete ZIP completo para clonar beta/staging.
+- Nuevo importador controlado por frase de confirmación con backup previo obligatorio.
+- Reporte de integridad JSON para detectar referencias huérfanas y fichas vigentes duplicadas.
+- Exportación incluye usuarios, salidas, reservas, fichas, auditoría y configuración básica.
+
+## v1.18.6
+- Exportaciones e importaciones: se agregan modos de importación.
+- Clonar completo: reemplazo total del entorno operativo y metadatos.
+- Reemplazo operativo: limpia salidas/reservas/fichas y conserva accesos/configuración local.
+- Agregar/actualizar: modo excepcional sin borrado previo.
+- Validar paquete: dry-run sin modificar datos reales.
+- Importación conserva campos institucionales/protocolares.

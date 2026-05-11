@@ -1,6 +1,6 @@
 {
-  "version": "1.18.4",
-  "release_label": "Fjord VI 1.18.4 · Sistema ordenado",
+  "version": "1.18.5",
+  "release_label": "Exportaciones, importaciones y migración operativa",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
