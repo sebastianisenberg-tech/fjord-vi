@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.17.1"
+APP_VERSION = "1.18.0"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.17.1"
-RELEASE_LABEL = "Fjord VI · v1.17.1"
+APP_BUILD = "Fjord VI 1.18.0"
+RELEASE_LABEL = "Fjord VI · v1.18.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5044,7 +5044,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
 
-        # Vista Capitán v1.17.1: color = socio responsable operativo/de referencia.
+        # Vista Capitán v1.18.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -5066,6 +5066,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             if not vv:
                 continue
             key = captain_group_key(rr)
+            vv["captain_group_key"] = key
             if key not in group_index_by_key:
                 group_seq += 1
                 group_index_by_key[key] = ((group_seq - 1) % 8) + 1
@@ -5076,6 +5077,52 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
                 vv["captain_group_role"] = "owner"
             else:
                 vv["captain_group_role"] = "guest"
+
+    # v1.18.0: orden visual de Capitán por grupos operativos.
+    # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
+    # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
+    # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
+    # dejando espera al final para lectura rápida del Capitán.
+    captain_reservations = list(reservations)
+    if outing and views:
+        original_pos = {rr.id: idx for idx, rr in enumerate(reservations)}
+
+        def captain_display_group_key(rr):
+            # Institucional: la referencia humana de operación manda para lectura del Capitán.
+            if is_protocolar(rr) and getattr(rr, "protocolar_by_user_id", None):
+                return f"u-{rr.protocolar_by_user_id}"
+            # Invitados comunes, menores y reasignados: responsable actual.
+            if getattr(rr, "responsible_user_id", None):
+                return f"u-{rr.responsible_user_id}"
+            return f"row-{rr.id}"
+
+        groups = {}
+        for rr in reservations:
+            groups.setdefault(captain_display_group_key(rr), []).append(rr)
+
+        ordered_keys = []
+        # Primero los grupos que tienen socio titular en el orden natural de la salida.
+        for rr in reservations:
+            if canonical_kind(rr.kind) == "socio" and getattr(rr, "responsible_user_id", None):
+                key = f"u-{rr.responsible_user_id}"
+                if key not in ordered_keys:
+                    ordered_keys.append(key)
+        # Luego grupos huérfanos/defensivos, si existieran, sin inventar responsable.
+        for rr in reservations:
+            key = captain_display_group_key(rr)
+            if key not in ordered_keys:
+                ordered_keys.append(key)
+
+        def row_rank(rr):
+            kind = canonical_kind(rr.kind)
+            owner_first = 0 if kind == "socio" else 1
+            wait_last = 1 if is_waitlisted(rr) else 0
+            return (owner_first, wait_last, original_pos.get(rr.id, 999999))
+
+        captain_reservations = []
+        for key in ordered_keys:
+            captain_reservations.extend(sorted(groups.get(key, []), key=row_rank))
+
     captain_responsible_options = []
     if outing and reservations:
         # Socios presentes y activos disponibles para tomar invitados a cargo en el momento del embarque.
@@ -5142,7 +5189,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     control_window = captain_control_window(outing) if outing else {}
     current_sheet = closing_sheet_current(db, outing.id) if outing else None
     return templates.TemplateResponse(request, "captain.html", {
-        "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "reservations": reservations,
+        "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "reservations": captain_reservations,
         "active": active, "active_count": len(active), "present": present, "absent": absent,
         "pending": pending, "socios_presentes": socios_presentes, "readiness": ready,
         "cutoff": cutoff_passed(outing) if outing else False, "cutoff_at": cutoff_at(outing) if outing else None, "msg": request.query_params.get("msg"),

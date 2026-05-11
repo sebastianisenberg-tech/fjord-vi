@@ -8949,7 +8949,7 @@ a[href="/account/password"].topAction{
   .captainGroupV11611.groupRole-owner .captainPersonName{font-size:15.2px!important;max-width:44vw!important;}
 }
 
-/* Fjord VI v1.17.1 - Capitán: color único por socio responsable operativo
+/* Fjord VI v1.18.0 - Capitán: color único por socio responsable operativo
    Regla visual: barra izquierda = responsable operativo/de referencia.
    Badge = tipo de persona. Chip = estado. No se usan colores de categoría ni barras múltiples. */
 .captainPeopleListV65{gap:8px!important;}
@@ -9076,7 +9076,7 @@ a[href="/account/password"].topAction{
 }
 
 
-/* Fjord VI v1.17.1 - ajustes finos Capitán */
+/* Fjord VI v1.18.0 - ajustes finos Capitán */
 .captainQuickGuideV11612[open] .captainQuickGuidePanelV11612{
   position:fixed!important;
   left:50%!important;
