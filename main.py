@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.8"
+APP_VERSION = "1.16.9"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.8"
-RELEASE_LABEL = "Fjord VI · v1.16.8"
+APP_BUILD = "Fjord VI 1.16.9"
+RELEASE_LABEL = "Fjord VI · v1.16.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5059,6 +5059,69 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
 
     final_summary = final_status_summary(outing, reservations, len(active), present, pending) if outing else {}
 
+    # Vista operativa Capitán: agrupa por socio titular y deja protocolares/institucionales al final.
+    # No cambia reglas ni cálculos: solamente ordena el tablero táctil para reducir errores de embarque.
+    captain_groups = []
+    if outing and reservations:
+        responsible_ids_for_groups = sorted({rr.responsible_user_id for rr in reservations if rr.responsible_user_id})
+        users_for_groups = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids_for_groups)).all()} if responsible_ids_for_groups else {}
+        used_group_reservation_ids = set()
+        protocolar_rows = []
+
+        def is_protocolar_row(rr):
+            vv = views.get(rr.id, {})
+            return bool(getattr(rr, "protocolar", False) or vv.get("protocolar"))
+
+        # 1) Grupos normales: socio titular + sus invitados/menores.
+        for rr in reservations:
+            if rr.id in used_group_reservation_ids or is_protocolar_row(rr):
+                continue
+            if canonical_kind(rr.kind) != "socio":
+                continue
+            rows = [rr]
+            used_group_reservation_ids.add(rr.id)
+            if rr.responsible_user_id:
+                for dep in reservations:
+                    if dep.id in used_group_reservation_ids or is_protocolar_row(dep):
+                        continue
+                    if dep.responsible_user_id == rr.responsible_user_id and canonical_kind(dep.kind) in ("invitado", "hijo_menor"):
+                        rows.append(dep)
+                        used_group_reservation_ids.add(dep.id)
+            member_no = ""
+            responsible_user = users_for_groups.get(rr.responsible_user_id) if rr.responsible_user_id else None
+            if responsible_user and responsible_user.member_no:
+                member_no = f"Socio {responsible_user.member_no}"
+            captain_groups.append({
+                "kind": "socio",
+                "kicker": "Grupo del socio",
+                "title": rr.person_name,
+                "subtitle": member_no,
+                "rows": rows,
+            })
+
+        # 2) Registros no protocolares que no tienen socio titular visible, preservados para no ocultar nada.
+        orphan_rows = [rr for rr in reservations if rr.id not in used_group_reservation_ids and not is_protocolar_row(rr)]
+        if orphan_rows:
+            captain_groups.append({
+                "kind": "sinTitular",
+                "kicker": "Revisar",
+                "title": "Sin socio titular visible",
+                "subtitle": "Registros preservados para control del capitán",
+                "rows": orphan_rows,
+            })
+            used_group_reservation_ids.update(rr.id for rr in orphan_rows)
+
+        # 3) Protocolares / institucionales al final: independientes, sin cargo, no dependen del socio.
+        protocolar_rows = [rr for rr in reservations if is_protocolar_row(rr)]
+        if protocolar_rows:
+            captain_groups.append({
+                "kind": "institucional",
+                "kicker": "Comisión Fjord VI",
+                "title": "Invitados institucionales",
+                "subtitle": "Independientes del socio de referencia · sin cargo",
+                "rows": protocolar_rows,
+            })
+
     # Tabla maestra para Administración: historial completo de reservas, independiente de la salida seleccionada.
     all_outings = db.query(Outing).order_by(Outing.departure_at.desc()).all()
     outing_by_id = {o.id: o for o in all_outings}
@@ -5116,6 +5179,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
         "checkin_url": checkin_url, "qr_url": qr_url, "control_window": control_window,
         "captain_responsible_options": captain_responsible_options,
+        "captain_groups": captain_groups,
         "current_sheet": current_sheet
     })
 
