@@ -1,3 +1,12 @@
+# Fjord VI 1.18.3
+
+Versión con pruebas lógicas Capitán incorporadas en Sistema.
+
+- Módulo aislado: no modifica datos reales.
+- Visible en Administración > Sistema > Pruebas lógicas Capitán.
+- Endpoints técnicos: `/admin/captain_logic_tests.json` y `/admin/captain_logic_tests.txt`.
+- Mantiene lógica operativa de 1.18.2.
+
 # Fjord VI · Sistema de Reservas y Embarque
 
 Versión: 1.16.12

@@ -1,6 +1,6 @@
 {
-  "version": "1.18.2",
-  "release_label": "Fjord VI · v1.18.0",
+  "version": "1.18.3",
+  "release_label": "Fjord VI 1.18.3 · Sistema con pruebas lógicas Capitán",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-09",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",

@@ -409,6 +409,7 @@
       <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-integridad{% else %}#system-integridad{% endif %}">Integridad</a>
       <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-actividad{% else %}#system-actividad{% endif %}">Actividad</a>
       <a href="{% if system_console.fast_mode %}/admin/sistema?full=1#system-reset{% else %}#system-reset{% endif %}">Reset</a>
+      <a href="#system-captain-tests">Pruebas Capitán</a>
     </div>
 
     <div class="systemGrid systemGridUx90">
@@ -418,6 +419,18 @@
         <div class="systemKv"><span>Motor activo</span><b>{{system_console.db_info.engine}}</b></div>
         <div class="systemKv"><span>Base DB</span><b>{% if system_console.db_info.engine == 'postgres' %}Render PostgreSQL conectado{% else %}{{system_console.db_info.database or '-' }}{% endif %}</b></div>
         {% if system_console.db_error %}<p class="dangerNote">{{system_console.db_error}}</p>{% endif %}
+      </article>
+
+
+      <article class="erpCard systemWide" id="system-captain-tests"><h3>Pruebas lógicas Capitán <span class="smartTip" data-tip="Diagnóstico aislado. No crea salidas, no modifica reservas, no genera fichas ni cargos reales.">i</span></h3>
+        {% set ct = system_console.captain_logic_tests %}
+        <div class="smartAlert {% if ct.ok %}success{% else %}danger{% endif %}"><b>{% if ct.ok %}Reglas críticas OK{% else %}Revisar reglas críticas{% endif %}</b><span>{{ct.summary}} · {{ct.note}}</span></div>
+        <div class="systemCheckList">
+          {% for row in ct.rows %}
+          <div class="checkRow {% if row.ok %}ok{% else %}bad{% endif %}"><b>{{row.name}}</b><span>{{row.detail}}{% if row.expected or row.got %}<br><small>Esperado: {{row.expected}} · Obtenido: {{row.got}}</small>{% endif %}</span></div>
+          {% endfor %}
+        </div>
+        <div class="actions"><a class="erpBtn" href="/admin/captain_logic_tests.json" target="_blank">Ver JSON</a><a class="erpBtn" href="/admin/captain_logic_tests.txt" target="_blank">Ver TXT</a></div>
       </article>
 
       {% if system_console.fast_mode %}

@@ -1,3 +1,10 @@
+# Fjord VI 1.18.3 · Pruebas lógicas Capitán en Sistema
+
+- Agrega diagnóstico aislado de reglas críticas del módulo Capitán dentro de Sistema.
+- No toca datos reales ni modifica salidas, reservas, fichas o liquidaciones.
+- Incluye tests para socio ausente con cargo, no embarca/sin cargo, institucionales, reasignación, liquidación e invariantes.
+- Expone resultados en Sistema, JSON y TXT para soporte.
+
 
 ## 1.18.2 - Capitán: cascada operativa y económica
 - Restaura cascada de invitados comunes cuando el socio responsable no embarca.

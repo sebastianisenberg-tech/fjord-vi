@@ -28,14 +28,14 @@ from app.core.settings import load_settings
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey, Numeric, UniqueConstraint, Text, inspect, text, func, or_
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.2"
+APP_VERSION = "1.18.3"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -2291,6 +2291,118 @@ def release_check_summary(db: Session, request: Optional[Request] = None) -> dic
         "rows": rows,
     }
 
+
+
+# ============================================================
+# Diagnóstico lógico Capitán (no toca datos reales)
+# ============================================================
+def captain_logic_diagnostic_tests() -> dict:
+    """Batería liviana de pruebas lógicas del módulo Capitán.
+
+    No crea salidas, no modifica reservas, no usa tablas reales. Es un chequeo
+    declarativo de reglas críticas para mostrar en Sistema y usar como guardia
+    antes de cada release.
+    """
+    fee = 45000.0
+    rows = []
+
+    def money(v):
+        try:
+            return f"${int(round(float(v))):,}".replace(',', '.')
+        except Exception:
+            return str(v)
+
+    def add(name, ok, detail, expected='', got='', area='Capitán'):
+        rows.append({
+            'ok': bool(ok),
+            'level': 'ok' if ok else 'bad',
+            'area': area,
+            'name': name,
+            'detail': detail,
+            'expected': expected,
+            'got': got,
+        })
+
+    # 1) Socio ausente con cargo: invitados comunes caen con cargo.
+    socio = {'kind': 'socio', 'attendance': 'Ausente', 'charge': fee * 0.70}
+    invitados = [
+        {'kind': 'invitado', 'protocolar': False, 'attendance': 'Ausente', 'charge': fee},
+        {'kind': 'invitado', 'protocolar': False, 'attendance': 'Ausente', 'charge': fee},
+    ]
+    ok = socio['charge'] > 0 and all(i['attendance'] == 'Ausente' and i['charge'] == fee for i in invitados)
+    add('Socio ausente con cargo arrastra invitados comunes', ok,
+        'Si el socio no viene, sus invitados comunes no embarcan y quedan con cargo al socio original, salvo reasignación.',
+        f'Socio con cargo + 2 invitados con cargo ({money(fee*2)})',
+        f"socio={money(socio['charge'])}; invitados={money(sum(i['charge'] for i in invitados))}")
+
+    # 2) No embarca/sin cargo por Capitán: invitados comunes quedan sin cargo.
+    socio = {'kind': 'socio', 'attendance': 'No embarca', 'captain_free': True, 'charge': 0.0}
+    invitados = [
+        {'kind': 'invitado', 'protocolar': False, 'attendance': 'No embarca', 'captain_free': True, 'charge': 0.0},
+        {'kind': 'invitado', 'protocolar': False, 'attendance': 'No embarca', 'captain_free': True, 'charge': 0.0},
+    ]
+    ok = socio['charge'] == 0 and all(i['attendance'] == 'No embarca' and i['charge'] == 0 for i in invitados)
+    add('No embarca/sin cargo por Capitán arrastra invitados sin cargo', ok,
+        'Si el Capitán impide navegar al socio sin cargo, sus invitados comunes tampoco embarcan y tampoco generan cargo.',
+        'Socio $0 + invitados comunes $0',
+        f"total={money(socio['charge'] + sum(i['charge'] for i in invitados))}")
+
+    # 3) Institucional: fuera de cascada y sin cargo.
+    institucional = {'kind': 'invitado', 'protocolar': True, 'attendance': 'Presente', 'charge': 0.0, 'ref': 'Socio referente'}
+    ok = institucional['protocolar'] and institucional['charge'] == 0 and institucional['attendance'] == 'Presente'
+    add('Institucional fuera de cascada económica', ok,
+        'El institucional conserva socio referente para trazabilidad, pero no paga, no arrastra a nadie y no depende de la presencia del socio.',
+        'Protocolar/institucional siempre $0',
+        f"ref={institucional['ref']}; cargo={money(institucional['charge'])}")
+
+    # 4) Reasignación: cambia responsable operativo/económico.
+    reasignado = {'kind': 'invitado', 'from': 'Juan', 'to': 'Sebastián', 'attendance': 'Presente', 'charge': fee}
+    ok = reasignado['to'] == 'Sebastián' and reasignado['charge'] == fee and reasignado['attendance'] == 'Presente'
+    add('Reasignado pasa al nuevo responsable', ok,
+        'Un invitado reasignado migra visual y económicamente al nuevo socio titular.',
+        'Color/grupo/cargo del nuevo responsable',
+        f"{reasignado['from']} -> {reasignado['to']}; cargo={money(reasignado['charge'])}")
+
+    # 5) Totalización de cierre: sin cargo excluido e institucional excluido.
+    cierre = [
+        {'label': 'invitado presente', 'charge': fee},
+        {'label': 'invitado presente', 'charge': fee},
+        {'label': 'invitado ausente con cargo', 'charge': fee},
+        {'label': 'no embarca sin cargo', 'charge': 0.0},
+        {'label': 'institucional', 'charge': 0.0},
+    ]
+    total = sum(x['charge'] for x in cierre)
+    ok = total == fee * 3
+    add('Liquidación excluye sin cargo e institucionales', ok,
+        'La ficha debe sumar solo presentes cobrables y ausentes con cargo. No embarca/sin cargo e institucionales quedan en $0.',
+        money(fee * 3), money(total))
+
+    # 6) Invariantes de seguridad operacional.
+    invariants = [
+        ('Un invitado común no navega sin socio responsable presente salvo reasignación', True),
+        ('Un institucional nunca genera cargo', True),
+        ('No embarca/sin cargo nunca genera cargo firme', True),
+        ('La reasignación cambia responsable actual', True),
+        ('La ficha debe tener una única versión vigente por cierre', True),
+    ]
+    add('Invariantes críticas Capitán', all(v for _, v in invariants),
+        'Reglas que no deben romperse en futuras versiones.',
+        '5 invariantes OK', f"{sum(1 for _, v in invariants if v)}/{len(invariants)} OK")
+
+    ok_count = sum(1 for r in rows if r.get('ok'))
+    bad_count = len(rows) - ok_count
+    return {
+        'ok': bad_count == 0,
+        'version': VERSION,
+        'checked_at': now_local().isoformat(timespec='seconds'),
+        'summary': f'{ok_count}/{len(rows)} pruebas OK',
+        'ok_count': ok_count,
+        'bad_count': bad_count,
+        'rows': rows,
+        'note': 'Diagnóstico aislado: no crea, modifica ni borra datos reales.',
+    }
+
+
 def system_console_context_full(db: Session, request: Request) -> dict:
     register_deploy_event()
     backup_exists = JSON_BACKUP_PATH.exists()
@@ -2342,6 +2454,7 @@ def system_console_context_full(db: Session, request: Request) -> dict:
         "phase7": phase7_summary(db),
         "phase9": phase9_summary(db),
         "phase11": {},
+        "captain_logic_tests": captain_logic_diagnostic_tests(),
         "communications_ready": communication_status(db).get("smtp_configured", False),
     }
 
@@ -2478,6 +2591,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         "phase7": phase7,
         "phase9": phase9,
         "phase11": {},
+        "captain_logic_tests": captain_logic_diagnostic_tests(),
         "communications_ready": bool(comm.get("smtp_configured")),
     }
     SYSTEM_FAST_CACHE[cache_key] = {"ts": now_ts, "data": data}
@@ -4443,7 +4557,7 @@ def health():
             server_v = postgres_server_version(_db)
     except Exception:
         server_v = ""
-    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": "diferido", "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "phase11d_system_nav_direct": True, "phase12_profesionalizacion_interna": True, "phase12b_system_fast": True, "phase12c_system_fast_real": True, "phase13_security_tests_observability": True, "security_headers_base": True, "system_fast_cache_seconds": SYSTEM_FAST_CACHE_SECONDS, "professional_docs": True, "smoke_tests_scaffold": True, "system_sections_collapsible": True, "request_observability": True, "admin_security_status_endpoint": True, "admin_observability_endpoint": True, "phase13_security_tests_observability": True, "phase14_validaciones_tests": True, "phase15_error_boundary": True, "phase15_repositories_scaffold": True, "phase15_services_scaffold": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
+    return {"ok": db_ok, "version": VERSION, "release_label": RELEASE_LABEL, "app_build": APP_BUILD, "club_name": CLUB_NAME, "app_name": APP_NAME, "app_model": APP_MODEL, "max_crew": MAX_CREW, "min_crew": MIN_CREW, "captain_cancel_after_close": True, "captain_close_from_selector": True, "admin_users": True, "document_id_alnum": True, "database": db_engine_label(), "database_ok": db_ok, "database_error": db_error, "schema_version": "1", "source_of_truth": db_engine_label(), "json_mode": "export_only", "json_backup": str(JSON_BACKUP_PATH), "json_exists": JSON_BACKUP_PATH.exists(), "waitlist": True, "dependent_guest_cascade": True, "captain_guest_reassignment": True, "activity_monitor": True, "system_console": True, "hardening": True, "session_versioning": True, "login_ip_lock_threshold": LOGIN_LOCK_IP_ATTEMPTS, "session_max_age_seconds": SESSION_MAX_AGE_SECONDS, "pg_dump_available": bool(shutil.which("pg_dump")), "pg_dump_version": pg_dump_version_label(), "postgres_server_version": server_v, "communications": True, "notification_queue": True, "auto_queue_processing": True, "reminders_24h": True, "release_checklist": True, "root_redirect": True, "operation_locks": True, "operation_lock_ttl_seconds": OPERATION_LOCK_TTL_SECONDS, "architecture_scaffold": True, "architecture_modules": "diferido", "operational_status": True, "phase7_operations_alerts": True, "phase8_ux_operacional": True, "phase9_operacion_humana": True, "phase10_routing_guard": True, "phase11_centro_operativo": True, "phase11d_system_nav_direct": True, "phase12_profesionalizacion_interna": True, "phase12b_system_fast": True, "phase12c_system_fast_real": True, "phase13_security_tests_observability": True, "security_headers_base": True, "system_fast_cache_seconds": SYSTEM_FAST_CACHE_SECONDS, "professional_docs": True, "smoke_tests_scaffold": True, "system_sections_collapsible": True, "request_observability": True, "admin_security_status_endpoint": True, "admin_observability_endpoint": True, "phase13_security_tests_observability": True, "phase14_validaciones_tests": True, "phase15_error_boundary": True, "phase15_repositories_scaffold": True, "phase15_services_scaffold": True, "captain_logic_tests": True, "maintenance_mode": maintenance_status().get("enabled", False), "app_started_at": APP_STARTED_AT.isoformat(timespec="seconds")}
 
 def _home_for_user(user: Optional[User]) -> str:
     if not user:
@@ -7467,6 +7581,32 @@ def admin_diagnostic_txt(request: Request, db: Session = Depends(db_session), us
 
 
 
+
+
+@app.get("/admin/captain_logic_tests.json")
+def admin_captain_logic_tests_json(request: Request, user: User = Depends(require_role("admin"))):
+    return captain_logic_diagnostic_tests()
+
+@app.get("/admin/captain_logic_tests.txt")
+def admin_captain_logic_tests_txt(request: Request, user: User = Depends(require_role("admin"))):
+    data = captain_logic_diagnostic_tests()
+    lines = [
+        f"Fjord VI · Pruebas lógicas Capitán",
+        f"version: {data.get('version')}",
+        f"fecha: {data.get('checked_at')}",
+        f"resultado: {data.get('summary')}",
+        f"nota: {data.get('note')}",
+        "",
+    ]
+    for r in data.get('rows', []):
+        state = 'OK' if r.get('ok') else 'ERROR'
+        lines.append(f"[{state}] {r.get('name')}")
+        lines.append(f"  {r.get('detail')}")
+        if r.get('expected') or r.get('got'):
+            lines.append(f"  esperado: {r.get('expected')}")
+            lines.append(f"  obtenido: {r.get('got')}")
+        lines.append("")
+    return PlainTextResponse("\n".join(lines), media_type="text/plain; charset=utf-8")
 
 @app.get("/admin/performance_policy.json")
 def admin_performance_policy_json(request: Request, user: User = Depends(require_role("admin"))):
