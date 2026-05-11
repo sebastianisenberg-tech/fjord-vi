@@ -360,14 +360,15 @@
     {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
     {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) or v.waitlisted %}
     {% set reason_text = '' %}
-    {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}{% set reason_text = '' %}
-    {% elif v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
+    {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
     {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
     <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 captainGroupV11611 groupColor{{group_index_v11611}} groupRole-{{group_role_v11611}} {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
       <div class="captainFastIdentityV65">
         <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
         {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
-        <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Institucional del club{% if v.responsible_name %} · cargado por {{v.responsible_name}}{% endif %}</div>
+        <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Invitación institucional{% if v.protocolar_reference_name %} · Ref: {{v.protocolar_reference_name}}{% endif %}</div>
+        {% elif v.show_responsible %}
+        <div class="captainResponsibleTraceV1170">Invitado de {{v.responsible_name}}</div>
         {% endif %}
 {% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>
@@ -381,7 +382,7 @@
       </div>
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
-          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Sin acción{% else %}Bloqueado{% endif %}</span>
+          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
         {% else %}
           <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
           <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
@@ -389,8 +390,8 @@
           <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
             <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
             <div class="captainMoreOpsBody">
-              {% if v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
-              {% if reason_text %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
+              {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<div class="captainMoreInfo"><b>Institucional del club</b>{% if v.protocolar_reference_name %}<br>Referente: {{v.protocolar_reference_name}}{% endif %}</div>{% elif v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
+              {% if reason_text and not (reservation_views.get(r.id) and reservation_views.get(r.id).protocolar) %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
               <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>
               {% if v.not_embarked or v.cancelled or r.attendance == 'Ausente' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
@@ -439,7 +440,7 @@
           <li>Tocá una persona para alternar Presente / No embarcó.</li>
           <li>Usá ⋯ para No embarca/sin cargo, reactivar o reasignar invitados.</li>
           <li>Los invitados comunes dependen del socio titular del grupo.</li>
-          <li>Los institucionales son invitados del club: no tienen reasignación operativa por ausencia del socio.</li>
+          <li>Los institucionales están separados al final y no dependen de un socio.</li>
           <li>Cancelar por capitán suspende la salida y no genera cargos.</li>
           <li>Cerrar salida genera la ficha de navegación para Administración.</li>
         </ul>

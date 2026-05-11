@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.14"
+APP_VERSION = "1.17.0"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.14"
-RELEASE_LABEL = "Fjord VI · v1.16.14"
+APP_BUILD = "Fjord VI 1.17.0"
+RELEASE_LABEL = "Fjord VI · v1.17.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5025,7 +5025,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
     waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
     if outing and views:
-        responsible_ids = sorted({r.responsible_user_id for r in reservations if r.responsible_user_id})
+        responsible_ids = sorted({uid for r in reservations for uid in (r.responsible_user_id, getattr(r, "protocolar_by_user_id", None)) if uid})
         responsible_users = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids)).all()} if responsible_ids else {}
         for r in reservations:
             v = views.get(r.id)
@@ -5034,34 +5034,48 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             responsible = responsible_users.get(r.responsible_user_id) if r.responsible_user_id else None
             own_reservation = bool(responsible and r.dni == responsible.dni)
             v["responsible_name"] = responsible.name if responsible else ""
+            protocolar_ref = responsible_users.get(getattr(r, "protocolar_by_user_id", None)) if is_protocolar(r) and getattr(r, "protocolar_by_user_id", None) else None
+            v["protocolar_reference_name"] = protocolar_ref.name if protocolar_ref else v.get("responsible_name", "")
             v["responsible_member_no"] = (responsible.member_no or "") if responsible else ""
             v["responsible_dni"] = responsible.dni if responsible else ""
             responsible_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=responsible.dni).first() if responsible else None
             v["responsible_attendance"] = responsible_row.attendance if responsible_row else ""
             v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
-            # Invitados institucionales/protocolares no se muestran como dependientes operativos
-            # del socio ni habilitan reasignación: son invitados del club.
-            v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation and not is_protocolar(r))
+            v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
 
-        # Vista Capitán: metadatos visuales livianos para agrupar cada socio con sus invitados.
-        # No modifica reglas de cargo ni liquidación; solo reduce lectura en celular.
+        # Vista Capitán v1.17.0: color = socio responsable operativo/de referencia.
+        # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
+        # La barra lateral NO representa categoría ni estado: representa de quién depende
+        # operativa/económicamente la persona dentro de esta salida.
         group_index_by_key = {}
         group_seq = 0
+
+        def captain_group_key(rr):
+            # Reasignados e invitados comunes: el responsable actual manda.
+            if getattr(rr, "responsible_user_id", None):
+                return f"u-{rr.responsible_user_id}"
+            # Institucionales puros: vínculo de referencia con quien los cargó/autorizó.
+            if is_protocolar(rr) and getattr(rr, "protocolar_by_user_id", None):
+                return f"u-{rr.protocolar_by_user_id}"
+            # Fallback defensivo: fila aislada, sin inventar responsable.
+            return f"row-{rr.id}"
+
         for rr in reservations:
             vv = views.get(rr.id)
             if not vv:
                 continue
-            key = rr.responsible_user_id or f"row-{rr.id}"
+            key = captain_group_key(rr)
             if key not in group_index_by_key:
                 group_seq += 1
                 group_index_by_key[key] = ((group_seq - 1) % 8) + 1
             vv["captain_group_index"] = group_index_by_key[key]
-            # Los institucionales usan el color del socio que los cargó, pero conservan rol visual propio.
             if is_protocolar(rr):
                 vv["captain_group_role"] = "institutional"
+            elif canonical_kind(rr.kind) == "socio":
+                vv["captain_group_role"] = "owner"
             else:
-                vv["captain_group_role"] = "owner" if canonical_kind(rr.kind) == "socio" else "guest"
+                vv["captain_group_role"] = "guest"
     captain_responsible_options = []
     if outing and reservations:
         # Socios presentes y activos disponibles para tomar invitados a cargo en el momento del embarque.
@@ -6065,7 +6079,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     waitlist_count = sum(1 for rr in reservations if is_waitlisted(rr)) if outing else 0
     views = reservation_views(outing, reservations) if outing else {}
     if outing and views:
-        responsible_ids = sorted({r.responsible_user_id for r in reservations if r.responsible_user_id})
+        responsible_ids = sorted({uid for r in reservations for uid in (r.responsible_user_id, getattr(r, "protocolar_by_user_id", None)) if uid})
         responsible_users = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids)).all()} if responsible_ids else {}
         for r in reservations:
             v = views.get(r.id)
@@ -6074,6 +6088,8 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             responsible = responsible_users.get(r.responsible_user_id) if r.responsible_user_id else None
             own_reservation = bool(responsible and r.dni == responsible.dni)
             v["responsible_name"] = responsible.name if responsible else ""
+            protocolar_ref = responsible_users.get(getattr(r, "protocolar_by_user_id", None)) if is_protocolar(r) and getattr(r, "protocolar_by_user_id", None) else None
+            v["protocolar_reference_name"] = protocolar_ref.name if protocolar_ref else v.get("responsible_name", "")
             v["responsible_member_no"] = (responsible.member_no or "") if responsible else ""
             v["responsible_dni"] = responsible.dni if responsible else ""
             responsible_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=responsible.dni).first() if responsible else None

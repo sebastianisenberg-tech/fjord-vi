@@ -1,13 +1,3 @@
-## 1.16.14 - Estabilización visual conservadora Capitán
-- Base: 1.16.12 estable.
-- Unificación de versión central a 1.16.14.
-- Capitán: se mantiene la lógica operativa, cierre, reapertura, lista de espera, liquidación y reglas de negocio sin cambios funcionales.
-- Capitán: alineación izquierda uniforme para socios, invitados, institucionales y espera.
-- Capitán: un solo color lateral por grupo de socio, sin barras triples ni semántica visual confusa.
-- Capitán: protocolar/institucional conserva identificación visual, pero no muestra reasignación operativa ni dependencia por ausencia de socio.
-- Capitán: lista de espera sin duplicación visual de “Espera”.
-- Capitán: guía rápida responsive para móvil vertical.
-
 
 ## 1.16.12 - Capitán UX refinada
 - Elimina indicador TAP redundante; el menú ⋯ queda como acción excepcional.
