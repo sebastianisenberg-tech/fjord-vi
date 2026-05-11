@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.16.13"
+APP_VERSION = "1.16.14"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.16.13"
-RELEASE_LABEL = "Fjord VI · v1.16.13"
+APP_BUILD = "Fjord VI 1.16.14"
+RELEASE_LABEL = "Fjord VI · v1.16.14"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5040,7 +5040,9 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["responsible_attendance"] = responsible_row.attendance if responsible_row else ""
             v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
-            v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
+            # Invitados institucionales/protocolares no se muestran como dependientes operativos
+            # del socio ni habilitan reasignación: son invitados del club.
+            v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation and not is_protocolar(r))
 
         # Vista Capitán: metadatos visuales livianos para agrupar cada socio con sus invitados.
         # No modifica reglas de cargo ni liquidación; solo reduce lectura en celular.
@@ -5055,9 +5057,8 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
                 group_seq += 1
                 group_index_by_key[key] = ((group_seq - 1) % 8) + 1
             vv["captain_group_index"] = group_index_by_key[key]
+            # Los institucionales usan el color del socio que los cargó, pero conservan rol visual propio.
             if is_protocolar(rr):
-                # Institucional/protocolar: se distingue por texto y sección,
-                # pero mantiene el color del socio que lo cargó para lectura rápida.
                 vv["captain_group_role"] = "institutional"
             else:
                 vv["captain_group_role"] = "owner" if canonical_kind(rr.kind) == "socio" else "guest"
@@ -5115,51 +5116,6 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             "row_class": "chargeRow" if vv.get("charge", 0) > 0 else ("waitRow" if vv.get("waitlisted") else ("mutedRow" if vv.get("cancelled") else "")),
         })
 
-
-    captain_groups = []
-    captain_institutionals = []
-    captain_waitlist = []
-    if outing and reservations:
-        # Estructura visual conservadora para Capitán: no modifica reglas, cargos ni cierre.
-        # Solo ordena la pantalla según el modelo mental operativo: socio responsable -> invitados.
-        users_by_id = {}
-        responsible_ids_for_groups = sorted({rr.responsible_user_id for rr in reservations if rr.responsible_user_id})
-        if responsible_ids_for_groups:
-            users_by_id = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids_for_groups)).all()}
-
-        owners_by_uid = {}
-        groups_by_uid = {}
-        group_order = []
-
-        for rr in reservations:
-            vv = views.get(rr.id, {})
-            if vv.get("protocolar"):
-                captain_institutionals.append(rr)
-                continue
-            if vv.get("waitlisted"):
-                captain_waitlist.append(rr)
-                continue
-            uid = rr.responsible_user_id or f"row-{rr.id}"
-            if uid not in groups_by_uid:
-                groups_by_uid[uid] = []
-                group_order.append(uid)
-            if canonical_kind(rr.kind) == "socio":
-                owners_by_uid[uid] = rr
-            else:
-                groups_by_uid[uid].append(rr)
-
-        for uid in group_order:
-            owner = owners_by_uid.get(uid)
-            if not owner:
-                responsible_user = users_by_id.get(uid) if isinstance(uid, int) else None
-                owner = {
-                    "synthetic": True,
-                    "id": f"owner-{uid}",
-                    "person_name": responsible_user.name if responsible_user else "Socio responsable",
-                    "member_no": getattr(responsible_user, "member_no", "") if responsible_user else "",
-                }
-            captain_groups.append({"owner": owner, "guests": groups_by_uid.get(uid, [])})
-
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}
     checkin_url = ""
@@ -5181,9 +5137,6 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
         "waitlist_count": waitlist_count, "total_registros": len(reservations) if outing else 0,
         "checkin_url": checkin_url, "qr_url": qr_url, "control_window": control_window,
         "captain_responsible_options": captain_responsible_options,
-        "captain_groups": captain_groups,
-        "captain_institutionals": captain_institutionals,
-        "captain_waitlist": captain_waitlist,
         "current_sheet": current_sheet
     })
 
@@ -6181,51 +6134,6 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             "cancelled_at": fmt_admin_datetime(rr.cancelled_at) if rr.cancelled_at else "",
             "row_class": "chargeRow" if vv.get("charge", 0) > 0 else ("waitRow" if vv.get("waitlisted") else ("mutedRow" if vv.get("cancelled") else "")),
         })
-
-
-    captain_groups = []
-    captain_institutionals = []
-    captain_waitlist = []
-    if outing and reservations:
-        # Estructura visual conservadora para Capitán: no modifica reglas, cargos ni cierre.
-        # Solo ordena la pantalla según el modelo mental operativo: socio responsable -> invitados.
-        users_by_id = {}
-        responsible_ids_for_groups = sorted({rr.responsible_user_id for rr in reservations if rr.responsible_user_id})
-        if responsible_ids_for_groups:
-            users_by_id = {u.id: u for u in db.query(User).filter(User.id.in_(responsible_ids_for_groups)).all()}
-
-        owners_by_uid = {}
-        groups_by_uid = {}
-        group_order = []
-
-        for rr in reservations:
-            vv = views.get(rr.id, {})
-            if vv.get("protocolar"):
-                captain_institutionals.append(rr)
-                continue
-            if vv.get("waitlisted"):
-                captain_waitlist.append(rr)
-                continue
-            uid = rr.responsible_user_id or f"row-{rr.id}"
-            if uid not in groups_by_uid:
-                groups_by_uid[uid] = []
-                group_order.append(uid)
-            if canonical_kind(rr.kind) == "socio":
-                owners_by_uid[uid] = rr
-            else:
-                groups_by_uid[uid].append(rr)
-
-        for uid in group_order:
-            owner = owners_by_uid.get(uid)
-            if not owner:
-                responsible_user = users_by_id.get(uid) if isinstance(uid, int) else None
-                owner = {
-                    "synthetic": True,
-                    "id": f"owner-{uid}",
-                    "person_name": responsible_user.name if responsible_user else "Socio responsable",
-                    "member_no": getattr(responsible_user, "member_no", "") if responsible_user else "",
-                }
-            captain_groups.append({"owner": owner, "guests": groups_by_uid.get(uid, [])})
 
     summary = charge_summary(outing, reservations) if outing else {"socios": [], "invitados": [], "menores": [], "total": 0, "total_label": "0", "preliminares": [], "preliminary_total": 0, "preliminary_total_label": "0"}
     acta = final_acta(outing, reservations) if outing else {"embarked": [], "not_embarked": [], "pending": [], "charges": [], "preliminary": [], "total": 0, "total_label": "0", "preliminary_total": 0, "preliminary_total_label": "0", "embarked_count": 0, "not_embarked_count": 0, "pending_count": 0}

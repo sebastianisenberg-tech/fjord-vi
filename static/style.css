@@ -8711,7 +8711,7 @@ a[href="/account/password"].topAction{
 .captainTripCount,.captainProcessedLineV1167{color:#163247!important;font-weight:600!important;}
 
 
-/* Fjord VI 1.16.13 - Capitán: grupos visuales por socio, menos lectura y mejor celular */
+/* Fjord VI 1.16.11 - Capitán: grupos visuales por socio, menos lectura y mejor celular */
 .captainPeopleListV65{gap:8px!important;}
 .captainGroupV11611{
   position:relative!important;
@@ -8837,7 +8837,7 @@ a[href="/account/password"].topAction{
   .compactInstitutionalV11611{font-size:9px!important;padding:2px 6px!important;}
 }
 
-/* Fjord VI 1.16.13 - Capitán UX refinada y legibilidad móvil */
+/* Fjord VI 1.16.12 - Capitán UX refinada y legibilidad móvil */
 .captainProBody .tapCueV65{display:none!important;}
 .captainInlineReassignV1161{display:none!important;}
 
@@ -8949,291 +8949,163 @@ a[href="/account/password"].topAction{
   .captainGroupV11611.groupRole-owner .captainPersonName{font-size:15.2px!important;max-width:44vw!important;}
 }
 
-.captainResponsibleTraceV11613{font-size:11px;color:#4b5d70;margin-top:2px;font-weight:600}.captainResponsibleTraceV11613.waitOwner{color:#9a6a00}.captainPerson.hasResponsibleV1164{margin-left:14px;border-left-width:5px}.captainPerson.groupRole-socio{margin-left:0}.captainOpsSheetPanel{max-width:92vw!important;right:auto!important;left:50%!important;transform:translateX(-50%)!important;overflow-wrap:anywhere}.captainMoreOpsBody{max-width:88vw}.captainPersonName{display:block}
-/* Fjord VI 1.16.13 - Capitán: grupos conservadores por socio responsable */
-.captainGroupedListV11613{
-  gap:10px!important;
+/* Fjord VI 1.16.14 - Capitán: estabilización visual conservadora
+   Criterio: una sola lectura lineal, un color por grupo, sin zig-zag ni barras triples. */
+.captainPeopleListV65{
+  gap:8px!important;
 }
-.captainGroupBlockV11613{
-  border:1px solid #d9e6ee;
-  border-radius:17px;
-  padding:7px 7px 8px 7px;
-  background:linear-gradient(180deg,#ffffff,#f8fbfd);
-  box-shadow:0 7px 18px rgba(15,35,55,.055);
-}
-.captainGroupBlockV11613 > .captainFastRowV65{
-  margin-top:0!important;
-  margin-bottom:6px!important;
-}
-.captainDependentsV11613{
-  display:grid;
-  gap:7px;
-  padding-left:15px;
-  border-left:2px solid #d6e5ed;
-  margin-left:7px;
-}
-.captainDependentsV11613 .captainFastRowV65{
-  margin-left:0!important;
-  min-height:42px!important;
-  background:#fbfdff!important;
-  box-shadow:0 5px 13px rgba(15,35,55,.07)!important;
-}
-.captainSectionBreakV11613{
-  margin:13px 2px 4px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  color:#536879;
-  font-size:10px;
-  font-weight:950;
-  text-transform:uppercase;
-  letter-spacing:.09em;
-}
-.captainSectionBreakV11613:before,
-.captainSectionBreakV11613:after{
-  content:'';
-  height:1px;
-  background:#d8e4ec;
-  flex:1;
-}
-.captainSectionBreakV11613.wait{color:#85600c;}
-.captainInstitutionalsV11613,
-.captainWaitlistV11613{
-  display:grid;
-  gap:8px;
-}
-.captainInstitutionalsV11613 .captainFastRowV65{
-  margin-left:0!important;
-  background:linear-gradient(90deg,#eef7fc,#fff)!important;
-  border-color:#9fc7dc!important;
-}
-.captainWaitlistV11613 .captainFastRowV65{
-  margin-left:0!important;
-  background:linear-gradient(90deg,#fff9df,#fff)!important;
-  border-color:#e7d68e!important;
-}
-.captainGroupOwnerSyntheticV11613{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  padding:9px 11px;
-  border-radius:13px;
-  background:#eef7fb;
-  color:#102f43;
-  font-weight:950;
-}
-.captainGroupOwnerSyntheticV11613 b{font-size:15.5px;}
-.captainGroupOwnerSyntheticV11613 span,
-.captainGroupV11611.groupRole-owner .badgeTipo.socio{
-  display:inline-flex!important;
-  align-items:center;
-  width:auto!important;
-  margin-left:5px!important;
-  vertical-align:middle!important;
-  position:relative!important;
-  top:-1px;
-  font-size:9.5px!important;
-  padding:3px 7px!important;
-}
-.captainGroupV11611.groupRole-owner .captainFastIdentityV65{
-  display:block!important;
-}
-.captainGroupV11611.groupRole-owner .captainPersonName{
-  display:inline!important;
-  font-size:16.3px!important;
-  max-width:none!important;
-  white-space:normal!important;
-  overflow:visible!important;
-  text-overflow:clip!important;
-}
-.captainGroupV11611.groupRole-guest .captainFastIdentityV65,
-.captainGroupV11611.groupRole-institutional .captainFastIdentityV65{
-  display:block!important;
-}
-.captainGroupV11611.groupRole-guest .captainPersonName,
-.captainGroupV11611.groupRole-institutional .captainPersonName{
-  display:block!important;
-  white-space:normal!important;
-  max-width:none!important;
-}
-.captainGroupV11611.groupRole-guest .badgeTipo,
-.captainGroupV11611.groupRole-institutional .badgeTipo,
-.captainGroupV11611.groupRole-institutional .compactInstitutionalV11611{
-  margin-top:3px!important;
-}
-.captainResponsibleTraceV11613{
-  display:block!important;
-  margin-top:3px!important;
-  font-size:11.3px!important;
-  color:#4d6170!important;
-  font-weight:750!important;
-}
-.captainWaitlistV11613 .captainResponsibleTraceV11613.waitOwner{
-  color:#8a6509!important;
-  font-weight:850!important;
-}
-@media(max-width:430px){
-  .captainGroupBlockV11613{padding:6px;}
-  .captainDependentsV11613{padding-left:11px;margin-left:6px;}
-  .captainGroupV11611.groupRole-owner .captainPersonName{font-size:15.8px!important;}
-  .captainGroupV11611.groupRole-owner .badgeTipo.socio{font-size:9px!important;padding:2px 6px!important;}
-}
-
-/* Fjord VI 1.16.13 - Capitán: limpieza conservadora final
-   - Todo alineado a la izquierda.
-   - Un solo color lateral por grupo de socio.
-   - Sin triple barra estado/grupo.
-   - La jerarquía se explica por texto y bloque, no por desplazamientos. */
-.captainGroupedListV11613{
-  display:grid!important;
-  gap:10px!important;
-}
-.captainGroupBlockV11613{
-  border:1px solid #d9e6ee!important;
-  border-radius:17px!important;
-  padding:7px!important;
-  background:#fff!important;
-  box-shadow:0 6px 16px rgba(15,35,55,.055)!important;
-}
-.captainDependentsV11613{
-  display:grid!important;
-  gap:7px!important;
-  padding-left:0!important;
-  margin-left:0!important;
-  border-left:0!important;
-}
-.captainGroupedListV11613 .captainFastRowV65,
-.captainGroupedListV11613 .captainPerson,
-.captainInstitutionalsV11613 .captainFastRowV65,
-.captainWaitlistV11613 .captainFastRowV65{
-  margin-left:0!important;
-  width:100%!important;
-  box-sizing:border-box!important;
-}
-.captainPerson.hasResponsibleV1164{margin-left:0!important;border-left-width:0!important;}
 .captainGroupV11611{
-  position:relative!important;
-  border-left:5px solid var(--group-color,#1976a3)!important;
+  margin-left:0!important;
+  padding-left:15px!important;
   background:#fff!important;
+  border:1px solid #d7e3eb!important;
+  box-shadow:0 5px 13px rgba(15,35,55,.075)!important;
+  border-radius:14px!important;
 }
-.captainGroupV11611::before,
+.captainGroupV11611::before{
+  width:7px!important;
+  background:var(--group-color,#1f6f96)!important;
+  opacity:1!important;
+  border-radius:14px 0 0 14px!important;
+}
 .captainGroupV11611::after{
   display:none!important;
   content:none!important;
 }
-.captainGroupV11611.statePresent,
-.captainGroupV11611.stateAbsent,
-.captainGroupV11611.stateNoBoard,
-.captainGroupV11611.statePending,
-.captainInstitutionalsV11613 .captainFastRowV65,
-.captainWaitlistV11613 .captainFastRowV65{
+.captainGroupV11611.groupRole-owner,
+.captainGroupV11611.groupRole-guest,
+.captainGroupV11611.groupRole-institutional{
+  margin-left:0!important;
+  margin-top:0!important;
+  min-height:48px!important;
   background:#fff!important;
 }
 .captainGroupV11611.groupRole-owner{
-  background:#f8fbfd!important;
-  border-top:1px solid rgba(15,35,55,.05)!important;
+  margin-top:9px!important;
+  border-color:#c5d8e4!important;
+}
+.captainGroupV11611.groupRole-guest{
+  border-color:#dbe6ee!important;
+}
+.captainGroupV11611.groupRole-institutional{
+  border-color:#cfdfe9!important;
+  background:#fbfdff!important;
+}
+.captainGroupV11611.statePresent,
+.captainGroupV11611.stateAbsent,
+.captainGroupV11611.stateNoBoard,
+.captainGroupV11611.statePending{
+  background:#fff!important;
+}
+.captainGroupV11611 .captainFastIdentityV65{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  min-width:0!important;
+}
+.captainGroupV11611 .captainPersonName{
+  max-width:100%!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
 }
 .captainGroupV11611.groupRole-owner .captainPersonName{
-  display:inline!important;
-  font-size:16.5px!important;
+  font-size:16px!important;
   font-weight:950!important;
-  letter-spacing:-.01em!important;
-  color:#102334!important;
-}
-.captainGroupV11611.groupRole-owner .badgeTipo.socio{
-  display:inline-flex!important;
-  margin-left:6px!important;
-  transform:translateY(-1px)!important;
-  font-size:9.5px!important;
-  padding:3px 7px!important;
-  vertical-align:middle!important;
+  color:#102a3c!important;
 }
 .captainGroupV11611.groupRole-guest .captainPersonName,
 .captainGroupV11611.groupRole-institutional .captainPersonName{
   font-size:14px!important;
   font-weight:850!important;
-  color:#183247!important;
+  color:#213849!important;
 }
-.captainResponsibleTraceV11613,
-.captainProtocolarTraceV1165,
-.compactInstitutionalV11611{
-  margin-top:3px!important;
-}
-.compactInstitutionalV11611{
-  background:#f5f8fb!important;
-  border-color:#d3e1ea!important;
-  color:#37546a!important;
-}
-.captainSectionBreakV11613{
-  margin:14px 2px 5px!important;
-}
-.captainInstitutionalsV11613,
-.captainWaitlistV11613{
-  display:grid!important;
-  gap:8px!important;
-}
-.captainWaitlistV11613 .captainGroupV11611{
-  border-left-color:var(--group-color,#b86b1d)!important;
-}
-.captainWaitlistV11613 .captainResponsibleTraceV11613.waitOwner{
-  color:#7a5600!important;
-}
-@media(max-width:430px){
-  .captainGroupBlockV11613{padding:6px!important;}
-  .captainGroupedListV11613 .captainFastRowV65{grid-template-columns:minmax(0,1fr) auto auto!important;}
-  .captainGroupV11611.groupRole-owner .captainPersonName{font-size:16px!important;}
-  .captainGroupV11611.groupRole-guest .captainPersonName,
-  .captainGroupV11611.groupRole-institutional .captainPersonName{font-size:13.7px!important;}
-}
-
-/* Fjord VI 1.16.13 hotfix - Capitán alineado y color único por grupo */
-.captainGroupedListV11613 .captainGroupV11611,
-.captainGroupedListV11613 .captainGroupV11611.groupRole-owner,
-.captainGroupedListV11613 .captainGroupV11611.groupRole-guest,
-.captainGroupedListV11613 .captainGroupV11611.groupRole-institutional{
+.captainGroupV11611 .badgeTipo,
+.captainGroupV11611 .protoBadge{
+  display:inline-flex!important;
+  align-items:center!important;
   margin-left:0!important;
-  margin-right:0!important;
-  padding-left:16px!important;
-  background:#fff!important;
-  border-color:#d8e4ec!important;
-  box-shadow:0 5px 14px rgba(15,35,55,.08)!important;
+  white-space:nowrap!important;
+  flex:0 0 auto!important;
+  font-size:9.5px!important;
+  line-height:1!important;
+  padding:4px 7px!important;
+  border-radius:999px!important;
 }
-.captainGroupedListV11613 .captainGroupV11611::before{
-  width:7px!important;
-  background:var(--group-color,#0b6f96)!important;
-  opacity:1!important;
+.captainGroupV11611.groupRole-owner .badgeTipo{
+  background:#e8f3f9!important;
+  border:1px solid #bdd8e8!important;
+  color:#0e4c71!important;
 }
-.captainGroupedListV11613 .captainGroupV11611::after{
+.captainGroupV11611.groupRole-guest .badgeTipo{
+  background:#f3f7fa!important;
+  border:1px solid #d3dfe7!important;
+  color:#344c5d!important;
+}
+.captainGroupV11611.groupRole-institutional .protoBadge{
+  background:#eef5f9!important;
+  border:1px solid #cbdde8!important;
+  color:#17425d!important;
+}
+.compactInstitutionalV11611{
+  display:block!important;
+  width:100%!important;
+  margin:4px 0 0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  color:#34596e!important;
+  font-size:10.5px!important;
+  font-weight:800!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+}
+.captainGroupV11611 .captainResponsibleTraceV1165,
+.captainGroupV11611 .captainProtocolarTraceV1167{
   display:none!important;
 }
-.captainGroupedListV11613 .captainDependentsV11613{
-  margin-left:0!important;
-  padding-left:0!important;
-  border-left:0!important;
+.captainGroupV11611 .captainDniTrace{
+  display:none!important;
 }
-.captainGroupedListV11613 .captainPersonName{
-  display:inline!important;
-  vertical-align:baseline!important;
+.captainGroupV11611.waitlisted{
+  background:#fffdf4!important;
 }
-.captainGroupedListV11613 .badgeTipo,
-.captainGroupedListV11613 .protoBadge{
-  display:inline-flex!important;
-  vertical-align:baseline!important;
-  margin-left:6px!important;
-  position:static!important;
+.captainGroupV11611.inactive{
+  background:#f8fafc!important;
 }
-.captainGroupedListV11613 .captainGroupV11611.groupRole-owner .captainPersonName{
-  font-size:16px!important;
-  font-weight:950!important;
+.captainLockedPill{
+  white-space:nowrap!important;
 }
-.captainGroupedListV11613 .captainGroupV11611.groupRole-guest .captainPersonName,
-.captainGroupedListV11613 .captainGroupV11611.groupRole-institutional .captainPersonName{
-  font-size:13.5px!important;
-  font-weight:850!important;
+.captainQuickGuidePanelV11612{
+  max-width:calc(100vw - 28px)!important;
+  box-sizing:border-box!important;
+  overflow-wrap:anywhere!important;
 }
-.captainGroupedListV11613 .captainGroupV11611.groupRole-institutional::before{
-  background:var(--group-color,#0b6f96)!important;
-}
-@media (max-width:420px){
-  .captainGroupedListV11613 .captainGroupV11611.groupRole-guest{margin-left:0!important;}
+@media(max-width:430px){
+  .captainGroupV11611{
+    grid-template-columns:minmax(0,1fr) auto auto!important;
+    padding-left:14px!important;
+  }
+  .captainGroupV11611.groupRole-guest,
+  .captainGroupV11611.groupRole-institutional{
+    margin-left:0!important;
+  }
+  .captainGroupV11611.groupRole-owner .captainPersonName,
+  .captainGroupV11611.groupRole-guest .captainPersonName,
+  .captainGroupV11611.groupRole-institutional .captainPersonName{
+    max-width:100%!important;
+  }
+  .captainGroupV11611 .captainFastIdentityV65{
+    align-items:flex-start!important;
+    flex-wrap:wrap!important;
+  }
+  .captainQuickGuidePanelV11612{
+    position:fixed!important;
+    left:14px!important;
+    right:14px!important;
+    bottom:76px!important;
+    width:auto!important;
+    max-height:min(72vh,520px)!important;
+    overflow:auto!important;
+  }
 }
