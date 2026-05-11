@@ -1,0 +1,10 @@
+{
+  "version": "1.8.6",
+  "checks": [
+    "operation_locks table",
+    "outing scoped POST locks",
+    "anti double action mobile",
+    "release checklist updated",
+    "health extended"
+  ]
+}

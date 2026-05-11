@@ -1,0 +1,9 @@
+{
+  "version": "1.7.6",
+  "goal": "ui_structure_cleanup",
+  "logic_changed": false,
+  "python_syntax_ok": true,
+  "jinja_errors": [],
+  "header_structure_css_present": true,
+  "bad_app_version_self_reference": false
+}

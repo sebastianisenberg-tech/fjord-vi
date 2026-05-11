@@ -1,0 +1,15 @@
+services:
+  fjord-vi:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=change-me-in-real-use
+      - DATA_DIR=/app/data
+      - MAX_CREW=9
+      - MIN_CREW=2
+      - INVITED_FEE=45000
+    volumes:
+      - fjord_data:/app/data
+volumes:
+  fjord_data:

@@ -1,0 +1,19 @@
+{
+  "version": "1.8.4",
+  "scope": "Fase 2.1.1 - corrección de entrada raíz y login",
+  "changes": [
+    "Agrega helper interno _home_for_user para resolver destino según rol y estado de clave.",
+    "GET / ya no expone pantalla técnica: redirige a /login si no hay sesión o al área correspondiente si hay sesión válida.",
+    "POST / queda defendido y redirige a /login para evitar Method Not Allowed visible al usuario.",
+    "GET /login queda definido explícitamente y renderiza login con cache-control no-store.",
+    "Errores de login redirigen a /login?error=... en lugar de usar la raíz.",
+    "Versionado unificado a 1.8.4."
+  ],
+  "release_checklist": {
+    "root_redirect": "included",
+    "no_technical_root_page": "included",
+    "login_get_route": "included",
+    "postgres_health_unchanged": "unchanged",
+    "visual_templates_changed": false
+  }
+}

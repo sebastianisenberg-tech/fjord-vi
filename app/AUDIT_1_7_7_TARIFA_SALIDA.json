@@ -1,0 +1,11 @@
+{
+  "version": "1.7.7",
+  "base": "1.7.6b sobre ZIP 1.7.6",
+  "changes": [
+    "Restituido campo Valor invitado ($) en Nueva salida",
+    "La tarifa se guarda por salida para mantener trazabilidad histórica",
+    "El endpoint /admin/new_outing recibe y valida guest_fee",
+    "Corregido formato de default_new_outing_at para input datetime-local",
+    "Parseo JS del calendario robusto para datetime-local"
+  ]
+}
