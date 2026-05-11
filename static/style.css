@@ -8949,7 +8949,7 @@ a[href="/account/password"].topAction{
   .captainGroupV11611.groupRole-owner .captainPersonName{font-size:15.2px!important;max-width:44vw!important;}
 }
 
-/* Fjord VI v1.17.0 - Capitán: color único por socio responsable operativo
+/* Fjord VI v1.17.1 - Capitán: color único por socio responsable operativo
    Regla visual: barra izquierda = responsable operativo/de referencia.
    Badge = tipo de persona. Chip = estado. No se usan colores de categoría ni barras múltiples. */
 .captainPeopleListV65{gap:8px!important;}
@@ -9074,3 +9074,30 @@ a[href="/account/password"].topAction{
   .captainGroupV11611.groupRole-institutional .captainPersonName{font-size:13.5px!important;max-width:100%!important;}
   .captainResponsibleTraceV1170,.compactInstitutionalV11611{font-size:10.6px!important;}
 }
+
+
+/* Fjord VI v1.17.1 - ajustes finos Capitán */
+.captainQuickGuideV11612[open] .captainQuickGuidePanelV11612{
+  position:fixed!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 92px)!important;
+  transform:translateX(-50%)!important;
+  width:min(92vw,420px)!important;
+  max-width:92vw!important;
+  max-height:62vh!important;
+  overflow:auto!important;
+  z-index:5000!important;
+  box-sizing:border-box!important;
+  overflow-wrap:anywhere!important;
+}
+.captainQuickGuideV11612[open]::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  z-index:4999;
+  background:transparent;
+}
+.captainQuickGuideV11612[open] > summary{position:relative;z-index:5001;}
+.captainQuickGuidePanelV11612 li{overflow-wrap:break-word;}
+.captainLockedPill{white-space:nowrap;}

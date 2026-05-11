@@ -382,7 +382,7 @@
       </div>
       <div class="captainFastActionsV65" aria-label="Estados operativos">
         {% if locked_v65 %}
-          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Espera{% else %}Bloqueado{% endif %}</span>
+          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% elif v.waitlisted %}Sin acción{% else %}Bloqueado{% endif %}</span>
         {% else %}
           <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
           <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
@@ -440,7 +440,7 @@
           <li>Tocá una persona para alternar Presente / No embarcó.</li>
           <li>Usá ⋯ para No embarca/sin cargo, reactivar o reasignar invitados.</li>
           <li>Los invitados comunes dependen del socio titular del grupo.</li>
-          <li>Los institucionales están separados al final y no dependen de un socio.</li>
+          <li>Los institucionales son del club, pero conservan la referencia del socio que los cargó.</li>
           <li>Cancelar por capitán suspende la salida y no genera cargos.</li>
           <li>Cerrar salida genera la ficha de navegación para Administración.</li>
         </ul>
