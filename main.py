@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.7"
+APP_VERSION = "1.18.8"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -79,8 +79,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.7"
-RELEASE_LABEL = "Fjord VI · v1.18.7"
+APP_BUILD = "Fjord VI 1.18.8"
+RELEASE_LABEL = "Fjord VI · v1.18.8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -3379,12 +3379,16 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
         chosen = None
         for r in waiting:
             k = canonical_kind(r.kind)
-            if k in ("invitado", "hijo_menor"):
+            if k in ("invitado", "hijo_menor") and not is_protocolar(r):
                 responsible = db.get(User, r.responsible_user_id) if r.responsible_user_id else None
                 if not responsible:
                     continue
                 responsible_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=responsible.dni).first()
-                if not responsible_row or not reservation_is_active(responsible_row):
+                # Post-reapertura: solo se promueven invitados cuyo socio responsable
+                # siga operativo en la salida. Evita dejar "Espera / Sin acción"
+                # cuando hay vacante, pero también evita subir invitados bajo un socio
+                # que ya quedó Ausente o No embarca.
+                if not responsible_row or not reservation_is_active(responsible_row) or responsible_row.attendance not in ("Presente", "Por confirmar"):
                     continue
             chosen = r
             break
@@ -3399,6 +3403,51 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
     return promoted
 
 
+def captain_can_activate_waitlisted_reservation(db: Session, outing: Outing, r: Reservation) -> bool:
+    """Determina si el capitán puede sacar una reserva de espera en ese momento.
+
+    Se usa especialmente después de reabrir y liberar una plaza, cuando la lista de
+    espera debe volver a quedar operable sin romper dependencia socio-invitado.
+    """
+    if not outing or not r or not is_waitlisted(r):
+        return False
+
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    rows_without_target = [x for x in rows if x.id != r.id]
+    kind = canonical_kind(r.kind)
+
+    if kind == "socio":
+        return len(active_public_reservations(rows_without_target)) < public_capacity(outing)
+
+    if is_protocolar(r):
+        return protocolar_capacity_available(outing, rows_without_target)
+
+    if kind in ("invitado", "hijo_menor"):
+        responsible_row = responsible_reservation_for(db, outing.id, r.responsible_user_id)
+        responsible_ok = bool(
+            responsible_row
+            and canonical_kind(responsible_row.kind) == "socio"
+            and reservation_is_active(responsible_row)
+            and responsible_row.attendance in ("Presente", "Por confirmar")
+        )
+        if not responsible_ok:
+            return False
+        return len(active_public_reservations(rows_without_target)) < public_capacity(outing)
+
+    return len(active_reservations(rows_without_target)) < int(outing.max_crew or MAX_CREW)
+
+
+def captain_activate_waitlisted_reservation(db: Session, outing: Outing, r: Reservation) -> bool:
+    """Reactiva operativamente una reserva desde espera cuando ya existe vacante real."""
+    if not captain_can_activate_waitlisted_reservation(db, outing, r):
+        return False
+    previous_trace = reassignment_trace_only(r.cancel_reason or "")
+    r.cancelled_at = None
+    r.status = default_reservation_status(outing, r)
+    r.attendance = "Por confirmar"
+    r.charge_amount = 0
+    r.cancel_reason = previous_trace or "Promovido manualmente desde lista de espera por capitán"
+    return True
 
 
 def enforce_capacity(db: Session, outing: Outing) -> list:
@@ -5299,6 +5348,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
+            v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
         # Vista Capitán v1.18.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
@@ -5964,8 +6014,12 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
-    if is_waitlisted(r):
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
+    was_waitlisted = is_waitlisted(r)
+    if was_waitlisted:
+        if value not in ("Por confirmar", "Presente"):
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
+        if not captain_activate_waitlisted_reservation(db, outing, r):
+            return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
 
     if attendance_idempotent_noop(r, value):
         audit_event(db, user, "asistencia idempotente", f"{r.person_name}: {value} ya aplicado / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0)}, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0)})
@@ -6027,7 +6081,7 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
     enforce_capacity(db, outing)
     db.commit()
-    audit_event(db, user, "asistencia", f"{r.person_name}: {value} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""})
+    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 
@@ -6061,8 +6115,7 @@ def captain_reassign_guest(
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
-    if is_waitlisted(r):
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reserva_en_espera", status_code=303)
+    was_waitlisted = is_waitlisted(r)
 
     new_responsible = db.get(User, new_responsible_user_id)
     if not new_responsible or (new_responsible.role or "").strip().lower() != "socio":
@@ -6102,9 +6155,14 @@ def captain_reassign_guest(
     old_name = old_responsible.name if old_responsible else "sin responsable anterior"
     r.cancel_reason = f"Reasignado por capitán: {old_name} -> {new_responsible.name}"
 
+    # Caso real post-reapertura: si quedó una vacante y el invitado estaba en espera
+    # bajo otro socio, la reasignación debe volver a dejarlo operable en la misma maniobra.
+    if was_waitlisted:
+        captain_activate_waitlisted_reservation(db, outing, r)
+
     enforce_capacity(db, outing)
     db.commit()
-    audit_event(db, user, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_reassign, after={"responsible_user_id": r.responsible_user_id, "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""})
+    audit_event(db, user, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name}{' / reactivado desde espera' if was_waitlisted and not is_waitlisted(r) else ''} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_reassign, after={"responsible_user_id": r.responsible_user_id, "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
 

@@ -1,10 +1,10 @@
 {
-  "version": "1.18.7",
-  "release_label": "Fjord VI · v1.18.7",
+  "version": "1.18.8",
+  "release_label": "Fjord VI · v1.18.8",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-11",
   "notes": "Blindaje operativo fase 18: puntos 4 al 10. Validaciones finales, idempotencia, locks reforzados, auditoría ampliada, tests mínimos de negocio y release check automático sin cambiar la lógica funcional visible.",
-  "app_build": "Fjord VI 1.18.7",
+  "app_build": "Fjord VI 1.18.8",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
