@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.1
+## 1.2.2
 - Restauración mínima del blindaje formal sin agregar basura.
 - Reincorpora carpeta `tests/` con scaffold y tests críticos de negocio.
 - Reincorpora `scripts/release_check.py`.

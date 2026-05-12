@@ -1,10 +1,10 @@
 {
-  "version": "1.2.1",
-  "release_label": "Fjord VI · v1.2.1",
+  "version": "1.2.2",
+  "release_label": "Fjord VI · v1.2.2",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-11",
   "notes": "Reasignación persistente con responsable final único, historial auditable y agrupación consistente en Capitán, ficha y liquidación.",
-  "app_build": "Fjord VI 1.2.1",
+  "app_build": "Fjord VI 1.2.2",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
