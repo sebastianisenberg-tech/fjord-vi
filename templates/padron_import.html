@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Importar padrón oficial · Fjord VI</title>
+  <link rel="stylesheet" href="/static/style.css?v={{version}}">
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial;margin:0;background:#eef4f8;color:#102233}
+    .top{background:#0d2f46;color:#fff;padding:12px 18px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .wrap{max-width:1180px;margin:22px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid #dbe7ee;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 12px 30px rgba(20,40,55,.06)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.btn{display:inline-block;border:0;border-radius:10px;background:#0d5884;color:#fff;padding:11px 16px;font-weight:800;text-decoration:none;cursor:pointer}.btn.secondary{background:#eef4f8;color:#123;border:1px solid #cbdde8}.muted{color:#647789}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f6fafc;border:1px solid #dbe7ee;border-radius:12px;padding:12px;overflow:auto}.warn{background:#fff8df;border-color:#f2d782}.ok{background:#eaf8ef;border-color:#c8ecd3}.field{display:block;margin:10px 0}.field input{width:100%;padding:13px;border:1px solid #ccdbe5;border-radius:10px}.pill{display:inline-block;border-radius:999px;background:#eef7fb;border:1px solid #cfe3ee;padding:4px 8px;margin:3px;font-size:12px;font-weight:700}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="top"><div><b>Fjord VI</b> · Administración · {{version}}</div><a class="btn secondary" href="/admin?page=socios">Volver a usuarios</a></div>
+  <main class="wrap">
+    <section class="card">
+      <h1>Importar padrón oficial</h1>
+      <p>Subí un CSV estándar Fjord VI. Primero se hace una <b>previsualización</b>: no se modifica la base hasta confirmar.</p>
+      <div class="actions"><a class="btn secondary" href="/admin/users.csv">Descargar padrón actual antes de importar</a></div>
+    </section>
+
+    <section class="grid">
+      <article class="card ok">
+        <h2>Reglas de seguridad</h2>
+        <ul>
+          <li>No borra socios existentes.</li>
+          <li>Actualiza por <b>Nº de socio</b>.</li>
+          <li>Si no hay DNI, genera identificador técnico interno del socio.</li>
+          <li>Si coincide DNI con otro registro, lo advierte en la previsualización.</li>
+          <li>WhatsApp queda separado de teléfono de línea.</li>
+        </ul>
+      </article>
+      <article class="card warn">
+        <h2>Formato estándar</h2>
+        <p>Columnas recomendadas:</p>
+        <div class="mono">nro_socio,nombre_completo,categoria,email,whatsapp,telefono,dni,estado</div>
+        <p>También acepta variantes como <b>Número de Socio</b>, <b>Apellido, Nombre</b>, <b>Tipo de socio</b>, <b>Celular</b>.</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Subir archivo CSV</h2>
+      <form method="post" action="/admin/padron/import/preview" enctype="multipart/form-data">
+        <label class="field">Archivo CSV
+          <input type="file" name="file" accept=".csv,text/csv" required>
+        </label>
+        <button class="btn" type="submit">Previsualizar importación</button>
+        <a class="btn secondary" href="/admin?page=socios">Cancelar</a>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Categorías admitidas</h2>
+      <p>{% for c in categories %}<span class="pill">{{category_label(c)}}</span>{% endfor %}</p>
+    </section>
+
+    <section class="card">
+      <h2>Ejemplo mínimo</h2>
+      <div class="mono">nro_socio,nombre_completo,categoria,email,whatsapp,telefono,dni,estado
+17145,"Cabral, Mariano",activo,mariano@email.com,5491112345678,,26653587,activo
+20001,"García, Segundo",vitalicio,,5491199999999,,,activo</div>
+    </section>
+  </main>
+</body>
+</html>

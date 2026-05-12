@@ -1,0 +1,9 @@
+{
+  "version": "1.7.6",
+  "backend_changed": false,
+  "logic_changed": false,
+  "fix_plus_more": true,
+  "history_more_legible": true,
+  "python_syntax_ok": true,
+  "jinja_errors": []
+}
