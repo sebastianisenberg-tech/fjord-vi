@@ -1,9 +1,11 @@
-## 1.18.16
+## 1.18.17
 
-- Corrige la inconsistencia de versión visible en toda la aplicación.
-- Unifica APP_VERSION, APP_BUILD y RELEASE_LABEL a 1.18.16.
-- Alinea software_metadata.json, README y VERSION.txt.
-- Las nuevas fichas y PDFs salen con Fjord VI · v1.18.16.
+- Reestructura la reasignación de invitados sobre responsable final persistente.
+- Agrega campos explícitos en reservas: original_responsible_user_id, reassignment_count, last_reassigned_at y last_reassigned_by.
+- Agrega historial auditable reservation_reassignments.
+- Capitán, ficha, liquidación y estadísticas cuelgan del responsible_user_id final vigente.
+- Permite múltiples reasignaciones sin depender de cancel_reason como fuente de verdad.
+- Nuevas fichas y documentos salen con Fjord VI · v1.18.17.
 
 ## 1.18.14
 

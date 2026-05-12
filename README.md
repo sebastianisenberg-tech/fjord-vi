@@ -1,9 +1,9 @@
-# Fjord VI 1.18.16
+# Fjord VI 1.18.17
 
 Versión operativa actual del sistema web de reservas y embarque del Fjord VI con blindaje monolítico reforzado.
 
-- Release unificado en versión 1.18.16.
-- Hotfix de dependencias para exportación PDF de Estadísticas en Render.
+- Release unificado en versión 1.18.17.
+- Reasignación persistente con responsable final único e historial auditable.
 - Base de datos PostgreSQL como fuente de verdad en Render.
 - Diagnóstico operativo, release check y estado humano disponibles desde Sistema.
 - Mantiene la lógica operativa vigente de socio, capitán, administración, cierres, reaperturas, cargos e institucionales.
