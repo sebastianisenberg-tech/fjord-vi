@@ -1,7 +1,0 @@
-{
-  "version": "1.7.6",
-  "controls_removed": false,
-  "compact_ui": true,
-  "bottom_nav_refined": true,
-  "visual_density_reduced": true
-}
