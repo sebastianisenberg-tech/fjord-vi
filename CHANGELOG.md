@@ -1,11 +1,11 @@
-## 1.18.17
+## 1.18.18
 
 - Reestructura la reasignación de invitados sobre responsable final persistente.
 - Agrega campos explícitos en reservas: original_responsible_user_id, reassignment_count, last_reassigned_at y last_reassigned_by.
 - Agrega historial auditable reservation_reassignments.
 - Capitán, ficha, liquidación y estadísticas cuelgan del responsible_user_id final vigente.
 - Permite múltiples reasignaciones sin depender de cancel_reason como fuente de verdad.
-- Nuevas fichas y documentos salen con Fjord VI · v1.18.17.
+- Nuevas fichas y documentos salen con Fjord VI · v1.18.18.
 
 ## 1.18.14
 

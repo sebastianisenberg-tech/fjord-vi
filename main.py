@@ -40,7 +40,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.17"
+APP_VERSION = "1.18.18"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -84,8 +84,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.17"
-RELEASE_LABEL = "Fjord VI · v1.18.17"
+APP_BUILD = "Fjord VI 1.18.18"
+RELEASE_LABEL = "Fjord VI · v1.18.18"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -716,6 +716,15 @@ def ensure_schema():
 
 
 
+
+
+def _reassignment_trace_only_bootstrap(reason: str) -> str:
+    txt = (reason or "").strip()
+    if "reasignado" not in txt.lower():
+        return ""
+    return txt.split("·", 1)[0].strip()
+
+
 def backfill_reassignment_state(db: Session):
     rows = db.query(Reservation).filter(Reservation.kind.in_(["invitado", "hijo_menor"])).all()
     changed = False
@@ -723,7 +732,7 @@ def backfill_reassignment_state(db: Session):
     for r in rows:
         current = getattr(r, "responsible_user_id", None)
         if current and not getattr(r, "original_responsible_user_id", None):
-            trace = reassignment_trace_only(r.cancel_reason or "")
+            trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
             guessed = None
             if trace and ':' in trace and '->' in trace:
                 try:
@@ -736,7 +745,7 @@ def backfill_reassignment_state(db: Session):
         if getattr(r, "reassignment_count", None) is None:
             r.reassignment_count = 0
             changed = True
-        if getattr(r, "reassignment_count", 0) == 0 and reassignment_trace_only(r.cancel_reason or ""):
+        if getattr(r, "reassignment_count", 0) == 0 and _reassignment_trace_only_bootstrap(r.cancel_reason or ""):
             r.reassignment_count = 1
             changed = True
         if getattr(r, "last_reassigned_by", None) is None:
@@ -3569,7 +3578,7 @@ def captain_activate_waitlisted_reservation(db: Session, outing: Outing, r: Rese
     """Reactiva operativamente una reserva desde espera cuando ya existe vacante real."""
     if not captain_can_activate_waitlisted_reservation(db, outing, r):
         return False
-    previous_trace = reassignment_trace_only(r.cancel_reason or "")
+    previous_trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
     r.cancelled_at = None
     r.status = default_reservation_status(outing, r)
     r.attendance = "Por confirmar"
@@ -6761,7 +6770,7 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cupo_lleno", status_code=303)
 
     before_attendance = {"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""}
-    previous_trace = reassignment_trace_only(r.cancel_reason or "")
+    previous_trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
 
     if value in ("Presente", "Por confirmar"):
         # Blindaje: un invitado/menor no socio no puede ser marcado presente
