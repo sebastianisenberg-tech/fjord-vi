@@ -1,4 +1,4 @@
-# Fjord VI 1.2.3
+# Fjord VI 1.2.2
 
 Paquete limpio de producción basado en la versión funcional 1.18.18.
 
@@ -20,7 +20,4 @@ Se eliminaron del deploy:
 - diagnósticos históricos
 - duplicados y archivos espejo no usados por el entrypoint real
 
-Versión actual: **Fjord VI · v1.2.3**
-
-
-Incluye restauración mínima de blindaje formal: tests scaffold, tests críticos de negocio y script externo de release.
+Versión actual: **Fjord VI · v1.2**

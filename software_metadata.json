@@ -1,10 +1,10 @@
 {
-  "version": "1.2.3",
-  "release_label": "Fjord VI · v1.2.3",
+  "version": "1.2.2",
+  "release_label": "Fjord VI · v1.2.2",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-11",
   "notes": "Reasignación persistente con responsable final único, historial auditable y agrupación consistente en Capitán, ficha y liquidación.",
-  "app_build": "Fjord VI 1.2.3",
+  "app_build": "Fjord VI 1.2.2",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,7 +28,7 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v1.2.1 - Clean deploy con blindaje formal restaurado (tests + release check)",
+  "release": "v1.2 - Reasignación persistente con responsable final único e historial",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
   "app_version": "1.19"

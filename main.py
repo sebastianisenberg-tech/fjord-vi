@@ -3443,6 +3443,63 @@ def put_on_waitlist(r: Reservation, reason: str = "En lista de espera"):
     r.cancelled_at = None
 
 
+
+
+def can_user_manage_guest_record(user: User, outing: Outing, reservation: Reservation) -> bool:
+    if not reservation or not outing:
+        return False
+    if reservation.outing_id != outing.id:
+        return False
+    if canonical_kind(reservation.kind) not in ("invitado", "hijo_menor"):
+        return False
+    if is_closed_outing(outing):
+        return False
+    if reservation.attendance == "Presente":
+        return False
+    return reservation.responsible_user_id == user.id
+
+
+def replace_guest_under_socio(
+    db: Session,
+    outing: Outing,
+    old_reservation: Reservation,
+    user: User,
+    new_name: str,
+    new_dni: str,
+    new_kind: str,
+    new_birth_date: Optional[str] = None,
+):
+    now = now_local()
+    old_was_waitlisted = is_waitlisted(old_reservation)
+    old_charge = 0 if old_was_waitlisted else (reservation_charge(outing, old_reservation) if late_window_passed(outing) else 0)
+    old_reservation.cancelled_at = now
+    old_reservation.status = "Cancelado"
+    old_reservation.attendance = "Ausente"
+    old_reservation.cancel_reason = "Reemplazado por socio" if not late_window_passed(outing) else "Reemplazado fuera de término por socio"
+    old_reservation.charge_amount = old_charge
+
+    status = "Hijo menor de socio no socio" if new_kind == "hijo_menor" else ("Confirmado" if cutoff_passed(outing) else "Condicional hasta 48h")
+    new_guest = Reservation(
+        outing_id=outing.id,
+        person_name=new_name,
+        dni=new_dni,
+        kind=new_kind,
+        responsible_user_id=user.id,
+        original_responsible_user_id=user.id,
+        status=status,
+        birth_date=new_birth_date,
+    )
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    if len(active_public_reservations(rows)) >= public_capacity(outing):
+        put_on_waitlist(new_guest, "En lista de espera. Se activa si se libera una vacante.")
+        new_waitlisted = True
+    else:
+        new_waitlisted = False
+    db.add(new_guest)
+    db.flush()
+    promoted = promote_waitlist(db, outing)
+    return new_guest, old_charge, new_waitlisted, promoted
+
 def displaceable_guest_for_socios(db: Session, outing: Outing) -> Optional[Reservation]:
     """Devuelve un invitado/menor activo desplazable por prioridad de socio.
 
@@ -5931,6 +5988,111 @@ def socio_protocolar(
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={msg}", status_code=303)
 
 
+
+
+@app.post("/socio/update_guest/{rid}")
+async def socio_update_guest(
+    rid: int,
+    request: Request,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    form = await request.form()
+    outing_id = int(form.get("outing_id") or 0)
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    if not r or not outing or not can_user_manage_guest_record(user, outing, r):
+        raise HTTPException(403)
+    person_name = (form.get("name") or "").strip()
+    dni_clean = norm_dni(form.get("dni") or "")
+    kind = canonical_kind(form.get("kind") or r.kind)
+    birth_date = form.get("birth_date") or None
+    if kind not in ("invitado", "hijo_menor") or not person_name or not dni_clean:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
+    if kind == "hijo_menor":
+        if not birth_date or not is_under_18_on(birth_date, outing.departure_at):
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=hijo_menor_invalido", status_code=303)
+    else:
+        birth_date = None
+    existing = db.query(Reservation).filter(Reservation.outing_id == outing.id, Reservation.dni == dni_clean, Reservation.id != r.id).first()
+    if existing and reservation_is_active(existing):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=dni_duplicado", status_code=303)
+    registered_user = db.query(User).filter_by(dni=dni_clean, active=True).first()
+    if registered_user and registered_user.role == "socio":
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_documento", status_code=303)
+    before = {"name": r.person_name, "dni": r.dni, "kind": r.kind, "birth_date": r.birth_date or ""}
+    r.person_name = person_name
+    r.dni = dni_clean
+    r.kind = kind
+    r.birth_date = birth_date
+    db.commit()
+    audit_event(db, user, "corrige invitado", f"{before['name']} -> {person_name} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before, after={"name": r.person_name, "dni": r.dni, "kind": r.kind, "birth_date": r.birth_date or ""})
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_actualizado", status_code=303)
+
+
+@app.post("/socio/replace_guest/{rid}")
+async def socio_replace_guest(
+    rid: int,
+    request: Request,
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    form = await request.form()
+    outing_id = int(form.get("outing_id") or 0)
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    if not r or not outing or not can_user_manage_guest_record(user, outing, r):
+        raise HTTPException(403)
+    new_name = (form.get("new_name") or "").strip()
+    new_dni = norm_dni(form.get("new_dni") or "")
+    new_kind = canonical_kind(form.get("new_kind") or "invitado")
+    new_birth_date = form.get("new_birth_date") or None
+    if new_kind not in ("invitado", "hijo_menor") or not new_name or not new_dni:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=datos_invalidos", status_code=303)
+    if new_kind == "hijo_menor":
+        if not new_birth_date or not is_under_18_on(new_birth_date, outing.departure_at):
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=hijo_menor_invalido", status_code=303)
+    else:
+        new_birth_date = None
+    existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=new_dni).first()
+    if existing and reservation_is_active(existing):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=dni_duplicado", status_code=303)
+    registered_user = db.query(User).filter_by(dni=new_dni, active=True).first()
+    if registered_user and registered_user.role == "socio":
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_documento", status_code=303)
+    new_guest, old_charge, new_waitlisted, promoted = replace_guest_under_socio(db, outing, r, user, new_name, new_dni, new_kind, new_birth_date)
+    db.commit()
+    detail = f"{r.person_name} -> {new_name} / {outing.title} / cargo_anterior {old_charge}"
+    audit_event(db, user, "reemplaza invitado", detail, request=request, outing_id=outing.id, reservation_id=new_guest.id, before={"replaced_reservation_id": r.id, "old_name": r.person_name, "old_dni": r.dni, "old_charge": float(old_charge or 0)}, after={"new_reservation_id": new_guest.id, "new_name": new_guest.person_name, "new_dni": new_guest.dni, "waitlisted": new_waitlisted, "promoted": promoted})
+    msg = "invitado_reemplazado_espera" if new_waitlisted else "invitado_reemplazado"
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg={msg}", status_code=303)
+
+
+@app.post("/admin/delete_outing")
+def delete_outing(
+    request: Request,
+    outing_id: int = Form(...),
+    confirm_delete: str = Form(""),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
+):
+    outing = db.get(Outing, outing_id)
+    if not outing:
+        raise HTTPException(404, "Salida inexistente")
+    if (confirm_delete or "").strip().upper() != "BORRAR SALIDA":
+        return RedirectResponse(f"/admin/salidas?outing_id={outing.id}&msg=confirmacion_invalida", status_code=303)
+    reservation_count = db.query(Reservation).filter_by(outing_id=outing.id).count()
+    sheet_count = db.query(ClosingSheet).filter_by(outing_id=outing.id).count()
+    if reservation_count or sheet_count or is_closed_outing(outing):
+        return RedirectResponse(f"/admin/salidas?outing_id={outing.id}&msg=salida_no_borrable", status_code=303)
+    before = {"title": outing.title, "departure_at": outing.departure_at.isoformat(), "status": outing.status}
+    db.delete(outing)
+    db.commit()
+    audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
+    return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
+
 @app.post("/socio/cancel/{rid}")
 def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
@@ -6008,122 +6170,6 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
     db.commit()
     log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
-
-@app.post("/socio/guest/update/{rid}")
-async def socio_update_guest(
-    rid: int,
-    request: Request,
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("socio"))
-):
-    form = await request.form()
-    try:
-        outing_id = int(form.get("outing_id") or 0)
-    except Exception:
-        outing_id = None
-    outing = selected_outing(db, outing_id)
-    r = db.get(Reservation, rid)
-    ensure_outing_editable(outing)
-    if not r or not outing or r.outing_id != outing.id or r.responsible_user_id != user.id or not guest_reservation_kind(r):
-        raise HTTPException(403)
-    if not can_edit_guest_data(outing, r):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=guest_edit_locked", status_code=303)
-
-    person_name = (form.get("name") or "").strip()
-    dni_clean = norm_dni(form.get("dni") or "")
-    kind = canonical_kind(form.get("kind") or r.kind)
-    birth_date = (form.get("birth_date") or "").strip() or None
-    if kind == "hijo_menor":
-        if not birth_date or not is_under_18_on(birth_date, outing.departure_at):
-            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=hijo_menor_invalido", status_code=303)
-    else:
-        birth_date = None
-    error = validate_guest_identity_inputs(db, outing, user, r.id, person_name, dni_clean, kind)
-    if error:
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg={error}", status_code=303)
-
-    before = {"name": r.person_name, "dni": r.dni, "kind": r.kind, "birth_date": r.birth_date}
-    r.person_name = person_name
-    r.dni = dni_clean
-    r.kind = kind
-    r.birth_date = birth_date
-    if not getattr(r, "original_responsible_user_id", None):
-        r.original_responsible_user_id = user.id
-    db.commit()
-    audit_event(db, user, "edición invitado socio", f"{before['name']} -> {person_name} / salida {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before, after={"name": r.person_name, "dni": r.dni, "kind": r.kind, "birth_date": r.birth_date})
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=guest_updated", status_code=303)
-
-
-@app.post("/socio/guest/replace/{rid}")
-async def socio_replace_guest(
-    rid: int,
-    request: Request,
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("socio"))
-):
-    form = await request.form()
-    try:
-        outing_id = int(form.get("outing_id") or 0)
-    except Exception:
-        outing_id = None
-    outing = selected_outing(db, outing_id)
-    r = db.get(Reservation, rid)
-    ensure_outing_editable(outing)
-    if not r or not outing or r.outing_id != outing.id or r.responsible_user_id != user.id or not guest_reservation_kind(r):
-        raise HTTPException(403)
-    if not can_replace_guest(outing, r):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=guest_replace_locked", status_code=303)
-
-    person_name = (form.get("name") or "").strip()
-    dni_clean = norm_dni(form.get("dni") or "")
-    kind = canonical_kind(form.get("kind") or "invitado")
-    birth_date = (form.get("birth_date") or "").strip() or None
-    if kind == "hijo_menor":
-        if not birth_date or not is_under_18_on(birth_date, outing.departure_at):
-            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=hijo_menor_invalido", status_code=303)
-    else:
-        birth_date = None
-    error = validate_guest_identity_inputs(db, outing, user, r.id, person_name, dni_clean, kind)
-    if error:
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg={error}", status_code=303)
-
-    old_snapshot = {"name": r.person_name, "dni": r.dni, "kind": r.kind, "charge_before": float(r.charge_amount or 0)}
-    charged = cancel_guest_reservation_with_policy(db, outing, r, user.name)
-    new_guest, waitlisted = create_guest_reservation_for_owner(db, outing, user, person_name, dni_clean, kind, birth_date)
-    enforce_capacity(db, outing)
-    promoted = promote_waitlist(db, outing)
-    db.commit()
-    after = {"new_reservation_id": new_guest.id, "new_name": new_guest.person_name, "new_dni": new_guest.dni, "waitlisted": waitlisted, "old_charge": charged, "promoted": promoted}
-    audit_event(db, user, "reemplazo invitado socio", f"{old_snapshot['name']} -> {person_name} / salida {outing.title}", request=request, outing_id=outing.id, reservation_id=new_guest.id, before=old_snapshot, after=after)
-    msg = "guest_replaced_waitlist" if waitlisted else ("guest_replaced_with_charge" if charged > 0 else "guest_replaced")
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg={msg}", status_code=303)
-
-
-@app.post("/admin/delete_outing")
-def delete_outing(
-    request: Request,
-    outing_id: int = Form(...),
-    confirm_text: str = Form(""),
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("admin"))
-):
-    outing = db.get(Outing, outing_id)
-    if not outing:
-        raise HTTPException(404, "Salida inexistente")
-    if (confirm_text or "").strip().upper() != "BORRAR SALIDA":
-        return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing_id}&msg=confirmacion_salida_invalida", status_code=303)
-    if is_closed_outing(outing):
-        return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing_id}&msg=salida_cerrada_no_editable", status_code=303)
-    reservations = db.query(Reservation).filter_by(outing_id=outing.id).count()
-    sheets = db.query(ClosingSheet).filter_by(outing_id=outing.id).count()
-    if reservations > 0 or sheets > 0:
-        return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing_id}&msg=salida_con_historial_no_borrable", status_code=303)
-    before = {"title": outing.title, "departure_at": outing.departure_at.isoformat(), "status": outing.status}
-    db.delete(outing)
-    db.commit()
-    audit_event(db, user, "borrado administrativo salida", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
-    return RedirectResponse("/admin?page=navegaciones&msg=salida_borrada", status_code=303)
-
 
 @app.get("/captain", response_class=HTMLResponse)
 def captain(request: Request, outing_id: Optional[int] = None, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
