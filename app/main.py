@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.16"
+APP_VERSION = "1.18.17"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.16"
-RELEASE_LABEL = "Fjord VI · v1.18.16"
+APP_BUILD = "Fjord VI 1.18.17"
+RELEASE_LABEL = "Fjord VI · v1.18.17"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -163,6 +163,10 @@ class Reservation(Base):
     dni = Column(String, nullable=False)
     kind = Column(String, nullable=False)
     responsible_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    original_responsible_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reassignment_count = Column(Integer, default=0)
+    last_reassigned_at = Column(DateTime, nullable=True)
+    last_reassigned_by = Column(String, default="")
     status = Column(String, default="Confirmado")
     attendance = Column(String, default="Por confirmar")
     charge_amount = Column(Numeric(12,2), default=0)
@@ -174,6 +178,18 @@ class Reservation(Base):
     protocolar_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     protocolar_reason = Column(Text, default="")
     __table_args__ = (UniqueConstraint("outing_id", "dni", name="uq_outing_dni"),)
+
+class ReservationReassignment(Base):
+    __tablename__ = "reservation_reassignments"
+    id = Column(Integer, primary_key=True)
+    outing_id = Column(Integer, ForeignKey("outings.id"), nullable=False)
+    reservation_id = Column(Integer, ForeignKey("reservations.id"), nullable=False)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    performed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    performed_by_name = Column(String, default="")
+    performed_at = Column(DateTime, default=now_local)
+    reason = Column(Text, default="")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -607,6 +623,14 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar_by_user_id INTEGER"))
         if "protocolar_reason" not in reservation_columns:
             conn.execute(text("ALTER TABLE reservations ADD COLUMN protocolar_reason TEXT"))
+        if "original_responsible_user_id" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN original_responsible_user_id INTEGER"))
+        if "reassignment_count" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN reassignment_count INTEGER DEFAULT 0"))
+        if "last_reassigned_at" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN last_reassigned_at TIMESTAMP"))
+        if "last_reassigned_by" not in reservation_columns:
+            conn.execute(text("ALTER TABLE reservations ADD COLUMN last_reassigned_by VARCHAR DEFAULT ''"))
 
 
     try:
@@ -624,6 +648,27 @@ def ensure_schema():
         user_columns = [c["name"] for c in inspector.get_columns("users")]
     except Exception:
         user_columns = []
+
+    try:
+        existing_tables = set(inspector.get_table_names())
+    except Exception:
+        existing_tables = set()
+
+    with engine.begin() as conn:
+        if "reservation_reassignments" not in existing_tables:
+            conn.execute(text("""
+                CREATE TABLE reservation_reassignments (
+                    id INTEGER PRIMARY KEY,
+                    outing_id INTEGER NOT NULL,
+                    reservation_id INTEGER NOT NULL,
+                    from_user_id INTEGER,
+                    to_user_id INTEGER,
+                    performed_by_user_id INTEGER,
+                    performed_by_name VARCHAR DEFAULT '',
+                    performed_at TIMESTAMP,
+                    reason TEXT DEFAULT ''
+                )
+            """))
 
     with engine.begin() as conn:
         if "email" not in user_columns:
@@ -649,6 +694,35 @@ def ensure_schema():
 
 
 
+def backfill_reassignment_state(db: Session):
+    rows = db.query(Reservation).filter(Reservation.kind.in_(["invitado", "hijo_menor"])).all()
+    changed = False
+    users = {u.name.strip().lower(): u.id for u in db.query(User).all() if (u.name or "").strip()}
+    for r in rows:
+        current = getattr(r, "responsible_user_id", None)
+        if current and not getattr(r, "original_responsible_user_id", None):
+            trace = reassignment_trace_only(r.cancel_reason or "")
+            guessed = None
+            if trace and ':' in trace and '->' in trace:
+                try:
+                    left = trace.split(':', 1)[1].split('->', 1)[0].strip().lower()
+                    guessed = users.get(left)
+                except Exception:
+                    guessed = None
+            r.original_responsible_user_id = guessed or current
+            changed = True
+        if getattr(r, "reassignment_count", None) is None:
+            r.reassignment_count = 0
+            changed = True
+        if getattr(r, "reassignment_count", 0) == 0 and reassignment_trace_only(r.cancel_reason or ""):
+            r.reassignment_count = 1
+            changed = True
+        if getattr(r, "last_reassigned_by", None) is None:
+            r.last_reassigned_by = ""
+            changed = True
+    if changed:
+        db.commit()
+
 # =========================
 # DATABASE INTEGRITY GUARD
 # =========================
@@ -663,8 +737,12 @@ DB_INDEXES_REQUIRED = [
     ("idx_reservations_dni", "reservations", "dni"),
     ("idx_reservations_outing_status", "reservations", "outing_id, status"),
     ("idx_reservations_responsible", "reservations", "responsible_user_id"),
+    ("idx_reservations_original_responsible", "reservations", "original_responsible_user_id"),
+    ("idx_reservations_reassignment_count", "reservations", "reassignment_count"),
     ("idx_reservations_created_at", "reservations", "created_at"),
     ("idx_closing_sheets_outing_status", "closing_sheets", "outing_id, status"),
+    ("idx_reservation_reassignments_reservation", "reservation_reassignments", "reservation_id"),
+    ("idx_reservation_reassignments_outing", "reservation_reassignments", "outing_id"),
     ("idx_audit_logs_created_at", "audit_logs", "created_at"),
     ("idx_activity_log_created_at", "activity_log", "created_at"),
     ("idx_activity_log_user_id", "activity_log", "user_id"),
@@ -773,6 +851,8 @@ def set_hidden_guest_candidate_dnis(db: Session, dnis: set[str]):
         row.updated_at = now_local()
 
 ensure_schema()
+with SessionLocal() as _db_init:
+    backfill_reassignment_state(_db_init)
 ensure_db_indexes()
 set_system_meta("schema_version", "1")
 set_system_meta("last_schema_check", now_local().isoformat())
@@ -1425,8 +1505,9 @@ def schema_required_status() -> list:
     required = {
         "users": ["id", "name", "dni", "member_no", "email", "whatsapp", "phone", "category", "birth_date", "role", "active"],
         "outings": ["id", "title", "destination", "departure_at", "status", "max_crew", "min_crew", "guest_fee", "boat_id"],
-        "reservations": ["id", "outing_id", "person_name", "dni", "kind", "responsible_user_id", "status", "attendance", "charge_amount", "birth_date"],
+        "reservations": ["id", "outing_id", "person_name", "dni", "kind", "responsible_user_id", "original_responsible_user_id", "reassignment_count", "last_reassigned_at", "last_reassigned_by", "status", "attendance", "charge_amount", "birth_date"],
         "audit_logs": ["id", "created_at", "actor", "action", "detail"],
+        "reservation_reassignments": ["id", "outing_id", "reservation_id", "from_user_id", "to_user_id", "performed_by_user_id", "performed_at"],
         "closing_sheets": ["id", "outing_id", "sequence", "status", "payload"],
         "system_meta": ["key", "value", "updated_at"],
         "activity_log": ["id", "created_at", "user_id", "user_name", "role", "module", "action", "path"],
@@ -2619,6 +2700,13 @@ def export_state(db: Session) -> dict:
             {"id": l.id, "created_at": dt_to_str(l.created_at), "actor": l.actor, "action": l.action, "detail": l.detail or ""}
             for l in db.query(AuditLog).order_by(AuditLog.id).all()
         ],
+        "reservation_reassignments": [
+            {"id": rr.id, "outing_id": rr.outing_id, "reservation_id": rr.reservation_id,
+             "from_user_id": rr.from_user_id, "to_user_id": rr.to_user_id,
+             "performed_by_user_id": rr.performed_by_user_id, "performed_by_name": rr.performed_by_name or "",
+             "performed_at": dt_to_str(rr.performed_at), "reason": rr.reason or ""}
+            for rr in db.query(ReservationReassignment).order_by(ReservationReassignment.id).all()
+        ],
         "closing_sheets": [
             {"id": cs.id, "outing_id": cs.outing_id, "sequence": cs.sequence, "status": cs.status,
              "created_at": dt_to_str(cs.created_at), "created_by": cs.created_by or "",
@@ -2660,6 +2748,10 @@ def import_state(db: Session, data: dict, allow_destructive: bool = False):
             db.query(ClosingSheet).delete()
         except Exception:
             pass
+        try:
+            db.query(ReservationReassignment).delete()
+        except Exception:
+            pass
         db.query(AuditLog).delete()
         db.query(Reservation).delete()
         db.query(Outing).delete()
@@ -2681,7 +2773,12 @@ def import_state(db: Session, data: dict, allow_destructive: bool = False):
     for r in data.get("reservations", []):
         db.add(Reservation(id=r.get("id"), outing_id=r.get("outing_id"), person_name=r.get("person_name") or "",
                            dni=norm_dni(r.get("dni") or ""), kind=r.get("kind") or "invitado",
-                           responsible_user_id=r.get("responsible_user_id"), status=r.get("status") or "Confirmado",
+                           responsible_user_id=r.get("responsible_user_id"),
+                           original_responsible_user_id=r.get("original_responsible_user_id"),
+                           reassignment_count=int(r.get("reassignment_count") or 0),
+                           last_reassigned_at=str_to_dt(r.get("last_reassigned_at")),
+                           last_reassigned_by=r.get("last_reassigned_by") or "",
+                           status=r.get("status") or "Confirmado",
                            attendance=r.get("attendance") or "Por confirmar", charge_amount=float(r.get("charge_amount") or 0),
                            cancel_reason=r.get("cancel_reason") or "", birth_date=r.get("birth_date") or None,
                            created_at=str_to_dt(r.get("created_at")) or now_local(),
@@ -2690,6 +2787,12 @@ def import_state(db: Session, data: dict, allow_destructive: bool = False):
     for l in data.get("audit_logs", []):
         db.add(AuditLog(id=l.get("id"), created_at=str_to_dt(l.get("created_at")) or now_local(),
                         actor=l.get("actor") or "sistema", action=l.get("action") or "import", detail=l.get("detail") or ""))
+    db.commit()
+    for rr in data.get("reservation_reassignments", []):
+        db.add(ReservationReassignment(id=rr.get("id"), outing_id=rr.get("outing_id"), reservation_id=rr.get("reservation_id"),
+                                       from_user_id=rr.get("from_user_id"), to_user_id=rr.get("to_user_id"),
+                                       performed_by_user_id=rr.get("performed_by_user_id"), performed_by_name=rr.get("performed_by_name") or "",
+                                       performed_at=str_to_dt(rr.get("performed_at")) or now_local(), reason=rr.get("reason") or ""))
     db.commit()
     for cs in data.get("closing_sheets", []):
         db.add(ClosingSheet(id=cs.get("id"), outing_id=cs.get("outing_id"), sequence=int(cs.get("sequence") or 1),
@@ -4555,8 +4658,9 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
         target.kind = "socio"
         target.person_name = user.name
         target.responsible_user_id = user.id
+        target.original_responsible_user_id = user.id
     else:
-        target = Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id)
+        target = Reservation(outing_id=outing.id, person_name=user.name, dni=user.dni, kind="socio", responsible_user_id=user.id, original_responsible_user_id=user.id)
         db.add(target)
         db.flush()
 
@@ -4641,6 +4745,8 @@ async def add_guest(
         existing.kind = kind
         existing.birth_date = birth_date
         existing.responsible_user_id = user.id
+        if canonical_kind(existing.kind) in ("invitado", "hijo_menor") and not getattr(existing, "original_responsible_user_id", None):
+            existing.original_responsible_user_id = user.id
         if full_capacity:
             put_on_waitlist(existing, "En lista de espera. Se activa si se libera una vacante.")
         else:
@@ -4653,6 +4759,7 @@ async def add_guest(
             dni=dni_clean,
             kind=kind,
             responsible_user_id=user.id,
+            original_responsible_user_id=user.id,
             status=status,
             birth_date=birth_date
         )
@@ -4729,6 +4836,8 @@ async def add_protocolar_participation(
         r.person_name = person_name
         r.kind = kind
         r.responsible_user_id = responsible_id
+        if canonical_kind(r.kind) in ("invitado", "hijo_menor") and not getattr(r, "original_responsible_user_id", None):
+            r.original_responsible_user_id = responsible_id
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
         r.attendance = "Por confirmar"
@@ -4741,6 +4850,7 @@ async def add_protocolar_participation(
             dni=dni_clean,
             kind=kind,
             responsible_user_id=responsible_id,
+            original_responsible_user_id=responsible_id,
             status="Confirmado",
             attendance="Por confirmar"
         )
@@ -5239,6 +5349,46 @@ def reassignment_trace_only(reason: str) -> str:
     # La convención del sistema agrega detalles contables con separador medio.
     # Nos quedamos con la traza original: "Reasignado por capitán: A -> B".
     return txt.split("·", 1)[0].strip()
+
+
+def reservation_reassignment_count_value(r: Reservation) -> int:
+    return int(getattr(r, "reassignment_count", 0) or 0)
+
+
+def reservation_is_reassigned(r: Reservation) -> bool:
+    return reservation_reassignment_count_value(r) > 0 or bool(getattr(r, "original_responsible_user_id", None) and getattr(r, "responsible_user_id", None) and getattr(r, "original_responsible_user_id", None) != getattr(r, "responsible_user_id", None))
+
+
+def reservation_original_responsible_id(r: Reservation) -> Optional[int]:
+    current = getattr(r, "responsible_user_id", None)
+    original = getattr(r, "original_responsible_user_id", None)
+    return original or current
+
+
+def ensure_reservation_reassignment_state(db: Session, r: Reservation):
+    if canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
+        return
+    current = getattr(r, "responsible_user_id", None)
+    original = getattr(r, "original_responsible_user_id", None)
+    if current and not original:
+        r.original_responsible_user_id = current
+    if getattr(r, "reassignment_count", None) is None:
+        r.reassignment_count = 0
+    if getattr(r, "last_reassigned_by", None) is None:
+        r.last_reassigned_by = ""
+
+
+def record_reservation_reassignment(db: Session, outing: Outing, r: Reservation, from_user_id: Optional[int], to_user_id: Optional[int], actor: Optional[User], reason: str = ""):
+    db.add(ReservationReassignment(
+        outing_id=outing.id,
+        reservation_id=r.id,
+        from_user_id=from_user_id,
+        to_user_id=to_user_id,
+        performed_by_user_id=getattr(actor, "id", None),
+        performed_by_name=getattr(actor, "name", "") or "",
+        performed_at=now_local(),
+        reason=reason or "Reasignación operativa",
+    ))
 
 def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reservations):
     """Reconstruye la preliquidación al reabrir una salida.

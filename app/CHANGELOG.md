@@ -1,6 +1,6 @@
-# 1.18.16 - Versión unificada
+# 1.18.17 - Versión unificada
 
-- Alinea versión interna, app_build y release_label a 1.18.16.
+- Alinea versión interna, app_build y release_label a 1.18.17.
 - Alinea metadata y documentación de la copia app/.
 
 # 1.18.6 - Release unificado
@@ -76,7 +76,7 @@
 - Agrega endpoints admin/operational_status.json y admin/operational_status.txt.
 - No cambia reglas visibles de reservas.
 
-## 1.18.16
+## 1.18.17
 - Fix puntual de reasignación única en Capitán: no devuelve más OK falso en una segunda reasignación.
 - Se oculta la opción de reasignar cuando el invitado ya fue reasignado una vez en esa salida.
 - Versión unificada en código y metadatos.
