@@ -1,3 +1,10 @@
+## 1.18.15
+
+- Corrige la inconsistencia de versión visible en toda la aplicación.
+- Unifica APP_VERSION, APP_BUILD y RELEASE_LABEL a 1.18.15.
+- Alinea software_metadata.json, README y VERSION.txt.
+- Las nuevas fichas y PDFs salen con Fjord VI · v1.18.15.
+
 ## 1.18.14
 
 - Hotfix de deploy para exportación PDF de Estadísticas.
