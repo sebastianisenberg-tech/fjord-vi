@@ -25,6 +25,7 @@ CRITICAL_TESTS = [
     "tests/test_phase18_puntos_6_7_locks_auditoria.py",
     "tests/test_phase18_puntos_9_10_tests_release.py",
     "tests/test_phase18_reapertura_reasignacion_fix.py",
+    "tests/test_phase18_reasignacion_unica_fix.py",
 ]
 SKIP_DIRS = {".git", ".pytest_cache", "venv", ".venv", "node_modules"}
 
