@@ -368,7 +368,7 @@
         {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
         <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Invitación institucional{% if v.protocolar_reference_name %} · Ref: {{v.protocolar_reference_name}}{% endif %}</div>
         {% elif v.show_responsible %}
-        <div class="captainResponsibleTraceV1170">Invitado de {{v.responsible_name}}</div>
+        <div class="captainResponsibleTraceV1170">Invitado de {{v.responsible_name}}{% if v.reassignment_count %} · Reasignado {{v.reassignment_count}} vez{% if v.reassignment_count != 1 %}es{% endif %}{% endif %}</div>
         {% endif %}
 {% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
       </div>
@@ -394,7 +394,7 @@
               {% if reason_text and not (reservation_views.get(r.id) and reservation_views.get(r.id).protocolar) %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
               {% if not v.waitlisted %}<form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>{% endif %}
               {% if v.waitlisted and v.captain_can_activate_from_waitlist %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Subir desde espera / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Saca a la persona de lista de espera cuando ya hay vacante real y la deja operable para completar el embarque.">i</span></button></form>{% elif v.not_embarked or v.cancelled or r.attendance == 'Ausente' or r.attendance == 'No embarca' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
-              {% if v.show_responsible and not v.reassignment_locked and captain_responsible_options|length > 0 %}
+              {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <div class="captainReassignBlock">
                 <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>
                 {% for opt in captain_responsible_options %}
