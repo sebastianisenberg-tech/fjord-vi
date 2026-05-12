@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.17"
+APP_VERSION = "1.18.18"
 
 
 # =========================
@@ -62,8 +62,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.17"
-RELEASE_LABEL = "Fjord VI · v1.18.17"
+APP_BUILD = "Fjord VI 1.18.18"
+RELEASE_LABEL = "Fjord VI · v1.18.18"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -694,6 +694,15 @@ def ensure_schema():
 
 
 
+
+
+def _reassignment_trace_only_bootstrap(reason: str) -> str:
+    txt = (reason or "").strip()
+    if "reasignado" not in txt.lower():
+        return ""
+    return txt.split("·", 1)[0].strip()
+
+
 def backfill_reassignment_state(db: Session):
     rows = db.query(Reservation).filter(Reservation.kind.in_(["invitado", "hijo_menor"])).all()
     changed = False
@@ -701,7 +710,7 @@ def backfill_reassignment_state(db: Session):
     for r in rows:
         current = getattr(r, "responsible_user_id", None)
         if current and not getattr(r, "original_responsible_user_id", None):
-            trace = reassignment_trace_only(r.cancel_reason or "")
+            trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
             guessed = None
             if trace and ':' in trace and '->' in trace:
                 try:
@@ -714,7 +723,7 @@ def backfill_reassignment_state(db: Session):
         if getattr(r, "reassignment_count", None) is None:
             r.reassignment_count = 0
             changed = True
-        if getattr(r, "reassignment_count", 0) == 0 and reassignment_trace_only(r.cancel_reason or ""):
+        if getattr(r, "reassignment_count", 0) == 0 and _reassignment_trace_only_bootstrap(r.cancel_reason or ""):
             r.reassignment_count = 1
             changed = True
         if getattr(r, "last_reassigned_by", None) is None:
@@ -5542,7 +5551,7 @@ def attendance(rid: int, value: str, db: Session = Depends(db_session), user: Us
         if present_count >= (outing.max_crew or MAX_CREW):
             return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cupo_lleno", status_code=303)
 
-    previous_trace = reassignment_trace_only(r.cancel_reason or "")
+    previous_trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
 
     if value in ("Presente", "Por confirmar"):
         # Blindaje: un invitado/menor no socio no puede ser marcado presente

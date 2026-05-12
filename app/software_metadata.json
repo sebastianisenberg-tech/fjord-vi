@@ -1,10 +1,10 @@
 {
-  "version": "1.18.17",
-  "release_label": "Fjord VI · v1.18.17",
+  "version": "1.18.18",
+  "release_label": "Fjord VI · v1.18.18",
   "phase": "Fase 12B · Sistema rápido y seguridad base",
   "generated_at": "2026-05-11",
   "notes": "Documentación técnica, checklist de seguridad, .env.example, pruebas smoke y mapa de arquitectura. No modifica reglas de reservas/cargos/cierres.",
-  "app_build": "Fjord VI 1.18.17",
+  "app_build": "Fjord VI 1.18.18",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -16,6 +16,6 @@
     "preparación multi-barco mantenida",
     "sin cambios en lógica de reservas/cargos/cierres"
   ],
-  "app_version": "1.18.17",
-  "release": "v1.18.17 - Reasignación persistente con responsable final único e historial"
+  "app_version": "1.18.18",
+  "release": "v1.18.18 - Reasignación persistente con responsable final único e historial"
 }
