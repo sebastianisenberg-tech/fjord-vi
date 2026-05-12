@@ -4107,49 +4107,50 @@ def final_status_summary(outing: Outing, reservations, active_count: int, presen
     return {"closed": False, "label": "Estado operativo: Abierto", "detail": f"Activos: {active_count} / {outing.max_crew} · pendientes: {pending}", "liquidacion": "Preliquidación no firme hasta cierre del capitán"}
 
 def seed():
-    # Producción: no crear datos demo automáticamente.
-    # Esto es crítico para que Reset Producción deje el sistema realmente en cero
-    # (sin Paseo de domingo ni reservas ficticias después de un redeploy).
-    # Para demos/local, activar DEMO_SEED=1 explícitamente.
-    if APP_ENV == "production" and not DEMO_SEED:
-        return
+    """Bootstrap seguro para entorno vacío.
+
+    Regla operativa de rescate:
+    - si la base está vacía, crear SOLO usuarios base para poder entrar;
+    - no crear salidas, reservas ni fichas ficticias;
+    - si por una migración quedó el sistema sin admins, recrear dos admins de rescate.
+    """
     db = SessionLocal()
     try:
+        created = False
         if db.query(User).count() == 0:
             db.add_all([
-                User(name="Juan Pérez", dni="20123456", member_no="1234", email="juan@example.com", phone="", role="socio", password_hash=hash_password("demo1234")),
-                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234"), must_change_password=True),
                 User(name="Admin Club", dni="27999111", member_no="ADM-01", email="admin@example.com", phone="", role="admin", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Admin Respaldo", dni="27999222", member_no="ADM-02", email="admin2@example.com", phone="", role="admin", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Juan Pérez", dni="20123456", member_no="1234", email="juan@example.com", phone="", role="socio", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="María Gómez", dni="25123456", member_no="1235", email="maria@example.com", phone="", role="socio", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Pedro Martínez", dni="28123456", member_no="1236", email="pedro@example.com", phone="", role="socio", password_hash=hash_password("demo1234"), must_change_password=True),
             ])
             db.commit()
+            created = True
 
-        if db.query(Outing).count() == 0:
-            dep = now_local().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
-            o = Outing(
-                title="Paseo de domingo",
-                destination="Dársena Norte / Río de la Plata",
-                departure_at=dep,
-                status="En reservas",
-                guest_fee=INVITED_FEE,
-                notes="Piloto fin de semana. Mínimo 2, máximo 9 tripulantes sin contar capitán."
-            )
-            db.add(o)
+        admin_count = db.query(User).filter_by(role="admin", active=True).count()
+        if admin_count == 0:
+            rescue = [
+                ("Admin Club", "27999111", "ADM-01", "admin@example.com"),
+                ("Admin Respaldo", "27999222", "ADM-02", "admin2@example.com"),
+            ]
+            for name, dni, member_no, email in rescue:
+                u = db.query(User).filter((User.dni == dni) | (User.member_no == member_no)).first()
+                if not u:
+                    u = User(name=name, dni=dni, member_no=member_no, email=email, phone="")
+                    db.add(u)
+                u.name = name
+                u.email = email
+                u.role = "admin"
+                u.active = True
+                u.password_hash = hash_password("demo1234")
+                u.must_change_password = True
             db.commit()
-            db.refresh(o)
+            created = True
 
-            socio = db.query(User).filter_by(role="socio").first()
-            db.add_all([
-                Reservation(outing_id=o.id, person_name=socio.name, dni=socio.dni, kind="socio", responsible_user_id=socio.id),
-                Reservation(outing_id=o.id, person_name="María Gómez", dni="35111222", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-                Reservation(outing_id=o.id, person_name="Carlos Rodríguez", dni="23452345", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Ana López", dni="32111333", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-                Reservation(outing_id=o.id, person_name="Pedro Martínez", dni="28456456", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Lucía Fernández", dni="36777888", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-                Reservation(outing_id=o.id, person_name="Diego Sánchez", dni="30456789", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
-            ])
-            db.commit()
-            log(db, "sistema", "seed", "Datos demo creados")
+        if created:
+            log(db, "sistema", "seed", "Bootstrap limpio creado: 2 admins, 1 capitán y 3 socios demo. Sin salidas ni reservas.")
     finally:
         db.close()
 

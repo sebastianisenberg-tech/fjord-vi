@@ -1,5 +1,5 @@
 {
-  "version": "1.18.6",
+  "version": "1.18.14",
   "release_label": "Fjord VI · v1.18.6",
   "phase": "Fase 12B · Sistema rápido y seguridad base",
   "generated_at": "2026-05-11",
@@ -16,5 +16,5 @@
     "preparación multi-barco mantenida",
     "sin cambios en lógica de reservas/cargos/cierres"
   ],
-  "app_version": "1.18.6"
+  "app_version": "1.18.14"
 }
