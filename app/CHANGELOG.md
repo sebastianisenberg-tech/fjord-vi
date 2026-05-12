@@ -1,3 +1,8 @@
+# 1.18.15 - Versión unificada
+
+- Alinea versión interna, app_build y release_label a 1.18.15.
+- Alinea metadata y documentación de la copia app/.
+
 # 1.18.6 - Release unificado
 
 - Alinea versión interna, app_build y release_label a 1.18.6.
