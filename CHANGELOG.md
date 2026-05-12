@@ -1,3 +1,11 @@
+# Changelog
+
+## 1.2.1
+- Restauración mínima del blindaje formal sin agregar basura.
+- Reincorpora carpeta `tests/` con scaffold y tests críticos de negocio.
+- Reincorpora `scripts/release_check.py`.
+- Limpieza de `__pycache__` y `.pyc`.
+
 ## 1.19
 
 - Paquete limpio de producción basado en 1.18.18.
