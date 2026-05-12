@@ -40,7 +40,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.15"
+APP_VERSION = "1.18.16"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -84,8 +84,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.15"
-RELEASE_LABEL = "Fjord VI · v1.18.15"
+APP_BUILD = "Fjord VI 1.18.16"
+RELEASE_LABEL = "Fjord VI · v1.18.16"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -5914,6 +5914,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
+            v["reassignment_locked"] = bool(reassignment_trace_only(r.cancel_reason or ""))
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
         # Vista Capitán v1.18.0: color y orden = socio responsable operativo/de referencia.
@@ -6700,11 +6701,9 @@ def captain_reassign_guest(
     if old_responsible_id == new_responsible.id:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_sin_cambios", status_code=303)
 
-    if r.attendance == "Presente" and reservation_is_active(r):
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
-
     # Blindaje operativo: una reasignación por invitado y por salida.
     # Evita cadenas A -> B -> C que complican la auditoría y la liquidación.
+    # Debe validarse antes de devolver cualquier "ok" para no mentirle al Capitán.
     if reassignment_trace_only(r.cancel_reason or ""):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_unica", status_code=303)
 
@@ -7130,6 +7129,7 @@ def admin(request: Request, outing_id: Optional[int] = None, db: Session = Depen
             v["responsible_is_present"] = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
             v["own_reservation"] = own_reservation
             v["show_responsible"] = bool(responsible and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not own_reservation)
+            v["reassignment_locked"] = bool(reassignment_trace_only(r.cancel_reason or ""))
     captain_responsible_options = []
     if outing and reservations:
         # Socios presentes y activos disponibles para tomar invitados a cargo en el momento del embarque.

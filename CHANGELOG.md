@@ -1,9 +1,9 @@
-## 1.18.15
+## 1.18.16
 
 - Corrige la inconsistencia de versión visible en toda la aplicación.
-- Unifica APP_VERSION, APP_BUILD y RELEASE_LABEL a 1.18.15.
+- Unifica APP_VERSION, APP_BUILD y RELEASE_LABEL a 1.18.16.
 - Alinea software_metadata.json, README y VERSION.txt.
-- Las nuevas fichas y PDFs salen con Fjord VI · v1.18.15.
+- Las nuevas fichas y PDFs salen con Fjord VI · v1.18.16.
 
 ## 1.18.14
 
