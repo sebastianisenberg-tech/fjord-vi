@@ -40,7 +40,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "1.18.12"
+APP_VERSION = "1.18.14"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -84,7 +84,7 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 1.18.12"
+APP_BUILD = "Fjord VI 1.18.14"
 RELEASE_LABEL = "Fjord VI · v1.18.12"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -3707,21 +3707,7 @@ def is_synthetic_member_dni(dni: str) -> bool:
     return str(dni or "").upper().startswith("SOCIO-")
 
 def padron_standard_headers() -> list[str]:
-    return ["nro_socio", "nombre_completo", "nombre", "apellido", "categoria", "email", "whatsapp", "telefono", "dni", "estado", "rol", "fecha_nacimiento"]
-
-def normalize_import_role(value: str) -> str:
-    raw = (value or "").strip().lower()
-    if not raw:
-        return "socio"
-    trans = str.maketrans("áéíóúüñ", "aeiouun")
-    v = raw.translate(trans).replace("/", " ").replace("-", " ").replace(".", " ")
-    v = "_".join(v.split())
-    aliases = {
-        "socio": "socio", "socios": "socio", "user": "socio", "usuario": "socio",
-        "captain": "captain", "capitan": "captain", "capitan_de_fjord": "captain", "capitan_fjord": "captain",
-        "admin": "admin", "administrador": "admin", "administracion": "admin", "adm": "admin", "admin_club": "admin",
-    }
-    return aliases.get(v, "socio")
+    return ["nro_socio", "nombre_completo", "categoria", "email", "whatsapp", "telefono", "dni", "estado"]
 
 def normalize_import_header(h: str) -> str:
     raw = (h or "").strip().lower()
@@ -3737,8 +3723,6 @@ def normalize_import_header(h: str) -> str:
         "telefono": "telefono", "tel": "telefono", "telefono_linea": "telefono",
         "dni": "dni", "documento": "dni", "numero_documento": "dni",
         "estado": "estado", "activo": "estado",
-        "rol": "rol", "role": "rol",
-        "fecha_nacimiento": "fecha_nacimiento", "birth_date": "fecha_nacimiento",
     }
     return aliases.get(v, v)
 
@@ -5062,49 +5046,50 @@ def final_status_summary(outing: Outing, reservations, active_count: int, presen
     return {"closed": False, "label": "Estado operativo: Abierto", "detail": f"Activos: {active_count} / {outing.max_crew} · pendientes: {pending}", "liquidacion": "Preliquidación no firme hasta cierre del capitán"}
 
 def seed():
-    # Producción: no crear datos demo automáticamente.
-    # Esto es crítico para que Reset Producción deje el sistema realmente en cero
-    # (sin Paseo de domingo ni reservas ficticias después de un redeploy).
-    # Para demos/local, activar DEMO_SEED=1 explícitamente.
-    if APP_ENV == "production" and not DEMO_SEED:
-        return
+    """Bootstrap seguro para entorno vacío.
+
+    Regla operativa de rescate:
+    - si la base está vacía, crear SOLO usuarios base para poder entrar;
+    - no crear salidas, reservas ni fichas ficticias;
+    - si por una migración quedó el sistema sin admins, recrear dos admins de rescate.
+    """
     db = SessionLocal()
     try:
+        created = False
         if db.query(User).count() == 0:
             db.add_all([
-                User(name="Juan Pérez", dni="20123456", member_no="1234", email="juan@example.com", phone="", role="socio", password_hash=hash_password("demo1234")),
-                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234"), must_change_password=True),
                 User(name="Admin Club", dni="27999111", member_no="ADM-01", email="admin@example.com", phone="", role="admin", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Admin Respaldo", dni="27999222", member_no="ADM-02", email="admin2@example.com", phone="", role="admin", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Capitán Martín", dni="30999111", member_no="CAP-01", email="capitan@example.com", phone="", role="captain", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Juan Pérez", dni="20123456", member_no="1234", email="juan@example.com", phone="", role="socio", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="María Gómez", dni="25123456", member_no="1235", email="maria@example.com", phone="", role="socio", password_hash=hash_password("demo1234"), must_change_password=True),
+                User(name="Pedro Martínez", dni="28123456", member_no="1236", email="pedro@example.com", phone="", role="socio", password_hash=hash_password("demo1234"), must_change_password=True),
             ])
             db.commit()
+            created = True
 
-        if db.query(Outing).count() == 0:
-            dep = now_local().replace(hour=10, minute=0, second=0, microsecond=0) + timedelta(days=2)
-            o = Outing(
-                title="Paseo de domingo",
-                destination="Dársena Norte / Río de la Plata",
-                departure_at=dep,
-                status="En reservas",
-                guest_fee=INVITED_FEE,
-                notes="Piloto fin de semana. Mínimo 2, máximo 9 tripulantes sin contar capitán."
-            )
-            db.add(o)
+        admin_count = db.query(User).filter_by(role="admin", active=True).count()
+        if admin_count == 0:
+            rescue = [
+                ("Admin Club", "27999111", "ADM-01", "admin@example.com"),
+                ("Admin Respaldo", "27999222", "ADM-02", "admin2@example.com"),
+            ]
+            for name, dni, member_no, email in rescue:
+                u = db.query(User).filter((User.dni == dni) | (User.member_no == member_no)).first()
+                if not u:
+                    u = User(name=name, dni=dni, member_no=member_no, email=email, phone="")
+                    db.add(u)
+                u.name = name
+                u.email = email
+                u.role = "admin"
+                u.active = True
+                u.password_hash = hash_password("demo1234")
+                u.must_change_password = True
             db.commit()
-            db.refresh(o)
+            created = True
 
-            socio = db.query(User).filter_by(role="socio").first()
-            db.add_all([
-                Reservation(outing_id=o.id, person_name=socio.name, dni=socio.dni, kind="socio", responsible_user_id=socio.id),
-                Reservation(outing_id=o.id, person_name="María Gómez", dni="35111222", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-                Reservation(outing_id=o.id, person_name="Carlos Rodríguez", dni="23452345", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Ana López", dni="32111333", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-                Reservation(outing_id=o.id, person_name="Pedro Martínez", dni="28456456", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Lucía Fernández", dni="36777888", kind="invitado", responsible_user_id=socio.id, status="Condicional hasta 48h"),
-                Reservation(outing_id=o.id, person_name="Diego Sánchez", dni="30456789", kind="socio", responsible_user_id=None),
-                Reservation(outing_id=o.id, person_name="Tomás Ruiz", dni="44999111", kind="hijo_menor", responsible_user_id=socio.id, status="Hijo menor de socio no socio", birth_date="2012-01-01"),
-            ])
-            db.commit()
-            log(db, "sistema", "seed", "Datos demo creados")
+        if created:
+            log(db, "sistema", "seed", "Bootstrap limpio creado: 2 admins, 1 capitán y 3 socios demo. Sin salidas ni reservas.")
     finally:
         db.close()
 
@@ -7701,21 +7686,17 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
             name = raw_nombre or raw_apellido
         dni_clean = norm_dni(row.get("dni", ""))
         category = normalize_category(row.get("categoria", ""))
-        role = normalize_import_role(row.get("rol", ""))
         email = (row.get("email") or "").strip()
         whatsapp = (row.get("whatsapp") or "").strip()
         phone = (row.get("telefono") or row.get("phone") or "").strip()
-        birth_date = (row.get("fecha_nacimiento") or "").strip()
         estado_raw = (row.get("estado") or "activo").strip().lower()
-        active = not any(x in estado_raw for x in ("inactivo", "baja", "suspend", "no"))
+        active = not any(x in estado_raw for x in ("inactivo", "baja", "suspend"))
         errors = []
         warnings = []
-        if role == "socio" and not member_no:
+        if not member_no:
             errors.append("falta nro_socio")
         if not name:
             errors.append("falta nombre_completo")
-        if role in ("admin", "captain") and not dni_clean:
-            errors.append("falta DNI para rol administrativo")
         if email and not valid_email_syntax(email):
             warnings.append("email dudoso")
         if member_no and member_no in seen_members:
@@ -7742,8 +7723,8 @@ def analyze_padron_rows(db: Session, rows: list[dict]) -> dict:
         if category: cats[category_label(category)] = cats.get(category_label(category), 0) + 1
         clean = {
             "line": i, "member_no": member_no, "name": name, "dni": dni_clean,
-            "category": category, "role": role, "email": email, "whatsapp": whatsapp, "phone": phone,
-            "birth_date": birth_date, "active": active, "action": action, "errors": errors, "warnings": warnings,
+            "category": category, "email": email, "whatsapp": whatsapp, "phone": phone,
+            "active": active, "action": action, "errors": errors, "warnings": warnings,
         }
         clean_rows.append(clean)
         if len(preview) < 80:
@@ -7814,38 +7795,28 @@ def padron_import_confirm(
             if member_owner and (not target or member_owner.id != target.id):
                 skipped += 1
                 continue
-        import_role = normalize_import_role(row.get("role") or row.get("rol") or "")
-        import_birth_date = (row.get("birth_date") or row.get("fecha_nacimiento") or "").strip() or None
         if target:
             target.name = row.get("name") or target.name
-            target.member_no = member_no or (None if import_role != "socio" else target.member_no)
+            target.member_no = member_no or target.member_no
             target.dni = final_dni or target.dni
-            target.category = row.get("category") or (target.category if import_role == "socio" else None)
+            target.category = row.get("category") or target.category
             target.email = row.get("email") or target.email
             target.whatsapp = row.get("whatsapp") or target.whatsapp
             target.phone = row.get("phone") or target.phone
-            target.birth_date = import_birth_date or target.birth_date
-            target.role = import_role
-            if import_role != "socio":
-                target.category = None
-                target.member_no = member_no or target.member_no
-            target.password_hash = hash_password("demo1234")
-            target.must_change_password = True
+            target.role = "socio"
             target.active = bool(row.get("active", True))
             updated += 1
         else:
             db.add(User(
-                name=row.get("name") or "Usuario sin nombre",
+                name=row.get("name") or "Socio sin nombre",
                 dni=final_dni,
                 member_no=member_no or None,
-                category=(row.get("category") or None) if import_role == "socio" else None,
+                category=row.get("category") or None,
                 email=row.get("email") or None,
                 whatsapp=row.get("whatsapp") or None,
                 phone=row.get("phone") or None,
-                birth_date=import_birth_date,
-                role=import_role,
+                role="socio",
                 password_hash=hash_password("demo1234"),
-                must_change_password=True,
                 active=bool(row.get("active", True)),
             ))
             created += 1
@@ -7853,7 +7824,7 @@ def padron_import_confirm(
     meta = db.get(SystemMeta, f"pending_padron_import:{token}")
     if meta:
         db.delete(meta)
-    log(db, user.name, "importa padrón oficial", f"creados {created}, actualizados {updated}, omitidos {skipped} / clave inicial demo1234 / roles normalizados")
+    log(db, user.name, "importa padrón oficial", f"creados {created}, actualizados {updated}, omitidos {skipped}")
     db.commit()
     return RedirectResponse(f"/admin?page=socios&msg=padron_importado&created={created}&updated={updated}&skipped={skipped}", status_code=303)
 

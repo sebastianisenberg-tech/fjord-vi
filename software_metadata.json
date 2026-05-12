@@ -1,10 +1,10 @@
 {
-  "version": "1.18.13",
-  "release_label": "Fjord VI · v1.18.13",
+  "version": "1.18.14",
+  "release_label": "Fjord VI · v1.18.12",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-11",
   "notes": "Pulido final del módulo Estadísticas para escritorio de administración, con wording ejecutivo, exportaciones CSV y nuevo informe PDF resumido para reuniones.",
-  "app_build": "Fjord VI 1.18.13",
+  "app_build": "Fjord VI 1.18.12",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,8 +28,8 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v1.18.13 - Hotfix deploy PDF estadísticas",
+  "release": "v1.18.12 - Hotfix deploy PDF estadísticas",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "1.18.13"
+  "app_version": "1.18.14"
 }
