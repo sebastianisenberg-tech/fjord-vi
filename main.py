@@ -84,7 +84,7 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 2.8"
+APP_BUILD = "Fjord VI 3.0"
 RELEASE_LABEL = "Fjord VI · v3.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
@@ -1999,7 +1999,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v1.18.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.0.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6204,7 +6204,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v1.18.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.0.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6238,7 +6238,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v1.18.0: orden visual de Capitán por grupos operativos.
+    # v3.0.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,

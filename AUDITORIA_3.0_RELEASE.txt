@@ -1,0 +1,43 @@
+Fjord VI v3.0 - Auditoría de release
+
+Base utilizada:
+- FjordVI_2.9_header_socio_refinado_auditado.zip
+
+Cambios aplicados:
+- Versión unificada a 3.0.
+- Texto “Próximas navegaciones” reemplazado por “Tus navegaciones”.
+- Sin cambios intencionales en lógica operativa.
+
+No se tocó:
+- reservas
+- lista de espera
+- cargos
+- prioridades
+- cierre/reapertura
+- liquidaciones
+- PDF
+- QR
+- endpoints de negocio
+
+Controles:
+- Archivos antes de auditoría: 101
+- Templates HTML: 16
+- Python compila: sí
+- Templates Jinja compilan: True
+- Bottom nav Socio: 4 links <a> en primer nav bottom detectado
+- “Tus navegaciones” encontrado: 1
+- “Próximas navegaciones” restante: 0
+- Versiones visibles viejas tipo “Fjord VI · v2.x”: []
+- Basura eliminada: ['__pycache__']
+
+Archivos modificados:
+VERSION.txt
+main.py
+software_metadata.json
+templates/socio.html
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

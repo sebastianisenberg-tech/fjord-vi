@@ -1,7 +1,7 @@
-Fjord VI 2.8 - Auditoría de baseline visual recuperado
+Fjord VI 3.0 - Auditoría de baseline visual recuperado
 Base fuente: FjordVI_2.4_nav_inicio_limpio_auditado.zip
-Criterio: recuperar la UI visual correcta de 2.4, no continuar la rama rota 2.5/2.6.
-Cambios: versión unificada a 2.8, limpieza de notas/pycache, preservación de diseño premium.
+Criterio: recuperar la UI visual correcta de 3.0, no continuar la rama rota 3.0/3.0.
+Cambios: versión unificada a 3.0, limpieza de notas/pycache, preservación de diseño premium.
 No se tocaron reglas de negocio, reservas, lista de espera, cargos, cierre, reapertura, liquidación, PDF ni QR.
 Archivos totales: 69
 main.py compila: sí
