@@ -315,11 +315,11 @@
     {% endif %}
   {% endfor %}
   {% set processed_total = ns.presentes|length + ns.ausentes|length + ns.noembarca|length + ns.pendientes|length %}
-  <div class="captainProcessedLineV1167">Reservas procesadas: <b>{{processed_total}}</b> · A bordo: <b>{{ns.presentes|length}}</b> · Ausentes con cargo: <b>{{ns.ausentes|length}}</b></div>
+  <div class="captainProcessedLineV1167">Reservas procesadas: <b>{{processed_total}}</b> · A bordo: <b>{{ns.presentes|length}}</b> · Reservas incumplidas: <b>{{ns.ausentes|length}}</b></div>
   <div class="captainMiniSummary" aria-label="Resumen de asistencia">
     <button type="button" onclick="captainOpenSummary('presentes')"><span>Presentes</span><b>{{ns.presentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('pendientes')"><span>Pendientes</span><b>{{ns.pendientes|length}}</b></button>
-    <button type="button" onclick="captainOpenSummary('ausentes')"><span>No embarcó / cargo</span><b>{{ns.ausentes|length}}</b></button>
+    <button type="button" onclick="captainOpenSummary('ausentes')"><span>Reserva incumplida con cargo</span><b>{{ns.ausentes|length}}</b></button>
     <button type="button" onclick="captainOpenSummary('noembarca')"><span>Sin cargo</span><b>{{ns.noembarca|length}}</b></button>
   </div>
   {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_edit) %}
@@ -459,7 +459,7 @@
     <button type="button" class="captainSummaryClose" onclick="captainCloseSummary()">Cerrar</button>
     <div class="summaryPanel hidden" data-summary-panel="presentes"><h3>Presentes</h3>{% if ns.presentes|length == 0 %}<p class="summaryEmpty">Sin presentes.</p>{% else %}<ul>{% for n in ns.presentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
     <div class="summaryPanel hidden" data-summary-panel="pendientes"><h3>Pendientes</h3>{% if ns.pendientes|length == 0 %}<p class="summaryEmpty">Sin pendientes.</p>{% else %}<ul>{% for n in ns.pendientes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
-    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>No embarcó / cargo</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin no-show con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>Reserva incumplida con cargo</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin reservas incumplidas con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
     <div class="summaryPanel hidden" data-summary-panel="noembarca"><h3>No embarca (sin cargo)</h3>{% if ns.noembarca|length == 0 %}<p class="summaryEmpty">Sin registros.</p>{% else %}<ul>{% for n in ns.noembarca %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
   </div>
 </div>

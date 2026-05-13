@@ -9126,3 +9126,8 @@ a[href="/account/password"].topAction{
     margin-top:4px!important;
   }
 }
+
+
+/* Socio flow ordering: compact section labels */
+.sectionFlowTitle{margin:14px 0 8px 0;padding:0 4px}.sectionFlowTitle .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.72;font-weight:800}
+.socioV51Dashboard + .sectionFlowTitle{margin-top:10px}

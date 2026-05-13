@@ -55,8 +55,56 @@ function showSocioNotice(text){
     </div>
   </div>
 </section>
+<div class="sectionFlowTitle"><span class="eyebrow">1 · Elegir navegación</span></div>
+<section class="card premiumCard socioProCard socioProCalendar socioV51Calendar navCompactV161" id="salidas">
+  <div class="cardTitle navTitleV161"><div><span class="eyebrow">Calendario</span><h2>Próximas navegaciones</h2><p>Tus próximas salidas Fjord VI</p></div></div>
+  {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
+  <div class="selectorList compactSelectorV161">
+  {% for o in outings %}
+    {% if loop.index <= 3 %}
+    <a class="selectRow compactTripV161 navTripCard navTypePaseo {% if outing and o.id == outing.id %}selected mainTrip{% endif %}" href="/socio?outing_id={{o.id}}">
+      <div class="tripTextV161"><span class="tripKindPill">Paseo</span>
+        <b>{{o.title}}</b>
+        <small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small>
+      </div>
+      <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
+    </a>
+    {% endif %}
+  {% endfor %}
+  </div>
+  {% if outings|length > 3 %}
+  <details class="moreTripsV161">
+    <summary><span style="font-size:13px;">Más salidas</span></summary>
+    <div class="selectorList compactSelectorV161 moreListV161">
+    {% for o in outings %}
+      {% if loop.index > 3 %}
+      <a class="selectRow compactTripV161 navTripCard navTypePaseo {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
+        <div class="tripTextV161"><span class="tripKindPill">Paseo</span><b>{{o.title}}</b><small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small></div>
+        <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
+      </a>
+      {% endif %}
+    {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+  {% if history_groups and history_groups|length > 0 %}
+  <details class="historyFold historyMiniV161">
+    <summary>Ver historial</summary>
+    {% for g in history_groups %}
+      <div class="historyMonth">{{g.label}}</div>
+      {% for o in g["items"] %}
+      <a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
+        <span>{{ fjord_date_short(o.departure_at) }} · {{o.title}}</span><small>{{o.status}}</small>
+      </a>
+      {% endfor %}
+    {% endfor %}
+  </details>
+  {% endif %}
+</section>
+
 {% set guest_ns = namespace(count=0) %}
 {% for r in mine %}{% if r.dni != user.dni %}{% set guest_ns.count = guest_ns.count + 1 %}{% endif %}{% endfor %}
+<div class="sectionFlowTitle"><span class="eyebrow">2 · Tu reserva</span></div>
 <section class="miEmbarqueCard socioProBoarding socioV51HeroCard" id="inicio">
   <div class="miEmbTop">
     <div>
@@ -130,55 +178,12 @@ function showSocioNotice(text){
   <a href="#inicio"><b>Estado</b><small>Cupo y salida</small></a>
 </section>
 
-<section class="card premiumCard socioProCard socioProCalendar socioV51Calendar navCompactV161" id="salidas">
-  <div class="cardTitle navTitleV161"><div><span class="eyebrow">Calendario</span><h2>Próximas navegaciones</h2><p>Tus próximas salidas Fjord VI</p></div></div>
-  {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
-  <div class="selectorList compactSelectorV161">
-  {% for o in outings %}
-    {% if loop.index <= 3 %}
-    <a class="selectRow compactTripV161 navTripCard navTypePaseo {% if outing and o.id == outing.id %}selected mainTrip{% endif %}" href="/socio?outing_id={{o.id}}">
-      <div class="tripTextV161"><span class="tripKindPill">Paseo</span>
-        <b>{{o.title}}</b>
-        <small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small>
-      </div>
-      <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
-    </a>
-    {% endif %}
-  {% endfor %}
-  </div>
-  {% if outings|length > 3 %}
-  <details class="moreTripsV161">
-    <summary><span style="font-size:13px;">Más salidas</span></summary>
-    <div class="selectorList compactSelectorV161 moreListV161">
-    {% for o in outings %}
-      {% if loop.index > 3 %}
-      <a class="selectRow compactTripV161 navTripCard navTypePaseo {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
-        <div class="tripTextV161"><span class="tripKindPill">Paseo</span><b>{{o.title}}</b><small>{% if o.destination and o.destination|lower != 'paseo' %}{{o.destination}} · {% endif %}{{ fjord_date_short(o.departure_at) }}</small></div>
-        <span class="pill tripActionV161 {% if outing and o.id == outing.id %}selectedPill{% elif o.status == 'Cancelada por capitán' %}bad{% elif o.status == 'Embarque cerrado' %}neutral{% else %}ok{% endif %}">{% if outing and o.id == outing.id %}Seleccionada{% else %}Ver{% endif %}</span>
-      </a>
-      {% endif %}
-    {% endfor %}
-    </div>
-  </details>
-  {% endif %}
-  {% if history_groups and history_groups|length > 0 %}
-  <details class="historyFold historyMiniV161">
-    <summary>Ver historial</summary>
-    {% for g in history_groups %}
-      <div class="historyMonth">{{g.label}}</div>
-      {% for o in g["items"] %}
-      <a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/socio?outing_id={{o.id}}">
-        <span>{{ fjord_date_short(o.departure_at) }} · {{o.title}}</span><small>{{o.status}}</small>
-      </a>
-      {% endfor %}
-    {% endfor %}
-  </details>
-  {% endif %}
-</section>
+
 
 {% if outing %}
 {% set display_name = (user.name.split()[0] ~ ' ' ~ user.name.split()[1]) if user.name and user.name.split()|length > 1 else user.name %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
+<div class="sectionFlowTitle"><span class="eyebrow">3 · Estado de embarque</span></div>
 <section class="card premiumCard socioProCard socioProGuests" id="invitados">
   <div class="cardTitle"><div><span class="eyebrow">A tu cargo</span><h2>Invitados</h2></div>{% if outing_cancelled %}<span class="pill neutral">Alta pausada</span>{% else %}<span class="pill neutral">Tarifa según salida</span>{% endif %}</div>
   {% set ns = namespace(count=0) %}
@@ -217,7 +222,7 @@ function showSocioNotice(text){
 </details>
 {% endif %}
 
-<details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>No show / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
+<details class="card rulesToggle premiumCard rulesCardV41 socioProCard socioProRules" id="reglas"><summary>Ver reglas de cargos</summary><div class="rulesGridV41"><div><b>Antes de 48 h</b><span>Los socios mantienen prioridad sobre invitados.</span></div><div><b>Después del corte</b><span>La tripulación queda congelada y sólo entra lista de espera si se libera una vacante.</span></div><div><b>Lista de espera</b><span>No genera cargo mientras no ingrese al cupo.</span></div><div><b>Reserva incumplida / cancelación tardía</b><span>Socio: 70% de tarifa invitado. Invitado o menor no socio: 100%.</span></div><div><b>Responsabilidad del socio</b><span>El socio titular responde por sus invitados y menores asociados.</span></div><div><b>Cancelación por capitán</b><span>Si el capitán cancela la salida, no hay cargos.</span></div></div></details>
 {% endif %}
 </main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio" aria-label="Inicio">Inicio</a><a href="#invitados" aria-label="Invitados">Invitados</a><a href="#salidas" aria-label="Calendario">Calendario</a><a href="#perfil" aria-label="Perfil">Perfil</a></nav>
 <footer class="appFooter socioFooter"><b>Fjord VI · v{{version}}</b></footer>

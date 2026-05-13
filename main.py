@@ -365,8 +365,8 @@ COMMUNICATION_EVENTS = {
         "body": "Hola {{socio_nombre}},\n\nTe recordamos tu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}}.\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "no_show_cargo_socio": {
-        "name": "No-show / cargo al socio",
-        "description": "Email al socio responsable cuando el cierre genera cargo por no-show propio o de invitados.",
+        "name": "Reserva incumplida / cargo al socio",
+        "description": "Email al socio responsable cuando el cierre genera cargo por reserva incumplida propia o de invitados.",
         "subject": "Liquidación Fjord VI - {{salida_nombre}} - {{fecha}}",
         "body": "Hola {{socio_nombre}},\n\nEl cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\n\nFicha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
@@ -594,7 +594,7 @@ def queue_no_show_charge_emails(db: Session, outing: Outing, reservations: list,
         charge = actual_charge(outing, r)
         if charge <= 0:
             continue
-        # Invitado presente paga tarifa normal; este evento se reserva para no-show/cargo por ausencia/cancelación.
+        # Invitado presente paga tarifa normal; este evento se reserva para reserva incumplida/cargo por ausencia/cancelación.
         if r.attendance == "Presente" and canonical_kind(r.kind) == "invitado":
             continue
         uid = r.responsible_user_id
@@ -3303,7 +3303,7 @@ def cascade_dependents_for_responsible_status(
     No toca protocolares/institucionales: conservan referencia del socio que los cargó,
     pero no entran en la cascada económica ni operativa del socio.
 
-    mode="absent_charged": socio ausente/no-show. Sus invitados comunes no embarcan
+    mode="absent_charged": socio ausente/reserva incumplida. Sus invitados comunes no embarcan
     y quedan con cargo al socio original, salvo reasignación previa.
 
     mode="no_board_free": el capitán decide que el socio no embarca sin cargo. Sus
@@ -3367,7 +3367,7 @@ def enforce_responsible_dependency(db: Session, outing: Outing, reservations=Non
         responsible_present = bool(responsible_row and canonical_kind(responsible_row.kind) == "socio" and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
         if not responsible_present and r.attendance in ("Presente", "Por confirmar"):
             if responsible_row and responsible_row.attendance == "Ausente":
-                # Socio ausente/no-show: el invitado común no embarca, pero queda
+                # Socio ausente/reserva incumplida: el invitado común no embarca, pero queda
                 # con cargo al socio original salvo reasignación previa.
                 r.attendance = "Ausente"
                 r.cancel_reason = "No embarcó por ausencia del socio responsable"
@@ -4083,7 +4083,7 @@ def is_captain_cancelled(r: Reservation) -> bool:
 
 def is_no_board_by_captain(r: Reservation) -> bool:
     """Caso operativo: la persona llegó o estaba anotada,
-    pero el capitán decide no embarcarla. No es no-show: no genera cargo.
+    pero el capitán decide no embarcarla. No es reserva incumplida: no genera cargo.
     Incluye compatibilidad con el texto viejo 'Ausente marcado por capitán'.
     """
     attendance = (getattr(r, "attendance", "") or "").strip().lower()
@@ -4828,7 +4828,7 @@ def build_statistics_pdf_bytes(statistics: dict, *, generated_by: str = "Adminis
         ("Navegantes totales", str(cards.get("navegantes_totales", 0))),
         ("Socios embarcados", str(cards.get("socios_navegaron", 0))),
         ("Invitados embarcados", str(cards.get("invitados_navegaron", 0))),
-        ("Tasa no-show", str(cards.get("no_show_rate", "0%"))),
+        ("Tasa reserva incumplida", str(cards.get("no_show_rate", "0%"))),
         ("Reaperturas registradas", str(cards.get("reaperturas", 0))),
         ("Salidas con espera", str(cards.get("salidas_con_espera", 0))),
         ("Salidas completas", str(cards.get("salidas_completas", 0))),
@@ -4836,8 +4836,8 @@ def build_statistics_pdf_bytes(statistics: dict, *, generated_by: str = "Adminis
     right_rows = [
         ("Recaudación total", f"$ {econ.get('total_label', '0')}"),
         ("Invitados", f"$ {econ.get('invited_label', '0')}"),
-        ("No-show socios", f"$ {econ.get('noshow_socios_label', '0')}"),
-        ("No-show invitados", f"$ {econ.get('noshow_invitados_label', '0')}"),
+        ("Reserva incumplida socios", f"$ {econ.get('noshow_socios_label', '0')}"),
+        ("Reserva incumplida invitados", f"$ {econ.get('noshow_invitados_label', '0')}"),
         ("Otros cargos", f"$ {econ.get('otros_label', '0')}"),
         ("Socios únicos embarcados", str(meta.get('socios_unicos', 0))),
         ("Invitados embarcados", str(meta.get('invitados_registrados', 0))),
@@ -6580,7 +6580,7 @@ def close_preflight_analysis(db: Session, outing: Outing) -> dict:
     }
 
 def auto_confirm_active_for_close(db: Session, outing: Outing, active):
-    """Cierre operativo: al cerrar, quien no figura Presente queda Ausente/no-show.
+    """Cierre operativo: al cerrar, quien no figura Presente queda Ausente/reserva incumplida.
 
     El QR marca Presente. El cierre consolida esa planilla.
     No se auto-regalan presentes a los pendientes.
@@ -6603,7 +6603,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
     Reglas acordadas:
     - Socio presente: sin cargo.
     - Invitado presente: paga tarifa completa de invitado al socio responsable.
-    - Socio ausente/no-show: paga 70% de la tarifa de invitado.
+    - Socio ausente/reserva incumplida: paga 70% de la tarifa de invitado.
     - Invitados de socio ausente: no embarcan, pero se cobran al socio ausente
       salvo que el capitán los haya reasignado a otro socio presente antes del cierre.
     - Invitados protocolares: pueden embarcar aunque no esté quien los cargó y siempre son sin cargo.
@@ -6628,7 +6628,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
 
         # Regla institucional dura:
         # Protocolar no depende del socio que lo cargó, puede embarcar aunque ese socio no esté,
-        # y nunca genera cargo ni no-show.
+        # y nunca genera cargo ni reserva incumplida.
         if is_protocolar(r):
             r.charge_amount = 0
             if r.attendance == "Presente":
@@ -6662,7 +6662,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             r.cancel_reason = r.cancel_reason or "No confirmado al cierre de embarque"
 
         # Invitados/menores no pueden embarcar sin socio responsable presente.
-        # Si quedaron asociados a un socio ausente, se transforman en no-show con cargo
+        # Si quedaron asociados a un socio ausente, se transforman en reserva incumplida con cargo
         # al socio responsable, no en 'No embarca sin cargo'.
         if k in ("invitado", "hijo_menor") and r.attendance == "Presente":
             if r.responsible_user_id not in present_socio_rows:
@@ -6676,7 +6676,7 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             if not r.cancel_reason:
                 r.cancel_reason = "No embarcó: plaza reservada no utilizada"
         elif r.attendance == "Presente":
-            # Presente pisa cualquier no-show previo. El cargo se imputa una sola vez,
+            # Presente pisa cualquier reserva incumplida previo. El cargo se imputa una sola vez,
             # al socio responsable final. Si hubo reasignación, se preserva la nota
             # para que la ficha explique de dónde venía ese invitado.
             previous_reason = (r.cancel_reason or "").strip()
@@ -6707,7 +6707,7 @@ def reassignment_trace_only(reason: str) -> str:
 
     Al reabrir una salida y volver a cerrarla, la ficha anterior queda anulada.
     La reasignación debe sobrevivir como dato histórico operativo, pero no deben
-    duplicarse textos como "Tarifa de invitado embarcado" ni motivos de no-show.
+    duplicarse textos como "Tarifa de invitado embarcado" ni motivos de reserva incumplida.
     """
     txt = (reason or "").strip()
     if "reasignado" not in txt.lower():
@@ -6959,7 +6959,7 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
         r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
         cascade_dependents_for_responsible_status(db, outing, r, mode="absent_charged")
     elif value == "No embarca":
-        # Decisión operativa del capitán: no es no-show y no genera cargo.
+        # Decisión operativa del capitán: no es reserva incumplida y no genera cargo.
         r.cancelled_at = None
         r.status = default_reservation_status(outing, r)
         r.attendance = "No embarca"
@@ -7108,7 +7108,7 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     # Cierre administrativo: NO se bloquea por mínimo de tripulación.
     # El mínimo sirve para indicar si la salida puede operar, pero si llegó la hora
     # el capitán debe poder cerrar y liquidar aunque nadie haya marcado Presente.
-    # Al cerrar, los activos pendientes quedan Ausentes/no-show y se calculan cargos.
+    # Al cerrar, los activos pendientes quedan Ausentes/reserva incumplida y se calculan cargos.
     if active_count > outing.max_crew:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=maximo_superado", status_code=303)
 
@@ -7189,7 +7189,7 @@ def closing_sheet_csv(sheet_id: int, db: Session = Depends(db_session), user: Us
         for p in g.get("cargos_navegacion", []):
             w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "Navegación", p.get("name", ""), p.get("tipo", ""), p.get("dni", ""), p.get("amount", 0)])
         for p in g.get("cargos_no_show", []):
-            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "No-show", p.get("name", ""), p.get("tipo", ""), p.get("dni", ""), p.get("amount", 0)])
+            w.writerow([g.get("responsible_name", ""), g.get("member_no", ""), "Reserva incumplida", p.get("name", ""), p.get("tipo", ""), p.get("dni", ""), p.get("amount", 0)])
     w.writerow([])
     w.writerow(["TOTAL", "", "", "", "", "", data.get("summary", {}).get("total", 0)])
     filename = f"{data.get('liquidation_id', liquidation_id_for_sheet(sheet)).lower()}_ficha_cierre.csv"
