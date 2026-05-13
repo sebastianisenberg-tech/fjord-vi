@@ -2610,7 +2610,7 @@ button.neutralBtn{
 }
 .socioApp .historyRow{padding:9px 10px!important;border-radius:12px!important;}
 .socioApp .historyMonth{font-size:10px!important;margin:12px 4px 6px!important;}
-.socioApp .rulesToggle summary{font-size:13.2px!important;color:var(--socio-blue)!important;}
+.socioApp .rulesToggle summary{font-size:13.3px!important;color:var(--socio-blue)!important;}
 .socioApp .rulesToggle p{font-size:12.5px!important;color:#536274!important;line-height:1.45!important;}
 
 /* Mensajes: visibles pero sobrios */
@@ -3195,7 +3195,7 @@ body:has(.socioApp){
 .socioApp .kpiStrip small{font-size:10.5px!important;letter-spacing:.13em!important;font-weight:950!important;color:#7d8998!important;}.socioApp .kpiStrip b{display:block!important;margin-top:3px!important;font-size:23px!important;line-height:1!important;letter-spacing:-.035em!important;color:var(--socio-ink)!important;}
 .socioApp #reserva.focusCard{border-left:5px solid var(--socio-blue)!important;background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;box-shadow:0 10px 26px rgba(13,34,54,.075)!important;}
 .socioApp #reserva .cardTitle h2{font-size:22px!important;letter-spacing:-.035em!important;}.socioApp #reserva .cardTitle>.pill.ok{background:#e9f7f2!important;color:#0f684f!important;border-color:#c7eada!important;}
-.socioApp #reserva .premiumPerson.ok .personState{background:#dff5ec!important;color:#0c6b51!important;border-color:#bae7d5!important;font-size:13.2px!important;}.socioApp #reserva .premiumPerson.ok .personState::before{content:'✓ ';font-weight:950;}
+.socioApp #reserva .premiumPerson.ok .personState{background:#dff5ec!important;color:#0c6b51!important;border-color:#bae7d5!important;font-size:13.3px!important;}.socioApp #reserva .premiumPerson.ok .personState::before{content:'✓ ';font-weight:950;}
 .socioApp .personAction button.secondaryDanger{min-height:41px!important;color:#9f2f2a!important;border-color:rgba(163,58,52,.34)!important;background:linear-gradient(180deg,#fff,#fffafa)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.85)!important;}.socioApp .personAction button.secondaryDanger:active{background:#fff1ef!important;transform:scale(.985)!important;}
 .socioApp #invitados .premiumPerson.inactive{opacity:1!important;background:linear-gradient(180deg,#fff,#fffdfd)!important;}.socioApp #invitados .premiumPerson.bad .personState,.socioApp #invitados .premiumPerson.inactive .personState{background:#fff1ef!important;color:#9f2f2a!important;border-color:#efc6c1!important;}.socioApp #invitados .personAction{margin-top:2px!important;}.socioApp #invitados .personAction button.okBtn{background:linear-gradient(180deg,#2a76ad,#174f7c)!important;box-shadow:0 7px 15px rgba(31,95,145,.16), inset 0 1px 0 rgba(255,255,255,.22)!important;}
 .socioApp .premiumForm{background:#fbfdff!important;border-color:rgba(31,95,145,.13)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important;}.socioApp .premiumForm button.btn.light{margin-top:1px!important;}
@@ -3251,7 +3251,7 @@ body:has(.socioApp){background:linear-gradient(180deg,#edf5fb 0%,#fbfdff 42%,#f2
 .socioApp .selectRow.selected .pill{background:#dff1ff!important;color:#0a4169!important;border-color:#b9ddf5!important;font-weight:900!important;}
 .socioApp .premiumHero{padding:16px!important;display:grid!important;gap:14px!important;}
 .socioApp .premiumHero h1{font-size:24px!important;letter-spacing:-.045em!important;line-height:1.02!important;font-weight:880!important;margin:2px 0 5px!important;}
-.socioApp .premiumHero small,.socioApp .premiumHero p{font-size:13.2px!important;color:var(--ios-muted)!important;line-height:1.25!important;}
+.socioApp .premiumHero small,.socioApp .premiumHero p{font-size:13.3px!important;color:var(--ios-muted)!important;line-height:1.25!important;}
 .socioApp .outingIdentity{border-top:1px solid rgba(15,65,103,.10)!important;padding-top:13px!important;}
 .socioApp .outingIdentity h2{font-size:17px!important;font-weight:850!important;letter-spacing:-.025em!important;}
 .socioApp .premiumStatus.open,.socioApp .statusPanel.open{padding:15px 15px 14px 17px!important;border-radius:20px!important;background:linear-gradient(180deg,#eafbf5,#ffffff)!important;border:1px solid #ccebdd!important;border-left:5px solid var(--ios-green)!important;box-shadow:0 9px 22px rgba(20,121,95,.08)!important;}
@@ -3312,7 +3312,7 @@ body:has(.socioApp){background:linear-gradient(180deg,#edf5fb 0%,#fbfdff 42%,#f2
 .socioApp .bottom{left:10px!important;right:10px!important;bottom:9px!important;padding:6px!important;border-radius:21px!important;background:rgba(255,255,255,.955)!important;border:1px solid rgba(15,65,103,.14)!important;box-shadow:0 14px 32px rgba(12,35,54,.18)!important;backdrop-filter:blur(16px) saturate(1.2)!important;-webkit-backdrop-filter:blur(16px) saturate(1.2)!important;}
 .socioApp .bottom a{min-height:38px!important;border-radius:15px!important;font-size:11.8px!important;font-weight:850!important;color:#647186!important;display:flex!important;align-items:center!important;justify-content:center!important;}
 .socioApp .bottom a.on{background:linear-gradient(180deg,#e5f4ff,#d7ecfb)!important;color:#0a4169!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.92)!important;}
-@media(max-width:560px){.socioWrap{padding:9px 9px 80px!important;}.socioApp .card,.socioApp .premiumCard{padding:14px!important;margin:9px 0!important;border-radius:20px!important;}.socioApp .premiumHero{padding:15px!important;}.socioApp .premiumHero h1{font-size:22px!important;}.socioApp .statusMetrics,.socioApp .iosMetrics{gap:6px!important;}.socioApp .statusMetrics strong{min-height:50px!important;padding:8px 7px!important;}.socioApp .statusMetrics strong em{font-size:17px!important;}.socioApp .statusMetrics strong span{font-size:10px!important;}.socioApp .kpiStrip b{font-size:20px!important;}.socioApp #reserva .cardTitle h2{font-size:22px!important;}.socioApp .personMain b{font-size:15.6px!important;}.socioApp .personState{font-size:13.2px!important;}.socioApp .appFooter.socioFooter{margin:6px 0 76px!important;}}
+@media(max-width:560px){.socioWrap{padding:9px 9px 80px!important;}.socioApp .card,.socioApp .premiumCard{padding:14px!important;margin:9px 0!important;border-radius:20px!important;}.socioApp .premiumHero{padding:15px!important;}.socioApp .premiumHero h1{font-size:22px!important;}.socioApp .statusMetrics,.socioApp .iosMetrics{gap:6px!important;}.socioApp .statusMetrics strong{min-height:50px!important;padding:8px 7px!important;}.socioApp .statusMetrics strong em{font-size:17px!important;}.socioApp .statusMetrics strong span{font-size:10px!important;}.socioApp .kpiStrip b{font-size:20px!important;}.socioApp #reserva .cardTitle h2{font-size:22px!important;}.socioApp .personMain b{font-size:15.6px!important;}.socioApp .personState{font-size:13.3px!important;}.socioApp .appFooter.socioFooter{margin:6px 0 76px!important;}}
 
 
 /* v39.3 - SOCIO status block fixed: real component, no text concatenation */
@@ -5522,7 +5522,7 @@ body .socioApp header.top.appHeaderPremium a.logoutBtn {
 .captainFastRowV65.statePending{border-left:4px solid rgba(250,204,21,.55)!important;}
 @media (max-width:420px){
   .captainFastRowV65{grid-template-columns:minmax(0,1fr) auto auto!important;min-height:40px!important;padding:6px 7px 6px 9px!important;}
-  .captainFastIdentityV65 b{max-width:43vw!important;font-size:13.2px!important;}
+  .captainFastIdentityV65 b{max-width:43vw!important;font-size:13.3px!important;}
   .fastStateChipV65{min-width:66px!important;font-size:10px!important;padding:4px 6px!important;}
   .tapCueV65{font-size:8px!important;padding:3px 4px!important;}
 }
@@ -8701,7 +8701,7 @@ a[href="/account/password"].topAction{
   display: none !important;
 }
 
-/* v3.3.10 contraste operativo capitán */
+/* v3.3.30 contraste operativo capitán */
 .captainProtocolarTraceV1165,.captainResponsibleTraceV1165{background:#eef4fa!important;border:1px solid #9fb6cb!important;color:#123!important;}
 .protoDetailV1168,.protoBadge,.badgeTipo{font-weight:700!important;letter-spacing:.02em;}
 .protoDetailV1168{color:#0b4f7a!important;}
@@ -8711,7 +8711,7 @@ a[href="/account/password"].topAction{
 .captainTripCount,.captainProcessedLineV1167{color:#163247!important;font-weight:600!important;}
 
 
-/* Fjord VI 3.3.11 - Capitán: grupos visuales por socio, menos lectura y mejor celular */
+/* Fjord VI 3.3.31 - Capitán: grupos visuales por socio, menos lectura y mejor celular */
 .captainPeopleListV65{gap:8px!important;}
 .captainGroupV11611{
   position:relative!important;
@@ -8837,7 +8837,7 @@ a[href="/account/password"].topAction{
   .compactInstitutionalV11611{font-size:9px!important;padding:2px 6px!important;}
 }
 
-/* Fjord VI 3.3.12 - Capitán UX refinada y legibilidad móvil */
+/* Fjord VI 3.3.32 - Capitán UX refinada y legibilidad móvil */
 .captainProBody .tapCueV65{display:none!important;}
 .captainInlineReassignV1161{display:none!important;}
 
@@ -8893,7 +8893,7 @@ a[href="/account/password"].topAction{
 .captainGroupV11611.groupRole-owner{margin-top:10px!important;min-height:54px!important;}
 .captainGroupV11611.groupRole-owner .captainPersonName{font-size:16px!important;font-weight:950!important;}
 .captainGroupV11611.groupRole-guest{margin-left:16px!important;min-height:42px!important;}
-.captainGroupV11611.groupRole-guest .captainPersonName{font-size:13.2px!important;font-weight:850!important;}
+.captainGroupV11611.groupRole-guest .captainPersonName{font-size:13.3px!important;font-weight:850!important;}
 .captainGroupV11611.groupRole-institutional{
   background:linear-gradient(90deg,#eef7fc,#fff)!important;
   border-color:#90bed6!important;
@@ -9103,7 +9103,7 @@ a[href="/account/password"].topAction{
 .captainLockedPill{white-space:nowrap;}
 
 
-/* Fjord VI v3.3.1 - Capitán: separación visual entre grupos operativos
+/* Fjord VI v3.3.3 - Capitán: separación visual entre grupos operativos
    El color identifica responsable; el espacio separa equipos sin tocar lógica de embarque. */
 .captainPeopleListV65{
   gap:8px!important;
@@ -9568,3 +9568,21 @@ html body nav.bottom.socioV51Bottom a[href="#inicio"]{
 .smtpTestModeFields input{min-width:210px}
 .smtpTestModeStatus{display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#f59e0b;color:#fff}
 @media(max-width:760px){.smtpTestModeBanner{flex-direction:column;align-items:stretch}.smtpTestModeFields{min-width:0;flex-wrap:wrap}.smtpTestModeFields input{min-width:100%}}
+
+
+
+/* Fjord VI v3.3 · SMTP Test Mode integrado */
+.smtpTestModeBanner{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 16px;margin:12px 0 16px;border:1px solid rgba(245,158,11,.42);background:#fffbeb;color:#78350f;border-radius:14px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.smtpTestModeBanner.active{border-color:rgba(245,158,11,.55);background:#fffbeb}
+.smtpTestModeBanner.off{border-color:rgba(16,185,129,.25);background:#ecfdf5;color:#065f46}
+.smtpTestModeBanner strong{font-size:15px}
+.smtpTestModeBanner p{margin:4px 0 0;font-size:13px;line-height:1.35}
+.smtpTestWarnings{display:block;margin-top:6px;font-weight:800;color:#991b1b}
+.smtpTestModeFields{display:flex;align-items:center;gap:8px;min-width:320px;justify-content:flex-end;flex-wrap:wrap}
+.smtpTestModeStatus{display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;background:#f59e0b;color:#fff}
+.smtpTestModeBanner.off .smtpTestModeStatus{background:#059669}
+.smtpTestRecipient{font-size:12px;font-weight:800;background:rgba(255,255,255,.65);border:1px solid rgba(15,23,42,.08);padding:6px 9px;border-radius:999px}
+.checkLine{display:flex!important;gap:8px!important;align-items:center!important;grid-template-columns:none!important}
+.checkLine input{width:auto!important;height:auto!important}
+.strongCheck{background:#fffbeb;border:1px solid rgba(245,158,11,.35);border-radius:10px;padding:8px 10px!important}
+@media(max-width:760px){.smtpTestModeBanner{flex-direction:column;align-items:stretch}.smtpTestModeFields{min-width:0;justify-content:flex-start}}
