@@ -1,0 +1,29 @@
+Fjord VI v2.9 - Auditoría
+
+Base: FjordVI_2.8_visual_24_recuperado_auditado.zip
+
+Cambio aplicado:
+- Refinamiento del header del módulo Socio.
+- El nombre deja de depender visualmente de la etiqueta “Socio ·”.
+- El nombre gana ancho y mantiene truncado elegante con puntos suspensivos.
+- El badge aislado tipo “S · ####” se transforma en “Socio · Nº ####”.
+- El ajuste se realiza de forma acotada sobre Socio, sin tocar lógica operativa.
+
+No se tocó:
+- reservas
+- lista de espera
+- cargos
+- prioridades
+- cierre/reapertura
+- liquidaciones
+- PDF
+- QR
+- endpoints de negocio
+
+Controles:
+- main.py compila: sí
+- CSS header v2.9 presente: True
+- JS header v2.9 presente: True
+- versiones viejas visibles detectadas: []
+- archivos totales: 70
+- sin __pycache__/pyc/DS_Store: sí

@@ -9504,3 +9504,55 @@ html body .socioApp nav.bottom.socioV51Bottom a[href="#inicio"],
 html body nav.bottom.socioV51Bottom a[href="#inicio"]{
   cursor:pointer!important;
 }
+
+
+
+/* Fjord VI v2.9 · Refinamiento header Socio.
+   Nombre más protagonista, metadata institucional contextualizada y truncado controlado. */
+.fjordSocioTopbar29 .fjordSocioName29{
+  display:block!important;
+  max-width:clamp(135px,42vw,245px)!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:clamp(13px,3.35vw,15px)!important;
+  line-height:1.08!important;
+  font-weight:650!important;
+  letter-spacing:-.01em!important;
+}
+.fjordSocioNumero29{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  min-height:24px!important;
+  padding:4px 9px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:650!important;
+  letter-spacing:.01em!important;
+  white-space:nowrap!important;
+  color:#17324d!important;
+  background:rgba(255,255,255,.78)!important;
+  border:1px solid rgba(15,54,92,.14)!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.05)!important;
+}
+.socioV51 .fjordSocioNumero29,
+.socioApp .fjordSocioNumero29{
+  margin-left:auto!important;
+}
+.fjordSocioTopbar29,
+.fjordSocioTopbar29 *{
+  box-sizing:border-box;
+}
+@media (max-width:380px){
+  .fjordSocioTopbar29 .fjordSocioName29{
+    max-width:clamp(110px,36vw,185px)!important;
+    font-size:13px!important;
+  }
+  .fjordSocioNumero29{
+    font-size:11.5px!important;
+    padding:4px 7px!important;
+  }
+}

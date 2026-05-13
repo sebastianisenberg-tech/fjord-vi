@@ -294,4 +294,47 @@ document.addEventListener('DOMContentLoaded', function(){
 </main><nav class="bottom socioV51Bottom"><a class="on" href="#inicio" aria-label="Inicio">Inicio</a><a href="#invitados" aria-label="Invitados">Invitados</a><a href="#salidas" aria-label="Calendario">Calendario</a><a href="#perfil" aria-label="Perfil">Perfil</a></nav>
 <footer class="appFooter socioFooter"><b>Fjord VI · v{{version}}</b></footer>
 </div><script src="/static/app.js?v={{version}}"></script>
+
+<script>
+(function fjordSocioHeaderRefinado29(){
+  function norm(s){ return (s || '').replace(/\s+/g,' ').trim(); }
+  document.addEventListener('DOMContentLoaded', function(){
+    var header = document.querySelector('.topbar, .topBar, .appTop, .app-header, .socioHeader, header');
+    if(!header) return;
+    header.classList.add('fjordSocioTopbar29');
+
+    var nodes = Array.prototype.slice.call(header.querySelectorAll('div,span,p,strong,small'));
+    var nameNode = null;
+
+    nodes.forEach(function(el){
+      var t = norm(el.textContent);
+      if(!nameNode && /^Socio\s*[·-]\s+.+/i.test(t) && t.length < 100){
+        nameNode = el;
+      }
+    });
+
+    if(nameNode){
+      var full = norm(nameNode.textContent);
+      var name = full.replace(/^Socio\s*[·-]\s*/i,'').trim();
+      if(name){
+        nameNode.textContent = name;
+        nameNode.classList.add('fjordSocioName29');
+      }
+    }
+
+    // Convertir badges tipo "S · 10016" en metadata institucional clara.
+    var all = Array.prototype.slice.call(document.querySelectorAll('span,div,small,strong,a'));
+    all.forEach(function(el){
+      var t = norm(el.textContent);
+      var m = t.match(/^[A-ZÁÉÍÓÚÑ]\s*[·•]\s*(\d{2,})$/i);
+      if(m){
+        el.textContent = 'Socio · Nº ' + m[1];
+        el.classList.add('fjordSocioNumero29');
+        el.setAttribute('aria-label','Número de socio ' + m[1]);
+      }
+    });
+  });
+})();
+</script>
+
 </body></html>
