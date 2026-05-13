@@ -1,0 +1,20 @@
+Fjord VI v2.6 - Auditoría real
+
+Fuente: FjordVI_2.5_bottom_nav_limpio_auditado.zip
+
+Correcciones:
+- Versión visible y metadata unificadas a 2.6.
+- Eliminación HTML/CSS de controles centrales tipo flecha en bottom nav Socio.
+- Inicio conserva función de scroll al top con blur de input activo.
+- No se tocó lógica de reservas, cargos, cierre, reapertura, liquidación ni PDF.
+
+Templates socio detectados:
+templates/socio.html
+
+Templates modificados:
+templates/socio.html
+
+Archivos totales: 71
+main.py compila: True
+Versiones viejas visibles detectadas: []
+Chevron chars en templates socio: []

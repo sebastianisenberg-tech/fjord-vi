@@ -9441,7 +9441,7 @@ a[href="/account/password"].topAction{
   cursor:pointer!important;
 }
 
-/* Fjord VI v2.5 · Corrección final: barra inferior sin pseudo-flecha central */
+/* Fjord VI v2.6 · Corrección final: barra inferior sin pseudo-flecha central */
 html body .app.socioApp nav.bottom.socioV51Bottom,
 html body .socioApp nav.bottom.socioV51Bottom,
 html body nav.bottom.socioV51Bottom{
@@ -9507,7 +9507,7 @@ html body nav.bottom.socioV51Bottom a[href="#inicio"]{
 
 
 
-/* Fjord VI v2.5 · Corrección real: eliminar pseudo-iconos heredados de la bottom nav Socio.
+/* Fjord VI v2.6 · Corrección real: eliminar pseudo-iconos heredados de la bottom nav Socio.
    Motivo: la flecha/círculo central visible no era un botón HTML, sino un a::before heredado. */
 html body .socioApp nav.bottom.socioV51Bottom a::before,
 html body .app.socioApp nav.bottom.socioV51Bottom a::before,
@@ -9560,4 +9560,73 @@ html body nav.bottom.socioV51Bottom a{
   gap:0!important;
   text-indent:0!important;
   white-space:nowrap!important;
+}
+
+
+
+/* Fjord VI v2.6 · Limpieza definitiva bottom nav Socio.
+   Elimina flecha central residual y pseudo-elementos heredados. */
+html body nav.bottom.socioV51Bottom,
+html body .socioV51Bottom,
+html body .socioApp nav.bottom{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+}
+
+html body nav.bottom.socioV51Bottom::before,
+html body nav.bottom.socioV51Bottom::after,
+html body .socioV51Bottom::before,
+html body .socioV51Bottom::after,
+html body .socioApp nav.bottom::before,
+html body .socioApp nav.bottom::after,
+html body nav.bottom.socioV51Bottom a::before,
+html body nav.bottom.socioV51Bottom a::after,
+html body .socioV51Bottom a::before,
+html body .socioV51Bottom a::after,
+html body .socioApp nav.bottom a::before,
+html body .socioApp nav.bottom a::after{
+  content:none!important;
+  display:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  width:0!important;
+  height:0!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:0!important;
+  max-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  transform:none!important;
+  pointer-events:none!important;
+}
+
+html body .bottom-center,
+html body .bottom-fab,
+html body .bottomFab,
+html body .nav-center,
+html body .nav-fab,
+html body .scroll-top-fab,
+html body .to-top-fab,
+html body .center-fab,
+html body .socio-bottom-center{
+  display:none!important;
+  content:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+html body nav.bottom.socioV51Bottom a,
+html body .socioV51Bottom a,
+html body .socioApp nav.bottom a{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex-direction:row!important;
+  gap:0!important;
 }

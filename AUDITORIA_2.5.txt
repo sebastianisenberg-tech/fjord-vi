@@ -1,8 +1,8 @@
-Fjord VI v2.5 - Auditoría
+Fjord VI v2.6 - Auditoría
 Cambio quirúrgico: eliminación real de pseudo-iconos a::before/a::after en bottom nav Socio.
 No se modificó lógica de reservas, espera, cargos, cierre, reapertura, liquidación ni PDF.
 Archivos totales: 70
 Links bottom nav Socio: 4
 Sin __pycache__: True
-Fix CSS v2.5 presente: True
+Fix CSS v2.6 presente: True
 main.py compila: True
