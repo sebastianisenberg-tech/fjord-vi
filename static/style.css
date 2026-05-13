@@ -9176,7 +9176,7 @@ a[href="/account/password"].topAction{
   .guestMenuPanelV123{right:-2px;min-width:230px;}
 }
 
-/* Fjord VI v2.2 - refinamiento premium conservador Socio */
+/* Fjord VI v2.3 - refinamiento premium conservador Socio */
 .socioApp .topActionsV123{
   gap:10px!important;
 }
@@ -9330,7 +9330,7 @@ a[href="/account/password"].topAction{
   .socioApp .topActionsV123{gap:9px!important;}
 }
 
-/* Fjord VI v2.2 · Socio UI conservadora: headers dinámicos, disabled states, progress tracker */
+/* Fjord VI v2.3 · Socio UI conservadora: headers dinámicos, disabled states, progress tracker */
 .socioV20 .sectionFlowTitleV20{margin:7px 2px 5px!important;}
 .socioV20 .navCompactV20{padding:8px 10px!important;margin-bottom:8px!important;}
 .socioV20 .navTitleV20 h2{font-size:16.5px!important;line-height:1.03!important;}
@@ -9397,7 +9397,7 @@ a[href="/account/password"].topAction{
 }
 
 
-/* Fjord VI v2.2 · Acceso rápido a invitados y leyenda protocolar no interactiva */
+/* Fjord VI v2.3 · Acceso rápido a invitados y leyenda protocolar no interactiva */
 .socioApp.socioV20{scroll-behavior:smooth;}
 .socioApp #agregar-invitado{scroll-margin-top:86px;}
 .socioApp .protoInfoNoteV21{
@@ -9414,3 +9414,29 @@ a[href="/account/password"].topAction{
   background:transparent!important;
 }
 .socioApp .protoInfoNoteV21:before{content:"✓";display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:#e8f7ef;color:#137348;font-size:11px;font-weight:950;}
+
+
+/* Fjord VI v2.3 · Bottom nav sin flecha central redundante */
+.socioApp .bottom.socioV51Bottom::before,
+.socioApp .bottom.socioV51Bottom::after,
+.socioApp .socioV51Bottom::before,
+.socioApp .socioV51Bottom::after{
+  content:none!important;
+  display:none!important;
+}
+.socioApp .bottom.socioV51Bottom .center,
+.socioApp .bottom.socioV51Bottom .floating,
+.socioApp .bottom.socioV51Bottom .middle,
+.socioApp .bottom.socioV51Bottom .scrollTop,
+.socioApp .bottom.socioV51Bottom .scrollTopBtn,
+.socioApp .bottom.socioV51Bottom .backToTop{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+.socioApp .bottom.socioV51Bottom{
+  grid-template-columns:repeat(4,1fr)!important;
+}
+.socioApp .bottom.socioV51Bottom a[href="#inicio"]{
+  cursor:pointer!important;
+}

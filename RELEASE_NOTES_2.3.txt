@@ -1,0 +1,10 @@
+Fjord VI 2.3 - Corrección conservadora de navegación inferior
+
+Cambios aplicados:
+- Se elimina la flecha central redundante de la navegación inferior del módulo Socio.
+- El botón Inicio queda como único acceso para volver al inicio real de la pantalla.
+- Inicio ejecuta scroll suave hasta el top absoluto de la vista.
+- No se modifica lógica de reservas, invitados, lista de espera, cargos, cierre, reapertura, PDF ni backend operativo.
+- Versión unificada a 2.3.
+
+Alcance: UI/UX Socio בלבד, sin impacto funcional de negocio.

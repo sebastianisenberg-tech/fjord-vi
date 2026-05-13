@@ -1,5 +1,5 @@
 
-Fjord VI 2.2 - Refinamiento Premium Auditado
+Fjord VI 2.3 - Refinamiento Premium Auditado
 
 Objetivo:
 Refinar exclusivamente UI/UX del módulo Socio sin alterar
