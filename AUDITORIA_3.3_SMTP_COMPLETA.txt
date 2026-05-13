@@ -1,0 +1,29 @@
+Fjord VI v3.3 · SMTP COMPLETA
+
+Base:
+- FjordVI_3.3_REAL_HARDENING_SMTP_SEGURO.zip
+
+Agregado:
+- Checklist visible de seguridad SMTP.
+- Receptor de pruebas con alerta visual si falta.
+- Botón Prueba integral SMTP.
+- Ruta /admin/communications/full_test.
+- Aviso de test en cada mail con evento, timestamp, destinatario original y efectivo.
+- Guía SMTP_TEST_MODE_COMPLETO_3.3.md.
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "full_test_route": true,
+  "checklist_panel": true,
+  "danger_recipient": false,
+  "decorated_event": true,
+  "version": "3.3"
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

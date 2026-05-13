@@ -424,7 +424,7 @@ def smtp_settings(db: Session) -> dict:
 def smtp_configured(settings: dict) -> bool:
     return bool(settings.get("host") and settings.get("from_email"))
 
-def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str) -> tuple[bool, str]:
+def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
     settings = smtp_settings(db)
     if not smtp_configured(settings):
         return False, "SMTP no configurado"
@@ -439,7 +439,7 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
         from_name = settings.get("from_name") or f"{CLUB_NAME} · {APP_NAME}"
         from_email = settings.get("from_email")
         subject = decorate_smtp_subject(db, subject)
-        body = decorate_smtp_body(db, body, original_to, effective_to)
+        body = decorate_smtp_body(db, body, original_to, effective_to, event_key)
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
@@ -499,7 +499,7 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
     sent = failed = 0
     for row in rows:
         row.attempts = int(row.attempts or 0) + 1
-        ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body)
+        ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
         if ok:
             row.status = "sent"
             row.sent_at = now_local()
@@ -962,14 +962,17 @@ def decorate_smtp_subject(db: Session, subject: str) -> str:
         return "[TEST Fjord VI] " + subject
     return subject
 
-def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: str) -> str:
+def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: str, event_key: str = "") -> str:
     body = body or ""
     if not smtp_test_mode_enabled(db):
         return body
     notice = (
         "MODO PRUEBA SMTP ACTIVO\n"
+        f"Evento: {event_key or '-'}\n"
+        f"Fecha/hora test: {now_local().strftime('%d/%m/%Y %H:%M')}\n"
         f"Destinatario original: {original_to or '-'}\n"
         f"Redirigido a: {effective_to or '-'}\n"
+        "Entorno: beta / prueba controlada\n"
         "Ningún socio real recibe este correo durante la prueba.\n\n"
     )
     return notice + body
@@ -9523,6 +9526,49 @@ def admin_communications_template(template_key: str, subject: str = Form(""), bo
     db.commit()
     log(db, user.name, "communications template", f"Plantilla actualizada: {template_key}; {'activa' if tpl.enabled else 'inactiva'}")
     return RedirectResponse("/admin?page=comunicaciones&msg=plantilla_actualizada", status_code=303)
+
+
+@app.post("/admin/communications/full_test")
+def admin_communications_full_test(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ensure_communications_seed(db)
+    if smtp_test_mode_enabled(db) and reliability_guard_smtp(db):
+        return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_incompleto", status_code=303)
+
+    settings = smtp_settings(db)
+    test_email = settings.get("test_recipient_email") or settings.get("admin_email") or user.email or ""
+    if not test_email:
+        return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_sin_receptor", status_code=303)
+
+    sample_payload = {
+        "app_name": APP_NAME,
+        "version": VERSION,
+        "club_nombre": CLUB_NAME,
+        "socio_nombre": user.name or "Socio de prueba",
+        "salida_nombre": "Paseo Fjord VI Prueba",
+        "fecha": now_local().strftime("%d/%m/%Y"),
+        "hora": "11:00",
+        "estado": "prueba controlada",
+        "invitado_nombre": "Invitado de prueba",
+        "detalle_cargos": "Ejemplo de cargo reglamentario de prueba",
+        "total_socio": "$ 0",
+        "link_ficha": "Prueba sin ficha real",
+        "ficha_numero": "TEST",
+        "capitan_nombre": "Capitán de prueba",
+        "presentes": "0",
+        "total": "$ 0",
+        "punto_encuentro": "Dársena Norte",
+        "lista_personas": "- Socio de prueba\\n- Invitado de prueba",
+    }
+
+    count = 0
+    for tpl in db.query(NotificationTemplate).order_by(NotificationTemplate.key.asc()).all():
+        q = queue_email(db, tpl.key, test_email, user.name or "Prueba", sample_payload, force=True)
+        if q:
+            count += 1
+    result = process_notification_queue(db, limit=max(25, count + 5))
+    log(db, user.name, "communications full test", f"templates={count}; resultado={result}")
+    return RedirectResponse(f"/admin?page=comunicaciones&msg=smtp_full_test_{count}_{result.get('sent',0)}_{result.get('failed',0)}", status_code=303)
+
 
 @app.post("/admin/communications/test")
 def admin_communications_test(test_email: str = Form(...), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
