@@ -1,4 +1,4 @@
-SMTP TEST MODE · Fjord VI v3.3
+SMTP TEST MODE · Fjord VI v3.4
 
 Objetivo:
 - Permitir pruebas reales de correo sin enviar emails a socios reales.

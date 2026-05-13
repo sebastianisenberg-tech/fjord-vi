@@ -1,4 +1,4 @@
-Fjord VI v3.3 · SMTP TEST MODE SEGURO
+Fjord VI v3.4 · SMTP TEST MODE SEGURO
 
 Datos a cargar para probar:
 1. SMTP host

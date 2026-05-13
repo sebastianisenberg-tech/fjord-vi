@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.3"
+APP_VERSION = "3.4"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.3"
-RELEASE_LABEL = "Fjord VI · v3.3"
+APP_BUILD = "Fjord VI 3.4"
+RELEASE_LABEL = "Fjord VI · v3.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -513,6 +513,57 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
     db.commit()
     return {"processed": len(rows), "sent": sent, "failed": failed}
 
+
+def smtp_connection_probe(db: Session) -> tuple[bool, str]:
+    """Prueba conexión/autenticación SMTP sin enviar email."""
+    settings = smtp_settings(db)
+    if not smtp_configured(settings):
+        return False, "SMTP no configurado"
+    try:
+        port = int(settings.get("port") or 587)
+        with smtplib.SMTP(settings["host"], port, timeout=20) as server:
+            server.ehlo()
+            if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
+                server.starttls()
+                server.ehlo()
+            if settings.get("username"):
+                server.login(settings.get("username"), settings.get("password") or "")
+        return True, "Conexión SMTP validada"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {str(e)[:300]}"
+
+def smtp_readiness_summary(db: Session) -> dict:
+    settings = smtp_settings(db)
+    configured = smtp_configured(settings)
+    test_mode = smtp_test_mode_enabled(db)
+    test_recipient = smtp_test_recipient(db)
+    redirect = smtp_force_redirect_enabled(db)
+    try:
+        events_on = db.query(NotificationEventSetting).filter_by(enabled=True).count()
+    except Exception:
+        events_on = 0
+    issues = []
+    if not configured:
+        issues.append("SMTP no configurado")
+    if test_mode and not test_recipient:
+        issues.append("Falta email receptor de pruebas")
+    if test_mode and not redirect:
+        issues.append("Redirect de prueba apagado")
+    if not test_mode:
+        issues.append("Modo producción: destinatarios reales activos")
+    safe_test = bool(test_mode and test_recipient and redirect)
+    return {
+        "configured": configured,
+        "test_mode": test_mode,
+        "test_recipient": test_recipient,
+        "redirect": redirect,
+        "events_on": events_on,
+        "safe_test": safe_test,
+        "issues": issues,
+        "label": "LISTO PARA TEST" if safe_test else ("PRODUCCIÓN" if not test_mode else "INCOMPLETO"),
+    }
+
+
 def communications_context(db: Session) -> dict:
     ensure_communications_seed(db)
     settings = smtp_settings(db)
@@ -537,6 +588,11 @@ def communications_context(db: Session) -> dict:
         "smtp_force_redirect_in_test": smtp_force_redirect_enabled(db),
         "smtp_safety_issues": safety_issues,
         "smtp_safe_for_testing": smtp_test_mode_enabled(db) and smtp_force_redirect_enabled(db) and bool(smtp_test_recipient(db)),
+        "readiness": smtp_readiness_summary(db),
+        "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
+        "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
+        "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
+        "module_version": "SMTP · v3.4",
     }
 
 def communication_status(db: Session) -> dict:
@@ -2140,7 +2196,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.3.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.4.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6345,7 +6401,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.3.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.4.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6379,7 +6435,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.3.0: orden visual de Capitán por grupos operativos.
+    # v3.4.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
@@ -9527,6 +9583,16 @@ def admin_communications_template(template_key: str, subject: str = Form(""), bo
     log(db, user.name, "communications template", f"Plantilla actualizada: {template_key}; {'activa' if tpl.enabled else 'inactiva'}")
     return RedirectResponse("/admin?page=comunicaciones&msg=plantilla_actualizada", status_code=303)
 
+
+
+@app.post("/admin/communications/smtp_check")
+def admin_communications_smtp_check(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ok, detail = smtp_connection_probe(db)
+    set_system_meta("smtp_last_probe_ok", "1" if ok else "0")
+    set_system_meta("smtp_last_probe_detail", detail)
+    set_system_meta("smtp_last_probe_at", now_local().strftime("%d/%m/%Y %H:%M"))
+    log(db, user.name, "communications smtp check", detail)
+    return RedirectResponse(f"/admin?page=comunicaciones&msg=smtp_check_{'ok' if ok else 'error'}", status_code=303)
 
 @app.post("/admin/communications/full_test")
 def admin_communications_full_test(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
