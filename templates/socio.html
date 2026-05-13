@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function(){
 {% set nav_step_label = 'Historial de navegación' if is_history_view else ('Detalle de navegación' if closed or outing_cancelled else 'Elegir navegación') %}
 <div class="sectionFlowTitle sectionFlowTitleV20"><span class="eyebrow">1 · {{ nav_step_label }}</span></div>
 <section class="card premiumCard socioProCard socioProCalendar socioV51Calendar navCompactV161 navCompactV20" id="salidas">
-  <div class="cardTitle navTitleV161 navTitleV20"><div><span class="eyebrow">{{ 'Historial' if is_history_view else 'Calendario' }}</span><h2>{{ 'Navegación seleccionada' if is_history_view else 'Próximas navegaciones' }}</h2><p>{{ 'Consulta de salida cerrada o histórica' if is_history_view else 'Tus próximas salidas Fjord VI' }}</p></div></div>
+  <div class="cardTitle navTitleV161 navTitleV20"><div><span class="eyebrow">{{ 'Historial' if is_history_view else 'Calendario' }}</span><h2>{{ 'Navegación seleccionada' if is_history_view else 'Tus navegaciones' }}</h2><p>{{ 'Consulta de salida cerrada o histórica' if is_history_view else 'Tus próximas salidas Fjord VI' }}</p></div></div>
   {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
   <div class="selectorList compactSelectorV161">
   {% for o in outings %}
