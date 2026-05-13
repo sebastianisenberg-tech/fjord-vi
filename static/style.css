@@ -9131,3 +9131,47 @@ a[href="/account/password"].topAction{
 /* Socio flow ordering: compact section labels */
 .sectionFlowTitle{margin:14px 0 8px 0;padding:0 4px}.sectionFlowTitle .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.72;font-weight:800}
 .socioV51Dashboard + .sectionFlowTitle{margin-top:10px}
+
+
+/* Fjord VI v1.2.3 - compactación premium Socio */
+.topActionsV123{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.socioKeyTopV123{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;text-decoration:none;font-size:12px;font-weight:800;white-space:nowrap;}
+.socioTopUtilityV123{justify-content:space-between!important;gap:10px;margin:6px 0 8px!important;}
+.memberBadgeV123{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:#f4f7fb;border:1px solid rgba(13,28,51,.10);color:#183557;font-size:12px;font-weight:900;letter-spacing:.01em;white-space:nowrap;}
+.socioV51 .sectionFlowTitle{margin:8px 0 4px!important;}
+.socioV51 .sectionFlowTitle .eyebrow{font-size:11px!important;letter-spacing:.08em!important;}
+.socioV51 .socioV51Calendar{padding:12px!important;margin-bottom:10px!important;}
+.socioV51 .navTitleV161{margin-bottom:8px!important;}
+.socioV51 .navTitleV161 h2{font-size:18px!important;margin:0!important;}
+.socioV51 .navTitleV161 p{font-size:12px!important;margin-top:2px!important;}
+.socioV51 .compactTripV161{padding:9px 10px!important;min-height:54px!important;}
+.socioV51 .tripTextV161 b{font-size:14px!important;}
+.socioV51 .tripTextV161 small{font-size:11px!important;}
+.socioV51 .tripKindPill,.socioV51 .tripActionV161{font-size:10px!important;padding:4px 7px!important;}
+.socioV51 .socioProGuests .cardTitle{margin-bottom:8px!important;}
+.socioV51 .socioProGuests .cardTitle h2{font-size:18px!important;margin:0!important;}
+.socioV51 .premiumPerson.boardingPass{display:grid!important;grid-template-columns:1fr auto!important;align-items:center!important;gap:8px!important;padding:10px 10px!important;margin:7px 0!important;min-height:62px!important;}
+.socioV51 .premiumPerson .personMain{min-width:0!important;}
+.socioV51 .personNameAlways{font-size:14px!important;line-height:1.15!important;}
+.socioV51 .badgeTipo,.socioV51 .protoBadge{font-size:9.5px!important;padding:3px 6px!important;margin-left:5px!important;vertical-align:middle!important;}
+.socioV51 .personState{font-size:12px!important;line-height:1.25!important;margin-top:4px!important;}
+.socioV51 .personState small{display:inline!important;margin-left:4px!important;font-size:11px!important;}
+.personActionMenuV123{position:relative!important;align-self:center!important;}
+.guestMenuV123{position:relative!important;}
+.guestMenuV123>summary{list-style:none;cursor:pointer;width:32px;height:32px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#f4f7fb;border:1px solid rgba(13,28,51,.11);font-size:20px;line-height:1;color:#17365d;font-weight:900;}
+.guestMenuV123>summary::-webkit-details-marker,.guestSubmenuV123>summary::-webkit-details-marker{display:none;}
+.guestMenuV123[open]>summary{background:#e9f0fa;}
+.guestMenuPanelV123{position:absolute;right:0;top:38px;z-index:30;min-width:238px;padding:8px;border-radius:16px;background:#fff;border:1px solid rgba(14,34,64,.14);box-shadow:0 16px 38px rgba(8,23,45,.18);display:grid;gap:6px;}
+.menuActionV123,.guestSubmenuV123>summary{width:100%;border:0;background:#f7f9fc;color:#17365d;border-radius:12px;padding:9px 10px;font-size:13px;font-weight:800;text-align:left;cursor:pointer;}
+.menuActionV123.primary{background:#eaf3ff;color:#0b4a83;}
+.menuActionV123.danger{background:#fff1f1;color:#9b1f1f;}
+.guestSubmenuV123{display:block;}
+.guestSubmenuV123[open]>summary{border-bottom-left-radius:8px;border-bottom-right-radius:8px;}
+.guestEditFormV123{margin-top:6px;padding:8px;border-radius:12px;background:#fbfcfe;border:1px solid rgba(14,34,64,.08);}
+@media(max-width:760px){
+  .socioKeyTopV123{font-size:11px;padding:6px 8px;}
+  .topActionsV123{gap:6px;}
+  .socioTopUtilityV123{margin:4px 0 7px!important;}
+  .socioV51 .socioV51Calendar{padding:10px!important;}
+  .guestMenuPanelV123{right:-2px;min-width:230px;}
+}
