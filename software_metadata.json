@@ -1,10 +1,10 @@
 {
-  "version": "2.0",
-  "release_label": "Fjord VI · v2.0",
+  "version": "2.1",
+  "release_label": "Fjord VI · v2.1",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-13",
-  "notes": "Versión 2.0 conservadora del módulo Socio: encabezados dinámicos, estados visuales inactivos, progress tracker premium, compactación y conservación de lógica de reservas/cargos/cierres.",
-  "app_build": "Fjord VI 2.0",
+  "notes": "Versión 2.1 conservadora del módulo Socio: botón Invitar como ancla al formulario de carga de invitados, leyenda protocolar no interactiva y preservación total de lógica de reservas/cargos/cierres.",
+  "app_build": "Fjord VI 2.1",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,8 +28,8 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v2.0 - Socio UI premium conservadora",
+  "release": "v2.1 - Socio UI premium: acceso rápido a invitados",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "2.0"
+  "app_version": "2.1"
 }
