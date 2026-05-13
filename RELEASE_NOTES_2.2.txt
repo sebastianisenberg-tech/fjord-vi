@@ -1,0 +1,22 @@
+
+Fjord VI 2.2 - Refinamiento Premium Auditado
+
+Objetivo:
+Refinar exclusivamente UI/UX del módulo Socio sin alterar
+lógica operativa, reglas reglamentarias ni workflows críticos.
+
+Mejoras consolidadas:
+- Compactación visual
+- Header más equilibrado
+- Scroll suave hacia formulario de invitados
+- Menús contextuales ⋯
+- Mejor jerarquía visual
+- Corrección de versión unificada 2.2
+
+Auditoría:
+- Sin archivos basura agregados
+- Conservación estructura original
+- Reempaquetado limpio
+
+Fecha:
+2026-05-13T02:48:57.746225 UTC
