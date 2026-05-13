@@ -1,10 +1,10 @@
 {
-  "version": "2.3",
-  "release_label": "Fjord VI · v2.3",
+  "version": "2.4",
+  "release_label": "Fjord VI · v2.4",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-13",
-  "notes": "Versión 2.3 conservadora del módulo Socio: elimina la flecha central redundante de la navegación inferior, unifica el botón Inicio como scroll suave al inicio real y preserva lógica de reservas, cargos, cierres, lista de espera y PDF.",
-  "app_build": "Fjord VI 2.3",
+  "notes": "Versión 2.4 conservadora del módulo Socio: elimina definitivamente el pseudo-botón/flecha central de la navegación inferior, unifica Inicio como retorno al tope real con scroll controlado, cierra teclado/menús abiertos antes de subir y preserva la lógica operativa.",
+  "app_build": "Fjord VI 2.4",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,8 +28,8 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v2.3 - Socio UI premium: navegación inferior unificada",
+  "release": "v2.4 - Socio UI premium: navegación inferior limpia",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "2.3"
+  "app_version": "2.4"
 }

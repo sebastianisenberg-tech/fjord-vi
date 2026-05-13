@@ -9440,3 +9440,67 @@ a[href="/account/password"].topAction{
 .socioApp .bottom.socioV51Bottom a[href="#inicio"]{
   cursor:pointer!important;
 }
+
+/* Fjord VI v2.4 · Corrección final: barra inferior sin pseudo-flecha central */
+html body .app.socioApp nav.bottom.socioV51Bottom,
+html body .socioApp nav.bottom.socioV51Bottom,
+html body nav.bottom.socioV51Bottom{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+  justify-items:stretch!important;
+  gap:6px!important;
+  overflow:visible!important;
+}
+html body .app.socioApp nav.bottom.socioV51Bottom::before,
+html body .app.socioApp nav.bottom.socioV51Bottom::after,
+html body .socioApp nav.bottom.socioV51Bottom::before,
+html body .socioApp nav.bottom.socioV51Bottom::after,
+html body nav.bottom.socioV51Bottom::before,
+html body nav.bottom.socioV51Bottom::after{
+  content:none!important;
+  display:none!important;
+  width:0!important;
+  height:0!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  position:static!important;
+  transform:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+}
+html body .app.socioApp nav.bottom.socioV51Bottom a,
+html body .socioApp nav.bottom.socioV51Bottom a,
+html body nav.bottom.socioV51Bottom a{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:0!important;
+  min-height:40px!important;
+  height:40px!important;
+  padding:0 4px!important;
+  border-radius:16px!important;
+  text-decoration:none!important;
+  text-indent:0!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+}
+html body .app.socioApp nav.bottom.socioV51Bottom a::after,
+html body .socioApp nav.bottom.socioV51Bottom a::after,
+html body nav.bottom.socioV51Bottom a::after{
+  content:none!important;
+  display:none!important;
+  width:0!important;
+  height:0!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+html body .app.socioApp nav.bottom.socioV51Bottom a[href="#inicio"],
+html body .socioApp nav.bottom.socioV51Bottom a[href="#inicio"],
+html body nav.bottom.socioV51Bottom a[href="#inicio"]{
+  cursor:pointer!important;
+}
