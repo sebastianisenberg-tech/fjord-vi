@@ -9175,3 +9175,157 @@ a[href="/account/password"].topAction{
   .socioV51 .socioV51Calendar{padding:10px!important;}
   .guestMenuPanelV123{right:-2px;min-width:230px;}
 }
+
+/* Fjord VI v1.2.4 - refinamiento premium conservador Socio */
+.socioApp .topActionsV123{
+  gap:10px!important;
+}
+.socioApp .socioKeyTopV123{
+  margin-right:2px!important;
+  padding:7px 10px!important;
+}
+.socioApp .socioTopUtilityV123{
+  width:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  margin:5px 0 6px!important;
+}
+.socioApp .socioTopUtilityV123 .reglamentoSocioBtnV49{
+  margin:0!important;
+  padding:8px 12px!important;
+  flex:0 1 auto!important;
+}
+.socioApp .memberBadgeV123{
+  margin-left:auto!important;
+  padding:7px 12px!important;
+  min-width:74px!important;
+  background:linear-gradient(180deg,#ffffff,#f0f5fa)!important;
+  border:1px solid rgba(13,48,80,.18)!important;
+  color:#102f4a!important;
+  font-size:12.6px!important;
+  font-weight:950!important;
+  box-shadow:0 5px 12px rgba(13,44,70,.06)!important;
+}
+.socioApp .socioV51Calendar.navCompactV161,
+.socioApp .socioProCalendar.navCompactV161{
+  padding:9px 10px!important;
+  margin-bottom:8px!important;
+}
+.socioApp .navTitleV161{
+  margin-bottom:5px!important;
+}
+.socioApp .navTitleV161 .eyebrow{
+  font-size:9.5px!important;
+  line-height:1!important;
+}
+.socioApp .navTitleV161 h2{
+  font-size:17px!important;
+  line-height:1.05!important;
+  margin:0!important;
+}
+.socioApp .navTitleV161 p{
+  font-size:11px!important;
+  line-height:1.15!important;
+  margin:1px 0 0!important;
+}
+.socioApp .compactSelectorV161{
+  gap:5px!important;
+}
+.socioApp .compactTripV161{
+  min-height:44px!important;
+  padding:7px 9px!important;
+  border-radius:13px!important;
+}
+.socioApp .tripTextV161 b{
+  font-size:13px!important;
+  line-height:1.05!important;
+}
+.socioApp .tripTextV161 small{
+  font-size:10.2px!important;
+  line-height:1.05!important;
+  margin-top:1px!important;
+}
+.socioApp .tripKindPill,
+.socioApp .tripActionV161{
+  font-size:9.2px!important;
+  padding:3px 6px!important;
+}
+.socioApp .historyMiniV161 summary{
+  min-height:30px!important;
+  padding:7px 10px!important;
+  font-size:11.5px!important;
+}
+.socioApp #invitados .premiumPerson.boardingPass{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 34px!important;
+  align-items:start!important;
+  gap:7px!important;
+  padding:9px 9px 9px 15px!important;
+  margin:6px 0!important;
+  min-height:58px!important;
+  overflow:visible!important;
+}
+.socioApp #invitados .personActionMenuV123,
+.socioApp #invitados .personAction{
+  align-self:start!important;
+  justify-self:end!important;
+  margin-top:0!important;
+  min-width:0!important;
+  width:34px!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+}
+.socioApp #invitados .guestMenuV123>summary{
+  width:30px!important;
+  height:30px!important;
+  font-size:18px!important;
+  background:#f7fafc!important;
+}
+.socioApp #invitados .guestMenuPanelV123{
+  right:0!important;
+  top:34px!important;
+}
+.socioApp #invitados .personState{
+  margin-top:4px!important;
+  display:inline-flex!important;
+  width:auto!important;
+  max-width:100%!important;
+  padding:5px 8px!important;
+  font-size:11.5px!important;
+  line-height:1.15!important;
+}
+.socioApp #invitados .personState small{
+  display:block!important;
+  margin:2px 0 0!important;
+  font-size:10.2px!important;
+}
+.socioApp #invitados .badgeTipo,
+.socioApp #invitados .protoBadge{
+  font-size:8.8px!important;
+  padding:2.5px 5.5px!important;
+  margin-left:4px!important;
+}
+.socioApp #invitados .personNameAlways{
+  font-size:13.8px!important;
+  line-height:1.1!important;
+}
+@media(max-width:760px){
+  .socioReglamentoBarV49.socioTopUtilityV123{
+    justify-content:space-between!important;
+  }
+  .socioApp .socioTopUtilityV123{
+    gap:12px!important;
+    margin:4px 0 6px!important;
+  }
+  .socioApp .socioTopUtilityV123 .reglamentoSocioBtnV49{
+    padding:7px 10px!important;
+    font-size:12px!important;
+  }
+  .socioApp .memberBadgeV123{
+    font-size:12.2px!important;
+    padding:6px 10px!important;
+  }
+  .socioApp .topActionsV123{gap:9px!important;}
+}
