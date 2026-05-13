@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.4"
+APP_VERSION = "3.5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.4"
-RELEASE_LABEL = "Fjord VI · v3.4"
+APP_BUILD = "Fjord VI 3.5"
+RELEASE_LABEL = "Fjord VI · v3.5"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -419,6 +419,7 @@ def smtp_settings(db: Session) -> dict:
         "test_recipient_email": smtp_test_recipient(db),
         "force_redirect_in_test": smtp_force_redirect_enabled(db),
         "block_real_recipients_in_test": get_system_bool(db, "smtp_block_real_recipients_in_test", True),
+        "simulation_mode": smtp_simulation_mode_enabled(db),
     }
 
 def smtp_configured(settings: dict) -> bool:
@@ -426,6 +427,10 @@ def smtp_configured(settings: dict) -> bool:
 
 def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
     settings = smtp_settings(db)
+    if smtp_simulation_mode_enabled(db):
+        original_to, effective_to, test_mode = effective_email_recipient(db, recipient_email)
+        return True, f"simulado; original {original_to}; efectivo {effective_to}"
+
     if not smtp_configured(settings):
         return False, "SMTP no configurado"
 
@@ -511,12 +516,17 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
             failed += 1
         db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
     db.commit()
+    set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
     return {"processed": len(rows), "sent": sent, "failed": failed}
 
 
 def smtp_connection_probe(db: Session) -> tuple[bool, str]:
     """Prueba conexión/autenticación SMTP sin enviar email."""
     settings = smtp_settings(db)
+    if smtp_simulation_mode_enabled(db):
+        original_to, effective_to, test_mode = effective_email_recipient(db, recipient_email)
+        return True, f"simulado; original {original_to}; efectivo {effective_to}"
+
     if not smtp_configured(settings):
         return False, "SMTP no configurado"
     try:
@@ -564,6 +574,62 @@ def smtp_readiness_summary(db: Session) -> dict:
     }
 
 
+
+def smtp_simulation_mode_enabled(db: Session) -> bool:
+    return get_system_bool(db, "smtp_simulation_mode", False)
+
+def smtp_missing_requirements(db: Session) -> list[str]:
+    settings = smtp_settings(db)
+    missing = []
+    if not settings.get("host"):
+        missing.append("SMTP host")
+    if not settings.get("port"):
+        missing.append("puerto")
+    if not settings.get("username"):
+        missing.append("usuario")
+    if not settings.get("password"):
+        missing.append("password / App Password")
+    if not settings.get("from_email"):
+        missing.append("remitente email")
+    if smtp_test_mode_enabled(db) and not smtp_test_recipient(db):
+        missing.append("email receptor de pruebas")
+    if smtp_test_mode_enabled(db) and not smtp_force_redirect_enabled(db):
+        missing.append("redirect forzado")
+    return missing
+
+def last_sent_email_summary(db: Session) -> dict:
+    row = db.query(NotificationQueue).filter_by(status="sent").order_by(NotificationQueue.sent_at.desc().nullslast(), NotificationQueue.created_at.desc()).first()
+    if not row:
+        return {"exists": False, "label": "sin envíos todavía"}
+    effective = ""
+    test_mode = ""
+    try:
+        payload = json.loads(row.payload or "{}")
+        effective = payload.get("_effective_recipient", "")
+        test_mode = "sí" if payload.get("_smtp_test_mode") else "no"
+    except Exception:
+        pass
+    return {
+        "exists": True,
+        "created_at": row.created_at,
+        "sent_at": row.sent_at,
+        "event_key": row.event_key,
+        "original_to": row.recipient_email,
+        "effective_to": effective or row.recipient_email,
+        "status": row.status,
+        "test_mode": test_mode,
+    }
+
+def scheduler_status_summary(db: Session) -> dict:
+    last_auto = get_system_meta(db, "communications_last_auto_process_at", "")
+    last_manual = get_system_meta(db, "communications_last_manual_process_at", "")
+    return {
+        "active": True,
+        "label": "automático + manual",
+        "last_auto": last_auto or "sin registro",
+        "last_manual": last_manual or "sin registro",
+    }
+
 def communications_context(db: Session) -> dict:
     ensure_communications_seed(db)
     settings = smtp_settings(db)
@@ -592,7 +658,11 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.4",
+        "module_version": "SMTP · v3.5",
+        "missing_requirements": smtp_missing_requirements(db),
+        "last_sent": last_sent_email_summary(db),
+        "scheduler": scheduler_status_summary(db),
+        "simulation_mode": smtp_simulation_mode_enabled(db),
     }
 
 def communication_status(db: Session) -> dict:
@@ -2196,7 +2266,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.4.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.5.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6401,7 +6471,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.4.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.5.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6435,7 +6505,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.4.0: orden visual de Capitán por grupos operativos.
+    # v3.5.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
@@ -9528,6 +9598,7 @@ def admin_communications_settings(
     smtp_test_recipient_email: str = Form(""),
     smtp_force_redirect_in_test: Optional[str] = Form(None),
     smtp_block_real_recipients_in_test: Optional[str] = Form(None),
+    smtp_simulation_mode: Optional[str] = Form(None),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -9544,6 +9615,7 @@ def admin_communications_settings(
     set_system_meta("smtp_test_recipient_email", normalize_email(smtp_test_recipient_email))
     set_system_meta("smtp_force_redirect_in_test", "1" if smtp_force_redirect_in_test else "0")
     set_system_meta("smtp_block_real_recipients_in_test", "1" if smtp_block_real_recipients_in_test else "0")
+    set_system_meta("smtp_simulation_mode", "1" if smtp_simulation_mode else "0")
 
     issues = reliability_guard_smtp(db)
     log(db, user.name, "communications settings", "Configuración SMTP actualizada; test_mode=" + ("ON" if smtp_test_mode else "OFF") + "; receptor_prueba=" + normalize_email(smtp_test_recipient_email))
@@ -9568,6 +9640,38 @@ def admin_communications_event(event_key: str, enabled: str = Form("0"), db: Ses
     db.commit()
     log(db, user.name, "communications event", f"{event_key}: {'ON' if ev.enabled else 'OFF'}")
     return RedirectResponse("/admin?page=comunicaciones&msg=evento_actualizado", status_code=303)
+
+
+@app.post("/admin/communications/template_test/{template_key}")
+def admin_communications_template_test(template_key: str, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    ensure_communications_seed(db)
+    tpl = db.query(NotificationTemplate).filter_by(key=template_key).first()
+    if not tpl:
+        raise HTTPException(404, "Plantilla inexistente")
+    settings = smtp_settings(db)
+    test_email = settings.get("test_recipient_email") or settings.get("admin_email") or user.email or ""
+    if not test_email:
+        return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_sin_receptor", status_code=303)
+    payload = {
+        "app_name": APP_NAME,
+        "version": VERSION,
+        "club_nombre": CLUB_NAME,
+        "socio_nombre": user.name or "Socio de prueba",
+        "salida_nombre": "Paseo Fjord VI Prueba",
+        "fecha": now_local().strftime("%d/%m/%Y"),
+        "hora": "11:00",
+        "estado": "prueba individual de plantilla",
+        "invitado_nombre": "Invitado de prueba",
+        "detalle_cargos": "Ejemplo de cargo reglamentario de prueba",
+        "total_socio": "$ 0",
+        "link_ficha": "Prueba sin ficha real",
+        "club_nombre": CLUB_NAME,
+        "app_name": APP_NAME,
+    }
+    q = queue_email(db, tpl.key, test_email, user.name or "Prueba", payload, force=True)
+    result = process_notification_queue(db, limit=5)
+    log(db, user.name, "communications template test", f"{template_key}; resultado={result}")
+    return RedirectResponse("/admin?page=comunicaciones&msg=template_test", status_code=303)
 
 @app.post("/admin/communications/template/{template_key}")
 def admin_communications_template(template_key: str, subject: str = Form(""), body: str = Form(""), template_enabled: str = Form("0"), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
