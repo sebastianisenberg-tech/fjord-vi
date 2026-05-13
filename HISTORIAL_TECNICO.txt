@@ -8,7 +8,7 @@ Version de base para este paquete limpio: 1.19
 
 README VIGENTE
 -------------
-# Fjord VI 3.3.18
+# Fjord VI 3.3.38
 
 Versión operativa actual del sistema web de reservas y embarque del Fjord VI con blindaje monolítico reforzado.
 
@@ -40,12 +40,12 @@ CHANGELOG CONSOLIDADO
 - Agrega historial auditable reservation_reassignments.
 - Capitán, ficha, liquidación y estadísticas cuelgan del responsible_user_id final vigente.
 - Permite múltiples reasignaciones sin depender de cancel_reason como fuente de verdad.
-- Nuevas fichas y documentos salen con Fjord VI · v3.3.18.
+- Nuevas fichas y documentos salen con Fjord VI · v3.3.38.
 
 ## 1.18.14
 
 - Hotfix de deploy para exportación PDF de Estadísticas.
-- Agrega `reportlab==4.pre-3.3` a `requirements.txt` y `app/requirements.txt`.
+- Agrega `reportlab==4.2.2` a `requirements.txt` y `app/requirements.txt`.
 - Mantiene intacta la lógica operativa, reapertura, reasignación, cierre y ficha.
 
 - Estadísticas orientadas a escritorio de administración con wording ejecutivo refinado.
@@ -85,7 +85,7 @@ CHANGELOG CONSOLIDADO
 - Cierre aplica la misma cascada antes de validar y liquidar.
 
 
-## v3.pre-3.3
+## v3.3.3
 - Capitán: separación visual más clara entre grupos operativos por socio responsable.
 - Se mantiene intacta la lógica de embarque, cierre, reapertura, espera y liquidación.
 - Versión actualizada a 1.18.1.

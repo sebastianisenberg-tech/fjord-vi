@@ -21,6 +21,7 @@ import smtplib
 from email.message import EmailMessage
 from urllib.parse import urlparse
 from typing import Optional
+from contextlib import contextmanager
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -337,19 +338,19 @@ COMMUNICATION_EVENTS = {
     "reserva_confirmada_socio": {
         "name": "Reserva confirmada al socio",
         "description": "Email al socio cuando confirma o reactiva su lugar.",
-        "subject": "Reserva confirmada - {{salida_nombre}} - {{fecha}}",
+        "subject": "Reserva confirmada · {{salida_nombre}} · {{fecha}}",
         "body": "Hola {{socio_nombre}},\n\nTu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}} quedó registrada.\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "invitado_agregado_socio": {
         "name": "Invitado agregado",
         "description": "Email al socio cuando agrega o reactiva un invitado.",
-        "subject": "Invitado registrado - {{salida_nombre}}",
+        "subject": "Invitado agregado · {{salida_nombre}}",
         "body": "Hola {{socio_nombre}},\n\nSe registró el invitado {{invitado_nombre}} para {{salida_nombre}}.\n\nFecha: {{fecha}} {{hora}}\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "cancelacion_socio": {
         "name": "Cancelación registrada",
         "description": "Email al socio cuando cancela una reserva propia o de un invitado.",
-        "subject": "Cancelación registrada - {{salida_nombre}}",
+        "subject": "Cancelación registrada · {{salida_nombre}}",
         "body": "Hola {{socio_nombre}},\n\nQuedó registrada la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n\nCargo informado: {{importe}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_cerrada_admin": {
@@ -361,13 +362,13 @@ COMMUNICATION_EVENTS = {
     "recordatorio_24h_socio": {
         "name": "Recordatorio 24h al socio",
         "description": "Email automático al socio responsable 24 horas antes de la salida.",
-        "subject": "Recordatorio Fjord VI - {{salida_nombre}} - {{fecha}} {{hora}}",
+        "subject": "Recordatorio de navegación · {{salida_nombre}} · {{fecha}}",
         "body": "Hola {{socio_nombre}},\n\nTe recordamos tu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}}.\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "no_show_cargo_socio": {
         "name": "Reserva incumplida / cargo al socio",
         "description": "Email al socio responsable cuando el cierre genera cargo por reserva incumplida propia o de invitados.",
-        "subject": "Liquidación Fjord VI - {{salida_nombre}} - {{fecha}}",
+        "subject": "Reserva incumplida / cargo reglamentario · {{salida_nombre}}",
         "body": "Hola {{socio_nombre}},\n\nEl cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\n\nFicha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "email_prueba": {
@@ -414,6 +415,10 @@ def smtp_settings(db: Session) -> dict:
         "from_name": get_system_meta(db, "smtp_from_name", os.getenv("SMTP_FROM_NAME", f"{CLUB_NAME} · {APP_NAME}")),
         "tls": get_system_meta(db, "smtp_tls", os.getenv("SMTP_TLS", "1")),
         "admin_email": get_system_meta(db, "communications_admin_email", os.getenv("COMMUNICATIONS_ADMIN_EMAIL", "")),
+        "test_mode": smtp_test_mode_enabled(db),
+        "test_recipient_email": smtp_test_recipient(db),
+        "force_redirect_in_test": smtp_force_redirect_enabled(db),
+        "block_real_recipients_in_test": get_system_bool(db, "smtp_block_real_recipients_in_test", True),
     }
 
 def smtp_configured(settings: dict) -> bool:
@@ -423,13 +428,20 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
     settings = smtp_settings(db)
     if not smtp_configured(settings):
         return False, "SMTP no configurado"
+
+    original_to, effective_to, test_mode = effective_email_recipient(db, recipient_email)
+    if test_mode and not effective_to:
+        return False, "Modo prueba SMTP sin email receptor configurado"
+
     try:
         port = int(settings.get("port") or 587)
         msg = EmailMessage()
         from_name = settings.get("from_name") or f"{CLUB_NAME} · {APP_NAME}"
         from_email = settings.get("from_email")
+        subject = decorate_smtp_subject(db, subject)
+        body = decorate_smtp_body(db, body, original_to, effective_to)
         msg["From"] = f"{from_name} <{from_email}>"
-        msg["To"] = f"{recipient_name} <{recipient_email}>" if recipient_name else recipient_email
+        msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
         msg.set_content(body)
         with smtplib.SMTP(settings["host"], port, timeout=20) as server:
@@ -438,13 +450,15 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
             if settings.get("username"):
                 server.login(settings.get("username"), settings.get("password") or "")
             server.send_message(msg)
+        if test_mode:
+            return True, f"enviado TEST a {effective_to}; original {original_to}"
         return True, "enviado"
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:300]}"
 
 def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False) -> Optional[NotificationQueue]:
     ensure_communications_seed(db)
-    recipient_email = (recipient_email or "").strip()
+    recipient_email = normalize_email(recipient_email)
     if not recipient_email:
         return None
     ev = db.get(NotificationEventSetting, event_key)
@@ -455,7 +469,27 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
         return None
     subject = render_comm_template(tpl.subject, payload)
     body = render_comm_template(tpl.body, payload)
-    q = NotificationQueue(event_key=event_key, recipient_email=recipient_email, recipient_name=recipient_name or "", subject=subject, body=body, status="pending", attempts=0, payload=json.dumps(payload or {}, ensure_ascii=False))
+
+    duplicate = existing_recent_email(db, event_key, recipient_email, subject, payload)
+    if duplicate and not force:
+        return duplicate
+
+    original_to, effective_to, test_mode = effective_email_recipient(db, recipient_email)
+    payload2 = dict(payload or {})
+    payload2["_original_recipient"] = original_to
+    payload2["_effective_recipient"] = effective_to
+    payload2["_smtp_test_mode"] = test_mode
+
+    q = NotificationQueue(
+        event_key=event_key,
+        recipient_email=recipient_email,
+        recipient_name=recipient_name or "",
+        subject=subject,
+        body=body,
+        status="pending",
+        attempts=0,
+        payload=json.dumps(payload2, ensure_ascii=False),
+    )
     db.add(q)
     db.commit()
     return q
@@ -488,7 +522,22 @@ def communications_context(db: Session) -> dict:
     pending = db.query(NotificationQueue).filter_by(status="pending").count()
     failed = db.query(NotificationQueue).filter_by(status="failed").count()
     sent_today = db.query(NotificationQueue).filter(NotificationQueue.status == "sent", NotificationQueue.sent_at >= now_local().replace(hour=0, minute=0, second=0, microsecond=0)).count()
-    return {"settings": settings, "smtp_configured": smtp_configured(settings), "events": events, "templates": templates_rows, "queue": queue, "pending": pending, "failed": failed, "sent_today": sent_today}
+    safety_issues = reliability_guard_smtp(db)
+    return {
+        "settings": settings,
+        "smtp_configured": smtp_configured(settings),
+        "events": events,
+        "templates": templates_rows,
+        "queue": queue,
+        "pending": pending,
+        "failed": failed,
+        "sent_today": sent_today,
+        "smtp_test_mode": smtp_test_mode_enabled(db),
+        "smtp_test_recipient_email": smtp_test_recipient(db),
+        "smtp_force_redirect_in_test": smtp_force_redirect_enabled(db),
+        "smtp_safety_issues": safety_issues,
+        "smtp_safe_for_testing": smtp_test_mode_enabled(db) and smtp_force_redirect_enabled(db) and bool(smtp_test_recipient(db)),
+    }
 
 def communication_status(db: Session) -> dict:
     """Resumen seguro de comunicaciones para checks operativos.
@@ -859,6 +908,95 @@ def set_system_meta(key: str, value: str):
 def get_system_meta(db: Session, key: str, default: str = "") -> str:
     row = db.get(SystemMeta, key)
     return row.value if row and row.value is not None else default
+
+
+def get_system_bool(db: Session, key: str, default: bool = False) -> bool:
+    raw = str(get_system_meta(db, key, "1" if default else "0") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on", "si", "sí")
+
+def normalize_email(value: str) -> str:
+    return (value or "").strip().lower()
+
+def email_safe_label(value: str) -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if "@" not in value:
+        return value
+    name, domain = value.split("@", 1)
+    if len(name) <= 3:
+        masked = name[:1] + "***"
+    else:
+        masked = name[:2] + "***" + name[-1:]
+    return f"{masked}@{domain}"
+
+def smtp_test_mode_enabled(db: Session) -> bool:
+    return get_system_bool(db, "smtp_test_mode", True)
+
+def smtp_force_redirect_enabled(db: Session) -> bool:
+    return get_system_bool(db, "smtp_force_redirect_in_test", True)
+
+def smtp_test_recipient(db: Session) -> str:
+    return get_system_meta(db, "smtp_test_recipient_email", os.getenv("SMTP_TEST_RECIPIENT_EMAIL", "")).strip()
+
+def reliability_guard_smtp(db: Session) -> list[str]:
+    issues = []
+    if smtp_test_mode_enabled(db):
+        if not smtp_force_redirect_enabled(db):
+            issues.append("Modo prueba SMTP activo sin redirección forzada.")
+        if not smtp_test_recipient(db):
+            issues.append("Modo prueba SMTP activo sin email receptor de pruebas.")
+    return issues
+
+def effective_email_recipient(db: Session, recipient_email: str) -> tuple[str, str, bool]:
+    original = normalize_email(recipient_email)
+    test_mode = smtp_test_mode_enabled(db)
+    effective = original
+    if test_mode and smtp_force_redirect_enabled(db):
+        effective = normalize_email(smtp_test_recipient(db))
+    return original, effective, test_mode
+
+def decorate_smtp_subject(db: Session, subject: str) -> str:
+    subject = subject or ""
+    if smtp_test_mode_enabled(db) and not subject.startswith("[TEST Fjord VI]"):
+        return "[TEST Fjord VI] " + subject
+    return subject
+
+def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: str) -> str:
+    body = body or ""
+    if not smtp_test_mode_enabled(db):
+        return body
+    notice = (
+        "MODO PRUEBA SMTP ACTIVO\n"
+        f"Destinatario original: {original_to or '-'}\n"
+        f"Redirigido a: {effective_to or '-'}\n"
+        "Ningún socio real recibe este correo durante la prueba.\n\n"
+    )
+    return notice + body
+
+def queue_dedup_key(event_key: str, recipient_email: str, subject: str, payload: dict) -> str:
+    try:
+        payload_str = json.dumps(payload or {}, sort_keys=True, ensure_ascii=False)
+    except Exception:
+        payload_str = str(payload or {})
+    return hashlib.sha256(f"{event_key}|{normalize_email(recipient_email)}|{subject}|{payload_str}".encode("utf-8")).hexdigest()
+
+def existing_recent_email(db: Session, event_key: str, recipient_email: str, subject: str, payload: dict, minutes: int = 10):
+    """Evita duplicados accidentales por doble click o reintentos inmediatos.
+    No elimina envíos históricos legítimos, solo bloquea duplicados recientes idénticos.
+    """
+    cutoff = now_local() - timedelta(minutes=minutes)
+    payload_text = json.dumps(payload or {}, ensure_ascii=False)
+    return (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.event_key == event_key)
+        .filter(NotificationQueue.recipient_email == normalize_email(recipient_email))
+        .filter(NotificationQueue.subject == subject)
+        .filter(NotificationQueue.created_at >= cutoff)
+        .filter(NotificationQueue.status.in_(["pending", "sent"]))
+        .first()
+    )
+
 
 
 def get_hidden_guest_candidate_dnis(db: Session) -> set[str]:
@@ -9319,25 +9457,46 @@ async def admin_migration_import(
 
 @app.post("/admin/communications/settings")
 def admin_communications_settings(
-    smtp_host: str = Form(""), smtp_port: str = Form("587"), smtp_username: str = Form(""), smtp_password: str = Form(""),
-    smtp_from_email: str = Form(""), smtp_from_name: str = Form(""), smtp_tls: str = Form("0"), communications_admin_email: str = Form(""),
-    db: Session = Depends(db_session), user: User = Depends(require_role("admin"))
+    smtp_host: str = Form(""),
+    smtp_port: str = Form("587"),
+    smtp_username: str = Form(""),
+    smtp_password: str = Form(""),
+    smtp_from_email: str = Form(""),
+    smtp_from_name: str = Form(""),
+    smtp_tls: Optional[str] = Form(None),
+    communications_admin_email: str = Form(""),
+    smtp_test_mode: Optional[str] = Form(None),
+    smtp_test_recipient_email: str = Form(""),
+    smtp_force_redirect_in_test: Optional[str] = Form(None),
+    smtp_block_real_recipients_in_test: Optional[str] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("admin"))
 ):
     set_system_meta("smtp_host", smtp_host.strip())
     set_system_meta("smtp_port", smtp_port.strip() or "587")
     set_system_meta("smtp_username", smtp_username.strip())
     if smtp_password.strip():
         set_system_meta("smtp_password", smtp_password.strip())
-    set_system_meta("smtp_from_email", smtp_from_email.strip())
+    set_system_meta("smtp_from_email", normalize_email(smtp_from_email))
     set_system_meta("smtp_from_name", smtp_from_name.strip() or f"{CLUB_NAME} · {APP_NAME}")
-    set_system_meta("smtp_tls", "1" if smtp_tls == "1" else "0")
-    set_system_meta("communications_admin_email", communications_admin_email.strip())
-    log(db, user.name, "communications settings", "Configuración SMTP/comunicaciones actualizada")
+    set_system_meta("smtp_tls", "1" if smtp_tls else "0")
+    set_system_meta("communications_admin_email", normalize_email(communications_admin_email))
+    set_system_meta("smtp_test_mode", "1" if smtp_test_mode else "0")
+    set_system_meta("smtp_test_recipient_email", normalize_email(smtp_test_recipient_email))
+    set_system_meta("smtp_force_redirect_in_test", "1" if smtp_force_redirect_in_test else "0")
+    set_system_meta("smtp_block_real_recipients_in_test", "1" if smtp_block_real_recipients_in_test else "0")
+
+    issues = reliability_guard_smtp(db)
+    log(db, user.name, "communications settings", "Configuración SMTP actualizada; test_mode=" + ("ON" if smtp_test_mode else "OFF") + "; receptor_prueba=" + normalize_email(smtp_test_recipient_email))
+    if issues:
+        return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_incompleto", status_code=303)
     return RedirectResponse("/admin?page=comunicaciones&msg=smtp_guardado", status_code=303)
 
 @app.post("/admin/communications/event/{event_key}")
 def admin_communications_event(event_key: str, enabled: str = Form("0"), db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
     ensure_communications_seed(db)
+    if enabled == "1" and smtp_test_mode_enabled(db) and reliability_guard_smtp(db):
+        return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_incompleto", status_code=303)
     ev = db.get(NotificationEventSetting, event_key)
     tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
     if not ev or not tpl:

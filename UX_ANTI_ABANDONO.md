@@ -1,17 +1,10 @@
 # Fjord VI · UX anti-abandono
 
-Regla práctica:
-Si el socio, capitán o administración no entienden qué hacer en menos de 5 segundos, la operación tenderá a volver al canal informal.
+Si el sistema no se entiende rápido, el usuario vuelve al papel, Excel o WhatsApp.
 
-## Criterios
-
+Criterios:
 - Botón bloqueado debe explicar motivo.
-- Estado crítico visible: activo, cerrado, lista de espera, presente, cargo firme.
-- No mostrar campos como botones si no son interactivos.
-- No usar mensajes técnicos con el socio.
-- Mantener flujo: Tus navegaciones → Tu reserva → Estado de embarque.
-- No agregar nuevas acciones visibles sin necesidad operativa.
-
-## Riesgo principal
-
-Un sistema que funciona pero genera dudas pierde confianza. La confianza se rompe antes que el software.
+- Estado crítico visible: activo, cerrado, espera, presente, cargo firme.
+- No mostrar como botón lo que no se puede tocar.
+- No mostrar errores técnicos al socio.
+- Mantener el flujo: Tus navegaciones → Tu reserva → Estado de embarque.

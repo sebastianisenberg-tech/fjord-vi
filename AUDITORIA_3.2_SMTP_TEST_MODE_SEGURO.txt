@@ -1,6 +1,6 @@
 Fjord VI v3.3 · SMTP TEST MODE SEGURO
 
-Base: FjordVI_3.1_SMTP_TEST_MODE.zip
+Base: FjordVI_3.3_SMTP_TEST_MODE.zip
 
 Cambios:
 - Banner visible de Modo prueba SMTP.

@@ -2,7 +2,7 @@
 Fjord VI v3.3 · SMTP TEST MODE
 
 Cambios:
-- Base tomada desde release final pre-3.3.
+- Base tomada desde release final 3.0.
 - Configuración SMTP de pruebas.
 - Redirect automático de correos en TEST MODE.
 - Templates HTML iniciales.
