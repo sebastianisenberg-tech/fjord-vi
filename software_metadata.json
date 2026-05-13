@@ -1,10 +1,10 @@
 {
-  "version": "2.7",
-  "release_label": "Fjord VI · v2.7",
+  "version": "2.8",
+  "release_label": "Fjord VI · v2.8",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-13",
-  "notes": "Versión visual estable reconstruida desde el baseline correcto de Socio. Conserva el diseño validado, sin reutilizar la rama rota 2.5/2.6. No modifica reglas de negocio, reservas, cargos, cierres ni liquidaciones.",
-  "app_build": "Fjord VI 2.7",
+  "notes": "Reconstrucción conservadora desde la UI visual correcta 2.4: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
+  "app_build": "Fjord VI 2.8",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,8 +28,8 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v2.7 - Socio UI visual estable reconstruido desde baseline 2.4",
+  "release": "v2.8 - Baseline visual 2.4 recuperado y versión unificada",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "2.7"
+  "app_version": "2.8"
 }
