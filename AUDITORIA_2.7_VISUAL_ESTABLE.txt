@@ -1,0 +1,27 @@
+Fjord VI 2.7 - Auditoría de reconstrucción visual estable
+
+Base utilizada: FjordVI_2.4_nav_inicio_limpio_auditado.zip
+Motivo: esta base coincide con el diseño visual validado por captura, antes de las regresiones de la rama 2.5/2.6.
+
+Criterio aplicado:
+- No se reutilizó la rama rota 2.5/2.6.
+- Se preservó la UI validada: tarjetas compactas de invitados, menú ⋯ a la derecha, autorización institucional como leyenda, tracker, header, badge de socio y estructura visual general.
+- Se dejó la flecha central tal como estaba en el baseline visual validado, porque no fue considerada bloqueante y evita reabrir la regresión de layout.
+- Se corrigió versión central en main.py, VERSION.txt y software_metadata.json.
+- Se eliminaron notas viejas de parches intermedios.
+
+No modificado:
+- reservas
+- invitados
+- lista de espera
+- prioridades
+- cargos
+- cierre/reapertura
+- liquidación
+- PDF
+- QR
+
+Controles automáticos:
+- main.py compila con py_compile
+- sin __pycache__, .pyc ni .DS_Store
+- templates existentes preservados
