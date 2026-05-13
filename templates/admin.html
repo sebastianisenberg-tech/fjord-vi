@@ -189,7 +189,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     .dangerBtn{margin-top:12px;background:#b42323!important;color:#fff!important;border-color:#b42323!important}
 
 
-    /* v3.3.0 Fase 8: UX operacional compacta en Sistema */
+    /* v3.4.0 Fase 8: UX operacional compacta en Sistema */
     .systemQuickBar{position:sticky;top:82px;z-index:18;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 12px;padding:8px;border:1px solid #dbe8ef;background:rgba(246,250,253,.94);backdrop-filter:blur(8px);border-radius:14px;box-shadow:0 8px 22px rgba(20,40,55,.06)}
     .systemQuickBar a,.systemQuickBar button{height:30px;border:1px solid #cfe0e9;border-radius:999px;background:#fff;color:#21465d;text-decoration:none;font-weight:900;font-size:12px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
     .systemQuickBar button{background:#0d5d88;color:#fff;border-color:#0d5d88}
@@ -210,7 +210,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     @media(max-width:900px){.systemQuickBar{top:58px;overflow:auto;flex-wrap:nowrap}.systemQuickBar a,.systemQuickBar button{white-space:nowrap}.systemFold .systemCheckList{max-height:300px}}
 
 
-    /* v3.3.2 Fase 11: Centro Operativo Inteligente */
+    /* v3.4.2 Fase 11: Centro Operativo Inteligente */
     .opsCenter{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin:10px 0 12px}
     .opsCard{background:#fff;border:1px solid var(--erp-line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(20,40,55,.05)}
     .opsCard h3{margin:0 0 8px;font-size:16px}.opsCard p{margin:0;color:#607080;font-weight:750}.opsBig{font-size:24px;font-weight:950;color:#173f5f;line-height:1.05}.opsMetaGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.opsMetaGrid div{background:#f5f9fc;border:1px solid #dfeaf1;border-radius:10px;padding:9px}.opsMetaGrid span{display:block;color:#607080;font-size:10px;text-transform:uppercase;font-weight:950}.opsMetaGrid b{font-size:18px;color:#173f5f}.opsAlertList{display:grid;gap:7px}.opsAlert{border-radius:10px;padding:8px 10px;border:1px solid #dfeaf1;background:#f7fbfd;display:grid;gap:2px}.opsAlert.ok{background:#eef8f1;border-color:#cfe9d5;color:#27663a}.opsAlert.warn{background:#fff7df;border-color:#ecd48e;color:#78560b}.opsAlert.bad{background:#fff1f1;border-color:#f0c8c8;color:#8a3a3a}.opsAlert b{font-weight:950}.opsAlert small{color:inherit;opacity:.82}.opsTimeline{display:grid;gap:7px;max-height:260px;overflow:auto}.opsTimelineItem{display:grid;grid-template-columns:112px 1fr;gap:9px;border-bottom:1px solid #edf3f6;padding:7px 0}.opsTimelineItem time{font-size:11px;color:#607080;font-weight:850}.opsTimelineItem b{font-weight:950}.opsHealthGrid{display:grid;gap:6px}.opsSearchBox{display:flex;gap:8px;margin:8px 0}.opsSearchBox input{flex:1;height:34px;border:1px solid var(--erp-line);border-radius:9px;padding:0 10px;font-weight:800}.opsSearchBox button{height:34px;border:0;border-radius:9px;background:var(--erp-blue2);color:#fff;font-weight:950;padding:0 14px}.opsSearchResults{display:grid;gap:6px;margin-top:8px}.opsSearchResults a{display:block;border:1px solid #dfeaf1;background:#f8fbfd;border-radius:9px;padding:8px;text-decoration:none;color:#173f5f;font-weight:850}
@@ -434,38 +434,152 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
 
 
     {% if admin_page == 'comunicaciones' %}
-    <section class="erpTitle"><div><h1>Comunicaciones</h1><p>Centro de emails transaccionales: eventos, plantillas, SMTP, cola y registro de envíos.</p></div><div class="erpTitleActions"><form method="post" action="/admin/communications/reminders" style="display:inline"><button class="erpBtn" type="submit">Generar recordatorios 24h</button></form><form method="post" action="/admin/communications/process" style="display:inline"><button class="erpBtn erpPrimary" type="submit">Procesar cola</button></form><form method="post" action="/admin/communications/full_test" style="display:inline"><button class="erpBtn warnSoft" type="submit">Prueba integral SMTP</button></form><a class="erpBtn" href="/admin/communications/log.csv">Exportar registro CSV</a></div></section>
-    <div class="smartAlert {% if communications.smtp_configured %}ok{% else %}warn{% endif %}"><b>{% if communications.smtp_configured %}SMTP configurado{% else %}SMTP pendiente{% endif %}</b><span>{% if communications.smtp_configured %}El sistema puede enviar emails. Pendientes: {{communications.pending}} · Fallidos: {{communications.failed}} · Enviados hoy: {{communications.sent_today}}{% else %}Configurá SMTP antes de activar eventos automáticos. Mientras tanto la cola puede generarse pero no enviarse.{% endif %}</span></div>
-    <section class="smtpTestModeBanner {% if communications.smtp_test_mode %}active{% else %}off{% endif %}">
+    <section class="erpTitle commTitleFinal">
       <div>
-        <strong>{% if communications.smtp_test_mode %}Modo prueba SMTP activo{% else %}Modo prueba SMTP desactivado{% endif %}</strong>
-        <p>{% if communications.smtp_test_mode %}Todos los correos automáticos se redirigen al email receptor de pruebas. Los socios reales no reciben mensajes mientras este modo esté activo.{% else %}Modo producción: los correos salen a sus destinatarios reales. Usar solo cuando SMTP y plantillas estén validados.{% endif %}</p>
-        {% if communications.smtp_safety_issues %}<small class="smtpTestWarnings">{{communications.smtp_safety_issues|join(' · ')}}</small>{% endif %}
+        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.4'}}</span></h1>
+        <p>Centro de emails transaccionales: pruebas seguras, eventos, plantillas, SMTP, cola y registro de envíos.</p>
       </div>
-      <div class="smtpTestModeFields">
-        <span class="smtpTestModeStatus">{% if communications.smtp_test_mode %}TEST MODE{% else %}PRODUCCIÓN{% endif %}</span>
-        <span class="smtpTestRecipient {% if not communications.smtp_test_recipient_email %}danger{% endif %}">Receptor: {{communications.smtp_test_recipient_email or 'sin configurar'}}</span>
+      <div class="erpTitleActions">
+        <form method="post" action="/admin/communications/smtp_check" style="display:inline"><button class="erpBtn" type="submit">Validar SMTP</button></form>
+        <form method="post" action="/admin/communications/full_test" style="display:inline"><button class="erpBtn warnSoft" type="submit">Prueba integral SMTP</button></form>
+        <form method="post" action="/admin/communications/reminders" style="display:inline"><button class="erpBtn" type="submit">Generar recordatorios 24h</button></form>
+        <form method="post" action="/admin/communications/process" style="display:inline"><button class="erpBtn erpPrimary" type="submit">Procesar cola</button></form>
+        <a class="erpBtn" href="/admin/communications/log.csv">Exportar CSV</a>
       </div>
     </section>
-    <section class="smtpChecklistPanel">
-      <div class="smtpCheck {% if communications.smtp_configured %}ok{% else %}warn{% endif %}"><b>SMTP</b><span>{% if communications.smtp_configured %}configurado{% else %}pendiente{% endif %}</span></div>
-      <div class="smtpCheck {% if communications.smtp_test_recipient_email %}ok{% else %}danger{% endif %}"><b>Receptor de pruebas</b><span>{% if communications.smtp_test_recipient_email %}{{communications.smtp_test_recipient_email}}{% else %}sin configurar{% endif %}</span></div>
+
+    <section class="smtpHeroFinal {% if communications.readiness.safe_test %}safe{% elif communications.smtp_test_mode %}warn{% else %}prod{% endif %}">
+      <div>
+        <h2>{% if communications.readiness.safe_test %}Modo prueba listo{% elif communications.smtp_test_mode %}Modo prueba incompleto{% else %}Modo producción{% endif %}</h2>
+        <p>
+          {% if communications.readiness.safe_test %}
+          Protección activa: ningún destinatario real recibirá emails. Todo se redirige al receptor de pruebas.
+          {% elif communications.smtp_test_mode %}
+          Falta completar la configuración de prueba antes de encender eventos o procesar cola.
+          {% else %}
+          Atención: los correos saldrán a los destinatarios reales. Usar solo después de validar SMTP y plantillas.
+          {% endif %}
+        </p>
+        {% if communications.readiness.issues %}<small>{{communications.readiness.issues|join(' · ')}}</small>{% endif %}
+      </div>
+      <div class="smtpHeroPills">
+        <span class="pillStrong">{{communications.readiness.label}}</span>
+        <span class="pillSoft">Receptor: {{communications.smtp_test_recipient_email or 'sin configurar'}}</span>
+      </div>
+    </section>
+
+    <section class="smtpChecklistPanel final">
+      <div class="smtpCheck {% if communications.smtp_configured %}ok{% else %}danger{% endif %}"><b>SMTP</b><span>{% if communications.smtp_configured %}configurado{% else %}no configurado{% endif %}</span></div>
+      <div class="smtpCheck {% if communications.smtp_test_recipient_email %}ok{% else %}danger{% endif %}"><b>Receptor de pruebas</b><span>{{communications.smtp_test_recipient_email or 'sin configurar'}}</span></div>
       <div class="smtpCheck {% if communications.smtp_test_mode %}ok{% else %}warn{% endif %}"><b>Modo prueba</b><span>{% if communications.smtp_test_mode %}activo{% else %}desactivado{% endif %}</span></div>
       <div class="smtpCheck {% if communications.smtp_force_redirect_in_test %}ok{% else %}danger{% endif %}"><b>Redirect</b><span>{% if communications.smtp_force_redirect_in_test %}forzado{% else %}apagado{% endif %}</span></div>
+      <div class="smtpCheck {% if communications.last_probe_ok == '1' %}ok{% elif communications.last_probe_ok == '0' %}danger{% else %}warn{% endif %}"><b>Validación SMTP</b><span>{% if communications.last_probe_at %}{{communications.last_probe_at}}{% else %}sin validar{% endif %}</span></div>
+      <div class="smtpCheck {% if communications.failed == 0 %}ok{% else %}danger{% endif %}"><b>Fallidos</b><span>{{communications.failed}}</span></div>
+      <div class="smtpCheck {% if communications.pending == 0 %}ok{% else %}warn{% endif %}"><b>Pendientes</b><span>{{communications.pending}}</span></div>
+      <div class="smtpCheck {% if communications.readiness.events_on > 0 %}ok{% else %}warn{% endif %}"><b>Eventos ON</b><span>{{communications.readiness.events_on}}</span></div>
     </section>
 
+    {% if communications.last_probe_detail %}
+    <div class="smartAlert {% if communications.last_probe_ok == '1' %}ok{% else %}warn{% endif %}">
+      <b>Última validación SMTP</b><span>{{communications.last_probe_detail}}</span>
+    </div>
+    {% endif %}
+
     <div class="erpWorkGrid">
-      <article class="erpCard"><h3>Estado <span class="infoTip" title="La cola se procesa automáticamente en pequeñas tandas cuando hay uso del sistema. El botón Procesar cola sirve para forzar el envío manualmente.">i</span></h3><div class="systemKv"><span>SMTP</span><b>{% if communications.smtp_configured %}configurado{% else %}pendiente{% endif %}</b></div><div class="systemKv"><span>Procesamiento</span><b>automático + manual</b></div><div class="systemKv"><span>Pendientes</span><b>{{communications.pending}}</b></div><div class="systemKv"><span>Fallidos</span><b>{{communications.failed}}</b></div><div class="systemKv"><span>Enviados hoy</span><b>{{communications.sent_today}}</b></div></article>
-      <article class="erpCard"><h3>Email de prueba <span class="infoTip" title="Envía un correo real usando la configuración SMTP actual. Sirve para validar remitente, puerto, TLS y credenciales.">i</span></h3><form method="post" action="/admin/communications/test" class="drawerForm"><label>Enviar a<input name="test_email" type="email" required placeholder="correo@dominio.com"></label><small>En modo prueba, aunque escribas otro destinatario, el sistema lo redirige al receptor de pruebas.</small><button class="erpBtn erpPrimary" type="submit">Enviar prueba</button></form></article>
+      <article class="erpCard">
+        <h3>Estado <span class="infoTip" title="Resumen operativo del módulo de comunicaciones.">i</span></h3>
+        <div class="systemKv"><span>SMTP</span><b>{% if communications.smtp_configured %}configurado{% else %}pendiente{% endif %}</b></div>
+        <div class="systemKv"><span>Procesamiento</span><b>automático + manual</b></div>
+        <div class="systemKv"><span>Pendientes</span><b>{{communications.pending}}</b></div>
+        <div class="systemKv"><span>Fallidos</span><b>{{communications.failed}}</b></div>
+        <div class="systemKv"><span>Enviados hoy</span><b>{{communications.sent_today}}</b></div>
+      </article>
+
+      <article class="erpCard">
+        <h3>Email de prueba <span class="infoTip" title="En modo prueba, el destinatario real se reemplaza por el receptor de pruebas.">i</span></h3>
+        <form method="post" action="/admin/communications/test" class="drawerForm">
+          <label>Enviar a<input name="test_email" type="email" required placeholder="correo@dominio.com"></label>
+          <small>En modo prueba, aunque escribas otro destinatario, el sistema lo redirige al receptor de pruebas.</small>
+          <button class="erpBtn erpPrimary" type="submit">Enviar prueba</button>
+        </form>
+      </article>
     </div>
 
-    <article class="erpCard"><h3>Configuración SMTP <span class="infoTip" title="Usar preferentemente un proveedor transaccional: Brevo, SendGrid, Mailgun, SES o cuenta institucional del club.">i</span></h3><form method="post" action="/admin/communications/settings" class="drawerForm commGrid"><label>SMTP host<input name="smtp_host" value="{{communications.settings.host}}" placeholder="smtp.mail.yahoo.com"></label><label>Puerto<input name="smtp_port" value="{{communications.settings.port}}" placeholder="587"></label><label>Usuario<input name="smtp_username" value="{{communications.settings.username}}"></label><label>Password<input name="smtp_password" type="password" placeholder="Dejar vacío para conservar"></label><label>Remitente email<input name="smtp_from_email" type="email" value="{{communications.settings.from_email}}" placeholder="fjord@club.org"></label><label>Nombre remitente<input name="smtp_from_name" value="{{communications.settings.from_name}}"></label><label>Email administración<input name="communications_admin_email" type="email" value="{{communications.settings.admin_email}}" placeholder="administracion@club.org"></label><label>Email receptor de pruebas<input name="smtp_test_recipient_email" type="email" value="{{communications.smtp_test_recipient_email}}" placeholder="tester@dominio.com"></label><label class="checkLine"><input type="checkbox" name="smtp_tls" value="1" {% if communications.settings.tls in ['1','true','True','yes','on'] %}checked{% endif %}> Usar TLS</label><label class="checkLine strongCheck"><input type="checkbox" name="smtp_test_mode" value="1" {% if communications.smtp_test_mode %}checked{% endif %}> Modo prueba SMTP</label><label class="checkLine"><input type="checkbox" name="smtp_force_redirect_in_test" value="1" {% if communications.smtp_force_redirect_in_test %}checked{% endif %}> Redirigir todos los correos al receptor de pruebas</label><label class="checkLine"><input type="checkbox" name="smtp_block_real_recipients_in_test" value="1" {% if communications.settings.block_real_recipients_in_test %}checked{% endif %}> Bloquear destinatarios reales durante pruebas</label><button class="erpBtn erpPrimary" type="submit">Guardar configuración</button><small>Prueba segura: con Modo prueba activo podés encender eventos y procesar cola sin enviar correos a socios reales.</small></form></article>
+    <article class="erpCard smtpConfigFinal">
+      <h3>Configuración SMTP <span class="infoTip" title="Para Gmail usar smtp.gmail.com, puerto 587, TLS y App Password.">i</span></h3>
+      <form method="post" action="/admin/communications/settings" class="drawerForm commGrid">
+        <label>SMTP host<input name="smtp_host" value="{{communications.settings.host}}" placeholder="smtp.gmail.com"></label>
+        <label>Puerto<input name="smtp_port" value="{{communications.settings.port}}" placeholder="587"></label>
+        <label>Usuario<input name="smtp_username" value="{{communications.settings.username}}" placeholder="cuenta@gmail.com"></label>
+        <label>Password / App Password<input name="smtp_password" type="password" placeholder="Dejar vacío para conservar"></label>
+        <label>Remitente email<input name="smtp_from_email" type="email" value="{{communications.settings.from_email}}" placeholder="cuenta@gmail.com"></label>
+        <label>Nombre remitente<input name="smtp_from_name" value="{{communications.settings.from_name}}" placeholder="YCA · Fjord VI TEST"></label>
+        <label>Email administración<input name="communications_admin_email" type="email" value="{{communications.settings.admin_email}}" placeholder="administracion@club.org"></label>
+        <label>Email receptor de pruebas<input name="smtp_test_recipient_email" type="email" value="{{communications.smtp_test_recipient_email}}" placeholder="tester@dominio.com"></label>
 
-    <article class="erpCard"><h3>Eventos automáticos <span class="infoTip" title="Cada evento puede activar una plantilla. No conviene activar todo: reserva, cancelación y cierre son los eventos base.">i</span></h3><div class="erpTableBox" style="max-height:none"><table class="erpTable"><thead><tr><th>Evento</th><th>Descripción</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{% for ev in communications.events %}<tr><td><b>{{ev.name}}</b><br><small>{{ev.key}}</small></td><td>{{ev.description}}</td><td><span class="badge {% if ev.enabled %}ok{% else %}neutral{% endif %}">{% if ev.enabled %}ON{% else %}OFF{% endif %}</span></td><td><form method="post" action="/admin/communications/event/{{ev.key}}"><input type="hidden" name="enabled" value="{% if ev.enabled %}0{% else %}1{% endif %}"><button class="erpBtn {% if ev.enabled %}dangerSoft{% else %}erpPrimary{% endif %}" type="submit">{% if ev.enabled %}Apagar{% else %}Encender{% endif %}</button></form></td></tr>{% endfor %}</tbody></table></div></article>
+        <label class="checkLine"><input type="checkbox" name="smtp_tls" value="1" {% if communications.settings.tls in ['1','true','True','yes','on'] %}checked{% endif %}> Usar TLS</label>
+        <label class="checkLine strongCheck"><input type="checkbox" name="smtp_test_mode" value="1" {% if communications.smtp_test_mode %}checked{% endif %}> Modo prueba SMTP</label>
+        <label class="checkLine"><input type="checkbox" name="smtp_force_redirect_in_test" value="1" {% if communications.smtp_force_redirect_in_test %}checked{% endif %}> Redirigir todos los correos al receptor de pruebas</label>
+        <label class="checkLine"><input type="checkbox" name="smtp_block_real_recipients_in_test" value="1" {% if communications.settings.block_real_recipients_in_test %}checked{% endif %}> Bloquear destinatarios reales durante pruebas</label>
 
-    <article class="erpCard"><h3>Plantillas <span class="infoTip" title="Variables disponibles: [[socio_nombre]], [[salida_nombre]], [[fecha]], [[hora]], [[invitado_nombre]], [[importe]], [[total]], [[link_ficha]], [[club_nombre]], [[app_name]]. Usar llaves dobles en la plantilla.">i</span></h3>{% for tpl in communications.templates %}<details class="commTemplate"><summary><b>{{tpl.name}}</b> <span class="badge {% if tpl.enabled %}ok{% else %}neutral{% endif %}">{% if tpl.enabled %}activa{% else %}inactiva{% endif %}</span></summary><form method="post" action="/admin/communications/template/{{tpl.key}}" class="drawerForm"><label>Asunto<input name="subject" value="{{tpl.subject}}"></label><label>Cuerpo<textarea name="body" rows="8">{{tpl.body}}</textarea></label><label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" name="template_enabled" value="1" {% if tpl.enabled %}checked{% endif %}> Plantilla activa</label><div class="smartAlert neutral"><b>Vista rápida</b><span>Asunto actual: {{tpl.subject}}</span></div><small>Variables: {% raw %}{{socio_nombre}}, {{salida_nombre}}, {{fecha}}, {{hora}}, {{invitado_nombre}}, {{detalle_cargos}}, {{total_socio}}, {{link_ficha}}, {{club_nombre}}, {{app_name}}{% endraw %}.</small><button class="erpBtn erpPrimary" type="submit">Guardar plantilla</button></form></details>{% endfor %}</article>
+        <button class="erpBtn erpPrimary" type="submit">Guardar configuración</button>
+        <small>Secuencia recomendada: guardar configuración → validar SMTP → enviar prueba → prueba integral SMTP → encender eventos uno por uno.</small>
+      </form>
+    </article>
 
-    <article class="erpCard"><h3>Registro y cola de envíos</h3><div class="erpTableBox" style="max-height:420px"><table class="erpTable"><thead><tr><th>Fecha</th><th>Evento</th><th>Destinatario</th><th>Estado</th><th>Intentos</th><th>Error</th><th>Acción</th></tr></thead><tbody>{% for q in communications.queue %}<tr><td>{{fmt_admin_datetime(q.created_at)}}</td><td>{{q.event_key}}</td><td>{{q.recipient_email}}</td><td><span class="badge {% if q.status=='sent' %}ok{% elif q.status=='failed' %}cancel{% else %}warn{% endif %}">{{q.status}}</span></td><td>{{q.attempts}}</td><td>{{q.error}}</td><td>{% if q.status!='sent' %}<form method="post" action="/admin/communications/retry/{{q.id}}"><button class="erpBtn" type="submit">Reintentar</button></form>{% endif %}</td></tr>{% endfor %}</tbody></table></div></article>
+    <article class="erpCard">
+      <h3>Eventos automáticos <span class="infoTip" title="Activar de a uno durante el test. Con modo prueba seguro, todos se redirigen al receptor de pruebas.">i</span></h3>
+      <div class="erpTableBox" style="max-height:none">
+        <table class="erpTable">
+          <thead><tr><th>Evento</th><th>Descripción</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody>{% for ev in communications.events %}
+          <tr>
+            <td><b>{{ev.name}}</b><br><small>{{ev.key}}</small></td>
+            <td>{{ev.description}}</td>
+            <td><span class="badge {% if ev.enabled %}ok{% else %}neutral{% endif %}">{% if ev.enabled %}ON{% else %}OFF{% endif %}</span></td>
+            <td><form method="post" action="/admin/communications/event/{{ev.key}}"><input type="hidden" name="enabled" value="{% if ev.enabled %}0{% else %}1{% endif %}"><button class="erpBtn {% if ev.enabled %}dangerSoft{% else %}erpPrimary{% endif %}" type="submit">{% if ev.enabled %}Apagar{% else %}Encender{% endif %}</button></form></td>
+          </tr>
+          {% endfor %}</tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="erpCard">
+      <h3>Plantillas <span class="infoTip" title="Todas las plantillas se pueden revisar antes de activar eventos.">i</span></h3>
+      {% for tpl in communications.templates %}
+      <details class="commTemplate">
+        <summary><b>{{tpl.name}}</b> <span class="badge {% if tpl.enabled %}ok{% else %}neutral{% endif %}">{% if tpl.enabled %}activa{% else %}inactiva{% endif %}</span></summary>
+        <form method="post" action="/admin/communications/template/{{tpl.key}}" class="drawerForm">
+          <label>Asunto<input name="subject" value="{{tpl.subject}}"></label>
+          <label>Cuerpo<textarea name="body" rows="8">{{tpl.body}}</textarea></label>
+          <label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" name="template_enabled" value="1" {% if tpl.enabled %}checked{% endif %}> Plantilla activa</label>
+          <div class="smartAlert neutral"><b>Vista rápida</b><span>Asunto actual: {{tpl.subject}}</span></div>
+          <small>Variables: {% raw %}{{socio_nombre}}, {{salida_nombre}}, {{fecha}}, {{hora}}, {{invitado_nombre}}, {{detalle_cargos}}, {{total_socio}}, {{link_ficha}}, {{club_nombre}}, {{app_name}}{% endraw %}.</small>
+          <button class="erpBtn erpPrimary" type="submit">Guardar plantilla</button>
+        </form>
+      </details>
+      {% endfor %}
+    </article>
+
+    <article class="erpCard">
+      <h3>Registro y cola de envíos</h3>
+      <div class="erpTableBox" style="max-height:420px">
+        <table class="erpTable">
+          <thead><tr><th>Fecha</th><th>Evento</th><th>Destinatario original</th><th>Estado</th><th>Intentos</th><th>Error / detalle</th><th>Acción</th></tr></thead>
+          <tbody>{% for q in communications.queue %}
+          <tr>
+            <td>{{fmt_admin_datetime(q.created_at)}}</td>
+            <td>{{q.event_key}}</td>
+            <td>{{q.recipient_email}}</td>
+            <td><span class="badge {% if q.status=='sent' %}ok{% elif q.status=='failed' %}cancel{% else %}warn{% endif %}">{{q.status}}</span></td>
+            <td>{{q.attempts}}</td>
+            <td>{{q.error}}</td>
+            <td>{% if q.status!='sent' %}<form method="post" action="/admin/communications/retry/{{q.id}}"><button class="erpBtn" type="submit">Reintentar</button></form>{% endif %}</td>
+          </tr>
+          {% endfor %}</tbody>
+        </table>
+      </div>
+    </article>
     {% endif %}
 
     {% if admin_page == 'sistema' %}
