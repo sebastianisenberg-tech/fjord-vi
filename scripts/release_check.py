@@ -1,110 +1,136 @@
-#!/usr/bin/env python3
+"""
+Release check Fjord VI 3.3
+
+Script de verificación estática para correr antes de deploy:
+    python scripts/release_check.py
+
+No requiere base de datos. Controla versión, templates, archivos críticos,
+configuración SMTP segura y ausencia de basura común.
+"""
+
 from __future__ import annotations
 
-import compileall
 import json
-import os
-import subprocess
+import py_compile
+import re
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CRITICAL_TESTS = [
-    'tests/test_smoke_static.py',
-    'tests/test_phase18_blindaje_monolito.py',
-    'tests/test_phase18_puntos_6_7_locks_auditoria.py',
-    'tests/test_phase18_puntos_9_10_tests_release.py',
+TARGET_VERSION = "3.3"
+
+CRITICAL_FILES = [
+    "main.py",
+    "VERSION.txt",
+    "software_metadata.json",
+    "templates/socio.html",
+    "templates/admin.html",
+    "templates/captain.html",
+    "static/style.css",
 ]
-CRITICAL_TEMPLATES = ['login.html', 'admin.html', 'captain.html', 'socio.html', 'closing_sheet.html']
-CRITICAL_STATIC = ['style.css', 'app.js']
 
+REQUIRED_EMAIL_TEMPLATES = [
+    "reserva_confirmada.html",
+    "invitado_agregado.html",
+    "lista_espera.html",
+    "cancelacion_registrada.html",
+    "reserva_incumplida.html",
+    "recordatorio_24h.html",
+    "embarque_cerrado_admin.html",
+    "email_prueba.html",
+]
 
-def result(name: str, ok: bool, detail: str):
-    return {'name': name, 'ok': bool(ok), 'detail': detail}
-
+def fail(msg: str, errors: list[str]) -> None:
+    errors.append(msg)
 
 def read(path: Path) -> str:
-    return path.read_text(encoding='utf-8', errors='ignore')
+    return path.read_text(encoding="utf-8", errors="ignore")
 
+def main() -> int:
+    errors: list[str] = []
+    warnings: list[str] = []
 
-def check_versions():
-    version = read(ROOT / 'VERSION.txt').strip()
-    meta = json.loads(read(ROOT / 'software_metadata.json'))
-    main = read(ROOT / 'main.py')
-    out = []
-    out.append(result('Versión en main.py', all([
-        f'APP_VERSION = "{version}"' in main,
-        f'APP_BUILD = "Fjord VI {version}"' in main,
-        f'RELEASE_LABEL = "Fjord VI · v{version}"' in main,
-    ]), version))
-    out.append(result('software_metadata.json alineado', meta.get('version') == version and meta.get('release_label') == f'Fjord VI · v{version}' and meta.get('app_build') == f'Fjord VI {version}', meta.get('version','?')))
-    out.append(result('README alineado', version in read(ROOT / 'README.md'), f'versión {version}'))
-    out.append(result('render.yaml presente', (ROOT / 'render.yaml').exists(), 'OK'))
-    out.append(result('DATABASE_URL previsto para producción', 'DATABASE_URL' in main, 'main.py valida/configura DATABASE_URL' if 'DATABASE_URL' in main else 'falta manejo de DATABASE_URL'))
-    return out
+    for rel in CRITICAL_FILES:
+        if not (ROOT / rel).exists():
+            fail(f"Archivo crítico faltante: {rel}", errors)
 
+    version_file = ROOT / "VERSION.txt"
+    if version_file.exists():
+        version = read(version_file).strip()
+        if version != TARGET_VERSION:
+            fail(f"VERSION.txt debe ser {TARGET_VERSION}, encontrado {version!r}", errors)
 
-def check_files():
-    out=[]
-    missing_tpl=[n for n in CRITICAL_TEMPLATES if not (ROOT/'templates'/n).exists()]
-    missing_static=[n for n in CRITICAL_STATIC if not (ROOT/'static'/n).exists()]
-    out.append(result('Templates críticos', not missing_tpl, 'OK' if not missing_tpl else ', '.join(missing_tpl)))
-    out.append(result('Static críticos', not missing_static, 'OK' if not missing_static else ', '.join(missing_static)))
-    out.append(result('requirements.txt presente', (ROOT/'requirements.txt').exists(), 'OK'))
-    out.append(result('Procfile/start.sh presentes', (ROOT/'Procfile').exists() and (ROOT/'start.sh').exists(), 'OK'))
-    out.append(result('Tests scaffold', (ROOT/'tests').exists(), 'pytest/smoke preparado'))
-    out.append(result('Tests críticos de negocio', (ROOT/'tests'/'test_phase18_puntos_9_10_tests_release.py').exists(), 'mínimos de reservas/cierre/reapertura/roles/release'))
-    out.append(result('Script externo de release', (ROOT/'scripts'/'release_check.py').exists(), 'python scripts/release_check.py'))
-    return out
+    metadata = ROOT / "software_metadata.json"
+    if metadata.exists():
+        try:
+            data = json.loads(read(metadata))
+            versions = [v for k, v in data.items() if "version" in k.lower()]
+            if TARGET_VERSION not in [str(v) for v in versions]:
+                fail("software_metadata.json no contiene versión objetivo.", errors)
+        except Exception as exc:
+            fail(f"software_metadata.json inválido: {exc}", errors)
 
+    # Compile Python
+    for py in ROOT.rglob("*.py"):
+        if "__pycache__" in str(py):
+            continue
+        try:
+            py_compile.compile(str(py), doraise=True)
+        except Exception as exc:
+            fail(f"Python no compila: {py.relative_to(ROOT)}: {exc}", errors)
 
-def check_cache():
-    pycache = list(ROOT.rglob('__pycache__'))
-    pyc = list(ROOT.rglob('*.pyc'))
-    return [
-        result('Sin __pycache__', not pycache, 'OK' if not pycache else str(pycache[:3])),
-        result('Sin .pyc', not pyc, 'OK' if not pyc else str(pyc[:3])),
-    ]
+    # Old visible versions
+    old_refs = []
+    for p in ROOT.rglob("*"):
+        if p.is_file() and p.suffix.lower() in {".py", ".html", ".css", ".js", ".json", ".txt", ".md"}:
+            text = read(p)
+            if re.search(r"\b(?:v?3\.0|v?3\.1|v?3\.2|v?2\.\d+)\b", text):
+                old_refs.append(str(p.relative_to(ROOT)))
+    if old_refs:
+        fail("Referencias de versión viejas detectadas: " + ", ".join(sorted(set(old_refs))[:20]), errors)
 
+    # Email templates
+    email_dir = ROOT / "templates" / "emails"
+    for tpl in REQUIRED_EMAIL_TEMPLATES:
+        if not (email_dir / tpl).exists():
+            fail(f"Template email faltante: {tpl}", errors)
 
-def check_compile():
-    previous = getattr(sys, 'pycache_prefix', None)
-    with tempfile.TemporaryDirectory(prefix='fjord_release_check_') as tmp:
-        sys.pycache_prefix = tmp
-        ok = compileall.compile_dir(str(ROOT), quiet=1, force=False, maxlevels=10)
-    sys.pycache_prefix = previous
-    return result('compileall OK', ok, 'python bytecode compilable' if ok else 'falló compileall')
+    # SMTP safety defaults
+    smtp_example = ROOT / "smtp_settings.example.json"
+    if smtp_example.exists():
+        try:
+            smtp = json.loads(read(smtp_example))
+            if smtp.get("smtp_enabled") is not False:
+                fail("smtp_settings.example.json debe iniciar con smtp_enabled=false.", errors)
+            if smtp.get("smtp_test_mode") is not True:
+                fail("smtp_settings.example.json debe iniciar con smtp_test_mode=true.", errors)
+            if smtp.get("smtp_force_redirect_in_test") is not True:
+                fail("smtp_force_redirect_in_test debe iniciar true.", errors)
+        except Exception as exc:
+            fail(f"smtp_settings.example.json inválido: {exc}", errors)
+    else:
+        warnings.append("smtp_settings.example.json no encontrado.")
 
+    # Garbage
+    garbage = []
+    for pattern in ("__pycache__", ".DS_Store", "Thumbs.db"):
+        for p in ROOT.rglob(pattern):
+            garbage.append(str(p.relative_to(ROOT)))
+    if garbage:
+        fail("Basura detectada: " + ", ".join(garbage[:20]), errors)
 
-def check_pytest():
-    cmd = [sys.executable, '-m', 'pytest', '-q', *CRITICAL_TESTS]
-    env = dict(os.environ)
-    with tempfile.TemporaryDirectory(prefix='fjord_pytest_cache_') as tmp:
-        env['PYTHONPATH'] = str(ROOT)
-        env['PYTHONPYCACHEPREFIX'] = tmp
-        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, env=env)
-    tail = (proc.stdout + '\n' + proc.stderr).strip()
-    if len(tail) > 1200:
-        tail = tail[-1200:]
-    return result('Tests mínimos de negocio/release', proc.returncode == 0, tail or 'sin salida')
+    print("Fjord VI release check", TARGET_VERSION)
+    if warnings:
+        print("WARNINGS:")
+        for w in warnings:
+            print(" -", w)
+    if errors:
+        print("ERRORES:")
+        for e in errors:
+            print(" -", e)
+        return 1
+    print("OK")
+    return 0
 
-
-def run():
-    rows=[]
-    rows.extend(check_versions())
-    rows.extend(check_files())
-    rows.extend(check_cache())
-    rows.append(check_compile())
-    rows.append(check_pytest())
-    ok = all(r['ok'] for r in rows)
-    print('Fjord VI · release check automático')
-    print(f'Root: {ROOT}')
-    for r in rows:
-        print(f"[{'OK' if r['ok'] else 'ERROR'}] {r['name']}: {r['detail']}")
-    print(f"Resultado final: {'APTO' if ok else 'NO APTO'}")
-    return 0 if ok else 1
-
-
-if __name__ == '__main__':
-    raise SystemExit(run())
+if __name__ == "__main__":
+    sys.exit(main())

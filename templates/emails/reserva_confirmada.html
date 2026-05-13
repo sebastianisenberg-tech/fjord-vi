@@ -1,5 +1,4 @@
 <h2>Reserva confirmada · Fjord VI</h2>
-<p>Hola {{ socio_nombre }}.</p>
-<p>Tu reserva para la navegación del {{ fecha }} quedó registrada correctamente.</p>
-<p><strong>Estado actual:</strong> Reserva confirmada.</p>
-<p>Podrás administrar invitados y verificar el estado del embarque desde el sistema Fjord VI.</p>
+<p>Hola {{ socio_nombre|default('') }}.</p>
+<p>Tu reserva para {{ salida_nombre }} del {{ fecha }} quedó registrada correctamente.</p>
+<p>Podés consultar el detalle en el sistema Fjord VI.</p>
