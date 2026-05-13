@@ -27,7 +27,7 @@ function showSocioNotice(text){
 }
 </script>
 </head>
-<body><div class="app socioApp socioProV464 socioV51">
+<body><div class="app socioApp socioProV464 socioV51 socioV20">
 <header class="top topGreen premiumTop appHeaderPremium socioProHeader">
   <div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small><span class="socioHeaderRole">Socio · <span class="socioHeaderName">{{user.name}}</span></span></small></div></div>
   <div class="topActionsV123"><a class="socioKeyTopV123" href="/account/password" aria-label="Cambiar clave">🔑 Clave</a><a href="/logout" class="logoutBtn">Salir</a></div>
@@ -46,9 +46,13 @@ function showSocioNotice(text){
 {% if outing %}
 {% set display_name = (user.name.split()[0] ~ ' ' ~ user.name.split()[1]) if user.name and user.name.split()|length > 1 else user.name %}
 {% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
-<div class="sectionFlowTitle"><span class="eyebrow">1 · Elegir navegación</span></div>
-<section class="card premiumCard socioProCard socioProCalendar socioV51Calendar navCompactV161" id="salidas">
-  <div class="cardTitle navTitleV161"><div><span class="eyebrow">Calendario</span><h2>Próximas navegaciones</h2><p>Tus próximas salidas Fjord VI</p></div></div>
+{% set nav_ns = namespace(selected_in_upcoming=false) %}
+{% for o in outings %}{% if outing and o.id == outing.id %}{% set nav_ns.selected_in_upcoming = true %}{% endif %}{% endfor %}
+{% set is_history_view = outing and not nav_ns.selected_in_upcoming %}
+{% set nav_step_label = 'Historial de navegación' if is_history_view else ('Detalle de navegación' if closed or outing_cancelled else 'Elegir navegación') %}
+<div class="sectionFlowTitle sectionFlowTitleV20"><span class="eyebrow">1 · {{ nav_step_label }}</span></div>
+<section class="card premiumCard socioProCard socioProCalendar socioV51Calendar navCompactV161 navCompactV20" id="salidas">
+  <div class="cardTitle navTitleV161 navTitleV20"><div><span class="eyebrow">{{ 'Historial' if is_history_view else 'Calendario' }}</span><h2>{{ 'Navegación seleccionada' if is_history_view else 'Próximas navegaciones' }}</h2><p>{{ 'Consulta de salida cerrada o histórica' if is_history_view else 'Tus próximas salidas Fjord VI' }}</p></div></div>
   {% if outings|length == 0 %}<div class="empty">Administración todavía no publicó salidas.</div>{% endif %}
   <div class="selectorList compactSelectorV161">
   {% for o in outings %}
@@ -129,17 +133,17 @@ function showSocioNotice(text){
     {% endfor %}
     {% for i in range(outing.max_crew - avatar_ns.shown) %}{% if i < 9 %}<span class="empty">+</span>{% endif %}{% endfor %}
   </div>
-  <div class="miEmbTimeline" aria-label="Estado de la reserva">
-    <span class="{% if self_reservation %}done{% endif %}">Reserva</span>
-    <span class="{% if has_self %}done{% elif self_view and self_view.waitlisted %}active{% endif %}">Confirmación</span>
-    <span class="{% if closed %}done{% elif has_self %}active{% endif %}">Embarque</span>
-    <span class="{% if closed %}active{% endif %}">Cierre</span>
+  <div class="miEmbTimeline miEmbTimelineV20" aria-label="Estado de la reserva">
+    <span class="{% if self_reservation %}complete{% elif not self_reservation and not closed %}current{% else %}future{% endif %}"><i>{% if self_reservation %}✓{% else %}1{% endif %}</i>Reserva</span>
+    <span class="{% if has_self %}complete{% elif self_view and self_view.waitlisted %}current wait{% elif self_reservation %}current{% else %}future{% endif %}"><i>{% if has_self %}✓{% elif self_view and self_view.waitlisted %}…{% else %}2{% endif %}</i>Confirmación</span>
+    <span class="{% if closed %}complete{% elif has_self %}current{% else %}future{% endif %}"><i>{% if closed %}✓{% elif has_self %}3{% else %}3{% endif %}</i>Embarque</span>
+    <span class="{% if closed %}current final{% else %}future{% endif %}"><i>{% if closed %}✓{% else %}4{% endif %}</i>Cierre</span>
   </div>
   <div class="miEmbCtaWrap">
     {% if outing_cancelled %}
-      <a class="miEmbCta soft" href="#inicio">Salida cancelada</a>
+      <a class="miEmbCta soft ctaDisabledV20" aria-disabled="true" href="#inicio">Salida cancelada</a>
     {% elif closed %}
-      <a class="miEmbCta soft" href="#inicio">🔒 Embarque cerrado</a>
+      <a class="miEmbCta soft ctaDisabledV20" aria-disabled="true" href="#inicio">🔒 Embarque cerrado</a>
     {% elif self_view and self_view.waitlisted %}
       <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Salir de espera</button></form>
     {% elif has_self %}
@@ -163,8 +167,9 @@ function showSocioNotice(text){
 </section>
 {% endif %}
 
-<section class="socioV51QuickActions" aria-label="Acciones rápidas">
-  <a href="#invitados"><b>Invitar</b><small>Agregar invitado</small></a>{% if user.can_manage_protocolar %}<a href="#protocolar"><b>Protocolar</b><small>Comisión Fjord VI</small></a>{% endif %}
+<section class="socioV51QuickActions quickActionsV20" aria-label="Acciones rápidas">
+  {% set actions_locked = (closed or outing_cancelled or not has_self) if outing else true %}
+  <a class="{% if actions_locked %}isDisabledAction{% endif %}" href="{% if actions_locked %}#inicio{% else %}#invitados{% endif %}" {% if actions_locked %}aria-disabled="true" onclick="showSocioNotice('{% if closed %}La salida ya está cerrada.{% elif outing_cancelled %}La salida está cancelada.{% else %}Primero debés tener tu reserva titular activa.{% endif %}'); return false;"{% endif %}><b>Invitar</b><small>{% if actions_locked %}No disponible{% else %}Agregar invitado{% endif %}</small></a>{% if user.can_manage_protocolar %}<a class="{% if closed or outing_cancelled %}isDisabledAction{% endif %}" href="{% if closed or outing_cancelled %}#inicio{% else %}#protocolar{% endif %}" {% if closed or outing_cancelled %}aria-disabled="true" onclick="showSocioNotice('{% if closed %}La salida ya está cerrada.{% else %}La salida está cancelada.{% endif %}'); return false;"{% endif %}><b>Protocolar</b><small>{% if closed or outing_cancelled %}No disponible{% else %}Comisión Fjord VI{% endif %}</small></a>{% endif %}
   <a href="/static/reglamento.html" target="_blank" rel="noopener"><b>Reglamento</b><small>Reglas y cargos</small></a>
   <a href="#inicio"><b>Estado</b><small>Cupo y salida</small></a>
 </section>

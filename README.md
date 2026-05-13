@@ -1,4 +1,4 @@
-# Fjord VI 1.2.4
+# Fjord VI 2.0
 
 Paquete limpio de producción basado en la versión funcional 1.18.18.
 

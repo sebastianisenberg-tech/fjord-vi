@@ -9176,7 +9176,7 @@ a[href="/account/password"].topAction{
   .guestMenuPanelV123{right:-2px;min-width:230px;}
 }
 
-/* Fjord VI v1.2.4 - refinamiento premium conservador Socio */
+/* Fjord VI v2.0 - refinamiento premium conservador Socio */
 .socioApp .topActionsV123{
   gap:10px!important;
 }
@@ -9328,4 +9328,70 @@ a[href="/account/password"].topAction{
     padding:6px 10px!important;
   }
   .socioApp .topActionsV123{gap:9px!important;}
+}
+
+/* Fjord VI v2.0 · Socio UI conservadora: headers dinámicos, disabled states, progress tracker */
+.socioV20 .sectionFlowTitleV20{margin:7px 2px 5px!important;}
+.socioV20 .navCompactV20{padding:8px 10px!important;margin-bottom:8px!important;}
+.socioV20 .navTitleV20 h2{font-size:16.5px!important;line-height:1.03!important;}
+.socioV20 .navTitleV20 p{font-size:10.8px!important;margin-top:1px!important;}
+.socioV20 .quickActionsV20 a.isDisabledAction,
+.socioV20 .ctaDisabledV20,
+.socioV20 .lockedGuestBox .lockedBtn,
+.socioV20 .guestMenuV123[aria-disabled="true"]{
+  opacity:.52!important;
+  filter:grayscale(.45)!important;
+  cursor:not-allowed!important;
+  box-shadow:none!important;
+}
+.socioV20 .quickActionsV20 a.isDisabledAction b,
+.socioV20 .quickActionsV20 a.isDisabledAction small{color:#8090a0!important;}
+.socioV20 .miEmbTimelineV20{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:5px!important;
+  padding:5px!important;
+  background:#f7fbfd!important;
+  border:1px solid rgba(12,82,126,.10)!important;
+  border-radius:999px!important;
+}
+.socioV20 .miEmbTimelineV20 span{
+  min-height:26px!important;
+  padding:4px 5px!important;
+  border-radius:999px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  font-size:10.5px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  background:transparent!important;
+  color:#7b8997!important;
+  box-shadow:none!important;
+}
+.socioV20 .miEmbTimelineV20 span i{
+  width:15px!important;
+  height:15px!important;
+  border-radius:999px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:9px!important;
+  font-style:normal!important;
+  font-weight:1000!important;
+  background:#edf3f7!important;
+  color:#789!important;
+}
+.socioV20 .miEmbTimelineV20 span.complete{color:#0c5f43!important;background:#eaf8f1!important;}
+.socioV20 .miEmbTimelineV20 span.complete i{background:#159464!important;color:white!important;}
+.socioV20 .miEmbTimelineV20 span.current{color:white!important;background:linear-gradient(180deg,#1478a9,#0a557e)!important;box-shadow:0 5px 12px rgba(10,85,126,.22)!important;}
+.socioV20 .miEmbTimelineV20 span.current i{background:rgba(255,255,255,.22)!important;color:#fff!important;}
+.socioV20 .miEmbTimelineV20 span.current.wait{background:linear-gradient(180deg,#c18b21,#986913)!important;}
+.socioV20 .miEmbTimelineV20 span.future{opacity:.58!important;color:#8897a5!important;}
+.socioV20 .miEmbTimelineV20 span.final.current{background:linear-gradient(180deg,#254c67,#15364d)!important;}
+@media(max-width:420px){
+  .socioV20 .miEmbTimelineV20 span{font-size:9.7px!important;gap:3px!important;padding:4px 3px!important;}
+  .socioV20 .miEmbTimelineV20 span i{width:13px!important;height:13px!important;font-size:8px!important;}
 }
