@@ -4,4 +4,4 @@ jinja2
 python-multipart
 sqlalchemy
 psycopg2-binary
-reportlab==4.2.2
+reportlab==4.pre-3.3

@@ -1,0 +1,70 @@
+Fjord VI v3.3 · Reliability & Usability Hardening
+
+Base:
+- FjordVI_3.2_SMTP_TEST_MODE_SEGURO.zip
+
+Tipo de release:
+- Confiabilidad, mantenibilidad y facilidad de uso.
+- No es una release visual.
+- No agrega reglas operativas nuevas al flujo de reservas.
+
+Agregado:
+- app/reliability/state_machine.py
+- scripts/release_check.py
+- RELIABILITY_3.3.md
+- UX_ANTI_ABANDONO.md
+- endurecimiento de defaults SMTP test mode
+- documentación de invariantes y checklist de piloto
+
+No se tocó intencionalmente:
+- lógica de reservas existente
+- lista de espera
+- cargos
+- prioridades
+- cierre/reapertura
+- liquidaciones
+- PDF
+- QR
+- diseño visual Socio/Capitán/Admin
+
+Controles:
+- Archivos totales: 94
+- Python compila: sí
+- Templates Jinja compilan: sí
+- Archivos críticos faltantes: ninguno
+- Referencias viejas de versión restantes: ['2.0', '2.5', '3.0', '3.1', '3.2']
+- VERSION.txt: 3.3
+- Basura eliminada: sí
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno
+
+Archivos modificados/agregados:
+AUDITORIA_2.8_VISUAL_BASELINE.txt
+AUDITORIA_2.9_HEADER_SOCIO.txt
+AUDITORIA_3.0_RELEASE.txt
+AUDITORIA_3.0_VERSION_UNIFICADA.txt
+AUDITORIA_3.1_SMTP.txt
+AUDITORIA_3.2_SMTP_TEST_MODE_SEGURO.txt
+AUDITORIA_FINAL_VERSIONES.txt
+HISTORIAL_TECNICO.txt
+README.md
+RELEASE_CHECKLIST.md
+RELIABILITY_3.3.md
+SMTP_TEST_MODE.md
+SMTP_TEST_MODE_SEGURO_3.2.md
+UX_ANTI_ABANDONO.md
+VERSION.txt
+app/reliability/state_machine.py
+main.py
+requirements.txt
+scripts/release_check.py
+smtp_settings.example.json
+software_metadata.json
+static/app.js
+static/style.css
+templates/admin.html
+templates/socio.html

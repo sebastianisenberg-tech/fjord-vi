@@ -1,10 +1,10 @@
-Fjord VI v3.0 - Auditoría de release
+Fjord VI v3.3 - Auditoría de release
 
 Base utilizada:
 - FjordVI_2.9_header_socio_refinado_auditado.zip
 
 Cambios aplicados:
-- Versión unificada a 3.0.
+- Versión unificada a 3.3.
 - Texto “Próximas navegaciones” reemplazado por “Tus navegaciones”.
 - Sin cambios intencionales en lógica operativa.
 

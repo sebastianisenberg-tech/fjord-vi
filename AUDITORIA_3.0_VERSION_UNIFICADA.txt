@@ -1,4 +1,4 @@
-Fjord VI v3.0 - Corrección de versión unificada
+Fjord VI v3.3 - Corrección de versión unificada
 
 Base: FjordVI_3.0_tus_navegaciones_auditado.zip
 
@@ -7,7 +7,7 @@ Problema corregido:
 - Se revisaron referencias de versión en templates, main.py, metadata, auditorías y archivos de release.
 
 Controles:
-- VERSION.txt: 3.0
+- VERSION.txt: 3.3
 - Python compila: sí
 - Templates Jinja compilan: sí
 - Referencias viejas 1.x/2.x detectadas: 1
