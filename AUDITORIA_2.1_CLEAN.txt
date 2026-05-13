@@ -1,0 +1,31 @@
+Fjord VI 2.1-clean - Auditoría de reconstrucción limpia desde v2.0
+
+Fuente: FjordVI_2.0_socio_UI_premium_auditado.zip
+
+Cambios reales aplicados:
+- main.py/VERSION.txt/software_metadata.json actualizados a 2.1-clean.
+- Socio: botón Inicio apunta al tope real (#top) y hace scroll suave con blur de input activo.
+- Socio: botón Invitar apunta al bloque real de carga (#agregar-invitado) con scroll suave y pulso visual, sin autofocus.
+- Socio: leyenda institucional deja de ser input visible; queda como nota validada con hidden input para conservar payload.
+- Socio: bottom nav conserva 4 links reales y se eliminaron las reglas CSS que generaban iconos/pseudo-flechas por nth-child.
+- Socio: badge de socio más legible y equilibrado.
+
+No modificado:
+- Reglas de reservas.
+- Lista de espera.
+- Cargos / reserva incumplida.
+- Cierre / reapertura.
+- Liquidación / PDF.
+- Rutas backend.
+
+Controles:
+- main.py compila: OK
+- templates Jinja: OK
+- bottom nav Socio links reales: 4
+- caracteres icono/flecha en bottom nav HTML: []
+- regla CSS nth-child con content icono en bottom Socio: False
+- archivos totales: 68
+- archivos modificados: ['README.md', 'VERSION.txt', 'main.py', 'software_metadata.json', 'static/style.css', 'templates/socio.html']
+- hits versiones viejas en fuentes visibles principales: [('software_metadata.json', 'v2.0')]
+
+Generado: 2026-05-13T04:16:36.056287 UTC
