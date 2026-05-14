@@ -1,0 +1,22 @@
+
+Fjord VI v3.7.5 · SMTP TEST MODE
+
+Cambios:
+- Base tomada desde release final 3.0.
+- Configuración SMTP de pruebas.
+- Redirect automático de correos en TEST MODE.
+- Templates HTML iniciales.
+- Servicio SMTP desacoplado.
+- Preparado para futura cuenta institucional YCA.
+
+Archivos nuevos:
+- smtp_settings.example.json
+- app/services/smtp_service.py
+- templates/emails/*
+- SMTP_TEST_MODE.md
+
+Estado:
+- Python compila: sí
+
+Errores:
+ninguno

@@ -1,0 +1,44 @@
+Fjord VI v3.7.5 · COMUNICACIONES CONTROL FINAL
+
+Base:
+- FjordVI_3.6.1_COMUNICACIONES_AUDIT_FIX.zip
+
+Cambios:
+- Estado general SMTP.
+- Detección de configuraciones inconsistentes.
+- Alerta de cola.
+- Preview renderizado JSON por plantilla.
+- Nota de auditoría SMTP.
+- Freeze de producción.
+- Versión distinguible: SMTP · v3.7.5.
+
+No se tocó:
+- reservas
+- cargos
+- liquidaciones
+- PDF
+- QR
+- Socio
+- Capitán
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "version_txt": "3.7",
+  "app_version_3_7": true,
+  "module_badge": true,
+  "master_status_backend": true,
+  "master_status_ui": true,
+  "queue_alert": true,
+  "template_preview_route": true,
+  "template_preview_ui": true,
+  "audit_note": true,
+  "production_freeze": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

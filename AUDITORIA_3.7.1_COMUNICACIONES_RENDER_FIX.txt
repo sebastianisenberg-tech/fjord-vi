@@ -1,0 +1,35 @@
+Fjord VI v3.7.5 · COMUNICACIONES RENDER FIX
+
+Base:
+- FjordVI_3.7_COMUNICACIONES_CONTROL_FINAL.zip
+
+Correcciones:
+- admin.html ya no rompe si falta communications.queue_alert.
+- admin.html define defaults seguros para master_status, queue_alert, readiness, probe, scheduler, last_sent, missing_requirements y rate_limit.
+- communications_context agrega fallback backend para master_status y queue_alert.
+- Se agregó prueba de render de admin/comunicaciones con StrictUndefined para reproducir el caso del error controlado.
+- Versión distinguible: 3.7.1.
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "admin_comunicaciones_render_ok": true,
+  "version_txt": "3.7.1",
+  "app_version_3_7_1": true,
+  "module_badge": true,
+  "safe_queue_alert_template": true,
+  "safe_master_status_template": true,
+  "safe_missing_requirements": true,
+  "safe_rate_limit": true,
+  "backend_safe_fallback": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja parse:
+ninguno
+
+Errores render admin/comunicaciones:
+ninguno

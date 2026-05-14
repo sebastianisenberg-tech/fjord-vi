@@ -1,0 +1,37 @@
+Fjord VI v3.7.5 · SMTP UX FIX
+
+Base:
+- FjordVI_3.7.4_SMTP_CONFIG_FIX.zip
+
+Correcciones:
+- Campo App Password con botón Ver/Ocultar.
+- El campo ya no usa el placeholder ambiguo como única pista.
+- Muestra si existe App Password guardada, longitud y si parece formato Google de 16 caracteres.
+- Panel visible de última validación SMTP con detalle real del error.
+- La validación SMTP guarda detalle usando la misma sesión DB y hace commit antes del redirect.
+- Manejo explícito de SMTPAuthenticationError con código y texto de Gmail/SMTP.
+- Versión visible limpia: SMTP · v3.7.5.
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "admin_comunicaciones_render_ok": true,
+  "version_txt": "3.7.5",
+  "app_version_3_7_5": true,
+  "module_badge_clean": true,
+  "password_status_backend": true,
+  "password_eye_ui": true,
+  "last_probe_visible": true,
+  "smtp_auth_error_detail": true,
+  "smtp_check_same_session_commit": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja parse:
+ninguno
+
+Errores render admin/comunicaciones:
+ninguno

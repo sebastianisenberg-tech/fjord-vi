@@ -1,0 +1,38 @@
+Fjord VI v3.7.5 - Corrección de versión unificada
+
+Base: FjordVI_3.0_tus_navegaciones_auditado.zip
+
+Problema corregido:
+- El check de release detectaba versión no unificada.
+- Se revisaron referencias de versión en templates, main.py, metadata, auditorías y archivos de release.
+
+Controles:
+- VERSION.txt: 3.3
+- Python compila: sí
+- Templates Jinja compilan: sí
+- Referencias viejas 1.x/2.x detectadas: 1
+- Archivos totales: 71
+- Basura eliminada: sí
+
+Archivos modificados:
+AUDITORIA_2.8_VISUAL_BASELINE.txt
+AUDITORIA_2.9_HEADER_SOCIO.txt
+HISTORIAL_TECNICO.txt
+README.md
+RELEASE_CHECKLIST.md
+VERSION.txt
+main.py
+software_metadata.json
+static/app.js
+static/style.css
+templates/admin.html
+templates/socio.html
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno
+
+Referencias viejas encontradas luego del fix:
+HISTORIAL_TECNICO.txt: Version de base para este paquete limpio: 1.19

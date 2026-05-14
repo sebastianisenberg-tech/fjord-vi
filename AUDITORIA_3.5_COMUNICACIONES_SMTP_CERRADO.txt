@@ -1,0 +1,45 @@
+Fjord VI v3.7.5 · COMUNICACIONES SMTP CERRADO
+
+Base:
+- FjordVI_3.4_COMUNICACIONES_SMTP_FINAL.zip
+
+Cambios:
+- Nueva versión distinguible: 3.5.
+- Lista explícita de requisitos faltantes.
+- Semáforos ampliados.
+- Último email enviado.
+- Estado de scheduler/procesamiento.
+- Modo simulación sin envío SMTP real.
+- Prueba individual por plantilla.
+- Registro con estado vacío explícito.
+- Guía COMUNICACIONES_SMTP_CERRADO_3.5.md.
+
+No se tocó:
+- reservas
+- cargos
+- liquidaciones
+- PDF
+- QR
+- Socio
+- Capitán
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "version_txt": "3.5",
+  "app_version_3_5": true,
+  "module_badge": true,
+  "missing_requirements": true,
+  "last_sent": true,
+  "scheduler": true,
+  "simulation_mode": true,
+  "template_test_route": true,
+  "empty_state": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

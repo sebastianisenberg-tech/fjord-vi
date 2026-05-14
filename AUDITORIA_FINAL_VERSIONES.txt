@@ -1,0 +1,7 @@
+Corrección final de referencias visibles de versión
+
+Se corrigieron referencias remanentes 2.8/2.9 en:
+ninguna
+
+Versión objetivo:
+3.3

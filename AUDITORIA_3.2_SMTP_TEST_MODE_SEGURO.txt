@@ -1,0 +1,21 @@
+Fjord VI v3.7.5 · SMTP TEST MODE SEGURO
+
+Base: FjordVI_3.3_SMTP_TEST_MODE.zip
+
+Cambios:
+- Banner visible de Modo prueba SMTP.
+- Email receptor de pruebas editable.
+- Redirect forzado en TEST MODE.
+- Asunto con prefijo [TEST Fjord VI].
+- Cuerpo del mail con aviso de prueba, destinatario original y destinatario efectivo.
+- Templates revisados y actualizados al lenguaje actual.
+- Servicio SMTP con log JSONL.
+
+Seguridad inicial:
+- smtp_enabled=false
+- smtp_test_mode=true
+- smtp_force_redirect_in_test=true
+- smtp_block_real_recipients_in_test=true
+
+Python compila: sí
+Errores: ninguno

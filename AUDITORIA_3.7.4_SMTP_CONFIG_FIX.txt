@@ -1,0 +1,38 @@
+Fjord VI v3.7.5 · SMTP CONFIG FIX
+
+Base:
+- FjordVI_3.7.3_QUEUE_ALERT_FIX.zip
+
+Correcciones:
+- El guardado SMTP ahora usa la misma sesión DB del request mediante set_system_meta_db.
+- Después de guardar SMTP se hace commit + expire_all antes de recalcular faltantes.
+- Se elimina la desincronización entre campos visibles y semáforo superior.
+- smtp_configured ahora exige host, puerto, usuario, password/App Password y remitente.
+- Validar SMTP informa exactamente qué campo falta.
+- Limpieza de badge/versionado visible: SMTP · v3.7.5.
+- Se mantiene modo prueba, redirect y bloqueo de destinatarios reales.
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "admin_comunicaciones_render_ok": true,
+  "version_txt": "3.7.4",
+  "app_version_3_7_4": true,
+  "module_badge_clean": true,
+  "same_session_meta_setter": true,
+  "settings_route_uses_same_session": true,
+  "settings_commit_expire_before_guard": true,
+  "smtp_configured_requires_host_user_pass_from": true,
+  "smtp_probe_reports_missing_fields": true,
+  "admin_hint_gmail": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja parse:
+ninguno
+
+Errores render admin/comunicaciones:
+ninguno

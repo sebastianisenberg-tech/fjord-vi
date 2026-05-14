@@ -1,0 +1,21 @@
+Fjord VI v3.7.5 · REAL HARDENING + SMTP TEST MODE SEGURO
+
+Controles finales:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "APP_VERSION_3_3": true,
+  "RELEASE_LABEL_3_3": true,
+  "admin_banner_present": true,
+  "admin_banner_not_in_head": true,
+  "test_recipient_input": true,
+  "backend_effective_recipient": true,
+  "settings_route_test_recipient": true,
+  "VERSION_txt": "3.3"
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

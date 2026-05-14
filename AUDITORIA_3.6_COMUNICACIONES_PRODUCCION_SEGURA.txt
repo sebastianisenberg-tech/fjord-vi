@@ -1,0 +1,43 @@
+Fjord VI v3.7.5 · COMUNICACIONES PRODUCCIÓN SEGURA
+
+Base:
+- FjordVI_3.5_COMUNICACIONES_SMTP_CERRADO.zip
+
+Cambios:
+- Nueva versión distinguible: 3.6.
+- Simulación visible como estado fuerte.
+- Producción real visible como estado de riesgo.
+- Prueba real controlada al receptor de pruebas.
+- Límite por corrida anti-envío accidental.
+- Detalle persistente de validación SMTP.
+- Panel de advertencia de producción real.
+- Guía COMUNICACIONES_PRODUCCION_SEGURA_3.6.md.
+
+No se tocó:
+- reservas
+- cargos
+- liquidaciones
+- PDF
+- QR
+- Socio
+- Capitán
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "version_txt": "3.6",
+  "app_version_3_6": true,
+  "module_badge": true,
+  "production_ready": true,
+  "simulation_visible": true,
+  "real_test_route": true,
+  "send_limit": true,
+  "probe_detail": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

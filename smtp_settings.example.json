@@ -1,0 +1,21 @@
+{
+  "smtp_enabled": false,
+  "smtp_test_mode": true,
+  "smtp_host": "smtp.mail.yahoo.com",
+  "smtp_port": 587,
+  "smtp_tls": true,
+  "smtp_username": "fjordvi.testing@yahoo.com",
+  "smtp_password": "REEMPLAZAR_APP_PASSWORD",
+  "smtp_from_name": "YCA · Fjord VI TEST",
+  "smtp_from_email": "fjordvi.testing@yahoo.com",
+  "smtp_test_redirect_email": "sebastianisenberg@gmail.com",
+  "smtp_whitelist": [
+    "sebastianisenberg@gmail.com"
+  ],
+  "smtp_log_enabled": true,
+  "smtp_test_recipient_email": "sebastianisenberg@gmail.com",
+  "smtp_force_redirect_in_test": true,
+  "smtp_block_real_recipients_in_test": true,
+  "smtp_test_prefix_subject": true,
+  "smtp_show_test_banner": true
+}
