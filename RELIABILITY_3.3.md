@@ -1,4 +1,4 @@
-# Fjord VI v3.7.2.1 · Hardening real
+# Fjord VI v3.7.3.1 · Hardening real
 
 Esta release integra confiabilidad en el sistema visible y en backend, no solamente documentación.
 
