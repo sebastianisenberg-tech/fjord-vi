@@ -1,5 +1,5 @@
 
-Fjord VI v3.7.7 · SMTP TEST MODE
+Fjord VI v3.7.8 · SMTP TEST MODE
 
 Cambios:
 - Base tomada desde release final 3.0.

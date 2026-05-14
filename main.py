@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.7"
+APP_VERSION = "3.7.8"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.7"
-RELEASE_LABEL = "Fjord VI · v3.7.7"
+APP_BUILD = "Fjord VI 3.7.8"
+RELEASE_LABEL = "Fjord VI · v3.7.8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -338,90 +338,105 @@ COMMUNICATION_EVENTS = {
     "reserva_confirmada_socio": {
         "name": "Reserva confirmada al socio",
         "description": "Email al socio cuando confirma o reactiva su reserva.",
+        "default_enabled": True,
         "subject": "Reserva confirmada · {{salida_nombre}} · {{fecha}}",
         "body": "Quedó registrada tu reserva para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "reserva_en_espera_socio": {
+        "name": "Reserva en lista de espera",
+        "description": "Email al socio cuando queda en lista de espera.",
+        "default_enabled": True,
+        "subject": "Reserva en espera · {{salida_nombre}} · {{fecha}}",
+        "body": "Tu solicitud quedó registrada en lista de espera para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nTe avisaremos si se libera una vacante y tu reserva pasa a confirmada.\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "reserva_promovida_socio": {
+        "name": "Reserva confirmada desde espera",
+        "description": "Email al socio cuando una reserva pasa de lista de espera a confirmada.",
+        "default_enabled": True,
+        "subject": "Reserva confirmada desde espera · {{salida_nombre}}",
+        "body": "Tu reserva para {{salida_nombre}} pasó de lista de espera a confirmada.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nEstado actual: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "invitado_agregado_socio": {
         "name": "Invitado agregado",
         "description": "Email al socio cuando agrega o reactiva un invitado.",
-        "subject": "Invitado registrado · {{salida_nombre}}",
+        "default_enabled": True,
+        "subject": "Invitado registrado · {{salida_nombre}} · {{invitado_nombre}}",
         "body": "Se registró el invitado {{invitado_nombre}} para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "invitado_en_espera_socio": {
+        "name": "Invitado en lista de espera",
+        "description": "Email al socio cuando un invitado queda en lista de espera.",
+        "default_enabled": True,
+        "subject": "Invitado en espera · {{salida_nombre}} · {{invitado_nombre}}",
+        "body": "El invitado {{invitado_nombre}} quedó registrado en lista de espera para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nSe avisará si se libera una vacante.\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "invitado_desplazado_socio": {
+        "name": "Invitado desplazado a espera",
+        "description": "Email al socio cuando un invitado pasa a lista de espera por cupo o prioridad.",
+        "default_enabled": True,
+        "subject": "Invitado en espera por cupo · {{salida_nombre}} · {{invitado_nombre}}",
+        "body": "Por cupo o prioridad reglamentaria, el invitado {{invitado_nombre}} quedó en lista de espera para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "cancelacion_socio": {
         "name": "Cancelación registrada",
         "description": "Email al socio cuando se registra una cancelación.",
+        "default_enabled": True,
         "subject": "Cancelación registrada · {{salida_nombre}}",
         "body": "Quedó registrada la cancelación para {{salida_nombre}}.\n\nSi corresponde, Administración verificará los cargos reglamentarios aplicables.\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "salida_reprogramada_socio": {
+        "name": "Salida reprogramada",
+        "description": "Email a socios afectados cuando Administración cambia fecha u hora de una salida con reservas.",
+        "default_enabled": True,
+        "subject": "Salida reprogramada · {{salida_nombre}}",
+        "body": "La salida {{salida_nombre}} fue reprogramada.\n\nFecha/hora anterior: {{fecha_anterior}} {{hora_anterior}}\nNueva fecha/hora: {{fecha}} {{hora}}\n\nTu reserva se mantiene registrada. Si no podés asistir en el nuevo horario, revisá tu reserva desde el sistema.\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "embarque_estado_socio": {
+        "name": "Cambio de estado de embarque",
+        "description": "Email al socio responsable cuando el capitán cambia el estado de una persona asociada a su reserva.",
+        "default_enabled": True,
+        "subject": "Estado de embarque actualizado · {{salida_nombre}} · {{persona_nombre}}",
+        "body": "Se actualizó el estado de embarque de {{persona_nombre}} para {{salida_nombre}}.\n\nEstado: {{estado}}\nFecha: {{fecha}}\nHora: {{hora}}\n\n{{club_nombre}} · {{app_name}}",
+    },
+    "salida_cerrada_socio": {
+        "name": "Resumen de salida al socio",
+        "description": "Email consolidado al socio responsable al cerrar la salida.",
+        "default_enabled": True,
+        "subject": "Resumen de salida · {{salida_nombre}} · {{fecha}}",
+        "body": "La salida {{salida_nombre}} fue cerrada.\n\nResumen de tu reserva:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\nFicha: {{ficha_numero}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_cerrada_admin": {
         "name": "Salida cerrada para administración",
         "description": "Email a Administración cuando el capitán cierra la salida y genera ficha.",
+        "default_enabled": True,
         "subject": "Salida cerrada · {{salida_nombre}} · Ficha {{ficha_numero}}",
-        "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: {{ficha_numero}}\n\n{{club_nombre}} · {{app_name}}",
+        "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "recordatorio_24h_socio": {
         "name": "Recordatorio 24h al socio",
         "description": "Email automático al socio responsable 24 horas antes de la salida.",
+        "default_enabled": True,
         "subject": "Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}",
         "body": "Te recordamos tu reserva para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "no_show_cargo_socio": {
         "name": "Reserva incumplida / cargo al socio",
         "description": "Email al socio responsable cuando el cierre genera cargo por reserva incumplida propia o de invitados.",
+        "default_enabled": True,
         "subject": "Liquidación · {{salida_nombre}} · {{fecha}}",
         "body": "El cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\nFicha: {{ficha_numero}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "email_prueba": {
         "name": "Email de prueba",
         "description": "Prueba manual de SMTP desde Administración.",
+        "default_enabled": True,
         "subject": "Prueba de comunicaciones · {{app_name}} {{version}}",
         "body": "Este es un email de prueba enviado desde {{app_name}} {{version}}.\n\nSi recibiste este mensaje, SMTP está funcionando.\n\n{{club_nombre}} · {{app_name}}",
     },
 }
 
-def normalize_email_text(value) -> str:
-    """Normaliza texto para emails: convierte escapes literales y sanea listas simples."""
-    if value is None:
-        return ""
-    if isinstance(value, (list, tuple, set)):
-        items = [str(x).strip() for x in value if str(x).strip()]
-        return "\n".join(f"- {x.lstrip('- ').strip()}" for x in items)
-    text = str(value)
-    text = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", " ")
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    return text
-
-def render_comm_template(text_value: str, payload: dict) -> str:
-    result = text_value or ""
-    safe_payload = {k: normalize_email_text(v) for k, v in (payload or {}).items()}
-    safe_payload.setdefault("club_nombre", CLUB_NAME)
-    safe_payload.setdefault("app_name", APP_NAME)
-    safe_payload.setdefault("version", VERSION)
-
-    # Alias/fallbacks para que ningún template quede con {{variable}} visible.
-    safe_payload.setdefault("socio_nombre", safe_payload.get("nombre", "") or safe_payload.get("recipient_name", "") or "Socio")
-    safe_payload.setdefault("persona_nombre", safe_payload.get("invitado_nombre", "") or safe_payload.get("socio_nombre", "") or "la persona indicada")
-    safe_payload.setdefault("importe", safe_payload.get("total_socio", "") or safe_payload.get("total", "") or "$ 0")
-    safe_payload.setdefault("estado", safe_payload.get("estado", "") or "registrado")
-    safe_payload.setdefault("punto_encuentro", safe_payload.get("punto_encuentro", "") or "Dársena Norte")
-    safe_payload.setdefault("lista_personas", safe_payload.get("lista_personas", "") or "- Socio responsable")
-    safe_payload.setdefault("detalle_cargos", safe_payload.get("detalle_cargos", "") or "Sin cargos informados")
-    safe_payload.setdefault("ficha_numero", safe_payload.get("ficha_numero", "") or "TEST")
-    safe_payload.setdefault("link_ficha", safe_payload.get("link_ficha", "") or "Prueba sin ficha real")
-    safe_payload.setdefault("total", safe_payload.get("total", "") or "$ 0")
-    safe_payload.setdefault("total_socio", safe_payload.get("total_socio", "") or "$ 0")
-
-    for key, value in safe_payload.items():
-        result = result.replace("{{" + key + "}}", value)
-
-    # Última defensa: no dejar placeholders crudos en mails enviados.
-    result = re.sub(r"\{\{[^}]+\}\}", "", result)
-    result = re.sub(r"\n{3,}", "\n\n", result).strip()
-    return result
-
-
 def template_needs_default_reset(tpl: NotificationTemplate, info: dict) -> bool:
-    """Detecta plantillas viejas o rotas que conviene reemplazar por defaults v3.7.7.
+    """Detecta plantillas viejas o rotas que conviene reemplazar por defaults v3.7.8.
     No pisa plantillas ya personalizadas correctamente.
     """
     subject = tpl.subject or ""
@@ -449,7 +464,7 @@ def template_needs_default_reset(tpl: NotificationTemplate, info: dict) -> bool:
 def ensure_communications_seed(db: Session):
     """Crea eventos y plantillas base sin pisar ediciones válidas del administrador.
 
-    v3.7.7:
+    v3.7.8:
     - Corrige defaults institucionales.
     - Reemplaza únicamente plantillas viejas/rotas conocidas.
     - Respeta ediciones manuales posteriores.
@@ -457,7 +472,7 @@ def ensure_communications_seed(db: Session):
     for key, info in COMMUNICATION_EVENTS.items():
         ev = db.get(NotificationEventSetting, key)
         if not ev:
-            ev = NotificationEventSetting(key=key, name=info["name"], enabled=False, channel_email=True, description=info.get("description", ""), updated_at=now_local())
+            ev = NotificationEventSetting(key=key, name=info["name"], enabled=bool(info.get("default_enabled", False)), channel_email=True, description=info.get("description", ""), updated_at=now_local())
             db.add(ev)
         else:
             ev.name = info["name"]
@@ -465,7 +480,7 @@ def ensure_communications_seed(db: Session):
 
         tpl = db.query(NotificationTemplate).filter_by(key=key).first()
         if not tpl:
-            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=False, updated_at=now_local())
+            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=bool(info.get("default_enabled", False)), updated_at=now_local())
             db.add(tpl)
         else:
             tpl.name = info["name"]
@@ -542,6 +557,22 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:300]}"
 
+
+def render_comm_template(text: str, payload: Optional[dict] = None) -> str:
+    """Render simple y seguro de variables {{clave}} para plantillas SMTP."""
+    payload = payload or {}
+    text = text or ""
+
+    def repl(match):
+        key = (match.group(1) or "").strip()
+        value = payload.get(key, "")
+        if value is None:
+            return ""
+        return str(value)
+
+    return re.sub(r"\{\{\s*([A-Za-z0-9_]+)\s*\}\}", repl, text)
+
+
 def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False) -> Optional[NotificationQueue]:
     ensure_communications_seed(db)
     recipient_email = normalize_email(recipient_email)
@@ -579,6 +610,125 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     db.add(q)
     db.commit()
     return q
+
+
+def outing_payload(outing: Outing, extra: Optional[dict] = None) -> dict:
+    payload = {
+        "salida_nombre": outing.title if outing else "",
+        "fecha": outing.departure_at.strftime("%d/%m/%Y") if outing and outing.departure_at else "",
+        "hora": outing.departure_at.strftime("%H:%M") if outing and outing.departure_at else "",
+        "club_nombre": CLUB_NAME,
+        "app_name": APP_NAME,
+        "version": VERSION,
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def queue_reservation_email(db: Session, event_key: str, outing: Outing, r: Reservation, payload_extra: Optional[dict] = None) -> Optional[NotificationQueue]:
+    """Encola email al socio responsable de una reserva o invitado."""
+    if not r:
+        return None
+    uid = r.responsible_user_id
+    u = db.get(User, uid) if uid else None
+    if not u or not (u.email or "").strip():
+        return None
+    payload = outing_payload(outing, {
+        "socio_nombre": u.name,
+        "persona_nombre": r.person_name,
+        "invitado_nombre": r.person_name,
+        "estado": r.status or r.attendance or "",
+        "importe": "$ " + fmt_money(r.charge_amount or 0),
+        "total_socio": "$ " + fmt_money(r.charge_amount or 0),
+    })
+    if payload_extra:
+        payload.update(payload_extra)
+    return queue_email(db, event_key, u.email, u.name, payload)
+
+
+def queue_promotion_email(db: Session, outing: Outing, r: Reservation) -> Optional[NotificationQueue]:
+    """Avisa cuando una reserva/invitado pasa de lista de espera a confirmada."""
+    if not r:
+        return None
+    return queue_reservation_email(db, "reserva_promovida_socio", outing, r, {
+        "estado": "Confirmada desde lista de espera",
+    })
+
+
+def queue_reschedule_emails(db: Session, outing: Outing, old_departure: datetime, new_departure: datetime) -> int:
+    """Avisa a todos los socios responsables afectados por cambio de fecha/hora."""
+    if not outing or not old_departure or not new_departure or old_departure == new_departure:
+        return 0
+    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    responsible_ids = sorted({
+        r.responsible_user_id for r in reservations
+        if r.responsible_user_id and reservation_is_active(r)
+    })
+    queued = 0
+    for uid in responsible_ids:
+        u = db.get(User, uid)
+        if not u or not (u.email or "").strip():
+            continue
+        payload = outing_payload(outing, {
+            "socio_nombre": u.name,
+            "fecha_anterior": old_departure.strftime("%d/%m/%Y"),
+            "hora_anterior": old_departure.strftime("%H:%M"),
+            "estado": "Reprogramada",
+        })
+        if queue_email(db, "salida_reprogramada_socio", u.email, u.name, payload):
+            queued += 1
+    return queued
+
+
+def queue_close_summary_emails(db: Session, outing: Outing, reservations: list, sheet: ClosingSheet) -> int:
+    """Encola resumen de cierre por socio responsable, incluyendo invitados y cargos."""
+    if not outing or not sheet:
+        return 0
+    by_user = {}
+    for r in reservations:
+        if not r.responsible_user_id:
+            continue
+        if is_waitlisted(r):
+            continue
+        by_user.setdefault(r.responsible_user_id, []).append(r)
+
+    queued = 0
+    for uid, rows in by_user.items():
+        u = db.get(User, uid)
+        if not u or not (u.email or "").strip():
+            continue
+        lines = []
+        total = 0.0
+        for r in rows:
+            charge = actual_charge(outing, r)
+            total += charge
+            label = display_kind(r.kind)
+            estado = r.attendance or r.status or ""
+            cargo = f"$ {fmt_money(charge)}"
+            lines.append(f"- {r.person_name} ({label}) · {estado} · {cargo}")
+        payload = outing_payload(outing, {
+            "socio_nombre": u.name,
+            "detalle_cargos": "\n".join(lines) if lines else "Sin cargos asociados.",
+            "total_socio": "$ " + fmt_money(total),
+            "ficha_numero": str(sheet.sequence),
+            "link_ficha": f"/cierre/{sheet.id}",
+            "estado": "Salida cerrada",
+        })
+        if queue_email(db, "salida_cerrada_socio", u.email, u.name, payload):
+            queued += 1
+    return queued
+
+
+def queue_attendance_email(db: Session, outing: Outing, r: Reservation, value: str) -> Optional[NotificationQueue]:
+    """Avisa al socio responsable cuando cambia un estado de embarque relevante."""
+    if not r:
+        return None
+    return queue_reservation_email(db, "embarque_estado_socio", outing, r, {
+        "estado": value,
+        "persona_nombre": r.person_name,
+    })
+
 
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
     limit = min(limit, smtp_send_limit_per_run(db))
@@ -874,7 +1024,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.7.7",
+        "module_version": "SMTP · v3.7.8",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -1353,20 +1503,33 @@ def queue_dedup_key(event_key: str, recipient_email: str, subject: str, payload:
     return hashlib.sha256(f"{event_key}|{normalize_email(recipient_email)}|{subject}|{payload_str}".encode("utf-8")).hexdigest()
 
 def existing_recent_email(db: Session, event_key: str, recipient_email: str, subject: str, payload: dict, minutes: int = 10):
-    """Evita duplicados accidentales por doble click o reintentos inmediatos.
-    No elimina envíos históricos legítimos, solo bloquea duplicados recientes idénticos.
+    """Evita duplicados accidentales por doble click, sin bloquear eventos legítimos.
+
+    v3.7.8 corrige un bug: antes se consideraba duplicado solo por
+    evento+destinatario+asunto, lo que bloqueaba múltiples invitados de la misma
+    salida. Ahora también compara el payload funcional.
     """
     cutoff = now_local() - timedelta(minutes=minutes)
-    payload_text = json.dumps(payload or {}, ensure_ascii=False)
-    return (
+    payload = payload or {}
+    candidates = (
         db.query(NotificationQueue)
         .filter(NotificationQueue.event_key == event_key)
         .filter(NotificationQueue.recipient_email == normalize_email(recipient_email))
         .filter(NotificationQueue.subject == subject)
         .filter(NotificationQueue.created_at >= cutoff)
         .filter(NotificationQueue.status.in_(["pending", "sent"]))
-        .first()
+        .all()
     )
+    comparable = {k: str(v) for k, v in payload.items() if not str(k).startswith("_")}
+    for row in candidates:
+        try:
+            stored = json.loads(row.payload or "{}")
+        except Exception:
+            stored = {}
+        stored_cmp = {k: str(v) for k, v in stored.items() if not str(k).startswith("_")}
+        if all(stored_cmp.get(k) == v for k, v in comparable.items()):
+            return row
+    return None
 
 
 
@@ -2508,7 +2671,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.7.7 se limpian advertencias antiguas de fases internas para evitar
+    En v3.7.8 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -4103,6 +4266,7 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
         chosen.cancel_reason = "Promovido desde lista de espera"
         chosen.cancelled_at = None
         promoted.append(chosen.person_name)
+        queue_promotion_email(db, outing, chosen)
     return promoted
 
 
@@ -6264,14 +6428,18 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        auto_process_notifications(db, limit=10)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
+        queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada por prioridad reglamentaria"})
+        auto_process_notifications(db, limit=10)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
     queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
+    auto_process_notifications(db, limit=10)
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
@@ -6364,7 +6532,9 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not full_capacity else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado"})
+    event_key = "invitado_en_espera_socio" if full_capacity else "invitado_agregado_socio"
+    queue_email(db, event_key, user.email or "", user.name, {"socio_nombre": user.name, "invitado_nombre": person_name, "persona_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado"})
+    auto_process_notifications(db, limit=10)
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
 
@@ -6647,6 +6817,7 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
         "hora": outing.departure_at.strftime("%H:%M"),
         "importe": "$ " + fmt_money(r.charge_amount or 0),
     })
+    auto_process_notifications(db, limit=10)
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")
@@ -6663,21 +6834,31 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
         db.commit()
         if result == "waitlist":
             log(db, user.name, "lista de espera reactiva", f"{r.person_name} / {outing.title}")
+            queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+            auto_process_notifications(db, limit=10)
             return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
         if result == "active_displaced":
             log(db, user.name, "reactiva socio con prioridad", f"{r.person_name} / {outing.title} / desplazado: {displaced_name}")
+            queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada por prioridad reglamentaria"})
+            auto_process_notifications(db, limit=10)
             return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
         log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
+        queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Reactivada"})
+        auto_process_notifications(db, limit=10)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
 
     if len(active) >= outing.max_crew:
         put_on_waitlist(r, "En lista de espera. Se activa si se libera una vacante.")
         db.commit()
         log(db, user.name, "lista de espera reactiva", f"{r.person_name} / {outing.title}")
+        queue_email(db, "invitado_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "invitado_nombre": r.person_name, "persona_nombre": r.person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        auto_process_notifications(db, limit=10)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     reactivate_reservation(db, outing, r)
     db.commit()
     log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
+    queue_reservation_email(db, "invitado_agregado_socio", outing, r, {"estado": "Reactivado"})
+    auto_process_notifications(db, limit=10)
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
 
 @app.get("/captain", response_class=HTMLResponse)
@@ -6713,7 +6894,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.7.7: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.7.8: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6747,7 +6928,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.7.7: orden visual de Capitán por grupos operativos.
+    # v3.7.8: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
@@ -7484,6 +7665,8 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
     enforce_capacity(db, outing)
     db.commit()
+    queue_attendance_email(db, outing, r, value)
+    auto_process_notifications(db, limit=15)
     audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
@@ -7649,8 +7832,9 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     if admin_email:
         total_label = sheet_payload(sheet).get("summary", {}).get("total_label", "0")
         queue_email(db, "salida_cerrada_admin", admin_email, "Administración", {"salida_nombre": outing.title, "capitan_nombre": user.name, "presentes": str(present), "total": "$ " + str(total_label), "ficha_numero": str(sheet.sequence), "link_ficha": f"/cierre/{sheet.id}"})
+    queue_close_summary_emails(db, outing, reservations, sheet)
     queue_no_show_charge_emails(db, outing, reservations, sheet)
-    auto_process_notifications(db, limit=10)
+    auto_process_notifications(db, limit=25)
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
 
@@ -8734,6 +8918,7 @@ def update_outing(
     if active_count > new_capacity:
         return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=cupo_menor_a_reservas", status_code=303)
 
+    old_departure = outing.departure_at
     old = (
         f"{outing.title} / {outing.destination} / "
         f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "
@@ -8761,6 +8946,10 @@ def update_outing(
     detail = f"{outing.id}: {old} -> {new}"
     if active_count:
         detail += f" / advertencia: tenía {active_count} reservas activas"
+    if active_count and old_departure != outing.departure_at:
+        queued = queue_reschedule_emails(db, outing, old_departure, outing.departure_at)
+        detail += f" / emails reprogramación {queued}"
+        auto_process_notifications(db, limit=25)
     audit_event(db, user, "edición administrativa salida", detail, request=request, outing_id=outing.id, before={"snapshot": old}, after={"snapshot": new, "reservas_activas": active_count})
     return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=salida_actualizada", status_code=303)
 

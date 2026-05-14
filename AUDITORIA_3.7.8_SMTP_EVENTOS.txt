@@ -1,0 +1,55 @@
+Fjord VI v3.7.8 · SMTP EVENTOS OPERATIVOS
+
+Base:
+- FjordVI_3.7.7_SMTP_PLANTILLAS_CORREGIDAS.zip
+
+Diagnóstico que corrige:
+- SMTP, cola y plantillas funcionaban.
+- El backend generaba pocos eventos para el movimiento real.
+- La deduplicación bloqueaba eventos legítimos de invitados con mismo asunto.
+- Faltaban disparadores para espera, promoción, reprogramación, capitán y cierre por socio.
+
+Cambios principales:
+- Nuevos eventos SMTP:
+  - reserva_en_espera_socio
+  - reserva_promovida_socio
+  - invitado_en_espera_socio
+  - invitado_desplazado_socio
+  - salida_reprogramada_socio
+  - embarque_estado_socio
+  - salida_cerrada_socio
+- Deduplicación corregida por payload funcional.
+- Agregar varios invitados al mismo viaje ya no debería mandar solo uno.
+- Promoción desde espera dispara aviso.
+- Reprogramar fecha/hora con reservas activas dispara aviso.
+- Cambios de estado del capitán disparan aviso al socio responsable.
+- Cierre dispara mail administrativo, resumen por socio y cargos/no-show cuando corresponda.
+- Auto procesamiento de cola ampliado.
+- Render de plantillas SMTP explícito y validado.
+
+Controles:
+{
+  "templates_render_clean": true,
+  "template_bad_keys": [],
+  "new_events_count": 14,
+  "has_all_new_events": true,
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "version_txt": true,
+  "app_version": true,
+  "smtp_badge_3_7_8": true,
+  "render_function_present": true,
+  "dedupe_uses_payload": true,
+  "guest_uses_waitlist_event": true,
+  "promotion_email_hook": true,
+  "reschedule_email_hook": true,
+  "attendance_email_hook": true,
+  "close_summary_hook": true,
+  "auto_process_expanded": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno
