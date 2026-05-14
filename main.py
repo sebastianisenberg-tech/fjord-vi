@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.5"
+APP_VERSION = "3.7.6"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.5"
-RELEASE_LABEL = "Fjord VI · v3.7.5"
+APP_BUILD = "Fjord VI 3.7.6"
+RELEASE_LABEL = "Fjord VI · v3.7.6"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -344,7 +344,7 @@ COMMUNICATION_EVENTS = {
     "invitado_agregado_socio": {
         "name": "Invitado agregado",
         "description": "Email al socio cuando agrega o reactiva un invitado.",
-        "subject": "Invitado agregado · {{salida_nombre}}",
+        "subject": "Invitado registrado · {{salida_nombre}}",
         "body": "Hola {{socio_nombre}},\n\nSe registró el invitado {{invitado_nombre}} para {{salida_nombre}}.\n\nFecha: {{fecha}} {{hora}}\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "cancelacion_socio": {
@@ -354,56 +354,101 @@ COMMUNICATION_EVENTS = {
         "body": "Hola {{socio_nombre}},\n\nQuedó registrada la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n\nCargo informado: {{importe}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_cerrada_admin": {
-        "name": "Embarque cerrado para administración",
+        "name": "Salida cerrada para administración",
         "description": "Email a Administración cuando el capitán cierra la salida y genera ficha.",
-        "subject": "Embarque cerrado - {{salida_nombre}} - Ficha N° {{ficha_numero}}",
-        "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: N° {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
+        "subject": "Salida cerrada · {{salida_nombre}} · Ficha {{ficha_numero}}",
+        "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "recordatorio_24h_socio": {
         "name": "Recordatorio 24h al socio",
         "description": "Email automático al socio responsable 24 horas antes de la salida.",
-        "subject": "Recordatorio de navegación · {{salida_nombre}} · {{fecha}}",
+        "subject": "Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}",
         "body": "Hola {{socio_nombre}},\n\nTe recordamos tu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}}.\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "no_show_cargo_socio": {
         "name": "Reserva incumplida / cargo al socio",
         "description": "Email al socio responsable cuando el cierre genera cargo por reserva incumplida propia o de invitados.",
-        "subject": "Reserva incumplida / cargo reglamentario · {{salida_nombre}}",
+        "subject": "Liquidación · {{salida_nombre}} · {{fecha}}",
         "body": "Hola {{socio_nombre}},\n\nEl cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\n\nFicha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "email_prueba": {
         "name": "Email de prueba",
         "description": "Prueba manual de SMTP desde Administración.",
-        "subject": "Prueba de comunicaciones - {{app_name}} {{version}}",
+        "subject": "Prueba de comunicaciones · {{app_name}} {{version}}",
         "body": "Este es un email de prueba enviado desde {{app_name}} {{version}}.\n\nSi recibiste este mensaje, SMTP está funcionando.",
     },
 }
 
+def normalize_email_text(value) -> str:
+    """Normaliza texto para emails: convierte escapes literales y sanea listas simples."""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        items = [str(x).strip() for x in value if str(x).strip()]
+        return "\n".join(f"- {x.lstrip('- ').strip()}" for x in items)
+    text = str(value)
+    text = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", " ")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return text
+
 def render_comm_template(text_value: str, payload: dict) -> str:
     result = text_value or ""
-    safe_payload = {k: ("" if v is None else str(v)) for k, v in (payload or {}).items()}
+    safe_payload = {k: normalize_email_text(v) for k, v in (payload or {}).items()}
     safe_payload.setdefault("club_nombre", CLUB_NAME)
     safe_payload.setdefault("app_name", APP_NAME)
     safe_payload.setdefault("version", VERSION)
+
+    # Alias/fallbacks para que ningún template quede con {{variable}} visible.
+    safe_payload.setdefault("socio_nombre", safe_payload.get("nombre", "") or safe_payload.get("recipient_name", "") or "Socio")
+    safe_payload.setdefault("persona_nombre", safe_payload.get("invitado_nombre", "") or safe_payload.get("socio_nombre", "") or "la persona indicada")
+    safe_payload.setdefault("importe", safe_payload.get("total_socio", "") or safe_payload.get("total", "") or "$ 0")
+    safe_payload.setdefault("estado", safe_payload.get("estado", "") or "registrado")
+    safe_payload.setdefault("punto_encuentro", safe_payload.get("punto_encuentro", "") or "Dársena Norte")
+    safe_payload.setdefault("lista_personas", safe_payload.get("lista_personas", "") or "- Socio responsable")
+    safe_payload.setdefault("detalle_cargos", safe_payload.get("detalle_cargos", "") or "Sin cargos informados")
+    safe_payload.setdefault("ficha_numero", safe_payload.get("ficha_numero", "") or "TEST")
+    safe_payload.setdefault("link_ficha", safe_payload.get("link_ficha", "") or "Prueba sin ficha real")
+    safe_payload.setdefault("total", safe_payload.get("total", "") or "$ 0")
+    safe_payload.setdefault("total_socio", safe_payload.get("total_socio", "") or "$ 0")
+
     for key, value in safe_payload.items():
         result = result.replace("{{" + key + "}}", value)
+
+    # Última defensa: no dejar placeholders crudos en mails enviados.
+    result = re.sub(r"\{\{[^}]+\}\}", "", result)
+    result = re.sub(r"\n{3,}", "\n\n", result).strip()
     return result
 
+
 def ensure_communications_seed(db: Session):
+    """Crea/sincroniza eventos y plantillas base de comunicaciones.
+
+    En v3.7.6 se corrigen templates antiguos de prueba que podían dejar
+    placeholders visibles o escapes \\n literales. Las plantillas base se
+    sincronizan para que la beta/main arranque con mails limpios.
+    """
     for key, info in COMMUNICATION_EVENTS.items():
         ev = db.get(NotificationEventSetting, key)
         if not ev:
             ev = NotificationEventSetting(key=key, name=info["name"], enabled=False, channel_email=True, description=info.get("description", ""), updated_at=now_local())
             db.add(ev)
+        else:
+            ev.name = info["name"]
+            ev.description = info.get("description", ev.description or "")
         tpl = db.query(NotificationTemplate).filter_by(key=key).first()
         if not tpl:
             tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=False, updated_at=now_local())
             db.add(tpl)
-        elif ev.enabled and not tpl.enabled:
-            # Si el evento ya fue activado en una versión anterior, la plantilla debe quedar activa también.
-            tpl.enabled = True
+        else:
+            # Sincronización deliberada de plantillas base para corregir placeholders/escapes de versiones anteriores.
+            tpl.name = info["name"]
+            tpl.subject = info.get("subject", tpl.subject or "")
+            tpl.body = info.get("body", tpl.body or "")
             tpl.updated_at = now_local()
+            if ev.enabled and not tpl.enabled:
+                tpl.enabled = True
     db.commit()
+
 
 def smtp_settings(db: Session) -> dict:
     return {
@@ -801,12 +846,13 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.7.5",
+        "module_version": "SMTP · v3.7.6",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
         "simulation_mode": smtp_simulation_mode_enabled(db),
         "production_ready": smtp_production_ready(db),
+        "operation_mode": "TEST / QA" if smtp_test_mode_enabled(db) else "PRODUCCIÓN REAL",
         "rate_limit": smtp_rate_limit_summary(db),
         "probe": smtp_probe_summary(db),
         "queue_alert": safe_queue_alert,
@@ -1249,25 +1295,27 @@ def effective_email_recipient(db: Session, recipient_email: str) -> tuple[str, s
     return original, effective, test_mode
 
 def decorate_smtp_subject(db: Session, subject: str) -> str:
-    subject = subject or ""
-    if smtp_test_mode_enabled(db) and not subject.startswith("[TEST Fjord VI]"):
-        return "[TEST Fjord VI] " + subject
+    subject = (subject or "").strip()
+    if smtp_test_mode_enabled(db) and not subject.startswith("[TEST"):
+        return "[TEST] " + subject
     return subject
 
+
 def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: str, event_key: str = "") -> str:
-    body = body or ""
+    body = normalize_email_text(body or "")
     if not smtp_test_mode_enabled(db):
         return body
     notice = (
         "MODO PRUEBA SMTP ACTIVO\n"
-        f"Evento: {event_key or '-'}\n"
+        f"Evento interno: {event_key or '-'}\n"
         f"Fecha/hora test: {now_local().strftime('%d/%m/%Y %H:%M')}\n"
         f"Destinatario original: {original_to or '-'}\n"
         f"Redirigido a: {effective_to or '-'}\n"
-        "Entorno: beta / prueba controlada\n"
-        "Ningún socio real recibe este correo durante la prueba.\n\n"
+        "Entorno: TEST / QA controlado\n"
+        "Ningún socio real recibe este correo mientras el modo prueba esté activo.\n\n"
     )
     return notice + body
+
 
 def queue_dedup_key(event_key: str, recipient_email: str, subject: str, payload: dict) -> str:
     try:
@@ -2432,7 +2480,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.7.5 se limpian advertencias antiguas de fases internas para evitar
+    En v3.7.6 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6637,7 +6685,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.7.5: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.7.6: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6671,7 +6719,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.7.5: orden visual de Capitán por grupos operativos.
+    # v3.7.6: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,

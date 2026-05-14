@@ -1,0 +1,47 @@
+Fjord VI v3.7.6 · COMUNICACIONES PROD/TEST
+
+Base:
+- FjordVI_3.7.5_SMTP_UX_FIX.zip
+
+Objetivo:
+- Separar claramente TEST / QA de PRODUCCIÓN REAL.
+- Mantener debug y redirect seguro en modo prueba.
+- Dejar mails limpios en producción real.
+- Corregir placeholders visibles y saltos de línea literales.
+
+Correcciones:
+- Prefijo TEST más compacto: [TEST].
+- Modo producción sin encabezado técnico.
+- Panel visible "Modo de comunicaciones".
+- Normalizador de texto para emails: convierte escapes literales \n en saltos reales.
+- Fallbacks de variables: persona_nombre, importe, lista_personas, detalle_cargos, ficha, total.
+- Última defensa: no deja {placeholder} crudo en mails enviados.
+- Sincronización de plantillas base para corregir plantillas viejas ya persistidas en DB.
+- Subjects de email más compactos.
+
+Controles:
+{
+  "template_render_no_placeholders_no_literal_slash_n": true,
+  "template_bad_keys": [],
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "admin_comunicaciones_render_ok": true,
+  "version_txt": true,
+  "app_version_3_7_6": true,
+  "module_badge_clean": true,
+  "prod_test_mode_context": true,
+  "test_prefix_clean": true,
+  "production_body_no_debug": true,
+  "literal_newline_normalizer": true,
+  "seed_syncs_templates": true,
+  "ui_mode_panel": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja parse:
+ninguno
+
+Errores render admin/comunicaciones:
+ninguno
