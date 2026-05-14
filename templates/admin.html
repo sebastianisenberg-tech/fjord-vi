@@ -189,7 +189,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     .dangerBtn{margin-top:12px;background:#b42323!important;color:#fff!important;border-color:#b42323!important}
 
 
-    /* v3.7.0 Fase 8: UX operacional compacta en Sistema */
+    /* v3.7.1.1.0 Fase 8: UX operacional compacta en Sistema */
     .systemQuickBar{position:sticky;top:82px;z-index:18;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 12px;padding:8px;border:1px solid #dbe8ef;background:rgba(246,250,253,.94);backdrop-filter:blur(8px);border-radius:14px;box-shadow:0 8px 22px rgba(20,40,55,.06)}
     .systemQuickBar a,.systemQuickBar button{height:30px;border:1px solid #cfe0e9;border-radius:999px;background:#fff;color:#21465d;text-decoration:none;font-weight:900;font-size:12px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
     .systemQuickBar button{background:#0d5d88;color:#fff;border-color:#0d5d88}
@@ -210,7 +210,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     @media(max-width:900px){.systemQuickBar{top:58px;overflow:auto;flex-wrap:nowrap}.systemQuickBar a,.systemQuickBar button{white-space:nowrap}.systemFold .systemCheckList{max-height:300px}}
 
 
-    /* v3.7.2 Fase 11: Centro Operativo Inteligente */
+    /* v3.7.1.1.2 Fase 11: Centro Operativo Inteligente */
     .opsCenter{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin:10px 0 12px}
     .opsCard{background:#fff;border:1px solid var(--erp-line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(20,40,55,.05)}
     .opsCard h3{margin:0 0 8px;font-size:16px}.opsCard p{margin:0;color:#607080;font-weight:750}.opsBig{font-size:24px;font-weight:950;color:#173f5f;line-height:1.05}.opsMetaGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.opsMetaGrid div{background:#f5f9fc;border:1px solid #dfeaf1;border-radius:10px;padding:9px}.opsMetaGrid span{display:block;color:#607080;font-size:10px;text-transform:uppercase;font-weight:950}.opsMetaGrid b{font-size:18px;color:#173f5f}.opsAlertList{display:grid;gap:7px}.opsAlert{border-radius:10px;padding:8px 10px;border:1px solid #dfeaf1;background:#f7fbfd;display:grid;gap:2px}.opsAlert.ok{background:#eef8f1;border-color:#cfe9d5;color:#27663a}.opsAlert.warn{background:#fff7df;border-color:#ecd48e;color:#78560b}.opsAlert.bad{background:#fff1f1;border-color:#f0c8c8;color:#8a3a3a}.opsAlert b{font-weight:950}.opsAlert small{color:inherit;opacity:.82}.opsTimeline{display:grid;gap:7px;max-height:260px;overflow:auto}.opsTimelineItem{display:grid;grid-template-columns:112px 1fr;gap:9px;border-bottom:1px solid #edf3f6;padding:7px 0}.opsTimelineItem time{font-size:11px;color:#607080;font-weight:850}.opsTimelineItem b{font-weight:950}.opsHealthGrid{display:grid;gap:6px}.opsSearchBox{display:flex;gap:8px;margin:8px 0}.opsSearchBox input{flex:1;height:34px;border:1px solid var(--erp-line);border-radius:9px;padding:0 10px;font-weight:800}.opsSearchBox button{height:34px;border:0;border-radius:9px;background:var(--erp-blue2);color:#fff;font-weight:950;padding:0 14px}.opsSearchResults{display:grid;gap:6px;margin-top:8px}.opsSearchResults a{display:block;border:1px solid #dfeaf1;background:#f8fbfd;border-radius:9px;padding:8px;text-decoration:none;color:#173f5f;font-weight:850}
@@ -278,8 +278,8 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
       <article class="opsCard"><h3>Timeline operativo</h3><div class="opsTimeline">{% for t in ops_center.timeline[:6] %}<div class="opsTimelineItem"><time>{{t.label}}</time><div><b>{{t.actor}}</b><br><span>{{t.kind}} · {{t.detail}}</span></div></div>{% endfor %}</div></article>
     </section>
     
-    <div class="smartAlert {{communications.queue_alert.level}}">
-      <b>Alerta de cola</b><span>{{communications.queue_alert.detail}}</span>
+    <div class="smartAlert {{queue_alert.level}}">
+      <b>Alerta de cola</b><span>{{queue_alert.detail}}</span>
     </div>
 
     <div class="erpWorkGrid"><article class="erpWorkCard"><h3>Cargar salida</h3><p>Alta de viajes/paseos con fecha, hora, cupo y tarifa. Es la agenda operativa que después ve socio y capitán.</p><div class="actions"><button class="erpBtn erpPrimary" data-open-drawer="outingDrawer">Nueva salida</button><a class="erpBtn" href="/admin/salidas{% if outing %}?outing_id={{outing.id}}{% endif %}">Gestionar salidas</a></div></article><article class="erpWorkCard"><h3>Cargar usuario</h3><p>Alta y mantenimiento de socios, invitados convertibles, capitanes y administradores. Para socio alcanza con nombre + Nº de socio; el DNI real puede cargarse después. No se elimina: se desactiva.</p><div class="actions"><button class="erpBtn erpPrimary" data-open-drawer="userDrawer">Nuevo usuario</button><a class="erpBtn" href="/admin/usuarios{% if outing %}?outing_id={{outing.id}}{% endif %}">Ver padrón</a></div></article><article class="erpWorkCard"><h3>Comunicaciones</h3><p>Email transaccional: eventos, plantillas, cola de envío, SMTP y registro auditable.</p><div class="actions"><a class="erpBtn erpPrimary" href="/admin/comunicaciones{% if outing %}?outing_id={{outing.id}}{% endif %}">Abrir comunicaciones</a></div></article><article class="erpWorkCard"><h3>Sistema</h3><p>Consola técnica, release check, integridad, backups, actividad y estado operativo.</p><div class="actions"><form method="get" action="/admin/sistema" style="margin:0"><button class="erpBtn erpPrimary" type="submit">Abrir Sistema</button>{% if outing %}<input type="hidden" name="outing_id" value="{{outing.id}}">{% endif %}</form><a class="erpBtn" href="/admin/sistema{% if outing %}?outing_id={{outing.id}}{% endif %}">Link directo</a></div></article></div>
@@ -439,9 +439,21 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
 
 
     {% if admin_page == 'comunicaciones' %}
+    {% set master_status = communications.get('master_status', {'level':'warn','title':'CONFIGURACIÓN EN REVISIÓN','detail':'Faltan datos de estado del módulo.','issues':[]}) %}
+    {% set queue_alert = communications.get('queue_alert', {'level':'warn','label':'sin datos','detail':'Sin datos de cola.'}) %}
+    {% set readiness = communications.get('readiness', {'safe_test': false, 'label':'INCOMPLETO', 'issues': [], 'events_on': 0}) %}
+    {% set probe = communications.get('probe', {'ok': false, 'at': '', 'host': '', 'tls': ''}) %}
+    {% set scheduler = communications.get('scheduler', {'label':'sin datos', 'last_auto':'sin registro', 'last_manual':'sin registro'}) %}
+    {% set last_sent = communications.get('last_sent', {'exists': false}) %}
+    {% set missing_requirements = communications.get('missing_requirements', []) %}
+    {% set last_probe_ok = communications.get('last_probe_ok', '') %}
+    {% set last_probe_detail = communications.get('last_probe_detail', '') %}
+    {% set last_probe_at = communications.get('last_probe_at', '') %}
+    {% set rate_limit = communications.get('rate_limit', {'label':'máx. 25 por corrida'}) %}
+
     <section class="erpTitle commTitleFinal">
       <div>
-        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.7.1'}}</span></h1>
+        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.7.1.1.1.1.1'}}</span></h1>
         <p>Centro de emails transaccionales: pruebas seguras, eventos, plantillas, SMTP, cola y registro de envíos.</p>
       </div>
       <div class="erpTitleActions">
@@ -455,24 +467,24 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     </section>
 
     
-    <section class="smtpMasterStatus {{communications.master_status.level}}">
+    <section class="smtpMasterStatus {{master_status.level}}">
       <div>
         <span class="masterEyebrow">ESTADO GENERAL SMTP</span>
-        <h2>{{communications.master_status.title}}</h2>
-        <p>{{communications.master_status.detail}}</p>
-        {% if communications.master_status.issues %}<small>{{communications.master_status.issues|join(' · ')}}</small>{% endif %}
+        <h2>{{master_status.title}}</h2>
+        <p>{{master_status.detail}}</p>
+        {% if master_status.issues %}<small>{{master_status.issues|join(' · ')}}</small>{% endif %}
       </div>
       <div class="masterStatusRight">
         <span class="masterVersion">{{communications.module_version}}</span>
-        <span class="masterQueue {{communications.queue_alert.level}}">{{communications.queue_alert.label}}</span>
+        <span class="masterQueue {{queue_alert.level}}">{{queue_alert.label}}</span>
       </div>
     </section>
 
-    <section class="smtpHeroFinal {% if communications.readiness.safe_test %}safe{% elif communications.smtp_test_mode %}warn{% else %}prod{% endif %}">
+    <section class="smtpHeroFinal {% if readiness.safe_test %}safe{% elif communications.smtp_test_mode %}warn{% else %}prod{% endif %}">
       <div>
-        <h2>{% if communications.readiness.safe_test %}Modo prueba listo{% elif communications.smtp_test_mode %}Modo prueba incompleto{% else %}Modo producción{% endif %}</h2>
+        <h2>{% if readiness.safe_test %}Modo prueba listo{% elif communications.smtp_test_mode %}Modo prueba incompleto{% else %}Modo producción{% endif %}</h2>
         <p>
-          {% if communications.readiness.safe_test %}
+          {% if readiness.safe_test %}
           Protección activa: ningún destinatario real recibirá emails. Todo se redirige al receptor de pruebas.
           {% elif communications.smtp_test_mode %}
           Falta completar la configuración de prueba antes de encender eventos o procesar cola.
@@ -480,14 +492,14 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
           Atención: los correos saldrán a los destinatarios reales. Usar solo después de validar SMTP y plantillas.
           {% endif %}
         </p>
-        {% if communications.missing_requirements %}
-        <small>Falta: {{communications.missing_requirements|join(' · ')}}</small>
-        {% elif communications.readiness.issues %}
-        <small>{{communications.readiness.issues|join(' · ')}}</small>
+        {% if missing_requirements %}
+        <small>Falta: {{missing_requirements|join(' · ')}}</small>
+        {% elif readiness.issues %}
+        <small>{{readiness.issues|join(' · ')}}</small>
         {% endif %}
       </div>
       <div class="smtpHeroPills">
-        <span class="pillStrong">{{communications.readiness.label}}</span>
+        <span class="pillStrong">{{readiness.label}}</span>
         <span class="pillSoft">Receptor: {{communications.smtp_test_recipient_email or 'sin configurar'}}</span>
         {% if communications.simulation_mode %}<span class="pillSimulation">SIMULACIÓN</span>{% endif %}
         {% if communications.production_ready %}<span class="pillProduction">PRODUCCIÓN REAL</span>{% endif %}
@@ -504,21 +516,21 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
       <div class="smtpCheck {% if communications.smtp_test_recipient_email %}ok{% else %}danger{% endif %}"><b>Receptor de pruebas</b><span>{{communications.smtp_test_recipient_email or 'sin configurar'}}</span></div>
       <div class="smtpCheck {% if communications.smtp_test_mode %}ok{% else %}warn{% endif %}"><b>Modo prueba</b><span>{% if communications.smtp_test_mode %}activo{% else %}desactivado{% endif %}</span></div>
       <div class="smtpCheck {% if communications.smtp_force_redirect_in_test %}ok{% else %}danger{% endif %}"><b>Redirect</b><span>{% if communications.smtp_force_redirect_in_test %}forzado{% else %}apagado{% endif %}</span></div>
-      <div class="smtpCheck {% if communications.last_probe_ok == '1' %}ok{% elif communications.last_probe_ok == '0' %}danger{% else %}warn{% endif %}"><b>Validación SMTP</b><span>{% if communications.last_probe_at %}{{communications.last_probe_at}}{% else %}sin validar{% endif %}</span></div>
+      <div class="smtpCheck {% if last_probe_ok == '1' %}ok{% elif last_probe_ok == '0' %}danger{% else %}warn{% endif %}"><b>Validación SMTP</b><span>{% if last_probe_at %}{{last_probe_at}}{% else %}sin validar{% endif %}</span></div>
       <div class="smtpCheck {% if communications.failed == 0 %}ok{% else %}danger{% endif %}"><b>Fallidos</b><span>{{communications.failed}}</span></div>
       <div class="smtpCheck {% if communications.pending == 0 %}ok{% else %}warn{% endif %}"><b>Pendientes</b><span>{{communications.pending}}</span></div>
-      <div class="smtpCheck {% if communications.readiness.events_on > 0 %}ok{% else %}warn{% endif %}"><b>Eventos ON</b><span>{{communications.readiness.events_on}}</span></div>
+      <div class="smtpCheck {% if readiness.events_on > 0 %}ok{% else %}warn{% endif %}"><b>Eventos ON</b><span>{{readiness.events_on}}</span></div>
       <div class="smtpCheck {% if communications.simulation_mode %}warn{% else %}ok{% endif %}"><b>Simulación</b><span>{% if communications.simulation_mode %}sin envío real{% else %}apagada{% endif %}</span></div>
-      <div class="smtpCheck ok"><b>Scheduler</b><span>{{communications.scheduler.label}}</span></div>
-      <div class="smtpCheck {% if communications.last_sent.exists %}ok{% else %}warn{% endif %}"><b>Último email</b><span>{% if communications.last_sent.exists %}{{communications.last_sent.event_key}}{% else %}sin envíos{% endif %}</span></div>
+      <div class="smtpCheck ok"><b>Scheduler</b><span>{{scheduler.label}}</span></div>
+      <div class="smtpCheck {% if last_sent.exists %}ok{% else %}warn{% endif %}"><b>Último email</b><span>{% if last_sent.exists %}{{last_sent.event_key|default('-')}}{% else %}sin envíos{% endif %}</span></div>
       <div class="smtpCheck {% if communications.production_ready %}danger{% else %}ok{% endif %}"><b>Producción</b><span>{% if communications.production_ready %}real activa{% else %}protegida{% endif %}</span></div>
-      <div class="smtpCheck ok"><b>Límite</b><span>{{communications.rate_limit.label}}</span></div>
-      <div class="smtpCheck {% if communications.probe.ok %}ok{% elif communications.probe.at %}danger{% else %}warn{% endif %}"><b>SMTP detalle</b><span>{% if communications.probe.at %}{{communications.probe.host}} · {{communications.probe.tls}}{% else %}sin validar{% endif %}</span></div>
+      <div class="smtpCheck ok"><b>Límite</b><span>{{rate_limit.label}}</span></div>
+      <div class="smtpCheck {% if probe.ok %}ok{% elif probe.at %}danger{% else %}warn{% endif %}"><b>SMTP detalle</b><span>{% if probe.at %}{{probe.host|default('-')}} · {{probe.tls|default('-')}}{% else %}sin validar{% endif %}</span></div>
     </section>
 
-    {% if communications.last_probe_detail %}
-    <div class="smartAlert {% if communications.last_probe_ok == '1' %}ok{% else %}warn{% endif %}">
-      <b>Última validación SMTP</b><span>{{communications.last_probe_detail}}</span>
+    {% if last_probe_detail %}
+    <div class="smartAlert {% if last_probe_ok == '1' %}ok{% else %}warn{% endif %}">
+      <b>Última validación SMTP</b><span>{{last_probe_detail}}</span>
     </div>
     {% endif %}
 
@@ -537,8 +549,8 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     <div class="smartAlert neutral smtpLastSent">
       <b>Último email enviado</b>
       <span>
-      {% if communications.last_sent.exists %}
-        Evento: {{communications.last_sent.event_key}} · Original: {{communications.last_sent.original_to}} · Efectivo: {{communications.last_sent.effective_to}} · Test: {{communications.last_sent.test_mode}}
+      {% if last_sent.exists %}
+        Evento: {{last_sent.event_key|default('-')}} · Original: {{last_sent.original_to|default('-')}} · Efectivo: {{last_sent.effective_to|default('-')}} · Test: {{last_sent.test_mode|default('-')}}
       {% else %}
         Sin actividad todavía. Cuando se envíe una prueba o se procese la cola, aparecerá acá.
       {% endif %}
@@ -547,7 +559,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
 
     <div class="smartAlert neutral smtpSchedulerStatus">
       <b>Scheduler / procesamiento</b>
-      <span>Estado: {{communications.scheduler.label}} · Último automático: {{communications.scheduler.last_auto}} · Último manual: {{communications.scheduler.last_manual}}</span>
+      <span>Estado: {{scheduler.label}} · Último automático: {{scheduler.last_auto}} · Último manual: {{scheduler.last_manual}}</span>
     </div>
 
     <div class="erpWorkGrid">
