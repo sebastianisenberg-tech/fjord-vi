@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ data.liquidation_id or 'Ficha de cierre' }} · Fjord VI</title>
+  <style>
+    :root{
+      --ink:#102033; --muted:#5f6f7a; --line:#d7e1e8; --soft:#f8fbfd;
+      --blue:#0f4f78; --ok:#12633b; --okbg:#e5f4ec;
+      --danger:#dc2626; --dangerDark:#991b1b; --dangerBg:#fee2e2;
+    }
+    *{box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:#edf4f8;color:var(--ink);font-size:13px;line-height:1.35}
+    .toolbar{max-width:920px;margin:14px auto 0;padding:0 18px;display:flex;gap:9px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-block;border:1px solid var(--line);background:white;color:var(--ink);padding:8px 12px;border-radius:10px;text-decoration:none;font-weight:700}
+    .btn.primary{background:var(--blue);color:white;border-color:var(--blue)}
+    .selector{display:flex;gap:8px;align-items:center;margin-right:auto;color:var(--muted);font-weight:700;font-size:13px}
+    .selector select{padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:white;font-weight:700;color:var(--ink)}
+    .sheet{max-width:920px;margin:14px auto 24px;background:white;padding:30px 34px;border-radius:16px;box-shadow:0 14px 38px rgba(0,0,0,.08);position:relative;overflow:hidden}
+    .sheet.anulada::after{content:'ANULADA';position:absolute;left:-92px;top:38%;transform:rotate(-28deg);font-size:132px;letter-spacing:.11em;color:rgba(153,27,27,.32);font-weight:950;pointer-events:none;white-space:nowrap;text-shadow:0 2px 0 rgba(255,255,255,.50)}
+    .top{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid var(--line);padding-bottom:12px;margin-bottom:14px;position:relative;z-index:1}
+    .club{font-size:12px;letter-spacing:.12em;font-weight:800;color:var(--muted);text-transform:uppercase}
+    h1{font-size:25px;line-height:1.06;margin:7px 0 3px;letter-spacing:.01em}.subtitle{color:var(--muted);font-size:13px}
+    .status{text-align:right;font-weight:800}.versionMark{font-size:12px;color:#5f6f7a;font-weight:900;letter-spacing:.08em;margin-top:4px}.liqId{display:inline-block;margin-top:5px;padding:5px 9px;border-radius:999px;background:#eef6fb;border:1px solid #c7dce8;color:#0f4f78;font-size:12px;font-weight:950;letter-spacing:.04em}.lockBadge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;background:#e8eef3;color:#243447;border:1px solid #cbd7e1;font-weight:900}.lockIcon{font-size:13px;line-height:1}.status .pill{display:inline-block;border-radius:999px;padding:6px 12px;background:var(--okbg);color:var(--ok);letter-spacing:.03em}.status.anulada .pill{background:var(--danger);color:white}
+    .notice{border-radius:10px;padding:10px 12px;margin:0 0 12px;font-weight:700;position:relative;z-index:1}
+    .notice.annul{border:2px solid var(--danger);background:var(--dangerBg);color:var(--dangerDark);box-shadow:0 0 0 1px var(--danger) inset}.notice.annul strong{color:#7f1d1d;font-weight:900}
+    .notice.vigente{border:1px solid #b7dec7;background:#effaf4;color:#12633b}.notice.vigente strong{font-weight:900}.notice.vigente .lockBadge{margin-right:6px}.auditTrail{border:1px solid #fecaca;background:#fff7f7;color:#7f1d1d;border-radius:10px;padding:9px 12px;margin:0 0 12px;position:relative;z-index:1;font-size:12.5px}.auditTrail b{color:#7f1d1d}.auditTrailGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}.identityNote{border:1px solid #dbe7ee;background:#f8fbfd;color:var(--muted);border-radius:10px;padding:8px 11px;margin:6px 0 10px;font-size:12.5px;position:relative;z-index:1}.identityNote b{color:var(--ink)}
+    .data{display:grid;grid-template-columns:1fr 1fr;gap:5px 26px;margin-bottom:14px;color:var(--muted);position:relative;z-index:1;font-size:13px}.data b{color:var(--ink)}
+    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 10px;position:relative;z-index:1}.metric{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft)}.metric span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800;letter-spacing:.08em}.metric b{display:block;font-size:19px;margin-top:3px}
+    .moneybox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px;position:relative;z-index:1}.moneyitem{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:white}.moneyitem span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800;letter-spacing:.06em}.moneyitem b{display:block;font-size:16px;margin-top:3px}.moneyitem.total{background:#f4f9fc;border-color:#bfd1dc}.moneyitem.total b{font-size:18px}
+    h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;margin:18px 0 9px;border-bottom:1px solid var(--line);padding-bottom:7px;position:relative;z-index:1}
+    .peopleGrid{display:block;position:relative;z-index:1}
+    .group{padding:10px 0 9px;border-bottom:1px solid #edf2f5;break-inside:avoid;page-break-inside:avoid}.responsible{font-weight:800;font-size:15px;margin-bottom:6px}ul{margin:5px 0 7px 20px;padding:0}li{margin:3px 0;font-size:13.5px}.guestDni{color:var(--muted);font-size:12.5px;white-space:nowrap}.amount{font-weight:800;text-align:left;margin:6px 0 0 20px;font-size:14px;display:block;width:max-content;max-width:92%;clear:both}.finalTotal{margin-top:14px;border-top:2px solid var(--line);padding-top:10px;text-align:right;font-size:20px;font-weight:900;position:relative;z-index:1}.foot{margin-top:12px;color:var(--muted);font-size:11px;text-align:center;position:relative;z-index:1}
+    @page{size:A4;margin:11mm}
+    @media print{
+      body{background:white;font-size:13px;line-height:1.34}
+      .toolbar{display:none}
+      .sheet{box-shadow:none;margin:0;max-width:none;border-radius:0;padding:0;overflow:visible}
+      .sheet.anulada::after{color:rgba(153,27,27,.34);font-size:124px;top:41%}
+      html,body{height:auto!important;min-height:0!important}
+      .top{padding-bottom:10px;margin-bottom:11px} h1{font-size:24px}.subtitle{font-size:12.5px}.club{font-size:11.5px}.notice{padding:8px 10px;margin-bottom:10px}
+      .data{font-size:13px;margin-bottom:10px}.summary{gap:7px;margin:9px 0}.metric{padding:8px 10px}.metric b{font-size:18px}.moneybox{gap:7px;margin-bottom:12px}.moneyitem{padding:8px 10px}.moneyitem b{font-size:16px}.moneyitem.total b{font-size:18px}
+      h2{font-size:14px;margin:13px 0 7px;padding-bottom:5px}.responsible{font-size:14px}.group{padding:7px 0 6px}li{margin:2px 0;font-size:12.8px}.guestDni{font-size:12px}.amount{font-size:13px;margin-top:5px;display:block;clear:both}.finalTotal{font-size:18px;margin-top:10px;padding-top:9px}.foot{font-size:10.5px;margin-top:10px;break-inside:avoid;page-break-inside:avoid}
+      .sheet{break-after:avoid!important;page-break-after:avoid!important}
+    }
+    @media(max-width:700px){.sheet{padding:24px 18px;margin:0;border-radius:0}.top,.data{display:block}.status{text-align:left;margin-top:12px}.summary,.moneybox,.peopleGrid{grid-template-columns:1fr}.selector{width:100%}.sheet.anulada::after{font-size:66px;left:-46px}}
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    {% if all_sheets %}
+    <form class="selector" onsubmit="return false"><span>Ficha:</span><select onchange="if(this.value) location.href=this.value">{% for s in all_sheets %}<option value="/cierre/{{ s.id }}" {% if s.id == sheet.id %}selected{% endif %}>N° {{ s.sequence }} · {{ s.status }} · {{ fjord_date_short(s.created_at) if s.created_at else '' }}</option>{% endfor %}</select></form>
+    {% endif %}
+    <a class="btn" href="{{ return_url }}">Volver</a><a class="btn" href="/cierre/{{ sheet.id }}/csv">CSV</a><a class="btn primary" href="javascript:window.print()">Imprimir / PDF</a>
+  </div>
+  <main class="sheet {% if sheet.status == 'ANULADA' %}anulada{% endif %}">
+    <div class="top">
+      <div><div class="club">{{ data.club or 'Yacht Club Argentino' }}</div><div>Barco: <b>{{ data.boat or 'Fjord VI' }}</b></div><h1>{{ data.title or 'FICHA DE CIERRE DE NAVEGACIÓN' }}</h1><div class="subtitle">{{ data.subtitle or 'Manifiesto y Liquidación de Embarque' }}</div></div>
+      <div class="status {% if sheet.status == 'ANULADA' %}anulada{% endif %}"><div>{{ data.version_label or ('Ficha V' ~ sheet.sequence) }}</div><div class="versionMark">{{ data.liquidation_id }}</div><span class="liqId">{{ data.liquidation_id }}</span><p class="pill">{{ sheet.status }}</p></div>
+    </div>
+    {% if sheet.status == 'ANULADA' %}<div class="notice annul"><strong>ANULADA</strong>{% if replacement %}: reemplazada por Ficha N° {{ replacement.sequence }}{% endif %}. {{ sheet.annul_reason }}</div><div class="auditTrail"><b>Trazabilidad:</b><div class="auditTrailGrid"><div>Ficha original generada: <b>{{ sheet.created_at.strftime('%d/%m/%Y %H:%M') if sheet.created_at else data.generated_at }}</b></div><div>Anulada: <b>{{ fjord_date_short(sheet.annulled_at) if sheet.annulled_at else '' }}</b></div><div>Motivo: <b>{{ sheet.annul_reason or 'Anulación operativa' }}</b></div><div>Reemplazada por: <b>{% if replacement %}Ficha N° {{ replacement.sequence }}{% else %}Sin ficha reemplazante vigente{% endif %}</b></div></div></div>{% else %}<div class="notice vigente"><span class="lockBadge"><span class="lockIcon">🔒</span>Liquidación consolidada</span><strong> VIGENTE.</strong> {{ data.liquidation_id }} · {{ data.version_label or ('Ficha V' ~ sheet.sequence) }}{% if replaced_sheets %}. Reemplaza a fichas anuladas: {% for rs in replaced_sheets|sort(attribute='sequence') %}N° {{ rs.sequence }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}.</div>{% endif %}
+    <div class="data"><div>Salida: <b>{{ data.outing_title }}</b></div><div>Fecha: <b>{{ data.departure_label }}</b></div><div>Capitán: <b>{{ data.captain }}</b></div><div>Generada: <b>{{ data.generated_at }}</b></div><div>Liquidación: <b>{{ data.liquidation_id }}</b></div><div>Sistema: <b>{{ data.release_label or ('Fjord VI ' ~ version) }}</b></div></div>
+    <div class="summary"><div class="metric"><span>A bordo</span><b>{{ data.summary.a_bordo or data.summary.navegaron }}</b></div><div class="metric"><span>Reservas incumplidas</span><b>{{ data.summary.no_show_count or 0 }}</b></div><div class="metric"><span>Reservas procesadas</span><b>{{ data.summary.processed_count or data.summary.navegaron }}</b></div><div class="metric"><span>Total</span><b>$ {{ data.summary.total_label }}</b></div></div>
+    <div class="moneybox"><div class="moneyitem"><span>Invitados navegados</span><b>$ {{ data.summary.subtotal_navegacion_label or '0' }}</b></div><div class="moneyitem"><span>Reserva incumplida con cargo reglamentario</span><b>$ {{ data.summary.subtotal_no_show_label or '0' }}</b></div><div class="moneyitem total"><span>Total general</span><b>$ {{ data.summary.total_label }}</b></div></div>
+    <h2>Navegaron</h2>
+    <div class="identityNote"><b>Trazabilidad documental:</b> los socios se identifican por Nº de socio; invitados y menores no socios por DNI/documento.</div>
+    <div class="peopleGrid">
+    {% for g in data.groups %}{% if g.navegaron %}<div class="group sheetGroupCardV1167"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.navegaron %}<li><b class="sheetPersonName">{{ p.name }}</b> {% if p.protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% else %}<small>({{ p.tipo }})</small>{% endif %}{% if p.dni %}<span class="guestDni"> · DNI {{ p.dni }}</span>{% endif %}{% if p.reason and "Reasignado" in p.reason %}<br><small class="guestDni">{{ p.reason }} · Socio original no embarcó</small>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal a cargo del socio responsable: $ {{ g.subtotal_navegacion|money }}</div></div>{% endif %}{% endfor %}
+    </div>
+    <h2>Reserva incumplida con cargo</h2>
+    <div class="peopleGrid">
+    {% set has_no_show = false %}{% for g in data.groups %}{% if g.no_show %}{% set has_no_show = true %}<div class="group sheetGroupCardV1167 noShowCardV1167"><div class="responsible">{{ g.responsible_name }} | Socio N° {{ g.member_no }}</div><ul>{% for p in g.no_show %}<li><b class="sheetPersonName">{{ p.name }}</b> {% if p.protocolar %}<span class="protoBadge">PROTOCOLAR</span>{% else %}<small>({{ p.tipo }}){% if p.dni %} · DNI {{ p.dni }}{% endif %} - $ {{ p.amount_label }}</small>{% endif %}{% if p.reason %}<br><small class="guestDni">{{ p.reason }}</small>{% endif %}</li>{% endfor %}</ul><div class="amount">Subtotal reserva incumplida con cargo reglamentario: $ {{ g.subtotal_no_show|money }}</div></div>{% endif %}{% endfor %}
+    </div>
+    <div class="finalTotal">TOTAL GENERAL A LIQUIDAR: $ {{ data.summary.total_label }}</div>
+    <div class="foot">Documento operativo oficial · {{ data.release_label or ('Fjord VI ' ~ version) }} · Yacht Club Argentino · {{ data.liquidation_id }}</div>
+  </main>
+</body>
+</html>
