@@ -1,0 +1,44 @@
+Fjord VI v3.7 · COMUNICACIONES SMTP FINAL
+
+Base:
+- FjordVI_3.3_SMTP_COMPLETA.zip
+
+Cambios:
+- Nueva versión distinguible: 3.4.
+- Página Comunicaciones rearmada como módulo final de test SMTP.
+- Semáforos claros: SMTP, receptor, modo prueba, redirect, validación SMTP, fallidos, pendientes, eventos ON.
+- Badge visible del módulo: SMTP · v3.7.1.
+- Botón Validar SMTP.
+- Botón Prueba integral SMTP.
+- Estado central de seguridad: listo para test / incompleto / producción.
+- Configuración SMTP completa en una sola pantalla.
+- Guía COMUNICACIONES_SMTP_FINAL_3.4.md.
+
+No se tocó:
+- reservas
+- cargos
+- liquidaciones
+- PDF
+- QR
+- Socio
+- Capitán
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "version_txt": "3.4",
+  "app_version_3_4": true,
+  "module_badge": true,
+  "smtp_check_route": true,
+  "full_test_route": true,
+  "readiness_summary": true,
+  "checklist_panel": true,
+  "hero_final": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

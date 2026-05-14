@@ -8,7 +8,7 @@ Version de base para este paquete limpio: 1.19
 
 README VIGENTE
 -------------
-# Fjord VI 3.6.1.38
+# Fjord VI 3.7.38
 
 Versión operativa actual del sistema web de reservas y embarque del Fjord VI con blindaje monolítico reforzado.
 
@@ -40,7 +40,7 @@ CHANGELOG CONSOLIDADO
 - Agrega historial auditable reservation_reassignments.
 - Capitán, ficha, liquidación y estadísticas cuelgan del responsible_user_id final vigente.
 - Permite múltiples reasignaciones sin depender de cancel_reason como fuente de verdad.
-- Nuevas fichas y documentos salen con Fjord VI · v3.6.1.1.38.
+- Nuevas fichas y documentos salen con Fjord VI · v3.7.1.38.
 
 ## 1.18.14
 
@@ -63,13 +63,13 @@ CHANGELOG CONSOLIDADO
 - Se agregan tests mínimos de negocio y script automático de release check.
 - Se integra el release check externo al semáforo interno sin cambiar UX ni reglas funcionales.
 
-# Fjord VI 3.6.1.6 · Blindaje 182
+# Fjord VI 3.7.6 · Blindaje 182
 
 - Corrige unificación de versión visible y metadata del release.
 - Alinea VERSION.txt, README, software_metadata.json, APP_BUILD y RELEASE_LABEL.
 - Mantiene la lógica operativa existente.
 
-# Fjord VI 3.6.1.3 · Pruebas lógicas Capitán en Sistema
+# Fjord VI 3.7.3 · Pruebas lógicas Capitán en Sistema
 
 - Agrega diagnóstico aislado de reglas críticas del módulo Capitán dentro de Sistema.
 - No toca datos reales ni modifica salidas, reservas, fichas o liquidaciones.
@@ -85,7 +85,7 @@ CHANGELOG CONSOLIDADO
 - Cierre aplica la misma cascada antes de validar y liquidar.
 
 
-## v3.6.1.3
+## v3.7.3
 - Capitán: separación visual más clara entre grupos operativos por socio responsable.
 - Se mantiene intacta la lógica de embarque, cierre, reapertura, espera y liquidación.
 - Versión actualizada a 1.18.1.
@@ -127,14 +127,14 @@ El proyecto separa tres experiencias: Socio simple, Capitán operativo y Adminis
 - Limpieza de textos/checks obsoletos de fases internas.
 - Advertencia no bloqueante principal: SMTP pendiente.
 
-## v3.6.1.5
+## v3.7.5
 - Exportaciones pasa a "Exportaciones e importaciones" sin rediseñar el módulo.
 - Nuevo bloque de Migración operativa: exporta paquete ZIP completo para clonar beta/staging.
 - Nuevo importador controlado por frase de confirmación con backup previo obligatorio.
 - Reporte de integridad JSON para detectar referencias huérfanas y fichas vigentes duplicadas.
 - Exportación incluye usuarios, salidas, reservas, fichas, auditoría y configuración básica.
 
-## v3.6.1.6
+## v3.7.6
 - Exportaciones e importaciones: se agregan modos de importación.
 - Clonar completo: reemplazo total del entorno operativo y metadatos.
 - Reemplazo operativo: limpia salidas/reservas/fichas y conserva accesos/configuración local.

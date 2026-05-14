@@ -1,4 +1,4 @@
-Fjord VI v3.6.1 · Comunicaciones SMTP cerrado
+Fjord VI v3.7 · Comunicaciones SMTP cerrado
 
 Objetivo:
 Cerrar el módulo de Comunicaciones para iniciar pruebas reales de correo sin seguir iterando la pantalla.
@@ -11,7 +11,7 @@ Incluye:
 - Modo simulación para generar cola sin envío SMTP real.
 - Prueba individual por plantilla.
 - Registro con estado vacío explícito.
-- Versión visible SMTP · v3.6.1.1.
+- Versión visible SMTP · v3.7.1.
 
 Secuencia:
 1. Cargar configuración SMTP.

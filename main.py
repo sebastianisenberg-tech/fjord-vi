@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.6.1"
+APP_VERSION = "3.7"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.6.1"
-RELEASE_LABEL = "Fjord VI · v3.6.1.1"
+APP_BUILD = "Fjord VI 3.7"
+RELEASE_LABEL = "Fjord VI · v3.7.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -664,6 +664,83 @@ def smtp_probe_summary(db: Session) -> dict:
         "tls": get_system_meta(db, "smtp_last_probe_tls", ""),
     }
 
+
+def smtp_master_status(db: Session) -> dict:
+    settings = smtp_settings(db)
+    missing = smtp_missing_requirements(db)
+    configured = smtp_configured(settings)
+    probe_ok = get_system_meta(db, "smtp_last_probe_ok", "") == "1"
+    test_mode = smtp_test_mode_enabled(db)
+    simulation = smtp_simulation_mode_enabled(db)
+    redirect = smtp_force_redirect_enabled(db)
+    pending = db.query(NotificationQueue).filter_by(status="pending").count()
+    failed = db.query(NotificationQueue).filter_by(status="failed").count()
+    production_ready = smtp_production_ready(db)
+
+    inconsistent = []
+    if not test_mode and redirect:
+        inconsistent.append("Redirect activo con modo prueba apagado")
+    if not test_mode and get_system_bool(db, "smtp_block_real_recipients_in_test", True):
+        inconsistent.append("Bloqueo de destinatarios reales activo con modo prueba apagado")
+    if simulation and production_ready:
+        inconsistent.append("Simulación activa junto a producción real")
+    if pending > smtp_send_limit_per_run(db):
+        inconsistent.append("Pendientes superan el límite por corrida")
+    if failed >= 3:
+        inconsistent.append("Hay varios envíos fallidos acumulados")
+
+    if production_ready:
+        return {"level": "danger", "title": "PRODUCCIÓN REAL HABILITADA", "detail": "El sistema puede enviar emails a destinatarios reales. Revisar eventos ON, cola pendiente y límite por corrida.", "issues": inconsistent}
+    if simulation:
+        return {"level": "warn", "title": "SIMULACIÓN ACTIVA", "detail": "El sistema genera cola y logs pero no envía SMTP real.", "issues": inconsistent}
+    if test_mode and redirect and configured and probe_ok and not missing:
+        return {"level": "safe", "title": "SEGURO PARA PRUEBAS", "detail": "Todos los correos se redirigen al receptor de pruebas. No impacta socios reales.", "issues": inconsistent}
+    if inconsistent:
+        return {"level": "danger", "title": "CONFIGURACIÓN INCONSISTENTE", "detail": "Hay combinaciones que pueden confundir el comportamiento del módulo.", "issues": inconsistent}
+    if missing or not configured:
+        return {"level": "warn", "title": "CONFIGURACIÓN INCOMPLETA", "detail": "Faltan datos para validar y probar SMTP.", "issues": missing}
+    if configured and not probe_ok:
+        return {"level": "warn", "title": "SMTP SIN VALIDAR", "detail": "La configuración existe pero falta validar conexión, TLS y credenciales.", "issues": missing}
+    return {"level": "neutral", "title": "COMUNICACIONES EN REVISIÓN", "detail": "Revisar configuración antes de operar.", "issues": missing}
+
+def smtp_queue_alert(db: Session) -> dict:
+    pending = db.query(NotificationQueue).filter_by(status="pending").count()
+    failed = db.query(NotificationQueue).filter_by(status="failed").count()
+    limit = smtp_send_limit_per_run(db)
+    if failed >= 3:
+        return {"level": "danger", "label": f"{failed} fallidos acumulados", "detail": "Revisar errores antes de seguir procesando."}
+    if pending > limit:
+        return {"level": "warn", "label": f"{pending} pendientes", "detail": f"Supera el límite por corrida ({limit}). Se procesará por tandas."}
+    if pending > 0:
+        return {"level": "warn", "label": f"{pending} pendientes", "detail": "Hay emails esperando procesamiento."}
+    return {"level": "safe", "label": "cola limpia", "detail": "No hay emails pendientes."}
+
+def smtp_render_preview(template_key: str, db: Session) -> dict:
+    ensure_communications_seed(db)
+    tpl = db.query(NotificationTemplate).filter_by(key=template_key).first()
+    if not tpl:
+        return {"exists": False, "subject": "", "body": "Plantilla inexistente"}
+    payload = {
+        "app_name": APP_NAME,
+        "version": VERSION,
+        "club_nombre": CLUB_NAME,
+        "socio_nombre": "Socio de prueba",
+        "salida_nombre": "Paseo Fjord VI Prueba",
+        "fecha": now_local().strftime("%d/%m/%Y"),
+        "hora": "11:00",
+        "estado": "preview",
+        "invitado_nombre": "Invitado de prueba",
+        "detalle_cargos": "Ejemplo de cargo reglamentario de prueba",
+        "total_socio": "$ 0",
+        "link_ficha": "Prueba sin ficha real",
+    }
+    return {
+        "exists": True,
+        "subject": render_comm_template(tpl.subject, payload),
+        "body": render_comm_template(tpl.body, payload),
+    }
+
+
 def communications_context(db: Session) -> dict:
     ensure_communications_seed(db)
     settings = smtp_settings(db)
@@ -692,7 +769,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.6.1.1",
+        "module_version": "SMTP · v3.7.1",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -700,6 +777,8 @@ def communications_context(db: Session) -> dict:
         "production_ready": smtp_production_ready(db),
         "rate_limit": smtp_rate_limit_summary(db),
         "probe": smtp_probe_summary(db),
+        "queue_alert": smtp_queue_alert(db),
+        "master_status": smtp_master_status(db),
         "send_limit_per_run": smtp_send_limit_per_run(db),
     }
 
@@ -2304,7 +2383,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.6.1.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.7.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6509,7 +6588,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.6.1.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.7.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6543,7 +6622,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.6.1.0: orden visual de Capitán por grupos operativos.
+    # v3.7.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
@@ -9685,6 +9764,12 @@ def admin_communications_event(event_key: str, enabled: str = Form("0"), db: Ses
     log(db, user.name, "communications event", f"{event_key}: {'ON' if ev.enabled else 'OFF'}")
     return RedirectResponse("/admin?page=comunicaciones&msg=evento_actualizado", status_code=303)
 
+
+
+@app.get("/admin/communications/template_preview/{template_key}")
+def admin_communications_template_preview(template_key: str, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    preview = smtp_render_preview(template_key, db)
+    return JSONResponse(preview)
 
 @app.post("/admin/communications/template_test/{template_key}")
 def admin_communications_template_test(template_key: str, db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
