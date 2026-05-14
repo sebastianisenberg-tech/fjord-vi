@@ -1,4 +1,4 @@
-Fjord VI 3.7 - Auditoría de baseline visual recuperado
+Fjord VI 3.7.1.1 - Auditoría de baseline visual recuperado
 Base fuente: FjordVI_2.4_nav_inicio_limpio_auditado.zip
 Criterio: recuperar la UI visual correcta de 3.3, no continuar la rama rota 3.3/3.3.
 Cambios: versión unificada a 3.3, limpieza de notas/pycache, preservación de diseño premium.

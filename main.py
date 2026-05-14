@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7"
+APP_VERSION = "3.7.1"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7"
-RELEASE_LABEL = "Fjord VI · v3.7.1"
+APP_BUILD = "Fjord VI 3.7.1.1"
+RELEASE_LABEL = "Fjord VI · v3.7.1.1.1.1.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -751,6 +751,14 @@ def communications_context(db: Session) -> dict:
     failed = db.query(NotificationQueue).filter_by(status="failed").count()
     sent_today = db.query(NotificationQueue).filter(NotificationQueue.status == "sent", NotificationQueue.sent_at >= now_local().replace(hour=0, minute=0, second=0, microsecond=0)).count()
     safety_issues = reliability_guard_smtp(db)
+    try:
+        safe_master_status = smtp_master_status(db)
+    except Exception as e:
+        safe_master_status = {"level": "warn", "title": "CONFIGURACIÓN EN REVISIÓN", "detail": f"No se pudo calcular estado maestro: {type(e).__name__}", "issues": []}
+    try:
+        safe_queue_alert = smtp_queue_alert(db)
+    except Exception as e:
+        safe_queue_alert = {"level": "warn", "label": "sin datos", "detail": f"No se pudo calcular cola: {type(e).__name__}"}
     return {
         "settings": settings,
         "smtp_configured": smtp_configured(settings),
@@ -769,7 +777,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.7.1",
+        "module_version": "SMTP · v3.7.1.1.1.1.1",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -777,8 +785,8 @@ def communications_context(db: Session) -> dict:
         "production_ready": smtp_production_ready(db),
         "rate_limit": smtp_rate_limit_summary(db),
         "probe": smtp_probe_summary(db),
-        "queue_alert": smtp_queue_alert(db),
-        "master_status": smtp_master_status(db),
+        "queue_alert": safe_queue_alert,
+        "master_status": safe_master_status,
         "send_limit_per_run": smtp_send_limit_per_run(db),
     }
 
@@ -2383,7 +2391,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.7.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.7.1.1.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6588,7 +6596,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.7.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.7.1.1.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6622,7 +6630,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.7.0: orden visual de Capitán por grupos operativos.
+    # v3.7.1.1.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
