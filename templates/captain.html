@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v={{version}}">
+  <title>Capitán · {{app_name}}</title>
+  <script>
+  function captainToast(message, type){
+    if(!message) return;
+    var wrap = document.getElementById('captainToastStack');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'captainToastStack';
+      wrap.className = 'captainToastStack';
+      document.body.appendChild(wrap);
+    }
+    var t = document.createElement('div');
+    t.className = 'captainToast ' + (type || 'info');
+    t.textContent = message;
+    wrap.appendChild(t);
+    setTimeout(function(){ t.classList.add('show'); }, 10);
+    setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 220); }, 3600);
+  }
+  const CAPTAIN_MSGS = {
+    asistencia_actualizada: ['Asistencia actualizada.', 'success'],
+    socio_responsable_no_presente: ['No puede marcarse presente: el socio responsable no está presente.', 'error'],
+    salida_cerrada: ['🔒 La salida está cerrada. La liquidación quedó congelada.', 'error'],
+    salida_cancelada: ['La salida está cancelada por capitán. No se pueden hacer cambios.', 'error'],
+    ventana_finalizada: ['Fuera de plazo: el capitán solo puede corregir hasta 48 horas.', 'error'],
+    cierre_anticipado: ['Todavía no se puede cerrar: el cierre se habilita desde la hora programada.', 'warning'],
+    reserva_en_espera: ['No se puede marcar: la persona está en lista de espera.', 'warning'],
+    cierre_ok: ['🔒 Ficha generada. Liquidación consolidada.', 'success'],
+    estado_actualizado: ['Estado de la salida actualizado.', 'success'],
+    reapertura_ok: ['Salida reabierta. La ficha anterior quedó anulada y se conserva en historial.', 'success'],
+    minimo_no_cumple: ['No se puede cerrar: no se cumple la tripulación mínima.', 'error'],
+    maximo_superado: ['No se puede cerrar: se supera el cupo máximo.', 'error'],
+    cupo_lleno: ['Cupo completo: no se puede marcar más de 9 presentes. Marcá a alguien como No embarcó o No embarca antes de sumar otro presente.', 'warning'],
+    accion_invalida: ['Acción inválida o registro inexistente.', 'error'],
+    reasignacion_ok: ['Invitado reasignado. El cargo queda a cargo del nuevo socio responsable.', 'success'],
+    reasignacion_invalida: ['Reasignación inválida.', 'error'],
+    socio_reasignacion_no_valido: ['El nuevo responsable no tiene reserva de socio activa en esta salida.', 'error'],
+    socio_reasignacion_no_presente: ['El nuevo responsable debe estar presente para tomar invitados.', 'error'],
+    reasignacion_sin_cambios: ['El invitado ya estaba a cargo de ese socio.', 'warning'],
+    reasignacion_unica: ['Ese invitado ya fue reasignado una vez en esta salida. Para evitar errores de liquidación, no se permite una segunda reasignación.', 'warning'],
+    salida_inexistente: ['Salida inexistente.', 'error'],
+    preflight_error: ['No se pudo cerrar: hay errores en la revisión previa.', 'error']
+  };
+  function captainRememberScroll(row){
+    try {
+      var payload = {
+        y: window.scrollY || window.pageYOffset || 0,
+        rowId: row && row.id ? row.id : '',
+        t: Date.now()
+      };
+      sessionStorage.setItem('captainV65ScrollRestore', JSON.stringify(payload));
+    } catch(e) {}
+  }
+
+  function captainRestoreScroll(){
+    try {
+      var raw = sessionStorage.getItem('captainV65ScrollRestore');
+      if(!raw) return;
+      sessionStorage.removeItem('captainV65ScrollRestore');
+      var payload = JSON.parse(raw);
+      if(!payload || Date.now() - (payload.t || 0) > 15000) return;
+
+      // Primero intentamos volver a la misma fila; si no existe, restauramos el scroll exacto.
+      var done = false;
+      if(payload.rowId){
+        var row = document.getElementById(payload.rowId);
+        if(row){
+          row.scrollIntoView({block:'center', inline:'nearest'});
+          row.classList.add('captainJustUpdatedV65');
+          setTimeout(function(){ row.classList.remove('captainJustUpdatedV65'); }, 1100);
+          done = true;
+        }
+      }
+      if(!done && typeof payload.y === 'number'){
+        window.scrollTo(0, payload.y);
+      }
+    } catch(e) {}
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    captainRestoreScroll();
+    document.querySelectorAll('.captainMoreOpsV65 > summary').forEach(function(summary){
+      summary.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        captainOpenOpsSheetFromDetails(summary.closest('.captainMoreOpsV65'));
+      });
+    });
+    document.addEventListener('submit', function(e){
+      var f = e.target;
+      if(f && f.closest && f.closest('#captainOpsSheet')){ captainHandleOperationalSubmit(e, f); }
+    }, true);
+    document.querySelectorAll('form').forEach(function(form){
+      form.addEventListener('submit', function(e){
+        const statusField = form.querySelector('input[name="status"], select[name="status"]');
+        const statusValue = statusField ? statusField.value : '';
+        const close = form.classList.contains('closeBoardingForm') || statusValue === 'Cerrar';
+        const cancel = statusValue === 'Cancelada';
+        const absent = form.classList.contains('attendanceAbsentForm');
+        const noBoard = form.classList.contains('attendanceNoBoardForm') || form.classList.contains('attendanceNoBoardMenuForm');
+        const reassign = form.classList.contains('reassignGuestForm');
+        const tripRow = form.closest('.captainFastRowV65');
+        if (reassign) {
+          const sel = form.querySelector('select[name="new_responsible_user_id"], input[name="new_responsible_user_id"]');
+          if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return; }
+          if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return; }
+        }
+        if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No embarcó (con cargo).')) { e.preventDefault(); return; }
+        if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return; }
+        if (absent && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return; }
+        if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return; }
+        if (tripRow) { captainRememberScroll(tripRow); }
+        form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
+      });
+    });
+
+    const filterWrap = document.getElementById('captainFilterV465');
+    if(filterWrap){
+      const people = Array.from(document.querySelectorAll('#tripulacion .captainPerson'));
+      filterWrap.addEventListener('click', function(e){
+        const b = e.target.closest('button[data-filter]');
+        if(!b) return;
+        filterWrap.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        const f = b.dataset.filter;
+        people.forEach(p => { p.classList.toggle('is-hidden-v43', !(f === 'all' || p.classList.contains(f))); });
+      });
+    }
+
+    // Tap rápido para flujo habitual; acciones excepcionales quedan en menú ⋯.
+    document.querySelectorAll('.captainFastRowV65').forEach(function(row){
+      row.addEventListener('click', function(e){
+        if(e.target.closest('button, a, summary, details, select, form, [data-tip]')) return;
+        if(row.classList.contains('locked') || row.classList.contains('waitlisted')) return;
+        const current = row.getAttribute('data-current') || 'Por confirmar';
+        let next = 'Presente';
+        if(current === 'Presente') next = 'Ausente';
+        else if(current === 'Ausente') next = 'Presente';
+        else if(current === 'No embarca' || current === 'No embarcable') next = 'Presente';
+        if(next === 'Presente'){
+          const presentRows = document.querySelectorAll('#tripulacion .captainFastRowV65.statePresent:not(.waitlisted):not(.inactive)').length;
+          if(current !== 'Presente' && presentRows >= 9){
+            captainToast('Cupo completo: máximo 9 presentes. Primero sacá a alguien de Presente.', 'warning');
+            return;
+          }
+        }
+        const form = row.querySelector('form[data-v65-status="' + next + '"]');
+        if(!form) return;
+        if(next === 'Ausente' && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) return;
+        captainRememberScroll(row);
+        row.classList.add('isSubmittingV65');
+        form.submit();
+      });
+    });
+
+    var msgCode = document.body.getAttribute('data-msg');
+    if(msgCode && CAPTAIN_MSGS[msgCode]){ captainToast(CAPTAIN_MSGS[msgCode][0], CAPTAIN_MSGS[msgCode][1]); }
+  });
+
+
+  function captainOpenOpsSheetFromDetails(details){
+    if(!details) return;
+    var sheet = document.getElementById('captainOpsSheet');
+    var content = document.getElementById('captainOpsSheetContent');
+    var title = document.getElementById('captainOpsSheetTitle');
+    if(!sheet || !content) return;
+    var row = details.closest('.captainFastRowV65');
+    var nameEl = row ? row.querySelector('.captainFastIdentityV65 b') : null;
+    if(title && nameEl) title.textContent = nameEl.textContent.trim();
+    var body = details.querySelector('.captainMoreOpsBody');
+    content.innerHTML = '';
+    if(body){
+      content.appendChild(body.cloneNode(true));
+    } else {
+      content.innerHTML = '<div class="empty">No hay acciones disponibles.</div>';
+    }
+    sheet.classList.remove('hidden');
+    sheet.setAttribute('aria-hidden','false');
+    document.body.classList.add('captainSheetOpen');
+  }
+
+  function captainCloseOpsSheet(){
+    var sheet = document.getElementById('captainOpsSheet');
+    if(sheet){ sheet.classList.add('hidden'); sheet.setAttribute('aria-hidden','true'); }
+    document.body.classList.remove('captainSheetOpen');
+  }
+
+  function captainHandleOperationalSubmit(e, form){
+    const statusField = form.querySelector('input[name="status"], select[name="status"]');
+    const statusValue = statusField ? statusField.value : '';
+    const close = form.classList.contains('closeBoardingForm') || statusValue === 'Cerrar';
+    const cancel = statusValue === 'Cancelada';
+    const absent = form.classList.contains('attendanceAbsentForm');
+    const noBoard = form.classList.contains('attendanceNoBoardForm') || form.classList.contains('attendanceNoBoardMenuForm');
+    const reassign = form.classList.contains('reassignGuestForm');
+    const tripRow = form.closest('.captainFastRowV65');
+    if (reassign) {
+      const sel = form.querySelector('select[name="new_responsible_user_id"], input[name="new_responsible_user_id"]');
+      if(!sel || !sel.value){ e.preventDefault(); captainToast('Elegí un socio presente para reasignar.', 'warning'); return false; }
+      if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) { e.preventDefault(); return false; }
+    }
+    if (close && !confirm('Confirmar cierre de embarque y generación de ficha? Los pendientes pasarán a No embarcó (con cargo).')) { e.preventDefault(); return false; }
+    if (cancel && !confirm('Confirmar cancelación por capitán? No se generarán cargos ni preliquidaciones vigentes.')) { e.preventDefault(); return false; }
+    if (absent && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) { e.preventDefault(); return false; }
+    if (noBoard && !confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) { e.preventDefault(); return false; }
+    if (tripRow) { captainRememberScroll(tripRow); }
+    form.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); });
+    return true;
+  }
+
+  function mostrarQRCapitan(){
+    var el = document.getElementById('qrCapitanOverlay');
+    if(el){ el.classList.remove('hidden'); }
+  }
+  function cerrarQRCapitan(){
+    var el = document.getElementById('qrCapitanOverlay');
+    if(el){ el.classList.add('hidden'); }
+  }
+  function copiarQRCapitan(){
+    var link = document.getElementById('qrCapitanLink');
+    if(!link) return;
+    navigator.clipboard.writeText(link.value).then(function(){ captainToast('Link de check-in copiado.', 'success'); }).catch(function(){ captainToast('No se pudo copiar. Copiá el link manualmente.', 'warning'); });
+  }
+
+  function captainOpenSummary(kind){
+    var overlay = document.getElementById('captainSummaryOverlay');
+    if(!overlay) return;
+    var panels = overlay.querySelectorAll('.summaryPanel');
+    panels.forEach(function(p){ p.classList.add('hidden'); });
+    var panel = overlay.querySelector('[data-summary-panel="' + kind + '"]');
+    if(panel){ panel.classList.remove('hidden'); overlay.classList.remove('hidden'); }
+  }
+  function captainCloseSummary(){
+    var overlay = document.getElementById('captainSummaryOverlay');
+    if(overlay){ overlay.classList.add('hidden'); }
+  }
+  </script>
+</head>
+<body class="captainProBody" data-msg="{{msg or ''}}"><div class="app captainProApp">
+<header class="top topGreen premiumTop appHeaderPremium captainTop">
+  <div class="headerBrand captainHeaderBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small>{{app_model}} · Capitán <span class="captainHeaderName">{{user.name}}</span></small></div></div>
+  <a href="/logout" class="logoutBtn">Salir</a>
+</header>
+<main class="wrap captainWrap">
+
+<section class="card premiumCard captainSelector" id="salidas">
+  <div class="cardTitle"><div><span class="eyebrow">Salidas</span><h2>Salida a controlar</h2></div></div>
+  {% if outings|length == 0 %}<div class="empty">No hay salidas publicadas.</div>{% endif %}
+  <div class="captainActiveOutings">
+  {% if outing %}
+    {% set outing_display_status = 'Cancelada por capitán' if outing.status == 'Cancelada por capitán' else ('Liquidación consolidada' if closed else outing.status) %}
+    <div class="captainOutingCard selected">
+      <a class="outingMainLink" href="/captain?outing_id={{outing.id}}"><div><b>{{outing.title}}</b><small>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }} · {{outing_display_status}}</small></div></a>
+      <div class="outingQuickActions">
+        <span class="pill selectedPill">{% if closed %}Vigente{% else %}Activa{% endif %}</span>
+        {% if outing.status != 'Embarque cerrado' and outing.status != 'Cancelada por capitán' %}<button type="button" class="pill qrQuick" onclick="mostrarQRCapitan()">QR</button>{% endif %}
+      </div>
+    </div>
+    <details class="historyFold captainSwitchFold">
+      <summary>Cambiar salida</summary>
+      <div class="captainHistoryScroll compact">
+        {% for o in outings %}{% if o.id != outing.id %}
+        <a class="historyRow" href="/captain?outing_id={{o.id}}"><span>{{o.title}} · {{ fjord_date_short(o.departure_at) }}</span><small>{{o.status}}</small></a>
+        {% endif %}{% endfor %}
+      </div>
+    </details>
+  {% else %}
+    {% for o in outings %}
+    <div class="captainOutingCard">
+      <a class="outingMainLink" href="/captain?outing_id={{o.id}}"><div><b>{{o.title}}</b><small>{{o.destination}} · {{ fjord_date_short(o.departure_at) }} · {{o.status}}</small></div></a>
+      <div class="outingQuickActions"><a class="pill" href="/captain?outing_id={{o.id}}">Ver</a></div>
+    </div>
+    {% endfor %}
+  {% endif %}
+  </div>
+  {% if history_groups and history_groups|length > 0 %}
+  <details class="historyFold captainHistoryFold">
+    <summary>Ver salidas anteriores</summary>
+    <div class="captainHistoryScroll">
+      {% for g in history_groups %}<div class="historyMonth">{{g.label}}</div>{% for o in g["items"] %}<div class="historyRowWrap"><a class="historyRow {% if outing and o.id == outing.id %}selected{% endif %}" href="/captain?outing_id={{o.id}}"><span>{{ fjord_date_short(o.departure_at) }} · {{o.title}}</span><small>{{o.status}}</small></a></div>{% endfor %}{% endfor %}
+    </div>
+  </details>
+  {% endif %}
+</section>
+
+{% if outing %}{% set outing_cancelled = outing.status == 'Cancelada por capitán' %}
+<section class="captainStickyPanel {% if outing_cancelled %}isCancelled{% elif closed %}isClosed{% else %}isOpen{% endif %}">
+  <div class="captainStickyTop">
+    <div><span class="eyebrow">Control de embarque</span><h1>{{outing.title}}</h1><small>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }}</small></div>
+    <span class="statusPill {% if outing_cancelled %}neutral{% elif closed %}locked{% else %}ok{% endif %}">{% if outing_cancelled %}Cancelada{% elif closed %}🔒 Cerrada{% else %}Operativa{% endif %}</span>
+  </div>
+  <div class="captainStickyKpis">
+    <div><small>A bordo</small><b>{{present}}</b></div>
+    <div><small>Ocupación</small><b>{{present}}/{{outing.max_crew}}</b></div>
+    <div><small>Espera</small><b>{{waitlist_count|default(0)}}</b></div>
+  </div>
+  {% set ns = namespace(presentes=[], pendientes=[], ausentes=[], noembarca=[]) %}
+  {% for rr in reservations %}
+    {% set vv = reservation_views.get(rr.id) %}
+    {% if not vv.waitlisted %}
+      {% if rr.attendance == 'Presente' %}
+        {% set ns.presentes = ns.presentes + [rr.person_name] %}
+      {% elif rr.attendance == 'Ausente' %}
+        {% set ns.ausentes = ns.ausentes + [rr.person_name] %}
+      {% elif rr.attendance == 'No embarca' or rr.attendance == 'No embarcable' %}
+        {% set ns.noembarca = ns.noembarca + [rr.person_name] %}
+      {% elif not outing_cancelled %}
+        {% set ns.pendientes = ns.pendientes + [rr.person_name] %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+  {% set processed_total = ns.presentes|length + ns.ausentes|length + ns.noembarca|length + ns.pendientes|length %}
+  <div class="captainProcessedLineV1167">Reservas procesadas: <b>{{processed_total}}</b> · A bordo: <b>{{ns.presentes|length}}</b> · Reservas incumplidas: <b>{{ns.ausentes|length}}</b></div>
+  <div class="captainMiniSummary" aria-label="Resumen de asistencia">
+    <button type="button" onclick="captainOpenSummary('presentes')"><span>Presentes</span><b>{{ns.presentes|length}}</b></button>
+    <button type="button" onclick="captainOpenSummary('pendientes')"><span>Pendientes</span><b>{{ns.pendientes|length}}</b></button>
+    <button type="button" onclick="captainOpenSummary('ausentes')"><span>Reserva incumplida con cargo</span><b>{{ns.ausentes|length}}</b></button>
+    <button type="button" onclick="captainOpenSummary('noembarca')"><span>Sin cargo</span><b>{{ns.noembarca|length}}</b></button>
+  </div>
+  {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_edit) %}
+  <button type="button" class="qrCaptainBtn captainBigQr" onclick="mostrarQRCapitan()">Mostrar QR de embarque</button>
+  {% endif %}
+</section>
+
+<section class="statusPanel premiumStatus {% if outing_cancelled %}cancelled{% elif closed %}closed{% else %}open{% endif %}">
+  {% if outing_cancelled %}<b>Cancelada por capitán</b><span>Sin cargos ni preliquidaciones vigentes.</span>{% elif closed %}<b>🔒 Embarque cerrado</b><span>Liquidación consolidada. Ficha de cierre generada.</span>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><span class="sheetVersionBadge premiumLock">LIQ-{{ current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026' }}-{{ '%06d'|format(current_sheet.id) }}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}{% else %}<b>Salida operativa</b><span>Marcá la realidad del embarque. La liquidación queda en la ficha de cierre.</span>{% endif %}
+</section>
+<section class="statusPanel premiumStatus {% if control_window.expired and user.role == 'captain' %}closed{% else %}open{% endif %}"><b>{{control_window.label}}</b><span>{{control_window.detail}}</span></section>
+
+<section class="card premiumCard captainDecision" id="decision">
+  <div class="cardTitle"><div><span class="eyebrow">Decisión</span><h2>Estado de la salida</h2></div></div>
+  {% if user.role == 'captain' and control_window.expired %}
+    <div class="empty">Período de edición del capitán finalizado. Para cambios, contactar Administración.</div>
+  {% else %}
+    <div class="captainDecisionGrid">
+      {% if closed or outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Reservas abiertas"><button class="captainDecisionBtn reopenBtn">Levantar / reabrir salida <span class="helpDot" data-tip="Reabrir anula la ficha vigente, conserva el historial y permite corregir embarque antes de generar una nueva ficha.">ⓘ</span></button></form>{% endif %}
+      {% if not closed and not outing_cancelled %}<form method="post" action="/captain/outing_status"><input type="hidden" name="outing_id" value="{{outing.id}}"><input type="hidden" name="status" value="Cancelada"><button class="captainDecisionBtn cancelBtn">Cancelar por capitán <span class="helpDot" data-tip="Cancelar por capitán suspende la salida y no genera cargos mientras permanezca cancelada.">ⓘ</span></button></form>{% endif %}
+      {% if not closed and not outing_cancelled and (user.role == 'admin' or control_window.can_close) %}<form class="preflightBoardingForm" method="get" action="/captain/preflight"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="captainDecisionBtn closeBtn">Cerrar salida y generar ficha <span class="helpDot" data-tip="Cerrar consolida el embarque y genera la ficha definitiva de cierre.">ⓘ</span></button></form>{% elif not closed and not outing_cancelled and control_window.before_departure %}<div class="captainDecisionHint">El cierre se habilita desde la hora programada.</div>{% endif %}
+    </div>
+  {% endif %}
+</section>
+
+<section class="card premiumCard captainV65Card" id="tripulacion">
+  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No embarcó. Las acciones excepcionales quedan en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
+  <div class="captainV65Hint">Tocá una persona para alternar Presente / No embarcó. Usá ⋯ para acciones excepcionales. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
+  <div class="captainFilterShellV11612" aria-label="Filtros de tripulación">
+    <span class="captainFilterArrowV11612 left" aria-hidden="true">‹</span>
+    <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
+    <span class="captainFilterArrowV11612 right" aria-hidden="true">›</span>
+  </div>
+  <div class="captainPeopleList captainPeopleListV65">
+  {% for r in reservations %}{% set v = reservation_views.get(r.id) %}
+    {% set group_role_v11611 = v.captain_group_role if v and v.captain_group_role else ('institutional' if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar else 'guest') %}
+    {% set group_index_v11611 = v.captain_group_index if v and v.captain_group_index else 1 %}
+    {% set current_v65 = r.attendance if r.attendance else 'Por confirmar' %}
+    {% set locked_v65 = closed or outing_cancelled or (user.role == 'captain' and control_window.expired) %}
+    {% set reason_text = '' %}
+    {% if v.show_responsible and r.attendance != 'Presente' %}{% set reason_text = 'Depende del embarque del socio responsable.' %}
+    {% elif r.attendance != 'Presente' %}{% set reason_text = v.alert %}{% endif %}
+    <div id="cap-row-{{r.id}}" class="captainPerson captainFastRowV65 captainGroupV11611 groupColor{{group_index_v11611}} groupRole-{{group_role_v11611}} {{v.level}} {{v.tipo_class}} {% if v.show_responsible and not reservation_views.get(r.id).protocolar %}hasResponsibleV1164{% endif %} {% if outing_cancelled %}neutralState{% endif %} {% if not v.active %}inactive{% endif %} {% if v.waitlisted %}waitlisted{% endif %} {% if locked_v65 %}locked{% endif %} {% if r.attendance == 'Presente' %}statePresent{% elif r.attendance == 'Ausente' %}stateAbsent{% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}stateNoBoard{% else %}statePending{% endif %}" data-current="{{current_v65}}">
+      <div class="captainFastIdentityV65">
+        <b class="captainPersonName">{{r.person_name}}</b>{% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<span class="protoBadge protoOnlyV1167">PROTOCOLAR</span>{% else %}<span class="badgeTipo {{v.tipo_class}}">{{v.tipo_label}}</span>{% endif %}
+        {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}
+        <div class="captainProtocolarTraceV1165 compactInstitutionalV11611">Invitación institucional{% if v.protocolar_reference_name %} · Ref: {{v.protocolar_reference_name}}{% endif %}</div>
+        {% elif v.show_responsible %}
+        <div class="captainResponsibleTraceV1170">Invitado de {{v.responsible_name}}{% if v.reassignment_count %} · Reasignado {{v.reassignment_count}} vez{% if v.reassignment_count != 1 %}es{% endif %}{% endif %}</div>
+        {% endif %}
+{% if v.tipo_class in ['invitado','hijo_menor'] and r.dni %}<small class="captainDniTrace">DNI {{ r.dni|mask_doc }}</small>{% endif %}
+      </div>
+      <div class="captainFastStateV65">
+        {% if v.waitlisted %}<span class="fastStateChipV65 wait">Espera</span>
+        {% elif outing_cancelled %}<span class="fastStateChipV65 neutral">Sin cargo</span>
+        {% elif r.attendance == 'Presente' %}<span class="fastStateChipV65 present">Presente</span>
+        {% elif r.attendance == 'Ausente' %}<span class="fastStateChipV65 absent">No embarcó</span>
+        {% elif r.attendance == 'No embarca' or r.attendance == 'No embarcable' %}<span class="fastStateChipV65 noboard">No embarca</span>
+        {% else %}<span class="fastStateChipV65 pending">Pendiente</span>{% endif %}
+      </div>
+      <div class="captainFastActionsV65" aria-label="Estados operativos">
+        {% if locked_v65 %}
+          <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% else %}Bloqueado{% endif %}</span>
+        {% else %}
+          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
+          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
+          <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
+          <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
+            <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
+            <div class="captainMoreOpsBody">
+              {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<div class="captainMoreInfo"><b>Institucional del club</b>{% if v.protocolar_reference_name %}<br>Referente: {{v.protocolar_reference_name}}{% endif %}</div>{% elif v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
+              {% if reason_text and not (reservation_views.get(r.id) and reservation_views.get(r.id).protocolar) %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
+              {% if not v.waitlisted %}<form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>{% endif %}
+              {% if v.waitlisted and v.captain_can_activate_from_waitlist %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Subir desde espera / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Saca a la persona de lista de espera cuando ya hay vacante real y la deja operable para completar el embarque.">i</span></button></form>{% elif v.not_embarked or v.cancelled or r.attendance == 'Ausente' or r.attendance == 'No embarca' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
+              {% if v.show_responsible and captain_responsible_options|length > 0 %}
+              <div class="captainReassignBlock">
+                <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>
+                {% for opt in captain_responsible_options %}
+                  {% if opt.id != r.responsible_user_id %}
+                  <form class="reassignGuestForm" method="post" action="/captain/reassign/{{r.id}}">
+                    <input type="hidden" name="new_responsible_user_id" value="{{opt.id}}">
+                    <button class="capAction reassignAction">{{opt.name}}{% if opt.member_no %} · Socio {{opt.member_no}}{% endif %}</button>
+                  </form>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </details>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+  {% if reservations|length == 0 %}<div class="empty">Sin tripulantes anotados.</div>{% endif %}
+</section>
+
+
+<section class="captainProfileMiniV1166">
+  <div class="captainMiniIdentityV1166">
+    <div class="captainMiniAvatarV1166">{{ (user.name[:1] if user.name else 'C')|upper }}</div>
+    <div>
+      <small>Capitán</small>
+      <b>{{ user.name }}</b>
+    </div>
+  </div>
+
+  <div class="captainMiniActionsV11612">
+    <a class="captainMiniKeyPillV1166" href="/account/password">
+      <span aria-hidden="true">🔑</span>
+      Cambio de clave
+    </a>
+    <details class="captainQuickGuideV11612">
+      <summary>Guía rápida</summary>
+      <div class="captainQuickGuidePanelV11612">
+        <b>Operación del Capitán</b>
+        <ul>
+          <li>Tocá una persona para alternar Presente / No embarcó.</li>
+          <li>Usá ⋯ para No embarca/sin cargo, reactivar o reasignar invitados.</li>
+          <li>Los invitados comunes dependen del socio titular del grupo.</li>
+          <li>Los institucionales son del club, pero conservan la referencia del socio que los cargó.</li>
+          <li>Cancelar por capitán suspende la salida y no genera cargos.</li>
+          <li>Cerrar salida genera la ficha de navegación para Administración.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="card premiumCard" id="fichas"><div class="cardTitle"><div><span class="eyebrow">Cierre</span><h2>Ficha de navegación</h2></div>{% if current_sheet %}<a class="btnSmall" href="/cierre/{{current_sheet.id}}">Ver ficha vigente</a><span class="sheetVersionBadge">Ficha V{{current_sheet.sequence}}</span><a class="btnSmall" href="/cierre/salida/{{outing.id}}">Historial de fichas</a>{% endif %}</div>{% if current_sheet %}<div class="empty okBox">🔒 La salida tiene ficha de cierre vigente. Liquidación consolidada en {{ 'LIQ-' ~ (current_sheet.created_at.strftime('%Y') if current_sheet.created_at else '2026') ~ '-' ~ ('%06d'|format(current_sheet.id)) }}.</div>{% else %}<div class="empty">Al cerrar la salida se generará la ficha definitiva de navegación.</div>{% endif %}</section>
+{% endif %}
+</main>
+<nav class="bottom captainBottom"><a class="on" href="#salidas">Salidas</a><a href="#decision">Decisión</a><a href="#tripulacion">Tripulación</a><a href="#fichas">Ficha</a></nav>
+{% if outing %}
+<div id="captainSummaryOverlay" class="captainSummaryOverlay hidden" onclick="if(event.target===this) captainCloseSummary()">
+  <div class="captainSummaryBox">
+    <button type="button" class="captainSummaryClose" onclick="captainCloseSummary()">Cerrar</button>
+    <div class="summaryPanel hidden" data-summary-panel="presentes"><h3>Presentes</h3>{% if ns.presentes|length == 0 %}<p class="summaryEmpty">Sin presentes.</p>{% else %}<ul>{% for n in ns.presentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+    <div class="summaryPanel hidden" data-summary-panel="pendientes"><h3>Pendientes</h3>{% if ns.pendientes|length == 0 %}<p class="summaryEmpty">Sin pendientes.</p>{% else %}<ul>{% for n in ns.pendientes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+    <div class="summaryPanel hidden" data-summary-panel="ausentes"><h3>Reserva incumplida con cargo</h3>{% if ns.ausentes|length == 0 %}<p class="summaryEmpty">Sin reservas incumplidas con cargo.</p>{% else %}<ul>{% for n in ns.ausentes %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+    <div class="summaryPanel hidden" data-summary-panel="noembarca"><h3>No embarca (sin cargo)</h3>{% if ns.noembarca|length == 0 %}<p class="summaryEmpty">Sin registros.</p>{% else %}<ul>{% for n in ns.noembarca %}<li>{{n}}</li>{% endfor %}</ul>{% endif %}</div>
+  </div>
+</div>
+{% endif %}
+{% if outing and qr_url %}
+
+<div id="captainOpsSheet" class="captainOpsSheet hidden" aria-hidden="true">
+  <div class="captainOpsSheetBackdrop" onclick="captainCloseOpsSheet()"></div>
+  <div class="captainOpsSheetPanel" role="dialog" aria-modal="true" aria-label="Acciones de tripulante">
+    <div class="captainOpsSheetHandle"></div>
+    <div class="captainOpsSheetHeader">
+      <div><span class="eyebrow">Acciones</span><h3 id="captainOpsSheetTitle">Tripulante</h3></div>
+      <button type="button" class="captainOpsSheetClose" onclick="captainCloseOpsSheet()">Cerrar</button>
+    </div>
+    <div id="captainOpsSheetContent" class="captainOpsSheetContent"></div>
+  </div>
+</div>
+<div id="qrCapitanOverlay" class="qrCapitanOverlay hidden" onclick="if(event.target===this) cerrarQRCapitan()">
+  <div class="qrCapitanBox">
+    <h2>Check-in Fjord VI</h2>
+    <p><b>{{outing.title}}</b><br>{{outing.destination}} · {{ fjord_date_short(outing.departure_at) }}</p>
+    <img class="qrCapitanQR" src="{{qr_url}}" alt="QR check-in">
+    <input id="qrCapitanLink" class="qrLinkInput" value="{{checkin_url}}" readonly>
+    <p class="qrCapitanNote">Escaneá para registrar presencia. Si alguien no figura en la lista, no queda habilitado. El capitán puede corregir manualmente.</p>
+    <div class="qrCapitanActions"><button type="button" onclick="copiarQRCapitan()">Copiar link</button><a href="{{checkin_url}}" target="_blank" rel="noopener">Probar</a><button type="button" class="secondary" onclick="cerrarQRCapitan()">Cerrar</button></div>
+  </div>
+</div>
+{% endif %}
+<footer class="appFooter"><small>{{ release_label or ('Fjord VI ' ~ version) }}</small></footer></div>
+<script src="/static/app.js?v={{version}}"></script>
+</body>
+</html>
