@@ -1,4 +1,4 @@
-Fjord VI v3.7.1.1 · Comunicaciones producción segura
+Fjord VI v3.7.2.1 · Comunicaciones producción segura
 
 Objetivo:
 Cerrar el módulo de Comunicaciones con controles explícitos para prueba, simulación y producción real.

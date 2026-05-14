@@ -1,10 +1,10 @@
 {
-  "version": "3.7.1",
-  "release_label": "Fjord VI · v3.7.1",
+  "version": "3.7.2",
+  "release_label": "Fjord VI · v3.7.2",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-13",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI 3.7.1",
+  "app_build": "Fjord VI 3.7.2",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,9 +28,9 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v3.7.1.1 - Baseline visual 3.3 recuperado y versión unificada",
+  "release": "v3.7.2.1 - Baseline visual 3.3 recuperado y versión unificada",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "3.7.1",
-  "release_focus": "Comunicaciones render fix"
+  "app_version": "3.7.2",
+  "release_focus": "Comunicaciones render fix fuerte"
 }

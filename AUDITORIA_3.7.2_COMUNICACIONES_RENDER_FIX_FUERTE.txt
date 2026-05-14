@@ -1,0 +1,33 @@
+Fjord VI v3.7.2 · COMUNICACIONES RENDER FIX FUERTE
+
+Base:
+- FjordVI_3.7.1_COMUNICACIONES_RENDER_FIX.zip
+
+Correcciones:
+- queue_alert se define ahora al comienzo de admin.html, antes de cualquier uso.
+- Se agregan defaults globales para variables locales de Comunicaciones incluso si communications no existe o llega incompleto.
+- Se conserva el fallback backend para master_status y queue_alert.
+- Se probó render de admin/comunicaciones con contexto parcial usando StrictUndefined.
+- Versión distinguible: 3.7.2.
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "admin_comunicaciones_render_ok": true,
+  "version_txt": "3.7.2",
+  "app_version_3_7_2": true,
+  "module_badge": true,
+  "global_queue_alert_default": true,
+  "first_queue_alert_line": 2,
+  "backend_safe_fallback": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja parse:
+ninguno
+
+Errores render admin/comunicaciones:
+ninguno
