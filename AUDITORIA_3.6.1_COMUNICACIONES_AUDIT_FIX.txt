@@ -1,0 +1,29 @@
+Fjord VI v3.6.1 · COMUNICACIONES AUDIT FIX
+
+Base:
+- FjordVI_3.6_COMUNICACIONES_PRODUCCION_SEGURA.zip
+
+Correcciones:
+- Validar SMTP ya no referencia recipient_email dentro de smtp_connection_probe.
+- Validar SMTP prueba conexión real aunque el modo simulación esté activo.
+- Guardar configuración tolera valores inválidos en límite por corrida y vuelve a 25.
+- Prueba real controlada restaura también el redirect previo.
+- Versión distinguible: 3.6.1.
+
+Controles:
+{
+  "python_compiles": true,
+  "jinja_ok": true,
+  "version_txt": "3.6.1",
+  "app_version_3_6_1": true,
+  "module_badge": true,
+  "smtp_probe_no_recipient_email_bug": true,
+  "safe_limit_parse": true,
+  "real_test_restores_force_redirect": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.5"
+APP_VERSION = "3.6.1"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.5"
-RELEASE_LABEL = "Fjord VI · v3.5"
+APP_BUILD = "Fjord VI 3.6.1"
+RELEASE_LABEL = "Fjord VI · v3.6.1.1"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -420,6 +420,7 @@ def smtp_settings(db: Session) -> dict:
         "force_redirect_in_test": smtp_force_redirect_enabled(db),
         "block_real_recipients_in_test": get_system_bool(db, "smtp_block_real_recipients_in_test", True),
         "simulation_mode": smtp_simulation_mode_enabled(db),
+        "send_limit_per_run": smtp_send_limit_per_run(db),
     }
 
 def smtp_configured(settings: dict) -> bool:
@@ -500,6 +501,7 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     return q
 
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
+    limit = min(limit, smtp_send_limit_per_run(db))
     rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
     sent = failed = 0
     for row in rows:
@@ -521,12 +523,12 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
 
 
 def smtp_connection_probe(db: Session) -> tuple[bool, str]:
-    """Prueba conexión/autenticación SMTP sin enviar email."""
-    settings = smtp_settings(db)
-    if smtp_simulation_mode_enabled(db):
-        original_to, effective_to, test_mode = effective_email_recipient(db, recipient_email)
-        return True, f"simulado; original {original_to}; efectivo {effective_to}"
+    """Prueba conexión/autenticación SMTP sin enviar email.
 
+    Esta validación debe probar SMTP real aunque el modo simulación esté activo,
+    porque su objetivo es confirmar host, TLS y credenciales.
+    """
+    settings = smtp_settings(db)
     if not smtp_configured(settings):
         return False, "SMTP no configurado"
     try:
@@ -630,6 +632,38 @@ def scheduler_status_summary(db: Session) -> dict:
         "last_manual": last_manual or "sin registro",
     }
 
+
+def smtp_production_ready(db: Session) -> bool:
+    settings = smtp_settings(db)
+    return bool(
+        smtp_configured(settings)
+        and not smtp_test_mode_enabled(db)
+        and not smtp_simulation_mode_enabled(db)
+        and get_system_meta(db, "smtp_last_probe_ok", "") == "1"
+    )
+
+def smtp_send_limit_per_run(db: Session) -> int:
+    raw = get_system_meta(db, "smtp_send_limit_per_run", "25")
+    try:
+        return max(1, min(200, int(raw)))
+    except Exception:
+        return 25
+
+def smtp_rate_limit_summary(db: Session) -> dict:
+    return {
+        "per_run": smtp_send_limit_per_run(db),
+        "label": f"máx. {smtp_send_limit_per_run(db)} por corrida",
+    }
+
+def smtp_probe_summary(db: Session) -> dict:
+    return {
+        "ok": get_system_meta(db, "smtp_last_probe_ok", "") == "1",
+        "detail": get_system_meta(db, "smtp_last_probe_detail", ""),
+        "at": get_system_meta(db, "smtp_last_probe_at", ""),
+        "host": get_system_meta(db, "smtp_last_probe_host", ""),
+        "tls": get_system_meta(db, "smtp_last_probe_tls", ""),
+    }
+
 def communications_context(db: Session) -> dict:
     ensure_communications_seed(db)
     settings = smtp_settings(db)
@@ -658,11 +692,15 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.5",
+        "module_version": "SMTP · v3.6.1.1",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
         "simulation_mode": smtp_simulation_mode_enabled(db),
+        "production_ready": smtp_production_ready(db),
+        "rate_limit": smtp_rate_limit_summary(db),
+        "probe": smtp_probe_summary(db),
+        "send_limit_per_run": smtp_send_limit_per_run(db),
     }
 
 def communication_status(db: Session) -> dict:
@@ -2266,7 +2304,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.5.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.6.1.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6471,7 +6509,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.5.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.6.1.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6505,7 +6543,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.5.0: orden visual de Capitán por grupos operativos.
+    # v3.6.1.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
@@ -9599,6 +9637,7 @@ def admin_communications_settings(
     smtp_force_redirect_in_test: Optional[str] = Form(None),
     smtp_block_real_recipients_in_test: Optional[str] = Form(None),
     smtp_simulation_mode: Optional[str] = Form(None),
+    smtp_send_limit_per_run: str = Form("25"),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
@@ -9616,6 +9655,11 @@ def admin_communications_settings(
     set_system_meta("smtp_force_redirect_in_test", "1" if smtp_force_redirect_in_test else "0")
     set_system_meta("smtp_block_real_recipients_in_test", "1" if smtp_block_real_recipients_in_test else "0")
     set_system_meta("smtp_simulation_mode", "1" if smtp_simulation_mode else "0")
+    try:
+        safe_limit = max(1, min(200, int(smtp_send_limit_per_run or "25")))
+    except Exception:
+        safe_limit = 25
+    set_system_meta("smtp_send_limit_per_run", str(safe_limit))
 
     issues = reliability_guard_smtp(db)
     log(db, user.name, "communications settings", "Configuración SMTP actualizada; test_mode=" + ("ON" if smtp_test_mode else "OFF") + "; receptor_prueba=" + normalize_email(smtp_test_recipient_email))
@@ -9695,8 +9739,42 @@ def admin_communications_smtp_check(db: Session = Depends(db_session), user: Use
     set_system_meta("smtp_last_probe_ok", "1" if ok else "0")
     set_system_meta("smtp_last_probe_detail", detail)
     set_system_meta("smtp_last_probe_at", now_local().strftime("%d/%m/%Y %H:%M"))
+    settings = smtp_settings(db)
+    set_system_meta("smtp_last_probe_host", settings.get("host", ""))
+    set_system_meta("smtp_last_probe_tls", "TLS" if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on") else "sin TLS")
     log(db, user.name, "communications smtp check", detail)
     return RedirectResponse(f"/admin?page=comunicaciones&msg=smtp_check_{'ok' if ok else 'error'}", status_code=303)
+
+
+@app.post("/admin/communications/real_test")
+def admin_communications_real_test(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
+    """Envía un email real solo al receptor de pruebas, sin afectar socios."""
+    ensure_communications_seed(db)
+    settings = smtp_settings(db)
+    test_email = settings.get("test_recipient_email") or settings.get("admin_email") or user.email or ""
+    if not test_email:
+        return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_sin_receptor", status_code=303)
+    previous_test_mode = get_system_meta(db, "smtp_test_mode", "1")
+    previous_simulation = get_system_meta(db, "smtp_simulation_mode", "0")
+    previous_force_redirect = get_system_meta(db, "smtp_force_redirect_in_test", "1")
+    try:
+        set_system_meta("smtp_test_mode", "1")
+        set_system_meta("smtp_force_redirect_in_test", "1")
+        set_system_meta("smtp_simulation_mode", "0")
+        ok, detail = send_email_now(
+            db,
+            test_email,
+            user.name or "Prueba real controlada",
+            "Prueba real controlada · Fjord VI",
+            "Este es un envío real controlado al receptor de pruebas. No se envió a socios reales.",
+            "real_test_controlado",
+        )
+        log(db, user.name, "communications real test", detail)
+        return RedirectResponse(f"/admin?page=comunicaciones&msg=real_test_{'ok' if ok else 'error'}", status_code=303)
+    finally:
+        set_system_meta("smtp_test_mode", previous_test_mode)
+        set_system_meta("smtp_simulation_mode", previous_simulation)
+        set_system_meta("smtp_force_redirect_in_test", previous_force_redirect)
 
 @app.post("/admin/communications/full_test")
 def admin_communications_full_test(db: Session = Depends(db_session), user: User = Depends(require_role("admin"))):
