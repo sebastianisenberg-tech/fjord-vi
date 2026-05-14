@@ -1,7 +1,0 @@
-{
-  "version": "1.7.6",
-  "fix": "footer/version labels normalized",
-  "backend_changed": false,
-  "logic_changed": false,
-  "templates_checked": true
-}
