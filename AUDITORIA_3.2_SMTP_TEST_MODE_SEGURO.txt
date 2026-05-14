@@ -1,4 +1,4 @@
-Fjord VI v3.7.4.1 · SMTP TEST MODE SEGURO
+Fjord VI v3.7.5 · SMTP TEST MODE SEGURO
 
 Base: FjordVI_3.3_SMTP_TEST_MODE.zip
 

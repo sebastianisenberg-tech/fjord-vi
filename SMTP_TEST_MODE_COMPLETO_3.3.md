@@ -1,4 +1,4 @@
-Fjord VI v3.7.4.1 · SMTP completa
+Fjord VI v3.7.5 · SMTP completa
 
 Configuración recomendada para testeo con Gmail:
 - SMTP host: smtp.gmail.com

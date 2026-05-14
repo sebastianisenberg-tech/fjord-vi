@@ -1,4 +1,4 @@
-Fjord VI v3.7.4.1 · Comunicaciones Control Final
+Fjord VI v3.7.5 · Comunicaciones Control Final
 
 Objetivo:
 Consolidar Comunicaciones con un estado maestro inequívoco, semáforos de seguridad, alerta de cola, preview de plantillas y controles claros de producción.
@@ -10,7 +10,7 @@ Agregado:
 - Preview renderizado JSON de cada plantilla.
 - Nota de auditoría SMTP.
 - Freeze de producción con instrucciones.
-- Versión visible SMTP · v3.7.4.
+- Versión visible SMTP · v3.7.5.
 
 Secuencia recomendada:
 1. Cargar configuración SMTP.

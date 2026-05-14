@@ -1,4 +1,4 @@
-Fjord VI v3.7.4.1 · COMUNICACIONES SMTP FINAL
+Fjord VI v3.7.5 · COMUNICACIONES SMTP FINAL
 
 Base:
 - FjordVI_3.3_SMTP_COMPLETA.zip
@@ -7,7 +7,7 @@ Cambios:
 - Nueva versión distinguible: 3.4.
 - Página Comunicaciones rearmada como módulo final de test SMTP.
 - Semáforos claros: SMTP, receptor, modo prueba, redirect, validación SMTP, fallidos, pendientes, eventos ON.
-- Badge visible del módulo: SMTP · v3.7.4.
+- Badge visible del módulo: SMTP · v3.7.5.
 - Botón Validar SMTP.
 - Botón Prueba integral SMTP.
 - Estado central de seguridad: listo para test / incompleto / producción.
