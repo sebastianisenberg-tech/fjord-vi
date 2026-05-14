@@ -1,4 +1,4 @@
-Fjord VI v3.7.6 · SMTP CONFIG FIX
+Fjord VI v3.7.7 · SMTP CONFIG FIX
 
 Base:
 - FjordVI_3.7.3_QUEUE_ALERT_FIX.zip
@@ -9,7 +9,7 @@ Correcciones:
 - Se elimina la desincronización entre campos visibles y semáforo superior.
 - smtp_configured ahora exige host, puerto, usuario, password/App Password y remitente.
 - Validar SMTP informa exactamente qué campo falta.
-- Limpieza de badge/versionado visible: SMTP · v3.7.6.
+- Limpieza de badge/versionado visible: SMTP · v3.7.7.
 - Se mantiene modo prueba, redirect y bloqueo de destinatarios reales.
 
 Controles:

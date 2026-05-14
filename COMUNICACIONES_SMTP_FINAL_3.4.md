@@ -1,4 +1,4 @@
-Fjord VI v3.7.6 · Comunicaciones SMTP final
+Fjord VI v3.7.7 · Comunicaciones SMTP final
 
 Objetivo:
 Dejar una pantalla única de comunicaciones lista para testear correo sin seguir generando versiones intermedias.

@@ -1,0 +1,42 @@
+Fjord VI v3.7.7 · SMTP PLANTILLAS CORREGIDAS
+
+Base:
+- FjordVI_3.7.6_COMUNICACIONES_PROD_TEST.zip
+
+Objetivo:
+- Corregir el bug de plantillas que se pisaban al refrescar.
+- Evitar que el editor vuelva a defaults viejos.
+- Instalar defaults institucionales correctos de entrada.
+- Hacer que "Probar esta plantilla" use datos de prueba dignos y no "Admin Club".
+- Evitar placeholders visibles, \n literal y textos amateur.
+
+Cambios principales:
+- ensure_communications_seed ya NO pisa siempre plantillas existentes.
+- Solo resetea plantillas vacías, rotas o con defaults viejos conocidos.
+- Defaults institucionales nuevos para las 7 plantillas.
+- Cancelación registrada queda neutra e institucional.
+- Recordatorio 24h renderiza lista con saltos reales.
+- Test de plantilla usa "Socio de prueba", "Invitado de prueba", "Capitán de prueba".
+- Se preservan ediciones manuales válidas futuras.
+
+Controles:
+{
+  "templates_render_clean": true,
+  "template_bad_keys": [],
+  "cancelacion_institucional": true,
+  "recordatorio_linebreak_ok": true,
+  "python_compiles": true,
+  "jinja_parse_ok": true,
+  "version_txt": true,
+  "app_version": true,
+  "no_seed_always_overwrite": true,
+  "template_test_uses_socio_prueba": true,
+  "cancelacion_default_no_risky_vars": true,
+  "smtp_badge_3_7_7": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

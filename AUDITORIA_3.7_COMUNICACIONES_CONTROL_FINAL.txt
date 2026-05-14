@@ -1,4 +1,4 @@
-Fjord VI v3.7.6 · COMUNICACIONES CONTROL FINAL
+Fjord VI v3.7.7 · COMUNICACIONES CONTROL FINAL
 
 Base:
 - FjordVI_3.6.1_COMUNICACIONES_AUDIT_FIX.zip
@@ -10,7 +10,7 @@ Cambios:
 - Preview renderizado JSON por plantilla.
 - Nota de auditoría SMTP.
 - Freeze de producción.
-- Versión distinguible: SMTP · v3.7.6.
+- Versión distinguible: SMTP · v3.7.7.
 
 No se tocó:
 - reservas
