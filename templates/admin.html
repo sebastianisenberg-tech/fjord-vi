@@ -189,7 +189,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     .dangerBtn{margin-top:12px;background:#b42323!important;color:#fff!important;border-color:#b42323!important}
 
 
-    /* v3.5.0 Fase 8: UX operacional compacta en Sistema */
+    /* v3.6.1.0 Fase 8: UX operacional compacta en Sistema */
     .systemQuickBar{position:sticky;top:82px;z-index:18;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 12px;padding:8px;border:1px solid #dbe8ef;background:rgba(246,250,253,.94);backdrop-filter:blur(8px);border-radius:14px;box-shadow:0 8px 22px rgba(20,40,55,.06)}
     .systemQuickBar a,.systemQuickBar button{height:30px;border:1px solid #cfe0e9;border-radius:999px;background:#fff;color:#21465d;text-decoration:none;font-weight:900;font-size:12px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
     .systemQuickBar button{background:#0d5d88;color:#fff;border-color:#0d5d88}
@@ -210,7 +210,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     @media(max-width:900px){.systemQuickBar{top:58px;overflow:auto;flex-wrap:nowrap}.systemQuickBar a,.systemQuickBar button{white-space:nowrap}.systemFold .systemCheckList{max-height:300px}}
 
 
-    /* v3.5.2 Fase 11: Centro Operativo Inteligente */
+    /* v3.6.1.2 Fase 11: Centro Operativo Inteligente */
     .opsCenter{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin:10px 0 12px}
     .opsCard{background:#fff;border:1px solid var(--erp-line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(20,40,55,.05)}
     .opsCard h3{margin:0 0 8px;font-size:16px}.opsCard p{margin:0;color:#607080;font-weight:750}.opsBig{font-size:24px;font-weight:950;color:#173f5f;line-height:1.05}.opsMetaGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.opsMetaGrid div{background:#f5f9fc;border:1px solid #dfeaf1;border-radius:10px;padding:9px}.opsMetaGrid span{display:block;color:#607080;font-size:10px;text-transform:uppercase;font-weight:950}.opsMetaGrid b{font-size:18px;color:#173f5f}.opsAlertList{display:grid;gap:7px}.opsAlert{border-radius:10px;padding:8px 10px;border:1px solid #dfeaf1;background:#f7fbfd;display:grid;gap:2px}.opsAlert.ok{background:#eef8f1;border-color:#cfe9d5;color:#27663a}.opsAlert.warn{background:#fff7df;border-color:#ecd48e;color:#78560b}.opsAlert.bad{background:#fff1f1;border-color:#f0c8c8;color:#8a3a3a}.opsAlert b{font-weight:950}.opsAlert small{color:inherit;opacity:.82}.opsTimeline{display:grid;gap:7px;max-height:260px;overflow:auto}.opsTimelineItem{display:grid;grid-template-columns:112px 1fr;gap:9px;border-bottom:1px solid #edf3f6;padding:7px 0}.opsTimelineItem time{font-size:11px;color:#607080;font-weight:850}.opsTimelineItem b{font-weight:950}.opsHealthGrid{display:grid;gap:6px}.opsSearchBox{display:flex;gap:8px;margin:8px 0}.opsSearchBox input{flex:1;height:34px;border:1px solid var(--erp-line);border-radius:9px;padding:0 10px;font-weight:800}.opsSearchBox button{height:34px;border:0;border-radius:9px;background:var(--erp-blue2);color:#fff;font-weight:950;padding:0 14px}.opsSearchResults{display:grid;gap:6px;margin-top:8px}.opsSearchResults a{display:block;border:1px solid #dfeaf1;background:#f8fbfd;border-radius:9px;padding:8px;text-decoration:none;color:#173f5f;font-weight:850}
@@ -436,12 +436,13 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     {% if admin_page == 'comunicaciones' %}
     <section class="erpTitle commTitleFinal">
       <div>
-        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.5'}}</span></h1>
+        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.6.1.1'}}</span></h1>
         <p>Centro de emails transaccionales: pruebas seguras, eventos, plantillas, SMTP, cola y registro de envíos.</p>
       </div>
       <div class="erpTitleActions">
         <form method="post" action="/admin/communications/smtp_check" style="display:inline"><button class="erpBtn" type="submit">Validar SMTP</button></form>
         <form method="post" action="/admin/communications/full_test" style="display:inline"><button class="erpBtn warnSoft" type="submit">Prueba integral SMTP</button></form>
+        <form method="post" action="/admin/communications/real_test" style="display:inline"><button class="erpBtn realTest" type="submit">Prueba real controlada</button></form>
         <form method="post" action="/admin/communications/reminders" style="display:inline"><button class="erpBtn" type="submit">Generar recordatorios 24h</button></form>
         <form method="post" action="/admin/communications/process" style="display:inline"><button class="erpBtn erpPrimary" type="submit">Procesar cola</button></form>
         <a class="erpBtn" href="/admin/communications/log.csv">Exportar CSV</a>
@@ -469,6 +470,8 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
       <div class="smtpHeroPills">
         <span class="pillStrong">{{communications.readiness.label}}</span>
         <span class="pillSoft">Receptor: {{communications.smtp_test_recipient_email or 'sin configurar'}}</span>
+        {% if communications.simulation_mode %}<span class="pillSimulation">SIMULACIÓN</span>{% endif %}
+        {% if communications.production_ready %}<span class="pillProduction">PRODUCCIÓN REAL</span>{% endif %}
       </div>
     </section>
 
@@ -484,6 +487,9 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
       <div class="smtpCheck {% if communications.simulation_mode %}warn{% else %}ok{% endif %}"><b>Simulación</b><span>{% if communications.simulation_mode %}sin envío real{% else %}apagada{% endif %}</span></div>
       <div class="smtpCheck ok"><b>Scheduler</b><span>{{communications.scheduler.label}}</span></div>
       <div class="smtpCheck {% if communications.last_sent.exists %}ok{% else %}warn{% endif %}"><b>Último email</b><span>{% if communications.last_sent.exists %}{{communications.last_sent.event_key}}{% else %}sin envíos{% endif %}</span></div>
+      <div class="smtpCheck {% if communications.production_ready %}danger{% else %}ok{% endif %}"><b>Producción</b><span>{% if communications.production_ready %}real activa{% else %}protegida{% endif %}</span></div>
+      <div class="smtpCheck ok"><b>Límite</b><span>{{communications.rate_limit.label}}</span></div>
+      <div class="smtpCheck {% if communications.probe.ok %}ok{% elif communications.probe.at %}danger{% else %}warn{% endif %}"><b>SMTP detalle</b><span>{% if communications.probe.at %}{{communications.probe.host}} · {{communications.probe.tls}}{% else %}sin validar{% endif %}</span></div>
     </section>
 
     {% if communications.last_probe_detail %}
@@ -491,6 +497,12 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
       <b>Última validación SMTP</b><span>{{communications.last_probe_detail}}</span>
     </div>
     {% endif %}
+
+    
+    <div class="smartAlert {% if communications.production_ready %}danger{% else %}neutral{% endif %}">
+      <b>Panel producción real</b>
+      <span>{% if communications.production_ready %}ATENCIÓN: el sistema está en condiciones de enviar emails a destinatarios reales. Revisar eventos ON, cola pendiente y límite por corrida antes de procesar.{% else %}Protección activa: mientras Modo prueba, Redirect o Simulación estén activos, no se considera producción real.{% endif %}</span>
+    </div>
 
     <div class="smartAlert neutral smtpLastSent">
       <b>Último email enviado</b>
@@ -539,12 +551,13 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
         <label>Nombre remitente<input name="smtp_from_name" value="{{communications.settings.from_name}}" placeholder="YCA · Fjord VI TEST"></label>
         <label>Email administración<input name="communications_admin_email" type="email" value="{{communications.settings.admin_email}}" placeholder="administracion@club.org"></label>
         <label>Email receptor de pruebas<input name="smtp_test_recipient_email" type="email" value="{{communications.smtp_test_recipient_email}}" placeholder="tester@dominio.com"></label>
+        <label>Límite por corrida<input name="smtp_send_limit_per_run" type="number" min="1" max="200" value="{{communications.settings.send_limit_per_run or 25}}"></label>
 
         <label class="checkLine"><input type="checkbox" name="smtp_tls" value="1" {% if communications.settings.tls in ['1','true','True','yes','on'] %}checked{% endif %}> Usar TLS</label>
         <label class="checkLine strongCheck"><input type="checkbox" name="smtp_test_mode" value="1" {% if communications.smtp_test_mode %}checked{% endif %}> Modo prueba SMTP</label>
         <label class="checkLine"><input type="checkbox" name="smtp_force_redirect_in_test" value="1" {% if communications.smtp_force_redirect_in_test %}checked{% endif %}> Redirigir todos los correos al receptor de pruebas</label>
         <label class="checkLine"><input type="checkbox" name="smtp_block_real_recipients_in_test" value="1" {% if communications.settings.block_real_recipients_in_test %}checked{% endif %}> Bloquear destinatarios reales durante pruebas</label>
-        <label class="checkLine"><input type="checkbox" name="smtp_simulation_mode" value="1" {% if communications.simulation_mode %}checked{% endif %}> Modo simulación: generar cola sin enviar SMTP real</label>
+        <label class="checkLine"><input type="checkbox" name="smtp_simulation_mode" value="1" {% if communications.simulation_mode %}checked{% endif %}> Modo simulación: genera cola/logs pero NO envía SMTP real</label>
 
         <button class="erpBtn erpPrimary" type="submit">Guardar configuración</button>
         <small>Secuencia recomendada: guardar configuración → validar SMTP → enviar prueba → prueba integral SMTP → encender eventos uno por uno.</small>
