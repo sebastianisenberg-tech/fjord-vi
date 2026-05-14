@@ -1,4 +1,4 @@
-# Release Checklist - Fjord VI 3.7.3.1
+# Release Checklist - Fjord VI 3.7.4
 
 Checklist operativo mínimo para producción:
 

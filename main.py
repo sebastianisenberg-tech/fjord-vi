@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.3"
+APP_VERSION = "3.7.4"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.3.1"
-RELEASE_LABEL = "Fjord VI · v3.7.3.1.1.1.1"
+APP_BUILD = "Fjord VI 3.7.4"
+RELEASE_LABEL = "Fjord VI · v3.7.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -424,7 +424,14 @@ def smtp_settings(db: Session) -> dict:
     }
 
 def smtp_configured(settings: dict) -> bool:
-    return bool(settings.get("host") and settings.get("from_email"))
+    return bool(
+        (settings.get("host") or "").strip()
+        and str(settings.get("port") or "").strip()
+        and (settings.get("username") or "").strip()
+        and (settings.get("password") or "").strip()
+        and (settings.get("from_email") or "").strip()
+    )
+
 
 def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
     settings = smtp_settings(db)
@@ -530,7 +537,13 @@ def smtp_connection_probe(db: Session) -> tuple[bool, str]:
     """
     settings = smtp_settings(db)
     if not smtp_configured(settings):
-        return False, "SMTP no configurado"
+        missing = []
+        if not (settings.get("host") or "").strip(): missing.append("SMTP host")
+        if not str(settings.get("port") or "").strip(): missing.append("puerto")
+        if not (settings.get("username") or "").strip(): missing.append("usuario")
+        if not (settings.get("password") or "").strip(): missing.append("password / App Password")
+        if not (settings.get("from_email") or "").strip(): missing.append("remitente email")
+        return False, "SMTP no configurado: " + ", ".join(missing)
     try:
         port = int(settings.get("port") or 587)
         with smtplib.SMTP(settings["host"], port, timeout=20) as server:
@@ -777,7 +790,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.7.3.1.1.1.1",
+        "module_version": "SMTP · v3.7.4",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -1155,6 +1168,22 @@ def set_system_meta(key: str, value: str):
             db.commit()
     except Exception:
         pass
+
+
+def set_system_meta_db(db: Session, key: str, value: str):
+    """Guarda system_meta usando la misma sesión de DB del request.
+
+    Evita inconsistencias de contexto cuando un formulario guarda con una sesión
+    y el panel de estado lee con otra sesión/cache.
+    """
+    row = db.get(SystemMeta, key)
+    if not row:
+        row = SystemMeta(key=key, value=str(value), updated_at=now_local())
+        db.add(row)
+    else:
+        row.value = str(value)
+        row.updated_at = now_local()
+
 
 def get_system_meta(db: Session, key: str, default: str = "") -> str:
     row = db.get(SystemMeta, key)
@@ -2391,7 +2420,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.7.3.1.4 se limpian advertencias antiguas de fases internas para evitar
+    En v3.7.4.1.4 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6596,7 +6625,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.7.3.1.0: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.7.4.1.0: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6630,7 +6659,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.7.3.1.0: orden visual de Capitán por grupos operativos.
+    # v3.7.4.1.0: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,
@@ -9728,29 +9757,48 @@ def admin_communications_settings(
     db: Session = Depends(db_session),
     user: User = Depends(require_role("admin"))
 ):
-    set_system_meta("smtp_host", smtp_host.strip())
-    set_system_meta("smtp_port", smtp_port.strip() or "587")
-    set_system_meta("smtp_username", smtp_username.strip())
-    if smtp_password.strip():
-        set_system_meta("smtp_password", smtp_password.strip())
-    set_system_meta("smtp_from_email", normalize_email(smtp_from_email))
-    set_system_meta("smtp_from_name", smtp_from_name.strip() or f"{CLUB_NAME} · {APP_NAME}")
-    set_system_meta("smtp_tls", "1" if smtp_tls else "0")
-    set_system_meta("communications_admin_email", normalize_email(communications_admin_email))
-    set_system_meta("smtp_test_mode", "1" if smtp_test_mode else "0")
-    set_system_meta("smtp_test_recipient_email", normalize_email(smtp_test_recipient_email))
-    set_system_meta("smtp_force_redirect_in_test", "1" if smtp_force_redirect_in_test else "0")
-    set_system_meta("smtp_block_real_recipients_in_test", "1" if smtp_block_real_recipients_in_test else "0")
-    set_system_meta("smtp_simulation_mode", "1" if smtp_simulation_mode else "0")
+
+    host_clean = (smtp_host or "").strip().lower()
+    port_clean = (smtp_port or "587").strip() or "587"
+    username_clean = normalize_email(smtp_username)
+    password_clean = (smtp_password or "").strip()
+    from_email_clean = normalize_email(smtp_from_email)
+    from_name_clean = (smtp_from_name or "").strip() or f"{CLUB_NAME} · {APP_NAME}"
+    admin_email_clean = normalize_email(communications_admin_email)
+    test_recipient_clean = normalize_email(smtp_test_recipient_email)
+
+    # Guardar en la misma sesión que usa el request para evitar paneles desincronizados.
+    set_system_meta_db(db, "smtp_host", host_clean)
+    set_system_meta_db(db, "smtp_port", port_clean)
+    set_system_meta_db(db, "smtp_username", username_clean)
+    if password_clean:
+        set_system_meta_db(db, "smtp_password", password_clean)
+    set_system_meta_db(db, "smtp_from_email", from_email_clean)
+    set_system_meta_db(db, "smtp_from_name", from_name_clean)
+    set_system_meta_db(db, "smtp_tls", "1" if smtp_tls else "0")
+    set_system_meta_db(db, "communications_admin_email", admin_email_clean)
+    set_system_meta_db(db, "smtp_test_mode", "1" if smtp_test_mode else "0")
+    set_system_meta_db(db, "smtp_test_recipient_email", test_recipient_clean)
+    set_system_meta_db(db, "smtp_force_redirect_in_test", "1" if smtp_force_redirect_in_test else "0")
+    set_system_meta_db(db, "smtp_block_real_recipients_in_test", "1" if smtp_block_real_recipients_in_test else "0")
+    set_system_meta_db(db, "smtp_simulation_mode", "1" if smtp_simulation_mode else "0")
     try:
         safe_limit = max(1, min(200, int(smtp_send_limit_per_run or "25")))
     except Exception:
         safe_limit = 25
-    set_system_meta("smtp_send_limit_per_run", str(safe_limit))
+    set_system_meta_db(db, "smtp_send_limit_per_run", str(safe_limit))
 
-    issues = reliability_guard_smtp(db)
-    log(db, user.name, "communications settings", "Configuración SMTP actualizada; test_mode=" + ("ON" if smtp_test_mode else "OFF") + "; receptor_prueba=" + normalize_email(smtp_test_recipient_email))
-    if issues:
+    # La validación posterior debe leer datos recién guardados.
+    db.commit()
+    db.expire_all()
+
+    settings_after = smtp_settings(db)
+    missing_after = smtp_missing_requirements(db)
+    safety_issues = reliability_guard_smtp(db)
+    log(db, user.name, "communications settings", "Configuración SMTP actualizada; host=" + (settings_after.get("host") or "-") + "; test_mode=" + ("ON" if smtp_test_mode else "OFF") + "; receptor_prueba=" + test_recipient_clean)
+
+    # Si el único problema era SMTP host, ahora no debe aparecer como faltante.
+    if missing_after or safety_issues:
         return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_incompleto", status_code=303)
     return RedirectResponse("/admin?page=comunicaciones&msg=smtp_guardado", status_code=303)
 
