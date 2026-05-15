@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-APP_VERSION = "3.8.5-rc1"
+APP_VERSION = "3.8.6-production-ready-rc1"
 
 # Estados reales usados por el monolito. Este módulo NO introduce una segunda
 # nomenclatura: formaliza la semántica existente para que las rutas no escriban
