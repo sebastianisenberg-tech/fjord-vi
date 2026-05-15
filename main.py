@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.13"
+APP_VERSION = "3.7.14"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.13"
-RELEASE_LABEL = "Fjord VI · v3.7.13"
+APP_BUILD = "Fjord VI 3.7.14"
+RELEASE_LABEL = "Fjord VI · v3.7.14"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1354,28 +1354,7 @@ def queue_captain_attendance_status_email(db: Session, outing: Outing, r: Reserv
         responsible = db.query(User).filter_by(dni=r.dni).first()
     if not responsible or (responsible.role or "").strip().lower() != "socio" or not (responsible.email or "").strip():
         return 0
-    att = (r.attendance or "").strip()
-    charge = float(r.charge_amount or 0)
-    if att == "Presente":
-        estado = "Presente / habilitado para embarcar"
-        msg = "La persona quedó registrada como presente para esta salida."
-        if was_waitlisted:
-            msg = "La reserva salió de lista de espera y quedó habilitada para embarcar."
-    elif att == "No embarca":
-        estado = "No embarca / sin cargo"
-        msg = "El capitán marcó que no embarca por decisión operativa. No genera cargo."
-    elif att == "Ausente":
-        if charge > 0:
-            estado = "Reserva incumplida con cargo reglamentario"
-            msg = "La reserva quedó como no presentada dentro de la ventana reglamentaria y genera cargo según corresponda."
-        else:
-            estado = "Ausente / sin cargo"
-            msg = "La reserva quedó registrada como ausente sin cargo."
-    else:
-        estado = att or "Estado actualizado"
-        msg = "Se actualizó el estado operativo de embarque."
-    if canonical_kind(r.kind) in ("invitado", "hijo_menor"):
-        msg += " Este aviso se envía al socio responsable; los invitados no reciben comunicaciones directas."
+    estado, msg = captain_status_label_and_message(outing, r, was_waitlisted=was_waitlisted)
     if promoted_names:
         msg += " También se actualizaron promociones desde lista de espera: " + ", ".join([str(x) for x in promoted_names if x]) + "."
     q = queue_email(db, "embarque_estado_socio", responsible.email, responsible.name, {
@@ -1391,6 +1370,159 @@ def queue_captain_attendance_status_email(db: Session, outing: Outing, r: Reserv
         "reservation_id": r.id,
     })
     return 1 if q else 0
+
+
+def reservation_operational_snapshot(db: Session, outing_id: int) -> dict:
+    """Snapshot liviano antes de una maniobra del capitán.
+
+    Se usa para detectar todos los cambios reales producidos por una acción,
+    incluyendo cascadas sobre invitados del socio responsable y promociones
+    desde lista de espera. No se apoya sólo en el registro tocado por el botón.
+    """
+    rows = db.query(Reservation).filter_by(outing_id=outing_id).all()
+    snap = {}
+    for rr in rows:
+        snap[int(rr.id)] = {
+            "attendance": rr.attendance or "",
+            "status": rr.status or "",
+            "charge_amount": float(rr.charge_amount or 0),
+            "cancel_reason": rr.cancel_reason or "",
+            "responsible_user_id": int(rr.responsible_user_id or 0),
+            "cancelled": bool(rr.cancelled_at is not None),
+        }
+    return snap
+
+
+def reservation_operational_changed(before: dict, r: Reservation) -> bool:
+    """Determina si un registro cambió en términos comunicables al socio."""
+    old = before.get(int(r.id)) or {}
+    if not old:
+        return True
+    return (
+        (old.get("attendance") or "") != (r.attendance or "")
+        or (old.get("status") or "") != (r.status or "")
+        or float(old.get("charge_amount") or 0) != float(r.charge_amount or 0)
+        or (old.get("cancel_reason") or "") != (r.cancel_reason or "")
+        or int(old.get("responsible_user_id") or 0) != int(r.responsible_user_id or 0)
+        or bool(old.get("cancelled")) != bool(r.cancelled_at is not None)
+    )
+
+
+def responsible_user_for_reservation_email(db: Session, r: Reservation) -> Optional[User]:
+    """Devuelve siempre el socio responsable del aviso.
+
+    Regla dura: los invitados/menores no reciben emails directos.
+    """
+    if not r:
+        return None
+    uid = getattr(r, "responsible_user_id", None)
+    responsible = db.get(User, uid) if uid else None
+    if not responsible and canonical_kind(r.kind) == "socio":
+        responsible = db.query(User).filter_by(dni=r.dni).first()
+    if not responsible or (responsible.role or "").strip().lower() != "socio":
+        return None
+    if not (responsible.email or "").strip():
+        return None
+    return responsible
+
+
+def captain_status_label_and_message(outing: Outing, r: Reservation, was_waitlisted: bool = False) -> tuple[str, str]:
+    """Texto institucional visible para avisos operativos del capitán."""
+    att = (r.attendance or "").strip()
+    charge = float(r.charge_amount or 0)
+    if att == "Presente":
+        estado = "Presente / habilitado para embarcar"
+        msg = "La persona quedó registrada como presente para esta salida."
+        if was_waitlisted:
+            msg = "La reserva salió de lista de espera y quedó habilitada para embarcar."
+    elif att == "No embarca":
+        estado = "No embarca / sin cargo"
+        msg = "El capitán marcó que no embarca por decisión operativa. No genera cargo."
+    elif att == "Ausente":
+        if charge > 0:
+            estado = "Reserva incumplida con cargo reglamentario"
+            msg = "La reserva quedó registrada como no presentada dentro de la ventana reglamentaria y genera cargo según corresponda."
+        else:
+            estado = "Ausente / sin cargo"
+            msg = "La reserva quedó registrada como ausente sin cargo."
+    elif is_waitlisted(r):
+        estado = "En lista de espera"
+        msg = "La reserva quedó en lista de espera."
+    else:
+        estado = att or "Estado actualizado"
+        msg = "Se actualizó el estado operativo de embarque."
+    if canonical_kind(r.kind) in ("invitado", "hijo_menor"):
+        msg += " Este aviso se envía al socio responsable; los invitados no reciben comunicaciones directas."
+    return estado, msg
+
+
+def queue_captain_attendance_changes_emails(db: Session, outing: Outing, before_snapshot: dict, actor_name: str = "", primary_reservation_id: Optional[int] = None, primary_was_waitlisted: bool = False) -> int:
+    """Encola avisos por TODOS los cambios reales generados por una maniobra.
+
+    Corrige el bug observado: el capitán cambiaba un socio y el sistema sólo
+    notificaba al registro tocado, pero no a los invitados afectados en cascada
+    ni a los promovidos/reactivados. Este motor compara antes/después y agrupa
+    por socio responsable para evitar floods innecesarios.
+    """
+    if not outing:
+        return 0
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    changed = [rr for rr in rows if reservation_operational_changed(before_snapshot, rr)]
+    if not changed:
+        return 0
+
+    groups = {}
+    for rr in changed:
+        responsible = responsible_user_for_reservation_email(db, rr)
+        if not responsible:
+            continue
+        groups.setdefault(int(responsible.id), {"user": responsible, "items": []})["items"].append(rr)
+
+    queued = 0
+    for group in groups.values():
+        responsible = group["user"]
+        items = group["items"]
+        if len(items) == 1:
+            rr = items[0]
+            queued += queue_captain_attendance_status_email(
+                db, outing, rr, actor_name=actor_name,
+                was_waitlisted=bool(primary_was_waitlisted and int(rr.id) == int(primary_reservation_id or 0)),
+                promoted_names=None,
+            )
+            continue
+
+        lines = []
+        for rr in items:
+            old = before_snapshot.get(int(rr.id), {})
+            estado, _msg = captain_status_label_and_message(
+                outing, rr, was_waitlisted=bool(primary_was_waitlisted and int(rr.id) == int(primary_reservation_id or 0))
+            )
+            old_att = old.get("attendance") or "sin estado anterior"
+            tipo = display_kind(rr.kind)
+            charge = float(rr.charge_amount or 0)
+            amount = f" · $ {human_money(charge)}" if charge > 0 else ""
+            lines.append(f"- {rr.person_name} ({tipo}): {old_att} → {estado}{amount}")
+
+        msg = (
+            "El capitán actualizó varias reservas asociadas a tu inscripción:\n"
+            + "\n".join(lines)
+            + "\n\nEste aviso se envía al socio responsable; los invitados no reciben comunicaciones directas."
+        )
+        q = queue_email(db, "embarque_estado_socio", responsible.email, responsible.name, {
+            "socio_nombre": responsible.name,
+            "persona_nombre": "varias reservas asociadas",
+            "salida_nombre": outing.title,
+            "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+            "hora": outing.departure_at.strftime("%H:%M"),
+            "estado": "Actualización operativa de embarque",
+            "mensaje_embarque": msg,
+            "actor": actor_name or "Capitán",
+            "outing_id": outing.id,
+            "reservation_id": ",".join(str(x.id) for x in items),
+        })
+        if q:
+            queued += 1
+    return queued
 
 def cancel_pending_closing_notifications_for_outing(db: Session, outing_id: int, reason: str = "Liquidación reemplazada o salida reabierta") -> int:
     """Cancela emails económicos pendientes vinculados a una salida.
@@ -7103,6 +7235,7 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
     now = now_local()
+    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
     was_waitlisted = is_waitlisted(r)
     r.cancelled_at = now
     r.status = "Cancelado"
@@ -7997,9 +8130,9 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
     enforce_capacity(db, outing)
     db.commit()
-    notified_status = queue_captain_attendance_status_email(db, outing, r, actor_name=user.name, was_waitlisted=was_waitlisted, promoted_names=promoted)
+    notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
     if notified_status:
-        auto_process_notifications(db, limit=5)
+        auto_process_notifications(db, limit=max(5, notified_status + 2))
     audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "emails": notified_status})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
@@ -8034,6 +8167,7 @@ def captain_reassign_guest(
     if outing.status in ("Embarque cerrado", "Cancelada por capitán", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
+    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
     was_waitlisted = is_waitlisted(r)
 
     new_responsible = db.get(User, new_responsible_user_id)
@@ -8079,6 +8213,9 @@ def captain_reassign_guest(
 
     enforce_capacity(db, outing)
     db.commit()
+    notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
+    if notified_status:
+        auto_process_notifications(db, limit=max(5, notified_status + 2))
     audit_event(db, user, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name}{' / reactivado desde espera' if was_waitlisted and not is_waitlisted(r) else ''} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_reassign, after={"responsible_user_id": r.responsible_user_id, "original_responsible_user_id": getattr(r, "original_responsible_user_id", None), "reassignment_count": reservation_reassignment_count_value(r), "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
