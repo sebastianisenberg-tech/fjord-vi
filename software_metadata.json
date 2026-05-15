@@ -30,9 +30,9 @@
   "logging_base": true,
   "release": "v3.8.6 - Release hardening",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "RC4: tap rápido del Capitán resuelto en servidor, guard contra pantalla desactualizada, sin cambios en PDF ni UX principal.",
+  "build_note": "RC5: tablero Capitán con No embarcó/con cargo directo desde menú, tap rápido sin estados falsos, promoción de espera al liberar plaza.",
   "app_version": "3.8.6",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PRODUCTION_READY_RC4",
-  "hardening_focus": "RC4 captain logic: server-authoritative fast toggle, stale-screen guard, cancellation/reopen invariants, SMTP hardening retained"
+  "release_stage": "PRODUCTION_READY_RC5",
+  "hardening_focus": "RC5 captain boarding logic: explicit absent-with-charge from menu, fast tap present/pending only, waitlist promotion when a place is freed"
 }

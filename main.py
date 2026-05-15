@@ -43,7 +43,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
 APP_VERSION = "3.8.6"
-APP_RELEASE_STAGE = "PRODUCTION_READY_RC4"
+APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -5098,7 +5098,7 @@ def set_reservation_status_guarded(r: Reservation, target_status: str, *, force:
     """Único setter lógico para estados de reserva críticos.
 
     Las rutas existentes conservan compatibilidad, pero toda transición agregada
-    desde 3.8.6-PRODUCTION_READY_RC4 debe pasar por acá. Si aparece una transición no formalizada,
+    desde 3.8.6-PRODUCTION_READY_RC5 debe pasar por acá. Si aparece una transición no formalizada,
     se bloquea antes de grabar una contradicción silenciosa.
     """
     current = (getattr(r, "status", "") or "Confirmado").strip()
@@ -8250,14 +8250,14 @@ def attendance_idempotent_noop(r: Reservation, value: str) -> bool:
 def resolve_captain_fast_toggle_value(r: Reservation) -> str:
     """Alternancia autoritativa del servidor para el tap rápido del Capitán.
 
-    RC4: el navegador puede quedar viejo o recibir un doble toque. El servidor, no
-    la pantalla, decide el próximo estado a partir del estado real persistido:
-    Presente -> Ausente; cualquier otro estado operable -> Presente.
-    Las acciones excepcionales sin cargo siguen protegidas en el menú.
+    RC5: el navegador puede quedar viejo o recibir un doble toque. El servidor, no
+    la pantalla, decide el próximo estado a partir del estado real persistido.
+    Tap rápido: Pendiente -> Presente. Si ya estaba resuelto, vuelve a Pendiente.
+    No embarcó/con cargo y No embarca/sin cargo quedan como acciones explícitas del menú.
     """
     current = (getattr(r, "attendance", "") or "Por confirmar").strip()
-    if current == BOARDING_TRANSITION_PRESENT:
-        return BOARDING_TRANSITION_ABSENT_CHARGED
+    if current in (BOARDING_TRANSITION_PRESENT, BOARDING_TRANSITION_ABSENT_CHARGED, BOARDING_TRANSITION_NO_BOARD_FREE, "No embarcable"):
+        return BOARDING_TRANSITION_PENDING
     return BOARDING_TRANSITION_PRESENT
 
 
@@ -8749,7 +8749,7 @@ def outing_status(
 
 @app.post("/captain/attendance_toggle/{rid}")
 def attendance_toggle(request: Request, rid: int, expected_current: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
-    """Tap rápido autoritativo RC4.
+    """Tap rápido autoritativo RC5.
 
     Evita que una sesión vieja o un doble toque conviertan una acción visual en
     un estado operativo incorrecto. Si la pantalla está vieja, no muta datos:
