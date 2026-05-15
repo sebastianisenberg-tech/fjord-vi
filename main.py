@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.8"
+APP_VERSION = "3.7.9"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.8"
-RELEASE_LABEL = "Fjord VI · v3.7.8"
+APP_BUILD = "Fjord VI 3.7.9"
+RELEASE_LABEL = "Fjord VI · v3.7.9"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -338,105 +338,132 @@ COMMUNICATION_EVENTS = {
     "reserva_confirmada_socio": {
         "name": "Reserva confirmada al socio",
         "description": "Email al socio cuando confirma o reactiva su reserva.",
-        "default_enabled": True,
         "subject": "Reserva confirmada · {{salida_nombre}} · {{fecha}}",
         "body": "Quedó registrada tu reserva para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "reserva_en_espera_socio": {
         "name": "Reserva en lista de espera",
         "description": "Email al socio cuando queda en lista de espera.",
-        "default_enabled": True,
         "subject": "Reserva en espera · {{salida_nombre}} · {{fecha}}",
         "body": "Tu solicitud quedó registrada en lista de espera para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nTe avisaremos si se libera una vacante y tu reserva pasa a confirmada.\n\n{{club_nombre}} · {{app_name}}",
     },
     "reserva_promovida_socio": {
         "name": "Reserva confirmada desde espera",
         "description": "Email al socio cuando una reserva pasa de lista de espera a confirmada.",
-        "default_enabled": True,
         "subject": "Reserva confirmada desde espera · {{salida_nombre}}",
         "body": "Tu reserva para {{salida_nombre}} pasó de lista de espera a confirmada.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nEstado actual: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "invitado_agregado_socio": {
         "name": "Invitado agregado",
         "description": "Email al socio cuando agrega o reactiva un invitado.",
-        "default_enabled": True,
         "subject": "Invitado registrado · {{salida_nombre}} · {{invitado_nombre}}",
         "body": "Se registró el invitado {{invitado_nombre}} para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "invitado_en_espera_socio": {
         "name": "Invitado en lista de espera",
         "description": "Email al socio cuando un invitado queda en lista de espera.",
-        "default_enabled": True,
         "subject": "Invitado en espera · {{salida_nombre}} · {{invitado_nombre}}",
         "body": "El invitado {{invitado_nombre}} quedó registrado en lista de espera para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nSe avisará si se libera una vacante.\n\n{{club_nombre}} · {{app_name}}",
     },
     "invitado_desplazado_socio": {
         "name": "Invitado desplazado a espera",
         "description": "Email al socio cuando un invitado pasa a lista de espera por cupo o prioridad.",
-        "default_enabled": True,
         "subject": "Invitado en espera por cupo · {{salida_nombre}} · {{invitado_nombre}}",
         "body": "Por cupo o prioridad reglamentaria, el invitado {{invitado_nombre}} quedó en lista de espera para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "cancelacion_socio": {
         "name": "Cancelación registrada",
         "description": "Email al socio cuando se registra una cancelación.",
-        "default_enabled": True,
         "subject": "Cancelación registrada · {{salida_nombre}}",
         "body": "Quedó registrada la cancelación para {{salida_nombre}}.\n\nSi corresponde, Administración verificará los cargos reglamentarios aplicables.\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_reprogramada_socio": {
         "name": "Salida reprogramada",
         "description": "Email a socios afectados cuando Administración cambia fecha u hora de una salida con reservas.",
-        "default_enabled": True,
         "subject": "Salida reprogramada · {{salida_nombre}}",
         "body": "La salida {{salida_nombre}} fue reprogramada.\n\nFecha/hora anterior: {{fecha_anterior}} {{hora_anterior}}\nNueva fecha/hora: {{fecha}} {{hora}}\n\nTu reserva se mantiene registrada. Si no podés asistir en el nuevo horario, revisá tu reserva desde el sistema.\n\n{{club_nombre}} · {{app_name}}",
     },
     "embarque_estado_socio": {
         "name": "Cambio de estado de embarque",
         "description": "Email al socio responsable cuando el capitán cambia el estado de una persona asociada a su reserva.",
-        "default_enabled": True,
         "subject": "Estado de embarque actualizado · {{salida_nombre}} · {{persona_nombre}}",
         "body": "Se actualizó el estado de embarque de {{persona_nombre}} para {{salida_nombre}}.\n\nEstado: {{estado}}\nFecha: {{fecha}}\nHora: {{hora}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_cerrada_socio": {
         "name": "Resumen de salida al socio",
         "description": "Email consolidado al socio responsable al cerrar la salida.",
-        "default_enabled": True,
         "subject": "Resumen de salida · {{salida_nombre}} · {{fecha}}",
         "body": "La salida {{salida_nombre}} fue cerrada.\n\nResumen de tu reserva:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\nFicha: {{ficha_numero}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "salida_cerrada_admin": {
         "name": "Salida cerrada para administración",
         "description": "Email a Administración cuando el capitán cierra la salida y genera ficha.",
-        "default_enabled": True,
         "subject": "Salida cerrada · {{salida_nombre}} · Ficha {{ficha_numero}}",
         "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "recordatorio_24h_socio": {
         "name": "Recordatorio 24h al socio",
         "description": "Email automático al socio responsable 24 horas antes de la salida.",
-        "default_enabled": True,
         "subject": "Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}",
         "body": "Te recordamos tu reserva para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "no_show_cargo_socio": {
         "name": "Reserva incumplida / cargo al socio",
         "description": "Email al socio responsable cuando el cierre genera cargo por reserva incumplida propia o de invitados.",
-        "default_enabled": True,
         "subject": "Liquidación · {{salida_nombre}} · {{fecha}}",
         "body": "El cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\nFicha: {{ficha_numero}}\n\n{{club_nombre}} · {{app_name}}",
     },
     "email_prueba": {
         "name": "Email de prueba",
         "description": "Prueba manual de SMTP desde Administración.",
-        "default_enabled": True,
         "subject": "Prueba de comunicaciones · {{app_name}} {{version}}",
         "body": "Este es un email de prueba enviado desde {{app_name}} {{version}}.\n\nSi recibiste este mensaje, SMTP está funcionando.\n\n{{club_nombre}} · {{app_name}}",
     },
 }
 
+def normalize_email_text(value) -> str:
+    """Normaliza texto para emails: convierte escapes literales y sanea listas simples."""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        items = [str(x).strip() for x in value if str(x).strip()]
+        return "\n".join(f"- {x.lstrip('- ').strip()}" for x in items)
+    text = str(value)
+    text = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", " ")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return text
+
+def render_comm_template(text_value: str, payload: dict) -> str:
+    result = text_value or ""
+    safe_payload = {k: normalize_email_text(v) for k, v in (payload or {}).items()}
+    safe_payload.setdefault("club_nombre", CLUB_NAME)
+    safe_payload.setdefault("app_name", APP_NAME)
+    safe_payload.setdefault("version", VERSION)
+
+    # Alias/fallbacks para que ningún template quede con {{variable}} visible.
+    safe_payload.setdefault("socio_nombre", safe_payload.get("nombre", "") or safe_payload.get("recipient_name", "") or "Socio")
+    safe_payload.setdefault("persona_nombre", safe_payload.get("invitado_nombre", "") or safe_payload.get("socio_nombre", "") or "la persona indicada")
+    safe_payload.setdefault("importe", safe_payload.get("total_socio", "") or safe_payload.get("total", "") or "$ 0")
+    safe_payload.setdefault("estado", safe_payload.get("estado", "") or "registrado")
+    safe_payload.setdefault("punto_encuentro", safe_payload.get("punto_encuentro", "") or "Dársena Norte")
+    safe_payload.setdefault("lista_personas", safe_payload.get("lista_personas", "") or "- Socio responsable")
+    safe_payload.setdefault("detalle_cargos", safe_payload.get("detalle_cargos", "") or "Sin cargos informados")
+    safe_payload.setdefault("ficha_numero", safe_payload.get("ficha_numero", "") or "TEST")
+    safe_payload.setdefault("link_ficha", safe_payload.get("link_ficha", "") or "Prueba sin ficha real")
+    safe_payload.setdefault("total", safe_payload.get("total", "") or "$ 0")
+    safe_payload.setdefault("total_socio", safe_payload.get("total_socio", "") or "$ 0")
+
+    for key, value in safe_payload.items():
+        result = result.replace("{{" + key + "}}", value)
+
+    # Última defensa: no dejar placeholders crudos en mails enviados.
+    result = re.sub(r"\{\{[^}]+\}\}", "", result)
+    result = re.sub(r"\n{3,}", "\n\n", result).strip()
+    return result
+
+
 def template_needs_default_reset(tpl: NotificationTemplate, info: dict) -> bool:
-    """Detecta plantillas viejas o rotas que conviene reemplazar por defaults v3.7.8.
+    """Detecta plantillas viejas o rotas que conviene reemplazar por defaults v3.7.9.
     No pisa plantillas ya personalizadas correctamente.
     """
     subject = tpl.subject or ""
@@ -464,7 +491,7 @@ def template_needs_default_reset(tpl: NotificationTemplate, info: dict) -> bool:
 def ensure_communications_seed(db: Session):
     """Crea eventos y plantillas base sin pisar ediciones válidas del administrador.
 
-    v3.7.8:
+    v3.7.9:
     - Corrige defaults institucionales.
     - Reemplaza únicamente plantillas viejas/rotas conocidas.
     - Respeta ediciones manuales posteriores.
@@ -472,7 +499,7 @@ def ensure_communications_seed(db: Session):
     for key, info in COMMUNICATION_EVENTS.items():
         ev = db.get(NotificationEventSetting, key)
         if not ev:
-            ev = NotificationEventSetting(key=key, name=info["name"], enabled=bool(info.get("default_enabled", False)), channel_email=True, description=info.get("description", ""), updated_at=now_local())
+            ev = NotificationEventSetting(key=key, name=info["name"], enabled=False, channel_email=True, description=info.get("description", ""), updated_at=now_local())
             db.add(ev)
         else:
             ev.name = info["name"]
@@ -480,7 +507,7 @@ def ensure_communications_seed(db: Session):
 
         tpl = db.query(NotificationTemplate).filter_by(key=key).first()
         if not tpl:
-            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=bool(info.get("default_enabled", False)), updated_at=now_local())
+            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=False, updated_at=now_local())
             db.add(tpl)
         else:
             tpl.name = info["name"]
@@ -557,22 +584,6 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:300]}"
 
-
-def render_comm_template(text: str, payload: Optional[dict] = None) -> str:
-    """Render simple y seguro de variables {{clave}} para plantillas SMTP."""
-    payload = payload or {}
-    text = text or ""
-
-    def repl(match):
-        key = (match.group(1) or "").strip()
-        value = payload.get(key, "")
-        if value is None:
-            return ""
-        return str(value)
-
-    return re.sub(r"\{\{\s*([A-Za-z0-9_]+)\s*\}\}", repl, text)
-
-
 def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False) -> Optional[NotificationQueue]:
     ensure_communications_seed(db)
     recipient_email = normalize_email(recipient_email)
@@ -627,7 +638,6 @@ def outing_payload(outing: Outing, extra: Optional[dict] = None) -> dict:
 
 
 def queue_reservation_email(db: Session, event_key: str, outing: Outing, r: Reservation, payload_extra: Optional[dict] = None) -> Optional[NotificationQueue]:
-    """Encola email al socio responsable de una reserva o invitado."""
     if not r:
         return None
     uid = r.responsible_user_id
@@ -648,25 +658,16 @@ def queue_reservation_email(db: Session, event_key: str, outing: Outing, r: Rese
 
 
 def queue_promotion_email(db: Session, outing: Outing, r: Reservation) -> Optional[NotificationQueue]:
-    """Avisa cuando una reserva/invitado pasa de lista de espera a confirmada."""
-    if not r:
-        return None
-    return queue_reservation_email(db, "reserva_promovida_socio", outing, r, {
-        "estado": "Confirmada desde lista de espera",
-    })
+    return queue_reservation_email(db, "reserva_promovida_socio", outing, r, {"estado": "Confirmada desde lista de espera"})
 
 
 def queue_reschedule_emails(db: Session, outing: Outing, old_departure: datetime, new_departure: datetime) -> int:
-    """Avisa a todos los socios responsables afectados por cambio de fecha/hora."""
     if not outing or not old_departure or not new_departure or old_departure == new_departure:
         return 0
-    reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
-    responsible_ids = sorted({
-        r.responsible_user_id for r in reservations
-        if r.responsible_user_id and reservation_is_active(r)
-    })
+    rows = db.query(Reservation).filter_by(outing_id=outing.id).all()
+    ids = sorted({r.responsible_user_id for r in rows if r.responsible_user_id and reservation_is_active(r)})
     queued = 0
-    for uid in responsible_ids:
+    for uid in ids:
         u = db.get(User, uid)
         if not u or not (u.email or "").strip():
             continue
@@ -681,15 +682,19 @@ def queue_reschedule_emails(db: Session, outing: Outing, old_departure: datetime
     return queued
 
 
+def queue_attendance_email(db: Session, outing: Outing, r: Reservation, value: str) -> Optional[NotificationQueue]:
+    return queue_reservation_email(db, "embarque_estado_socio", outing, r, {
+        "estado": value,
+        "persona_nombre": r.person_name,
+    })
+
+
 def queue_close_summary_emails(db: Session, outing: Outing, reservations: list, sheet: ClosingSheet) -> int:
-    """Encola resumen de cierre por socio responsable, incluyendo invitados y cargos."""
     if not outing or not sheet:
         return 0
     by_user = {}
     for r in reservations:
-        if not r.responsible_user_id:
-            continue
-        if is_waitlisted(r):
+        if not r.responsible_user_id or is_waitlisted(r):
             continue
         by_user.setdefault(r.responsible_user_id, []).append(r)
 
@@ -705,8 +710,7 @@ def queue_close_summary_emails(db: Session, outing: Outing, reservations: list, 
             total += charge
             label = display_kind(r.kind)
             estado = r.attendance or r.status or ""
-            cargo = f"$ {fmt_money(charge)}"
-            lines.append(f"- {r.person_name} ({label}) · {estado} · {cargo}")
+            lines.append(f"- {r.person_name} ({label}) · {estado} · $ {fmt_money(charge)}")
         payload = outing_payload(outing, {
             "socio_nombre": u.name,
             "detalle_cargos": "\n".join(lines) if lines else "Sin cargos asociados.",
@@ -718,16 +722,6 @@ def queue_close_summary_emails(db: Session, outing: Outing, reservations: list, 
         if queue_email(db, "salida_cerrada_socio", u.email, u.name, payload):
             queued += 1
     return queued
-
-
-def queue_attendance_email(db: Session, outing: Outing, r: Reservation, value: str) -> Optional[NotificationQueue]:
-    """Avisa al socio responsable cuando cambia un estado de embarque relevante."""
-    if not r:
-        return None
-    return queue_reservation_email(db, "embarque_estado_socio", outing, r, {
-        "estado": value,
-        "persona_nombre": r.person_name,
-    })
 
 
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
@@ -1024,7 +1018,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.7.8",
+        "module_version": "SMTP · v3.7.9",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -1503,11 +1497,10 @@ def queue_dedup_key(event_key: str, recipient_email: str, subject: str, payload:
     return hashlib.sha256(f"{event_key}|{normalize_email(recipient_email)}|{subject}|{payload_str}".encode("utf-8")).hexdigest()
 
 def existing_recent_email(db: Session, event_key: str, recipient_email: str, subject: str, payload: dict, minutes: int = 10):
-    """Evita duplicados accidentales por doble click, sin bloquear eventos legítimos.
+    """Evita duplicados accidentales sin bloquear eventos legítimos.
 
-    v3.7.8 corrige un bug: antes se consideraba duplicado solo por
-    evento+destinatario+asunto, lo que bloqueaba múltiples invitados de la misma
-    salida. Ahora también compara el payload funcional.
+    v3.7.9: compara payload funcional. Esto evita que varios invitados
+    del mismo viaje con asunto parecido queden indebidamente deduplicados.
     """
     cutoff = now_local() - timedelta(minutes=minutes)
     payload = payload or {}
@@ -1520,14 +1513,14 @@ def existing_recent_email(db: Session, event_key: str, recipient_email: str, sub
         .filter(NotificationQueue.status.in_(["pending", "sent"]))
         .all()
     )
-    comparable = {k: str(v) for k, v in payload.items() if not str(k).startswith("_")}
+    comparable = {str(k): str(v) for k, v in payload.items() if not str(k).startswith("_")}
     for row in candidates:
         try:
             stored = json.loads(row.payload or "{}")
         except Exception:
             stored = {}
-        stored_cmp = {k: str(v) for k, v in stored.items() if not str(k).startswith("_")}
-        if all(stored_cmp.get(k) == v for k, v in comparable.items()):
+        stored_cmp = {str(k): str(v) for k, v in stored.items() if not str(k).startswith("_")}
+        if stored_cmp == comparable:
             return row
     return None
 
@@ -2671,7 +2664,7 @@ def register_deploy_event():
 def operational_alert_rows(db: Session) -> list:
     """Alertas humanas visibles en Sistema.
 
-    En v3.7.8 se limpian advertencias antiguas de fases internas para evitar
+    En v3.7.9 se limpian advertencias antiguas de fases internas para evitar
     fatiga de alertas. Se muestran sólo bloqueantes reales y la advertencia
     operativa vigente de comunicaciones SMTP.
     """
@@ -6894,7 +6887,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             v["is_reassigned"] = reservation_is_reassigned(r)
             v["captain_can_activate_from_waitlist"] = bool(v.get("waitlisted") and captain_can_activate_waitlisted_reservation(db, outing, r))
 
-        # Vista Capitán v3.7.8: color y orden = socio responsable operativo/de referencia.
+        # Vista Capitán v3.7.9: color y orden = socio responsable operativo/de referencia.
         # No modifica reglas de cargo, espera, cierre, reapertura ni liquidación.
         # La barra lateral NO representa categoría ni estado: representa de quién depende
         # operativa/económicamente la persona dentro de esta salida.
@@ -6928,7 +6921,7 @@ def captain(request: Request, outing_id: Optional[int] = None, db: Session = Dep
             else:
                 vv["captain_group_role"] = "guest"
 
-    # v3.7.8: orden visual de Capitán por grupos operativos.
+    # v3.7.9: orden visual de Capitán por grupos operativos.
     # La lista original conserva la lógica de negocio. Esta lista solo ordena la presentación:
     # socio titular primero; debajo, todos sus invitados, institucionales referenciados,
     # reasignados actuales y espera. Dentro del grupo se mantiene el orden operativo,

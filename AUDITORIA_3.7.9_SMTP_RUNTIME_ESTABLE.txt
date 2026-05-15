@@ -1,0 +1,88 @@
+Fjord VI v3.7.9 · SMTP RUNTIME ESTABLE
+
+Base reconstruida:
+- FjordVI_3.7.7_SMTP_PLANTILLAS_CORREGIDAS.zip
+
+Motivo:
+- La v3.7.8 desplegada reportó en cola:
+  NameError: name 'normalize_email_text' is not defined
+- Eso indica bug de runtime en procesamiento de emails automáticos.
+- No era un problema de Gmail ni de App Password.
+
+Correcciones:
+- Se confirma y conserva def normalize_email_text().
+- Se conserva def render_comm_template().
+- Se agregan eventos operativos SMTP:
+  - reserva_en_espera_socio
+  - reserva_promovida_socio
+  - invitado_en_espera_socio
+  - invitado_desplazado_socio
+  - salida_reprogramada_socio
+  - embarque_estado_socio
+  - salida_cerrada_socio
+- Se mantiene:
+  - reserva_confirmada_socio
+  - invitado_agregado_socio
+  - cancelacion_socio
+  - salida_cerrada_admin
+  - recordatorio_24h_socio
+  - no_show_cargo_socio
+  - email_prueba
+- Deduplicación corregida por payload funcional.
+- Hooks añadidos:
+  - alta de socio
+  - invitado agregado
+  - invitado/socio en espera
+  - promoción desde espera
+  - cancelación
+  - reprogramación de salida
+  - cambio de estado de embarque
+  - cierre y resumen por socio
+
+Nota honesta:
+- Esta 3.7.9 está reconstruida desde 3.7.7 porque en esta sesión no está disponible el ZIP de aplicación 3.7.8, solo el diagnóstico.
+- Por eso el objetivo es estabilizar SMTP y recuperar eventos operativos sin depender del ZIP 3.7.8 defectuoso.
+
+Checklist después de instalar:
+1. Ir a Comunicaciones.
+2. Guardar configuración SMTP.
+3. Validar SMTP.
+4. Enviar prueba.
+5. Verificar mail recibido.
+6. Procesar cola.
+7. Hacer una reserva nueva.
+8. Agregar dos invitados.
+9. Verificar que se generen dos registros y dos mails.
+10. Reprogramar salida con reservas activas.
+11. Verificar mail salida_reprogramada_socio.
+12. Cambiar estado desde Capitán.
+13. Verificar mail embarque_estado_socio.
+14. Cerrar salida.
+15. Verificar mail salida_cerrada_admin y salida_cerrada_socio.
+
+Controles:
+{
+  "version_3_7_9": true,
+  "normalize_email_text_defined": true,
+  "render_comm_template_defined": true,
+  "dedupe_payload": true,
+  "event_reserva_en_espera": true,
+  "event_reserva_promovida": true,
+  "event_invitado_en_espera": true,
+  "event_salida_reprogramada": true,
+  "event_embarque_estado": true,
+  "event_salida_cerrada_socio": true,
+  "hook_promote_waitlist": true,
+  "hook_add_guest": true,
+  "hook_reschedule": true,
+  "hook_attendance": true,
+  "hook_close_summary": true,
+  "python_compiles": true,
+  "jinja_parse_ok": true
+}
+
+Errores Python:
+ninguno
+
+Errores Jinja:
+ninguno

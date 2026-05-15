@@ -1,4 +1,4 @@
-Fjord VI v3.7.8 - Auditoría de release
+Fjord VI v3.7.9 - Auditoría de release
 
 Base utilizada:
 - FjordVI_2.9_header_socio_refinado_auditado.zip

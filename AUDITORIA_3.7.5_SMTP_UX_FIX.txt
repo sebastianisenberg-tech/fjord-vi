@@ -1,4 +1,4 @@
-Fjord VI v3.7.8 · SMTP UX FIX
+Fjord VI v3.7.9 · SMTP UX FIX
 
 Base:
 - FjordVI_3.7.4_SMTP_CONFIG_FIX.zip
@@ -10,7 +10,7 @@ Correcciones:
 - Panel visible de última validación SMTP con detalle real del error.
 - La validación SMTP guarda detalle usando la misma sesión DB y hace commit antes del redirect.
 - Manejo explícito de SMTPAuthenticationError con código y texto de Gmail/SMTP.
-- Versión visible limpia: SMTP · v3.7.8.
+- Versión visible limpia: SMTP · v3.7.9.
 
 Controles:
 {

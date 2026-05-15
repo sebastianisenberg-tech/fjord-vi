@@ -1,4 +1,4 @@
-Fjord VI v3.7.8 - Auditoría
+Fjord VI v3.7.9 - Auditoría
 
 Base: FjordVI_2.8_visual_24_recuperado_auditado.zip
 
@@ -22,8 +22,8 @@ No se tocó:
 
 Controles:
 - main.py compila: sí
-- CSS header v3.7.8 presente: True
-- JS header v3.7.8 presente: True
+- CSS header v3.7.9 presente: True
+- JS header v3.7.9 presente: True
 - versiones viejas visibles detectadas: []
 - archivos totales: 70
 - sin __pycache__/pyc/DS_Store: sí
