@@ -1,3 +1,12 @@
+# Fjord VI 3.8.6 RC2
+
+- Hardening de cola SMTP: reintento manual sólo para estados fallidos o expirados.
+- Estados obsoletos/cancelados operacionales diferenciados para trazabilidad.
+- Emails operativos con actor y momento de registro.
+- Emails de invitados con resumen operativo de invitados asociados.
+- Expiración de pendientes separada como `expired`.
+- Tests de regresión RC2 para retry, templates y consistencia de cola.
+
 ## 3.8.6 · Production Ready RC1
 
 - Cola SMTP blindada con claim transaccional previo al envío (`processing_token`).

@@ -395,8 +395,11 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                      'Hora: {{hora}}\n'
                                      'Estado: {{estado}}\n'
                                      '\n'
+                                     'Resumen operativo actual de tus invitados asociados:\n'
+                                     '{{resumen_invitados}}\n'
+                                     '\n'
                                      'Recordá que los invitados embarcan bajo responsabilidad del socio titular y '
-                                     'quedan sujetos al cupo y a las reglas operativas de la salida.\n'
+                                     'quedan sujetos al cupo, a la prioridad reglamentaria y a las reglas operativas de la salida.\n'
                                      '\n'
                                      '{{club_nombre}} · {{app_name}}'},
  'invitado_en_espera_socio': {'name': 'Invitado en lista de espera',
@@ -409,6 +412,9 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                       '\n'
                                       'Fecha: {{fecha}}\n'
                                       'Hora: {{hora}}\n'
+                                      '\n'
+                                      'Resumen operativo actual de tus invitados asociados:\n'
+                                      '{{resumen_invitados}}\n'
                                       '\n'
                                       'Si se libera una vacante y corresponde activarlo, el sistema actualizará el '
                                       'estado.\n'
@@ -501,8 +507,12 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                    'Estado: {{estado}}\n'
                                    'Fecha: {{fecha}}\n'
                                    'Hora: {{hora}}\n'
+                                   'Registrado por: {{actor}}\n'
+                                   'Momento de registro: {{momento_operativo}}\n'
                                    '\n'
                                    '{{mensaje_embarque}}\n'
+                                   '\n'
+                                   'Este aviso operativo se consolida con una ventana corta para evitar mensajes repetidos durante correcciones de embarque.\n'
                                    '\n'
                                    '{{club_nombre}} · {{app_name}}'},
  'salida_cerrada_socio': {'name': 'Salida cerrada para socio (legado)',
@@ -643,6 +653,9 @@ def render_comm_template(text_value: str, payload: dict) -> str:
     safe_payload.setdefault("motivo_cancelacion", safe_payload.get("motivo_cancelacion", "") or "Cancelación registrada")
     safe_payload.setdefault("mensaje_cargo", safe_payload.get("mensaje_cargo", "") or "Sin cargo informado para esta operación.")
     safe_payload.setdefault("mensaje_embarque", safe_payload.get("mensaje_embarque", "") or "")
+    safe_payload.setdefault("actor", safe_payload.get("actor", "") or "Sistema")
+    safe_payload.setdefault("momento_operativo", safe_payload.get("momento_operativo", "") or now_local().strftime("%d/%m/%Y %H:%M"))
+    safe_payload.setdefault("resumen_invitados", safe_payload.get("resumen_invitados", "") or "Sin otros invitados asociados informados.")
     safe_payload.setdefault("liquidation_id", safe_payload.get("liquidation_id", "") or "")
 
     for key, value in safe_payload.items():
@@ -850,6 +863,56 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     return q
 
 
+
+RETRYABLE_NOTIFICATION_STATUSES = {"failed", "expired"}
+NON_RETRYABLE_NOTIFICATION_STATUSES = {"pending", "processing", "sent", "cancelled", "cancelled_operational"}
+
+
+def notification_status_label(status: str, detail: str = "") -> str:
+    status = (status or "").strip()
+    detail_l = (detail or "").lower()
+    if status == "cancelled_operational":
+        return "obsoleto"
+    if status == "cancelled" and ("reemplaz" in detail_l or "obsoleto" in detail_l or "reabiert" in detail_l):
+        return "obsoleto"
+    if status == "expired":
+        return "expirado"
+    return status or "pending"
+
+
+def notification_is_retryable(row) -> bool:
+    if not row:
+        return False
+    return (row.status or "").strip() in RETRYABLE_NOTIFICATION_STATUSES
+
+
+def cancel_notification_row(db: Session, row: NotificationQueue, reason: str, operational: bool = False):
+    row.status = "cancelled_operational" if operational else "cancelled"
+    row.processing_token = ""
+    row.processing_started_at = None
+    row.error = reason or "Cancelado"
+    db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=row.error))
+
+
+def guest_reservation_summary_for_email(db: Session, outing_id: int, responsible_user_id: int) -> str:
+    rows = (
+        db.query(Reservation)
+        .filter(Reservation.outing_id == outing_id)
+        .filter(Reservation.responsible_user_id == responsible_user_id)
+        .filter(Reservation.kind != "socio")
+        .order_by(Reservation.created_at.asc(), Reservation.id.asc())
+        .all()
+    )
+    if not rows:
+        return "- Sin invitados asociados al momento de este aviso."
+    lines = []
+    for rr in rows:
+        state = rr.status or rr.attendance or "Registrado"
+        if rr.attendance and rr.attendance != "Por confirmar":
+            state = f"{state} / {rr.attendance}"
+        lines.append(f"- {rr.person_name} ({display_kind(rr.kind)}): {state}")
+    return "\n".join(lines[:20])
+
 def smtp_processing_timeout_minutes(db: Session) -> int:
     raw = get_system_meta(db, "smtp_processing_timeout_minutes", os.getenv("SMTP_PROCESSING_TIMEOUT_MINUTES", "15"))
     try:
@@ -948,7 +1011,7 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
     for row in rows:
         obsolete_reason = closing_notification_obsolete_reason(db, row)
         if obsolete_reason:
-            finalize_claimed_notification(db, row, "cancelled", obsolete_reason)
+            finalize_claimed_notification(db, row, "cancelled_operational", obsolete_reason)
             cancelled += 1
             continue
         ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
@@ -978,7 +1041,7 @@ def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
     for row in rows:
         obsolete_reason = closing_notification_obsolete_reason(db, row)
         if obsolete_reason:
-            finalize_claimed_notification(db, row, "cancelled", obsolete_reason)
+            finalize_claimed_notification(db, row, "cancelled_operational", obsolete_reason)
             cancelled += 1
             continue
         ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
@@ -1189,9 +1252,9 @@ def expire_stale_notification_queue(db: Session, reason_prefix: str = "Expirado"
     )
     count = 0
     for row in rows:
-        row.status = "cancelled"
+        row.status = "expired"
         row.error = f"{reason_prefix}: pendiente/fallido por más de {smtp_pending_expiry_hours(db)} h"
-        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=row.error))
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="expired", detail=row.error))
         count += 1
     if count:
         db.commit()
@@ -1202,7 +1265,7 @@ def cancel_over_retry_limit(db: Session) -> int:
     max_attempts = smtp_retry_max_attempts(db)
     rows = (
         db.query(NotificationQueue)
-        .filter(NotificationQueue.status.in_(["pending", "failed"]))
+        .filter(NotificationQueue.status.in_(["pending", "failed", "expired"]))
         .filter(NotificationQueue.attempts >= max_attempts)
         .all()
     )
@@ -1339,7 +1402,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.7.10",
+        "module_version": "SMTP · v3.8.6 RC2",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -1352,6 +1415,7 @@ def communications_context(db: Session) -> dict:
         "master_status": safe_master_status,
         "send_limit_per_run": smtp_send_limit_per_run(db),
         "password_status": smtp_password_status(db),
+        "retryable_statuses": RETRYABLE_NOTIFICATION_STATUSES,
     }
 
 def communication_status(db: Session) -> dict:
@@ -1536,9 +1600,7 @@ def cancel_pending_operational_notifications_for_responsible(db: Session, outing
         except Exception:
             row_outing = row_responsible = 0
         if row_outing == int(outing_id) and row_responsible == int(responsible_user_id):
-            row.status = "cancelled"
-            row.error = reason
-            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=reason))
+            cancel_notification_row(db, row, reason, operational=True)
             count += 1
     if count:
         db.commit()
@@ -1613,7 +1675,9 @@ def queue_captain_attendance_status_email(db: Session, outing: Outing, r: Reserv
         "estado": estado,
         "mensaje_embarque": msg,
         "actor": actor_name or "Capitán",
+        "momento_operativo": now_local().strftime("%d/%m/%Y %H:%M"),
         "outing_id": outing.id,
+        "responsible_user_id": responsible.id,
         "reservation_id": r.id,
     })
     return 1 if q else 0
@@ -1791,6 +1855,7 @@ def queue_captain_attendance_changes_emails(db: Session, outing: Outing, before_
             "estado": estado_general,
             "mensaje_embarque": detalle,
             "actor": actor_name or "Capitán",
+            "momento_operativo": now_local().strftime("%d/%m/%Y %H:%M"),
             "outing_id": outing.id,
             "responsible_user_id": responsible.id,
             "reservation_id": ",".join(str(x.id) for x in items),
@@ -1821,9 +1886,7 @@ def cancel_pending_closing_notifications_for_outing(db: Session, outing_id: int,
         except Exception:
             row_outing = 0
         if row_outing == int(outing_id):
-            row.status = "cancelled"
-            row.error = reason
-            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=reason))
+            cancel_notification_row(db, row, reason, operational=True)
             count += 1
     if count:
         db.commit()
@@ -2344,14 +2407,12 @@ def recover_notification_queue_after_restart(db: Session) -> dict:
     """
     cancelled = 0
     checked = 0
-    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).all()
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed", "expired"])).all()
     for row in rows:
         checked += 1
         reason = closing_notification_obsolete_reason(db, row)
         if reason:
-            row.status = "cancelled"
-            row.error = reason
-            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail="startup: " + reason))
+            cancel_notification_row(db, row, "startup: " + reason, operational=True)
             cancelled += 1
     if cancelled:
         db.commit()
@@ -7566,7 +7627,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not full_capacity else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_en_espera_socio" if full_capacity else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado"})
+    queue_email(db, "invitado_en_espera_socio" if full_capacity else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
 
@@ -11341,10 +11402,15 @@ def admin_communications_retry(qid: int, db: Session = Depends(db_session), user
     q = db.get(NotificationQueue, qid)
     if not q:
         raise HTTPException(404, "Email inexistente")
+    if not notification_is_retryable(q):
+        log(db, user.name, "communications retry blocked", f"queue_id={qid}; status={q.status}; no reintentar")
+        return RedirectResponse("/admin?page=comunicaciones&msg=reintento_bloqueado", status_code=303)
     q.status = "pending"
-    q.error = ""
+    q.error = "Reintento manual solicitado por administración"
+    q.processing_token = ""
+    q.processing_started_at = None
     db.commit()
-    result = process_notification_queue(db, limit=1)
+    result = process_notification_queue_ids(db, [qid])
     log(db, user.name, "communications retry", f"queue_id={qid}; {result}")
     return RedirectResponse("/admin?page=comunicaciones&msg=reintento", status_code=303)
 
