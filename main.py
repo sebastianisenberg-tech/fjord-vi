@@ -7486,13 +7486,17 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     self_candidates = [r for r in reservations if r.dni == user.dni and canonical_kind(r.kind) == "socio"]
     self_reservation = next((r for r in self_candidates if reservation_is_active(r)), None) or (self_candidates[0] if self_candidates else None)
     has_self = bool(self_reservation and reservation_is_active(self_reservation))
+    # RC7: un socio que quedó en lista de espera sigue siendo socio titular de esa solicitud.
+    # Debe poder cargar invitados/menores asociados, que también quedan en lista de espera
+    # y no ocupan plaza ni generan cargo hasta una promoción efectiva.
+    can_add_guest = bool(self_reservation and (reservation_is_active(self_reservation) or is_waitlisted(self_reservation)))
     ready = readiness_state(outing, len(active))
     views = reservation_views(outing, reservations)
     self_view = views.get(self_reservation.id) if self_reservation else None
     final_summary = final_status_summary(outing, reservations, len(active), present, pending)
     return templates.TemplateResponse(request, "socio.html", {
         "request": request, "user": user, "outing": outing, "outings": outings, "history_groups": history_groups, "reservations": reservations,
-        "active": active, "mine": mine, "has_self": has_self, "self_reservation": self_reservation,
+        "active": active, "mine": mine, "has_self": has_self, "can_add_guest": can_add_guest, "self_reservation": self_reservation,
         "active_count": len(active), "remaining": max(0, outing.max_crew - len(active)),
         "readiness": ready, "cutoff": cutoff_passed(outing), "late_window": late_window_passed(outing),
         "cutoff_at": cutoff_at(outing), "cancel_deadline": cancellation_deadline(outing),
@@ -7586,8 +7590,13 @@ async def add_guest(
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_documento", status_code=303)
 
     self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
-    if not self_row or canonical_kind(self_row.kind) != "socio" or not reservation_is_active(self_row):
+    responsible_waitlisted = bool(self_row and is_waitlisted(self_row))
+    if not self_row or canonical_kind(self_row.kind) != "socio" or not (reservation_is_active(self_row) or responsible_waitlisted):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
+
+    # RC7: si el socio titular está en espera, sus invitados también deben quedar en espera,
+    # aunque exista una vacante parcial posterior. No ocuparon plaza confirmada ni generan cargo.
+    guest_must_waitlist = bool(full_capacity or responsible_waitlisted)
 
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=dni_clean).first()
 
@@ -7604,8 +7613,8 @@ async def add_guest(
         existing.responsible_user_id = user.id
         if canonical_kind(existing.kind) in ("invitado", "hijo_menor") and not getattr(existing, "original_responsible_user_id", None):
             existing.original_responsible_user_id = user.id
-        if full_capacity:
-            put_on_waitlist(existing, "En lista de espera. Se activa si se libera una vacante.")
+        if guest_must_waitlist:
+            put_on_waitlist(existing, "En lista de espera asociada al socio titular. Se activa si se liberan vacantes suficientes.")
         else:
             reactivate_reservation(db, outing, existing)
     else:
@@ -7620,16 +7629,16 @@ async def add_guest(
             status=status,
             birth_date=birth_date
         )
-        if full_capacity:
-            put_on_waitlist(new_guest, "En lista de espera. Se activa si se libera una vacante.")
+        if guest_must_waitlist:
+            put_on_waitlist(new_guest, "En lista de espera asociada al socio titular. Se activa si se liberan vacantes suficientes.")
         db.add(new_guest)
 
     enforce_capacity(db, outing)
     db.commit()
-    log(db, user.name, "agrega/reactiva invitado" if not full_capacity else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_en_espera_socio" if full_capacity else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
+    log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
+    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
 
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
 @app.post("/socio/add_protocolar")
 async def add_protocolar_participation(
