@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.14"
+APP_VERSION = "3.8.0"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -86,7 +86,7 @@ INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
 APP_BUILD = "Fjord VI 3.7.14"
-RELEASE_LABEL = "Fjord VI · v3.7.14"
+RELEASE_LABEL = "Fjord VI · v3.8.0"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1519,6 +1519,8 @@ def queue_captain_attendance_changes_emails(db: Session, outing: Outing, before_
             "actor": actor_name or "Capitán",
             "outing_id": outing.id,
             "reservation_id": ",".join(str(x.id) for x in items),
+            "_allow_multiple": True,
+            "operational_event_id": f"capitan:{outing.id}:{responsible.id}:{now_local().isoformat(timespec='seconds')}",
         })
         if q:
             queued += 1
@@ -1973,21 +1975,51 @@ def queue_dedup_key(event_key: str, recipient_email: str, subject: str, payload:
         payload_str = str(payload or {})
     return hashlib.sha256(f"{event_key}|{normalize_email(recipient_email)}|{subject}|{payload_str}".encode("utf-8")).hexdigest()
 
-def existing_recent_email(db: Session, event_key: str, recipient_email: str, subject: str, payload: dict, minutes: int = 10):
-    """Evita duplicados accidentales por doble click o reintentos inmediatos.
-    No elimina envíos históricos legítimos, solo bloquea duplicados recientes idénticos.
+def _payload_for_dedupe(payload: dict) -> dict:
+    """Payload estable para deduplicación real.
+
+    No se deduplica sólo por asunto/evento porque varios cambios legítimos del
+    capitán pueden tener el mismo asunto y destinatario en pocos minutos.
+    Se ignoran campos técnicos de SMTP y se compara la sustancia del evento.
     """
+    base = dict(payload or {})
+    for k in list(base.keys()):
+        if str(k).startswith("_smtp_") or str(k).startswith("_effective_") or str(k).startswith("_original_"):
+            base.pop(k, None)
+    return base
+
+
+def existing_recent_email(db: Session, event_key: str, recipient_email: str, subject: str, payload: dict, minutes: int = 10):
+    """Evita sólo duplicados idénticos por doble click.
+
+    Versión 3.8.0: antes bloqueaba cualquier mail con mismo evento/asunto/
+    destinatario durante 10 minutos, aunque el contenido fuera distinto. Eso
+    hacía perder avisos operativos del capitán. Ahora compara el payload real.
+    """
+    payload = payload or {}
+    if payload.get("_allow_multiple"):
+        return None
     cutoff = now_local() - timedelta(minutes=minutes)
-    payload_text = json.dumps(payload or {}, ensure_ascii=False)
-    return (
+    target = _payload_for_dedupe(payload)
+    rows = (
         db.query(NotificationQueue)
         .filter(NotificationQueue.event_key == event_key)
         .filter(NotificationQueue.recipient_email == normalize_email(recipient_email))
         .filter(NotificationQueue.subject == subject)
         .filter(NotificationQueue.created_at >= cutoff)
         .filter(NotificationQueue.status.in_(["pending", "sent"]))
-        .first()
+        .order_by(NotificationQueue.created_at.desc())
+        .limit(20)
+        .all()
     )
+    for row in rows:
+        try:
+            existing_payload = _payload_for_dedupe(json.loads(row.payload or "{}"))
+        except Exception:
+            existing_payload = {}
+        if existing_payload == target:
+            return row
+    return None
 
 
 
@@ -8063,6 +8095,10 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
+    # Snapshot real antes de cualquier mutación de capitán. Es la base del
+    # motor único de eventos operativos 3.8.0. Sin esto el sistema podía
+    # cambiar la ficha/liquidación pero no emitir todos los avisos SMTP.
+    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
     was_waitlisted = is_waitlisted(r)
     if was_waitlisted:
         if value not in ("Por confirmar", "Presente"):
