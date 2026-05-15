@@ -131,7 +131,7 @@
 
 
 /* =========================================================
-   v3.7.9 · Robustez operativa: anti doble-submit y recuperación
+   v3.7.6 · Robustez operativa: anti doble-submit y recuperación
    ========================================================= */
 (function(){
   function ready(fn){ if(document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
@@ -240,7 +240,7 @@
 })();
 
 
-/* Fjord VI 3.7.9 - Performance operativa
+/* Fjord VI 3.7.6 - Performance operativa
    Anti doble toque global y feedback inmediato.
    No bloquea links de descarga, links externos, GET simples ni botones expresamente marcados como libres.
 */

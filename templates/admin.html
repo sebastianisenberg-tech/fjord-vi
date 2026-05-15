@@ -189,7 +189,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     .dangerBtn{margin-top:12px;background:#b42323!important;color:#fff!important;border-color:#b42323!important}
 
 
-    /* v3.7.9 Fase 8: UX operacional compacta en Sistema */
+    /* v3.7.6 Fase 8: UX operacional compacta en Sistema */
     .systemQuickBar{position:sticky;top:82px;z-index:18;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 12px;padding:8px;border:1px solid #dbe8ef;background:rgba(246,250,253,.94);backdrop-filter:blur(8px);border-radius:14px;box-shadow:0 8px 22px rgba(20,40,55,.06)}
     .systemQuickBar a,.systemQuickBar button{height:30px;border:1px solid #cfe0e9;border-radius:999px;background:#fff;color:#21465d;text-decoration:none;font-weight:900;font-size:12px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
     .systemQuickBar button{background:#0d5d88;color:#fff;border-color:#0d5d88}
@@ -210,7 +210,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
     @media(max-width:900px){.systemQuickBar{top:58px;overflow:auto;flex-wrap:nowrap}.systemQuickBar a,.systemQuickBar button{white-space:nowrap}.systemFold .systemCheckList{max-height:300px}}
 
 
-    /* v3.7.9 Fase 11: Centro Operativo Inteligente */
+    /* v3.7.6 Fase 11: Centro Operativo Inteligente */
     .opsCenter{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin:10px 0 12px}
     .opsCard{background:#fff;border:1px solid var(--erp-line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(20,40,55,.05)}
     .opsCard h3{margin:0 0 8px;font-size:16px}.opsCard p{margin:0;color:#607080;font-weight:750}.opsBig{font-size:24px;font-weight:950;color:#173f5f;line-height:1.05}.opsMetaGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.opsMetaGrid div{background:#f5f9fc;border:1px solid #dfeaf1;border-radius:10px;padding:9px}.opsMetaGrid span{display:block;color:#607080;font-size:10px;text-transform:uppercase;font-weight:950}.opsMetaGrid b{font-size:18px;color:#173f5f}.opsAlertList{display:grid;gap:7px}.opsAlert{border-radius:10px;padding:8px 10px;border:1px solid #dfeaf1;background:#f7fbfd;display:grid;gap:2px}.opsAlert.ok{background:#eef8f1;border-color:#cfe9d5;color:#27663a}.opsAlert.warn{background:#fff7df;border-color:#ecd48e;color:#78560b}.opsAlert.bad{background:#fff1f1;border-color:#f0c8c8;color:#8a3a3a}.opsAlert b{font-weight:950}.opsAlert small{color:inherit;opacity:.82}.opsTimeline{display:grid;gap:7px;max-height:260px;overflow:auto}.opsTimelineItem{display:grid;grid-template-columns:112px 1fr;gap:9px;border-bottom:1px solid #edf3f6;padding:7px 0}.opsTimelineItem time{font-size:11px;color:#607080;font-weight:850}.opsTimelineItem b{font-weight:950}.opsHealthGrid{display:grid;gap:6px}.opsSearchBox{display:flex;gap:8px;margin:8px 0}.opsSearchBox input{flex:1;height:34px;border:1px solid var(--erp-line);border-radius:9px;padding:0 10px;font-weight:800}.opsSearchBox button{height:34px;border:0;border-radius:9px;background:var(--erp-blue2);color:#fff;font-weight:950;padding:0 14px}.opsSearchResults{display:grid;gap:6px;margin-top:8px}.opsSearchResults a{display:block;border:1px solid #dfeaf1;background:#f8fbfd;border-radius:9px;padding:8px;text-decoration:none;color:#173f5f;font-weight:850}
@@ -477,7 +477,7 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
 
     <section class="erpTitle commTitleFinal">
       <div>
-        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.7.9'}}</span></h1>
+        <h1>Comunicaciones <span class="moduleBadge">{{communications.module_version or 'SMTP · v3.7.6'}}</span></h1>
         <p>Centro de emails transaccionales: pruebas seguras, eventos, plantillas, SMTP, cola y registro de envíos.</p>
       </div>
       <div class="erpTitleActions">
@@ -619,12 +619,12 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
         <label>Usuario<input name="smtp_username" value="{{communications.settings.username}}" placeholder="cuenta@gmail.com"></label>
         <label>Password / App Password
           <div class="smtpPasswordWrap">
-            <input id="smtpPasswordInput" name="smtp_password" type="password" autocomplete="off" placeholder="Pegar nueva App Password para reemplazar">
+            <input id="smtpPasswordInput" name="smtp_password" type="password" autocomplete="off" placeholder="Pegar nueva App Password para reemplazar; con o sin espacios">
             <button class="smtpEyeBtn" type="button" onclick="toggleSmtpPassword()">Ver</button>
           </div>
           <small class="smtpPasswordInfo">
             {% if password_status.saved %}
-              App Password guardada · {{password_status.length}} caracteres{% if password_status.looks_like_google_app_password %} · formato Google 16 OK{% else %} · revisar longitud{% endif %}.
+              App Password guardada · {{password_status.length}} caracteres{% if password_status.looks_like_google_app_password %} · formato Google 16 OK{% else %} · revisar longitud{% endif %}{% if password_status.has_spaces %} · tenía espacios y se usará compactada para Gmail{% endif %}.
               Si dejás este campo vacío, se conserva la clave guardada.
             {% else %}
               No hay App Password guardada. Pegá la clave de aplicación de Google.
