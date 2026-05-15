@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.10"
+APP_VERSION = "3.7.11"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.10"
-RELEASE_LABEL = "Fjord VI · v3.7.10"
+APP_BUILD = "Fjord VI 3.7.11"
+RELEASE_LABEL = "Fjord VI · v3.7.11"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -334,50 +334,238 @@ class NotificationLog(Base):
     detail = Column(Text, default="")
 
 
-COMMUNICATION_EVENTS = {
-    "reserva_confirmada_socio": {
-        "name": "Reserva confirmada al socio",
-        "description": "Email al socio cuando confirma o reactiva su lugar.",
-        "subject": "Reserva confirmada · {{salida_nombre}} · {{fecha}}",
-        "body": "Hola {{socio_nombre}},\n\nTu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}} quedó registrada.\n\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
-    },
-    "invitado_agregado_socio": {
-        "name": "Invitado agregado",
-        "description": "Email al socio cuando agrega o reactiva un invitado.",
-        "subject": "Invitado registrado · {{salida_nombre}}",
-        "body": "Hola {{socio_nombre}},\n\nSe registró el invitado {{invitado_nombre}} para {{salida_nombre}}.\n\nFecha: {{fecha}} {{hora}}\nEstado: {{estado}}\n\n{{club_nombre}} · {{app_name}}",
-    },
-    "cancelacion_socio": {
-        "name": "Cancelación registrada",
-        "description": "Email al socio cuando cancela una reserva propia o de un invitado.",
-        "subject": "Cancelación registrada · {{salida_nombre}}",
-        "body": "Hola {{socio_nombre}},\n\nQuedó registrada la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n\nCargo informado: {{importe}}\n\n{{club_nombre}} · {{app_name}}",
-    },
-    "salida_cerrada_admin": {
-        "name": "Salida cerrada para administración",
-        "description": "Email a Administración cuando el capitán cierra la salida y genera ficha.",
-        "subject": "Salida cerrada · {{salida_nombre}} · Ficha {{ficha_numero}}",
-        "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nPresentes: {{presentes}}\nTotal a liquidar: {{total}}\nFicha: {{ficha_numero}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
-    },
-    "recordatorio_24h_socio": {
-        "name": "Recordatorio 24h al socio",
-        "description": "Email automático al socio responsable 24 horas antes de la salida.",
-        "subject": "Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}",
-        "body": "Hola {{socio_nombre}},\n\nTe recordamos tu reserva para {{salida_nombre}} el {{fecha}} a las {{hora}}.\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPunto de encuentro: {{punto_encuentro}}\n\n{{club_nombre}} · {{app_name}}",
-    },
-    "no_show_cargo_socio": {
-        "name": "Reserva incumplida / cargo al socio",
-        "description": "Email al socio responsable cuando el cierre genera cargo por reserva incumplida propia o de invitados.",
-        "subject": "Liquidación · {{salida_nombre}} · {{fecha}}",
-        "body": "Hola {{socio_nombre}},\n\nEl cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal a liquidar: {{total_socio}}\n\nFicha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}",
-    },
-    "email_prueba": {
-        "name": "Email de prueba",
-        "description": "Prueba manual de SMTP desde Administración.",
-        "subject": "Prueba de comunicaciones · {{app_name}} {{version}}",
-        "body": "Este es un email de prueba enviado desde {{app_name}} {{version}}.\n\nSi recibiste este mensaje, SMTP está funcionando.",
-    },
-}
+COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada al socio',
+                              'description': 'Email al socio cuando su lugar queda confirmado dentro del cupo.',
+                              'subject': 'Reserva confirmada · {{salida_nombre}} · {{fecha}}',
+                              'body': 'Hola {{socio_nombre}},\n'
+                                      '\n'
+                                      'Tu reserva para {{salida_nombre}} quedó confirmada.\n'
+                                      '\n'
+                                      'Fecha: {{fecha}}\n'
+                                      'Hora: {{hora}}\n'
+                                      'Estado: {{estado}}\n'
+                                      '\n'
+                                      'Si finalmente no podés asistir, recordá cancelar con la mayor anticipación '
+                                      'posible. Las bajas dentro de las 48 horas previas pueden generar cargo '
+                                      'reglamentario.\n'
+                                      '\n'
+                                      '{{club_nombre}} · {{app_name}}'},
+ 'reserva_en_espera_socio': {'name': 'Reserva en lista de espera',
+                             'description': 'Email al socio cuando queda en lista de espera.',
+                             'subject': 'Reserva en espera · {{salida_nombre}} · {{fecha}}',
+                             'body': 'Hola {{socio_nombre}},\n'
+                                     '\n'
+                                     'Tu solicitud para {{salida_nombre}} quedó registrada en lista de espera.\n'
+                                     '\n'
+                                     'Fecha: {{fecha}}\n'
+                                     'Hora: {{hora}}\n'
+                                     'Estado: {{estado}}\n'
+                                     '\n'
+                                     'Si se libera una plaza y te corresponde por prioridad u orden de espera, el '
+                                     'sistema actualizará tu estado y te avisará.\n'
+                                     '\n'
+                                     '{{club_nombre}} · {{app_name}}'},
+ 'reserva_promovida_socio': {'name': 'Reserva promovida desde espera',
+                             'description': 'Email al socio cuando pasa de lista de espera a lugar confirmado.',
+                             'subject': 'Tu reserva fue confirmada · {{salida_nombre}}',
+                             'body': 'Hola {{socio_nombre}},\n'
+                                     '\n'
+                                     'Se liberó una plaza y tu reserva para {{salida_nombre}} pasó de lista de espera '
+                                     'a confirmada.\n'
+                                     '\n'
+                                     'Fecha: {{fecha}}\n'
+                                     'Hora: {{hora}}\n'
+                                     'Estado: Confirmada\n'
+                                     '\n'
+                                     '{{club_nombre}} · {{app_name}}'},
+ 'invitado_agregado_socio': {'name': 'Invitado registrado',
+                             'description': 'Email al socio cuando registra un invitado o hijo menor no socio.',
+                             'subject': 'Invitado registrado · {{salida_nombre}}',
+                             'body': 'Hola {{socio_nombre}},\n'
+                                     '\n'
+                                     'Se registró a {{invitado_nombre}} para {{salida_nombre}}.\n'
+                                     '\n'
+                                     'Fecha: {{fecha}}\n'
+                                     'Hora: {{hora}}\n'
+                                     'Estado: {{estado}}\n'
+                                     '\n'
+                                     'Recordá que los invitados embarcan bajo responsabilidad del socio titular y '
+                                     'quedan sujetos al cupo y a las reglas operativas de la salida.\n'
+                                     '\n'
+                                     '{{club_nombre}} · {{app_name}}'},
+ 'invitado_en_espera_socio': {'name': 'Invitado en lista de espera',
+                              'description': 'Email al socio cuando un invitado queda en espera por cupo completo.',
+                              'subject': 'Invitado en espera · {{salida_nombre}}',
+                              'body': 'Hola {{socio_nombre}},\n'
+                                      '\n'
+                                      '{{invitado_nombre}} quedó registrado en lista de espera para '
+                                      '{{salida_nombre}}.\n'
+                                      '\n'
+                                      'Fecha: {{fecha}}\n'
+                                      'Hora: {{hora}}\n'
+                                      '\n'
+                                      'Si se libera una vacante y corresponde activarlo, el sistema actualizará el '
+                                      'estado.\n'
+                                      '\n'
+                                      '{{club_nombre}} · {{app_name}}'},
+ 'invitado_desplazado_socio': {'name': 'Invitado desplazado por prioridad',
+                               'description': 'Email al socio cuando un invitado pasa a espera por prioridad de socio '
+                                              'antes del corte de 48 horas.',
+                               'subject': 'Cambio de estado de invitado · {{salida_nombre}}',
+                               'body': 'Hola {{socio_nombre}},\n'
+                                       '\n'
+                                       'Por prioridad reglamentaria de socios antes del corte de 48 horas, '
+                                       '{{invitado_nombre}} pasó a lista de espera para {{salida_nombre}}.\n'
+                                       '\n'
+                                       'Fecha: {{fecha}}\n'
+                                       'Hora: {{hora}}\n'
+                                       '\n'
+                                       'Si luego se libera una vacante, podrá volver a ser activado según '
+                                       'corresponda.\n'
+                                       '\n'
+                                       '{{club_nombre}} · {{app_name}}'},
+ 'cancelacion_socio': {'name': 'Cancelación registrada',
+                       'description': 'Email al socio cuando cancela una reserva propia o de un invitado.',
+                       'subject': 'Cancelación registrada · {{salida_nombre}}',
+                       'body': 'Hola {{socio_nombre}},\n'
+                               '\n'
+                               'Quedó registrada la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n'
+                               '\n'
+                               'Fecha: {{fecha}}\n'
+                               'Hora: {{hora}}\n'
+                               'Cargo informado: {{importe}}\n'
+                               'Motivo operativo: {{motivo_cancelacion}}\n'
+                               '\n'
+                               '{{mensaje_cargo}}\n'
+                               '\n'
+                               '{{club_nombre}} · {{app_name}}'},
+ 'cancelacion_con_cargo_socio': {'name': 'Cancelación con cargo',
+                                 'description': 'Email específico para bajas dentro de las 48 horas con cargo '
+                                                'reglamentario.',
+                                 'subject': 'Cancelación con cargo · {{salida_nombre}}',
+                                 'body': 'Hola {{socio_nombre}},\n'
+                                         '\n'
+                                         'Se registró la baja de {{persona_nombre}} para {{salida_nombre}} dentro de '
+                                         'la ventana reglamentaria de 48 horas.\n'
+                                         '\n'
+                                         'Fecha: {{fecha}}\n'
+                                         'Hora: {{hora}}\n'
+                                         'Cargo informado: {{importe}}\n'
+                                         '\n'
+                                         'El cargo se informa porque la plaza permaneció ocupada dentro del período en '
+                                         'que ya no puede liberarse normalmente para otro socio.\n'
+                                         '\n'
+                                         '{{club_nombre}} · {{app_name}}'},
+ 'salida_reprogramada_socio': {'name': 'Salida reprogramada',
+                               'description': 'Email a los socios afectados cuando Administración cambia fecha u '
+                                              'horario de una salida.',
+                               'subject': 'Salida reprogramada · {{salida_nombre}}',
+                               'body': 'Hola {{socio_nombre}},\n'
+                                       '\n'
+                                       'La salida {{salida_nombre}} fue reprogramada por Administración.\n'
+                                       '\n'
+                                       'Nueva fecha: {{fecha}}\n'
+                                       'Nueva hora: {{hora}}\n'
+                                       'Estado: {{estado}}\n'
+                                       '\n'
+                                       'Por favor revisá tu reserva y la de tus invitados asociados.\n'
+                                       '\n'
+                                       '{{club_nombre}} · {{app_name}}'},
+ 'salida_cancelada_socio': {'name': 'Salida cancelada por capitán',
+                            'description': 'Email a los socios cuando el capitán cancela una salida.',
+                            'subject': 'Salida cancelada · {{salida_nombre}}',
+                            'body': 'Hola {{socio_nombre}},\n'
+                                    '\n'
+                                    'La salida {{salida_nombre}} fue cancelada por el capitán.\n'
+                                    '\n'
+                                    'Fecha prevista: {{fecha}}\n'
+                                    'Hora prevista: {{hora}}\n'
+                                    '\n'
+                                    'No se generan cargos por la cancelación operativa de la salida.\n'
+                                    '\n'
+                                    '{{club_nombre}} · {{app_name}}'},
+ 'embarque_estado_socio': {'name': 'Estado de embarque actualizado',
+                           'description': 'Email al socio cuando cambia su estado de embarque o el de una persona '
+                                          'asociada.',
+                           'subject': 'Estado de embarque actualizado · {{salida_nombre}}',
+                           'body': 'Hola {{socio_nombre}},\n'
+                                   '\n'
+                                   'Se actualizó el estado de embarque de {{persona_nombre}} para {{salida_nombre}}.\n'
+                                   '\n'
+                                   'Estado: {{estado}}\n'
+                                   'Fecha: {{fecha}}\n'
+                                   'Hora: {{hora}}\n'
+                                   '\n'
+                                   '{{mensaje_embarque}}\n'
+                                   '\n'
+                                   '{{club_nombre}} · {{app_name}}'},
+ 'salida_cerrada_socio': {'name': 'Salida cerrada para socio',
+                          'description': 'Email al socio cuando la salida queda cerrada y liquidada.',
+                          'subject': 'Resumen de salida · {{salida_nombre}} · {{fecha}}',
+                          'body': 'Hola {{socio_nombre}},\n'
+                                  '\n'
+                                  'La salida {{salida_nombre}} fue cerrada.\n'
+                                  '\n'
+                                  'Fecha: {{fecha}}\n'
+                                  'Hora: {{hora}}\n'
+                                  'Detalle asociado a tu reserva:\n'
+                                  '{{detalle_cargos}}\n'
+                                  '\n'
+                                  'Total informado: {{total_socio}}\n'
+                                  '\n'
+                                  '{{club_nombre}} · {{app_name}}'},
+ 'salida_cerrada_admin': {'name': 'Salida cerrada para administración',
+                          'description': 'Email a Administración cuando el capitán cierra la salida y genera ficha.',
+                          'subject': 'Salida cerrada · {{salida_nombre}} · Ficha {{ficha_numero}}',
+                          'body': 'Administración,\n'
+                                  '\n'
+                                  'La salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n'
+                                  '\n'
+                                  'Presentes: {{presentes}}\n'
+                                  'Total a liquidar: {{total}}\n'
+                                  'Ficha: {{ficha_numero}}\n'
+                                  '\n'
+                                  'Ver ficha: {{link_ficha}}\n'
+                                  '\n'
+                                  '{{club_nombre}} · {{app_name}}'},
+ 'recordatorio_24h_socio': {'name': 'Recordatorio 24h al socio',
+                            'description': 'Email automático al socio responsable 24 horas antes de la salida.',
+                            'subject': 'Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}',
+                            'body': 'Hola {{socio_nombre}},\n'
+                                    '\n'
+                                    'Te recordamos tu reserva para {{salida_nombre}}.\n'
+                                    '\n'
+                                    'Fecha: {{fecha}}\n'
+                                    'Hora: {{hora}}\n'
+                                    '\n'
+                                    'Personas asociadas a tu reserva:\n'
+                                    '{{lista_personas}}\n'
+                                    '\n'
+                                    'Punto de encuentro: {{punto_encuentro}}\n'
+                                    '\n'
+                                    '{{club_nombre}} · {{app_name}}'},
+ 'no_show_cargo_socio': {'name': 'Reserva incumplida / cargo al socio',
+                         'description': 'Email al socio responsable cuando el cierre genera cargo por reserva '
+                                        'incumplida propia o de invitados.',
+                         'subject': 'Liquidación · {{salida_nombre}} · {{fecha}}',
+                         'body': 'Hola {{socio_nombre}},\n'
+                                 '\n'
+                                 'El cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n'
+                                 '\n'
+                                 'Detalle:\n'
+                                 '{{detalle_cargos}}\n'
+                                 '\n'
+                                 'Total a liquidar: {{total_socio}}\n'
+                                 '\n'
+                                 'Ficha: {{link_ficha}}\n'
+                                 '\n'
+                                 '{{club_nombre}} · {{app_name}}'},
+ 'email_prueba': {'name': 'Email de prueba',
+                  'description': 'Prueba manual de SMTP desde Administración.',
+                  'subject': 'Prueba de comunicaciones · {{app_name}} {{version}}',
+                  'body': 'Este es un email de prueba enviado desde {{app_name}} {{version}}.\n'
+                          '\n'
+                          'Si recibiste este mensaje, SMTP está funcionando.'}}
 
 def normalize_email_text(value) -> str:
     """Normaliza texto para emails: convierte escapes literales y sanea listas simples."""
@@ -410,6 +598,9 @@ def render_comm_template(text_value: str, payload: dict) -> str:
     safe_payload.setdefault("link_ficha", safe_payload.get("link_ficha", "") or "Prueba sin ficha real")
     safe_payload.setdefault("total", safe_payload.get("total", "") or "$ 0")
     safe_payload.setdefault("total_socio", safe_payload.get("total_socio", "") or "$ 0")
+    safe_payload.setdefault("motivo_cancelacion", safe_payload.get("motivo_cancelacion", "") or "Cancelación registrada")
+    safe_payload.setdefault("mensaje_cargo", safe_payload.get("mensaje_cargo", "") or "Sin cargo informado para esta operación.")
+    safe_payload.setdefault("mensaje_embarque", safe_payload.get("mensaje_embarque", "") or "")
 
     for key, value in safe_payload.items():
         result = result.replace("{{" + key + "}}", value)
@@ -571,6 +762,36 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
     rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
     sent = failed = 0
     for row in rows:
+        row.attempts = int(row.attempts or 0) + 1
+        ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
+        if ok:
+            row.status = "sent"
+            row.sent_at = now_local()
+            row.error = ""
+            sent += 1
+        else:
+            row.status = "failed"
+            row.error = detail
+            failed += 1
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
+    db.commit()
+    set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
+    return {"processed": len(rows), "sent": sent, "failed": failed}
+
+def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
+    """Procesa únicamente los emails recién generados por una prueba controlada.
+
+    Evita que una prueba integral quede parcialmente pendiente porque existían
+    fallidos históricos más antiguos ocupando el límite de procesamiento.
+    """
+    ids = [int(x) for x in (queue_ids or []) if x]
+    if not ids:
+        return {"processed": 0, "sent": 0, "failed": 0}
+    rows = db.query(NotificationQueue).filter(NotificationQueue.id.in_(ids)).order_by(NotificationQueue.created_at.asc()).all()
+    sent = failed = 0
+    for row in rows:
+        if row.status not in ("pending", "failed"):
+            continue
         row.attempts = int(row.attempts or 0) + 1
         ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
         if ok:
@@ -6250,7 +6471,7 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
@@ -6350,7 +6571,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not full_capacity else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado"})
+    queue_email(db, "invitado_en_espera_socio" if full_capacity else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if full_capacity else "Registrado"})
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if full_capacity else 'invitado_ok'}", status_code=303)
 
@@ -6625,13 +6846,17 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     promoted = promote_waitlist(db, outing)
     db.commit()
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
-    queue_email(db, "cancelacion_socio", user.email or "", user.name, {
+    cargo = float(r.charge_amount or 0)
+    late_cancel = cargo > 0
+    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
         "socio_nombre": user.name,
         "persona_nombre": r.person_name,
         "salida_nombre": outing.title,
         "fecha": outing.departure_at.strftime("%d/%m/%Y"),
         "hora": outing.departure_at.strftime("%H:%M"),
         "importe": "$ " + fmt_money(r.charge_amount or 0),
+        "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
+        "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
     })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
@@ -7352,8 +7577,26 @@ def outing_status(
 
         outing.status = "Cancelada por capitán"
 
+        notified = set()
+        for r in reservations:
+            if not reservation_is_active(r) or not r.responsible_user_id or r.responsible_user_id in notified:
+                continue
+            u = db.get(User, r.responsible_user_id)
+            if not u or not (u.email or "").strip():
+                continue
+            queue_email(db, "salida_cancelada_socio", u.email, u.name, {
+                "socio_nombre": u.name,
+                "persona_nombre": u.name,
+                "salida_nombre": outing.title,
+                "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+                "hora": outing.departure_at.strftime("%H:%M"),
+                "estado": outing.status,
+            })
+            notified.add(r.responsible_user_id)
+
         db.commit()
-        audit_event(db, user, "cancelación", f"{outing.title} / desde {old_status}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "charges_zeroed": len(reservations)})
+        audit_event(db, user, "cancelación", f"{outing.title} / desde {old_status}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "charges_zeroed": len(reservations), "notificados": len(notified)})
+        auto_process_notifications(db, limit=10)
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
     # ===== CERRAR =====
@@ -8720,6 +8963,8 @@ def update_outing(
     if active_count > new_capacity:
         return RedirectResponse(f"/admin?page=navegaciones&outing_id={outing.id}&msg=cupo_menor_a_reservas", status_code=303)
 
+    old_title = outing.title
+    old_departure_at = outing.departure_at
     old = (
         f"{outing.title} / {outing.destination} / "
         f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "
@@ -8737,7 +8982,27 @@ def update_outing(
 
     # Si cambió una salida con reservas activas, queda registrado en auditoría.
     # No se recalculan cargos firmes porque una salida cerrada no se edita desde este flujo.
+    changed_schedule = (old_departure_at != new_departure) or (((title or "").strip() or old_title) != old_title)
+    if active_count and changed_schedule:
+        notified = set()
+        for r in reservations:
+            if not reservation_is_active(r) or not r.responsible_user_id or r.responsible_user_id in notified:
+                continue
+            u = db.get(User, r.responsible_user_id)
+            if not u or not (u.email or "").strip():
+                continue
+            queue_email(db, "salida_reprogramada_socio", u.email, u.name, {
+                "socio_nombre": u.name,
+                "persona_nombre": u.name,
+                "salida_nombre": outing.title,
+                "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+                "hora": outing.departure_at.strftime("%H:%M"),
+                "estado": outing.status,
+            })
+            notified.add(r.responsible_user_id)
     db.commit()
+    if active_count and changed_schedule:
+        auto_process_notifications(db, limit=10)
     new = (
         f"{outing.title} / {outing.destination} / "
         f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "
@@ -10039,11 +10304,13 @@ def admin_communications_full_test(db: Session = Depends(db_session), user: User
     }
 
     count = 0
+    queued_ids = []
     for tpl in db.query(NotificationTemplate).order_by(NotificationTemplate.key.asc()).all():
         q = queue_email(db, tpl.key, test_email, user.name or "Prueba", sample_payload, force=True)
         if q:
             count += 1
-    result = process_notification_queue(db, limit=max(25, count + 5))
+            queued_ids.append(q.id)
+    result = process_notification_queue_ids(db, queued_ids)
     log(db, user.name, "communications full test", f"templates={count}; resultado={result}")
     return RedirectResponse(f"/admin?page=comunicaciones&msg=smtp_full_test_{count}_{result.get('sent',0)}_{result.get('failed',0)}", status_code=303)
 
