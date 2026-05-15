@@ -23,6 +23,7 @@
     setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 220); }, 3600);
   }
   const CAPTAIN_MSGS = {
+    pantalla_actualizada: ['La pantalla estaba desactualizada. Se actualizó el estado real; volvé a tocar si corresponde.', 'warning'],
     asistencia_actualizada: ['Asistencia actualizada.', 'success'],
     socio_responsable_no_presente: ['No puede marcarse presente: el socio responsable no está presente.', 'error'],
     salida_cerrada: ['🔒 La salida está cerrada. La liquidación quedó congelada.', 'error'],
@@ -137,6 +138,10 @@
       row.addEventListener('click', function(e){
         if(e.target.closest('button, a, summary, details, select, form, [data-tip]')) return;
         if(row.classList.contains('locked') || row.classList.contains('waitlisted')) return;
+        if(row.classList.contains('isSubmittingV65') || row.dataset.submitting === '1'){
+          captainToast('Acción en proceso. Esperá que actualice la pantalla.', 'warning');
+          return;
+        }
         const current = row.getAttribute('data-current') || 'Por confirmar';
         let next = 'Presente';
         if(current === 'Presente') next = 'Ausente';
@@ -149,10 +154,11 @@
             return;
           }
         }
-        const form = row.querySelector('form[data-v65-status="' + next + '"]');
+        const form = row.querySelector('form[data-v65-status="TOGGLE"]');
         if(!form) return;
         if(next === 'Ausente' && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) return;
         captainRememberScroll(row);
+        row.dataset.submitting = '1';
         row.classList.add('isSubmittingV65');
         form.submit();
       });
@@ -406,8 +412,9 @@
         {% if locked_v65 %}
           <span class="captainLockedPill">{% if closed %}🔒{% elif outing_cancelled %}Bloqueado{% else %}Bloqueado{% endif %}</span>
         {% else %}
-          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"></form>
-          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"></form>
+          <form data-v65-status="TOGGLE" class="attendanceToggleForm" method="post" action="/captain/attendance_toggle/{{r.id}}" aria-hidden="true"><input type="hidden" name="expected_current" value="{{current_v65}}"></form>
+          <form data-v65-status="Presente" method="post" action="/captain/attendance/{{r.id}}/Presente" aria-hidden="true"><input type="hidden" name="expected_current" value="{{current_v65}}"></form>
+          <form data-v65-status="Ausente" class="attendanceAbsentForm" method="post" action="/captain/attendance/{{r.id}}/Ausente" aria-hidden="true"><input type="hidden" name="expected_current" value="{{current_v65}}"></form>
           <form data-v65-status="No embarca" class="attendanceNoBoardForm" method="post" action="/captain/attendance/{{r.id}}/No embarca" aria-hidden="true"></form>
           <details class="captainMoreOps captainMoreOpsV64 captainMoreOpsV65">
             <summary aria-label="Abrir menú de acciones" title="Más acciones: no embarca, reactivar y reasignar invitados">⋯</summary>
