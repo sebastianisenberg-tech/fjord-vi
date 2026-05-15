@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.11"
+APP_VERSION = "3.7.12"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.11"
-RELEASE_LABEL = "Fjord VI · v3.7.11"
+APP_BUILD = "Fjord VI 3.7.12"
+RELEASE_LABEL = "Fjord VI · v3.7.12"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -312,6 +312,7 @@ class NotificationQueue(Base):
     __tablename__ = "notification_queue"
     id = Column(Integer, primary_key=True)
     created_at = Column(DateTime, default=now_local)
+    scheduled_at = Column(DateTime, nullable=True)  # envío diferido; NULL = inmediato
     sent_at = Column(DateTime, nullable=True)
     event_key = Column(String, nullable=False)
     recipient_email = Column(String, nullable=False)
@@ -499,8 +500,8 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                    '{{mensaje_embarque}}\n'
                                    '\n'
                                    '{{club_nombre}} · {{app_name}}'},
- 'salida_cerrada_socio': {'name': 'Salida cerrada para socio',
-                          'description': 'Email al socio cuando la salida queda cerrada y liquidada.',
+ 'salida_cerrada_socio': {'name': 'Salida cerrada para socio (legado)',
+                          'description': 'Evento legado. Para producción usar resumen_cierre_socio diferido.',
                           'subject': 'Resumen de salida · {{salida_nombre}} · {{fecha}}',
                           'body': 'Hola {{socio_nombre}},\n'
                                   '\n'
@@ -528,6 +529,42 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                   'Ver ficha: {{link_ficha}}\n'
                                   '\n'
                                   '{{club_nombre}} · {{app_name}}'},
+
+ 'resumen_cierre_socio': {'name': 'Resumen consolidado del socio',
+                          'description': 'Email diferido al socio responsable con su liquidación individual; no incluye datos de otros socios.',
+                          'subject': 'Resumen consolidado · {{salida_nombre}} · {{fecha}}',
+                          'body': 'Hola {{socio_nombre}},\n'
+                                  '\n'
+                                  'Te enviamos el resumen consolidado de tu participación en {{salida_nombre}}.\n'
+                                  '\n'
+                                  'Ficha vigente: {{ficha_numero}}\n'
+                                  'Liquidación: {{liquidation_id}}\n'
+                                  'Fecha: {{fecha}}\n'
+                                  'Hora: {{hora}}\n'
+                                  '\n'
+                                  'Detalle de tus reservas e invitados asociados:\n'
+                                  '{{detalle_cargos}}\n'
+                                  '\n'
+                                  'Total individual a liquidar: {{total_socio}}\n'
+                                  '\n'
+                                  'Este resumen sólo incluye tus movimientos y los de tus invitados asociados.\n'
+                                  '\n'
+                                  '{{club_nombre}} · {{app_name}}'},
+ 'cierre_liquidacion_admin': {'name': 'Liquidación consolidada Administración',
+                              'description': 'Email diferido a Administración con el consolidado global de la salida.',
+                              'subject': 'Liquidación consolidada · {{salida_nombre}} · {{ficha_numero}}',
+                              'body': 'Administración,\n'
+                                      '\n'
+                                      'La liquidación consolidada de {{salida_nombre}} quedó estable y vigente.\n'
+                                      '\n'
+                                      'Ficha: {{ficha_numero}}\n'
+                                      'Liquidación: {{liquidation_id}}\n'
+                                      'Presentes: {{presentes}}\n'
+                                      'Total general a liquidar: {{total}}\n'
+                                      '\n'
+                                      'Ver ficha: {{link_ficha}}\n'
+                                      '\n'
+                                      '{{club_nombre}} · {{app_name}}'},
  'recordatorio_24h_socio': {'name': 'Recordatorio 24h al socio',
                             'description': 'Email automático al socio responsable 24 horas antes de la salida.',
                             'subject': 'Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}',
@@ -547,10 +584,10 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
  'no_show_cargo_socio': {'name': 'Reserva incumplida / cargo al socio',
                          'description': 'Email al socio responsable cuando el cierre genera cargo por reserva '
                                         'incumplida propia o de invitados.',
-                         'subject': 'Liquidación · {{salida_nombre}} · {{fecha}}',
+                         'subject': 'Reserva incumplida · {{salida_nombre}} · {{fecha}}',
                          'body': 'Hola {{socio_nombre}},\n'
                                  '\n'
-                                 'El cierre de {{salida_nombre}} registró cargos asociados a tu reserva.\n'
+                                 'Se registró una reserva incumplida con cargo reglamentario asociada a tu reserva en {{salida_nombre}}.\n'
                                  '\n'
                                  'Detalle:\n'
                                  '{{detalle_cargos}}\n'
@@ -601,6 +638,7 @@ def render_comm_template(text_value: str, payload: dict) -> str:
     safe_payload.setdefault("motivo_cancelacion", safe_payload.get("motivo_cancelacion", "") or "Cancelación registrada")
     safe_payload.setdefault("mensaje_cargo", safe_payload.get("mensaje_cargo", "") or "Sin cargo informado para esta operación.")
     safe_payload.setdefault("mensaje_embarque", safe_payload.get("mensaje_embarque", "") or "")
+    safe_payload.setdefault("liquidation_id", safe_payload.get("liquidation_id", "") or "")
 
     for key, value in safe_payload.items():
         result = result.replace("{{" + key + "}}", value)
@@ -719,7 +757,7 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:300]}"
 
-def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False) -> Optional[NotificationQueue]:
+def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False, scheduled_at: Optional[datetime] = None) -> Optional[NotificationQueue]:
     ensure_communications_seed(db)
     recipient_email = normalize_email(recipient_email)
     if not recipient_email:
@@ -745,6 +783,7 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
 
     q = NotificationQueue(
         event_key=event_key,
+        scheduled_at=scheduled_at,
         recipient_email=recipient_email,
         recipient_name=recipient_name or "",
         subject=subject,
@@ -759,7 +798,7 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
 
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
     limit = min(limit, smtp_send_limit_per_run(db))
-    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).filter(or_(NotificationQueue.scheduled_at == None, NotificationQueue.scheduled_at <= now_local())).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
     sent = failed = 0
     for row in rows:
         row.attempts = int(row.attempts or 0) + 1
@@ -1228,6 +1267,130 @@ def queue_no_show_charge_emails(db: Session, outing: Outing, reservations: list,
     db.commit()
     return queued
 
+
+def smtp_liquidation_delay_hours(db: Session) -> int:
+    """Ventana de estabilización para liquidaciones al socio.
+
+    Valor operativo acordado para paseos de fin de semana: 6 horas desde el cierre.
+    """
+    raw = get_system_meta(db, "smtp_liquidation_delay_hours", "6")
+    try:
+        h = int(str(raw).strip())
+    except Exception:
+        h = 6
+    return max(0, min(h, 48))
+
+
+def cancel_pending_closing_notifications_for_outing(db: Session, outing_id: int, reason: str = "Liquidación reemplazada o salida reabierta") -> int:
+    """Cancela emails económicos pendientes vinculados a una salida.
+
+    Evita que una reapertura o nuevo cierre dispare resúmenes obsoletos.
+    No toca emails ya enviados ni eventos operativos inmediatos.
+    """
+    closers = {"resumen_cierre_socio", "cierre_liquidacion_admin", "salida_cerrada_socio", "no_show_cargo_socio"}
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").filter(NotificationQueue.event_key.in_(closers)).all()
+    count = 0
+    for row in rows:
+        try:
+            payload = json.loads(row.payload or "{}")
+        except Exception:
+            payload = {}
+        try:
+            row_outing = int(payload.get("outing_id") or 0)
+        except Exception:
+            row_outing = 0
+        if row_outing == int(outing_id):
+            row.status = "cancelled"
+            row.error = reason
+            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=reason))
+            count += 1
+    if count:
+        db.commit()
+    return count
+
+
+def group_detail_for_socios(group: dict) -> str:
+    lines = []
+    navegaron = group.get("navegaron") or []
+    no_show = group.get("no_show") or []
+    if navegaron:
+        lines.append("Invitados / reservas embarcadas:")
+        for p in navegaron:
+            name = p.get("name", "")
+            tipo = p.get("tipo", "")
+            amount = float(p.get("amount") or 0)
+            reason = p.get("reason", "") or ("Participación protocolar" if p.get("protocolar") else "")
+            concept = "Invitado embarcado" if amount > 0 else (reason or "Socio embarcado sin cargo")
+            lines.append(f"- {name} ({tipo}): {concept} · $ {human_money(amount)}")
+    if no_show:
+        lines.append("Reservas incumplidas con cargo reglamentario:")
+        for p in no_show:
+            name = p.get("name", "")
+            tipo = p.get("tipo", "")
+            amount = float(p.get("amount") or 0)
+            reason = p.get("reason", "") or "Reserva incumplida con cargo reglamentario"
+            lines.append(f"- {name} ({tipo}): {reason} · $ {human_money(amount)}")
+    if not lines:
+        lines.append("Sin cargos informados para tu reserva.")
+    return "\n".join(lines)
+
+
+def queue_consolidated_closing_emails(db: Session, outing: Outing, sheet: ClosingSheet, actor_name: str = "") -> int:
+    """Agenda emails económicos diferidos.
+
+    - Socios: un resumen individual filtrado por responsable.
+    - Administración: un consolidado global.
+    - Invitados: nunca son destinatarios.
+    """
+    ensure_communications_seed(db)
+    cancel_pending_closing_notifications_for_outing(db, outing.id, "Reemplazado por nueva liquidación vigente")
+    data = sheet_payload(sheet)
+    scheduled = now_local() + timedelta(hours=smtp_liquidation_delay_hours(db))
+    queued = 0
+    users_by_member = {str(u.member_no or "").strip(): u for u in db.query(User).filter(User.role == "socio", User.active == True).all() if str(u.member_no or "").strip()}
+    users_by_name = {(u.name or "").strip().lower(): u for u in db.query(User).filter(User.role == "socio", User.active == True).all() if (u.name or "").strip()}
+    groups = data.get("groups") or []
+    for g in groups:
+        member_no = str(g.get("member_no") or "").strip()
+        name_key = str(g.get("responsible_name") or "").strip().lower()
+        u = users_by_member.get(member_no) or users_by_name.get(name_key)
+        if not u or not (u.email or "").strip():
+            continue
+        total = float(g.get("subtotal_navegacion") or 0) + float(g.get("subtotal_no_show") or 0)
+        q = queue_email(db, "resumen_cierre_socio", u.email, u.name, {
+            "outing_id": outing.id,
+            "sheet_id": sheet.id,
+            "socio_nombre": u.name,
+            "salida_nombre": outing.title,
+            "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+            "hora": outing.departure_at.strftime("%H:%M"),
+            "ficha_numero": data.get("version_label") or f"Ficha V{sheet.sequence}",
+            "liquidation_id": data.get("liquidation_id") or liquidation_id_for_sheet(sheet),
+            "detalle_cargos": group_detail_for_socios(g),
+            "total_socio": "$ " + human_money(total),
+            "link_ficha": f"/cierre/{sheet.id}",
+        }, scheduled_at=scheduled)
+        if q:
+            queued += 1
+    admin_email = smtp_settings(db).get("admin_email")
+    if admin_email:
+        summary = data.get("summary", {})
+        q = queue_email(db, "cierre_liquidacion_admin", admin_email, "Administración", {
+            "outing_id": outing.id,
+            "sheet_id": sheet.id,
+            "salida_nombre": outing.title,
+            "capitan_nombre": actor_name or sheet.created_by,
+            "presentes": str(summary.get("a_bordo") or summary.get("navegaron") or 0),
+            "total": "$ " + str(summary.get("total_label") or "0"),
+            "ficha_numero": data.get("version_label") or f"Ficha V{sheet.sequence}",
+            "liquidation_id": data.get("liquidation_id") or liquidation_id_for_sheet(sheet),
+            "link_ficha": f"/cierre/{sheet.id}",
+        }, scheduled_at=scheduled)
+        if q:
+            queued += 1
+    db.commit()
+    return queued
+
 Base.metadata.create_all(engine)
 
 def ensure_schema():
@@ -1322,6 +1485,15 @@ def ensure_schema():
 
 
 
+
+    try:
+        notification_columns = [c["name"] for c in inspector.get_columns("notification_queue")]
+    except Exception:
+        notification_columns = []
+
+    with engine.begin() as conn:
+        if "scheduled_at" not in notification_columns:
+            conn.execute(text("ALTER TABLE notification_queue ADD COLUMN scheduled_at TIMESTAMP"))
 
 
 def _reassignment_trace_only_bootstrap(reason: str) -> str:
@@ -7567,6 +7739,7 @@ def outing_status(
 
         # Si existía ficha vigente, queda anulada: nunca se pisa ni se borra.
         annul_current_closing_sheet(db, outing, user.name, "Salida cancelada/reabierta por capitán")
+        cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida cancelada por capitán")
 
         for r in reservations:
             # La cancelación total por capitán anula toda preliquidación,
@@ -7616,6 +7789,7 @@ def outing_status(
 
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
         annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por capitán")
+        cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida reabierta por capitán")
         outing.status = "En reservas"
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         promoted = promote_waitlist(db, outing)
@@ -7874,11 +8048,9 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     sheet = create_closing_sheet(db, outing, reservations, user.name)
     db.commit()
     audit_event(db, user, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}", request=request, outing_id=outing.id, after={"status": outing.status, "presentes": present, "activos": active_count, "sheet_id": sheet.id, "sheet_sequence": sheet.sequence})
-    admin_email = smtp_settings(db).get("admin_email")
-    if admin_email:
-        total_label = sheet_payload(sheet).get("summary", {}).get("total_label", "0")
-        queue_email(db, "salida_cerrada_admin", admin_email, "Administración", {"salida_nombre": outing.title, "capitan_nombre": user.name, "presentes": str(present), "total": "$ " + str(total_label), "ficha_numero": str(sheet.sequence), "link_ficha": f"/cierre/{sheet.id}"})
-    queue_no_show_charge_emails(db, outing, reservations, sheet)
+    # Cierre económico diferido: se agenda una liquidación individual por socio y un consolidado para Administración.
+    # No se envían emails económicos inmediatamente para evitar floods si se reabre/corrige la salida.
+    queue_consolidated_closing_emails(db, outing, sheet, actor_name=user.name)
     auto_process_notifications(db, limit=10)
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
@@ -9030,6 +9202,8 @@ def admin_outing_status(
     old_status = outing.status
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
     if status == "Reservas abiertas":
+        cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida reabierta por Administración")
+        annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por Administración")
         outing.status = "En reservas"
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         promoted = promote_waitlist(db, outing)

@@ -1,0 +1,18 @@
+Fjord VI 3.7.12 - Comunicaciones consolidadas
+
+Cambios principales:
+- Cola SMTP con scheduled_at para envíos diferidos.
+- Resumen individual por socio responsable: no incluye datos de otros socios.
+- Invitados nunca son destinatarios de emails.
+- Liquidación consolidada diferida para Administración.
+- Ventana configurable smtp_liquidation_delay_hours, default 6h.
+- Reapertura/cancelación de salida cancela emails económicos pendientes obsoletos.
+- Eventos económicos usan terminología institucional: reserva incumplida con cargo reglamentario.
+- Procesador de cola sólo envía pendientes vencidos o inmediatos.
+
+Modo recomendado de prueba:
+- Mantener TEST mode + redirect activo.
+- Activar resumen_cierre_socio y cierre_liquidacion_admin.
+- Cerrar una salida, verificar que los emails queden pendientes programados.
+- Reabrir y comprobar que esos pendientes pasen a cancelled.
+- Volver a cerrar y comprobar nueva tanda diferida vigente.
