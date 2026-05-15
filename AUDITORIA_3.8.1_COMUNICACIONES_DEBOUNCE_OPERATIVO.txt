@@ -1,0 +1,21 @@
+Fjord VI v3.8.1 - Comunicaciones con debounce operativo
+
+Objetivo:
+- Evitar floods de emails durante correcciones vivas del capitán.
+- Mantener todos los cambios reales detectados por snapshot antes/después.
+- Consolidar avisos operativos por socio responsable.
+- Cancelar avisos operativos pendientes anteriores del mismo socio/salida.
+- Mantener liquidación económica diferida 6h y blindada por ficha vigente.
+
+Cambios:
+- Nuevo smtp_operational_debounce_minutes, default 10 minutos.
+- Nuevo cancel_pending_operational_notifications_for_responsible.
+- queue_captain_attendance_changes_emails ahora agenda resúmenes operativos consolidados.
+- Invitados siguen sin recibir emails directos.
+- Eventos económicos diferidos no se modifican.
+
+Prueba sugerida:
+- Reabrir una salida cerrada.
+- Cambiar varios invitados/socios entre Presente, No embarca y Ausente.
+- Confirmar que la cola cancela avisos operativos pendientes anteriores y deja vigente sólo el último resumen por socio.
+- Confirmar que la liquidación diferida se regenera a +6h y anula pendientes viejos.

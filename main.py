@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.8.0"
+APP_VERSION = "3.8.4"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.14"
-RELEASE_LABEL = "Fjord VI · v3.8.0"
+APP_BUILD = "Fjord VI 3.8.4"
+RELEASE_LABEL = "Fjord VI · v3.8.4"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -322,6 +322,7 @@ class NotificationQueue(Base):
     status = Column(String, default="pending")  # pending / sent / failed / cancelled
     attempts = Column(Integer, default=0)
     error = Column(Text, default="")
+    idempotency_key = Column(String, default="", index=True)
     payload = Column(Text, default="{}")
 
 class NotificationLog(Base):
@@ -488,10 +489,10 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
  'embarque_estado_socio': {'name': 'Estado de embarque actualizado',
                            'description': 'Email al socio cuando cambia su estado de embarque o el de una persona '
                                           'asociada.',
-                           'subject': 'Estado de embarque actualizado · {{salida_nombre}}',
+                           'subject': 'Actualización operativa de embarque · {{salida_nombre}}',
                            'body': 'Hola {{socio_nombre}},\n'
                                    '\n'
-                                   'Se actualizó el estado de embarque de {{persona_nombre}} para {{salida_nombre}}.\n'
+                                   'Se actualizó el estado operativo de embarque de {{persona_nombre}} para {{salida_nombre}}.\n'
                                    '\n'
                                    'Estado: {{estado}}\n'
                                    'Fecha: {{fecha}}\n'
@@ -757,11 +758,57 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:300]}"
 
+
+
+def existing_notification_by_idempotency_key(db: Session, key: str) -> Optional[NotificationQueue]:
+    """Busca una notificación ya creada por clave idempotente.
+
+    Release 3.8.4: la clave deja de depender sólo del JSON payload y pasa a
+    tener columna propia indexada. Se conserva fallback por payload para colas
+    históricas creadas antes de la migración.
+    """
+    key = (key or "").strip()
+    if not key:
+        return None
+    try:
+        row = (
+            db.query(NotificationQueue)
+            .filter(NotificationQueue.idempotency_key == key)
+            .filter(NotificationQueue.status.in_(["pending", "sent", "failed"]))
+            .order_by(NotificationQueue.created_at.desc())
+            .first()
+        )
+        if row:
+            return row
+    except Exception:
+        pass
+    rows = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status.in_(["pending", "sent", "failed"]))
+        .order_by(NotificationQueue.created_at.desc())
+        .limit(1000)
+        .all()
+    )
+    for row in rows:
+        try:
+            payload = json.loads(row.payload or "{}")
+        except Exception:
+            payload = {}
+        if (payload.get("idempotency_key") or "") == key:
+            return row
+    return None
+
 def queue_email(db: Session, event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False, scheduled_at: Optional[datetime] = None) -> Optional[NotificationQueue]:
     ensure_communications_seed(db)
     recipient_email = normalize_email(recipient_email)
     if not recipient_email:
         return None
+    payload = dict(payload or {})
+    idem_key = (payload.get("idempotency_key") or "").strip()
+    if idem_key and not force:
+        existing = existing_notification_by_idempotency_key(db, idem_key)
+        if existing:
+            return existing
     ev = db.get(NotificationEventSetting, event_key)
     tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
     if not ev or not tpl:
@@ -790,6 +837,7 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
         body=body,
         status="pending",
         attempts=0,
+        idempotency_key=idem_key,
         payload=json.dumps(payload2, ensure_ascii=False),
     )
     db.add(q)
@@ -1296,6 +1344,48 @@ def smtp_liquidation_delay_hours(db: Session) -> int:
 
 
 CLOSING_NOTIFICATION_EVENTS = {"resumen_cierre_socio", "cierre_liquidacion_admin", "salida_cerrada_socio", "no_show_cargo_socio"}
+OPERATIONAL_DEBOUNCE_EVENTS = {"embarque_estado_socio"}
+
+def smtp_operational_debounce_minutes(db: Session) -> int:
+    """Ventana corta de estabilización para avisos operativos del capitán."""
+    raw = get_system_meta(db, "smtp_operational_debounce_minutes", "10")
+    try:
+        value = int(str(raw).strip())
+    except Exception:
+        value = 10
+    return max(0, min(value, 60))
+
+def cancel_pending_operational_notifications_for_responsible(db: Session, outing_id: int, responsible_user_id: int, reason: str = "Reemplazado por actualización operativa más reciente") -> int:
+    """Cancela avisos operativos pendientes del mismo socio/salida.
+
+    No toca mails enviados. Permite consolidar correcciones vivas del capitán
+    en un único aviso vigente por socio responsable.
+    """
+    count = 0
+    rows = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status == "pending")
+        .filter(NotificationQueue.event_key.in_(OPERATIONAL_DEBOUNCE_EVENTS))
+        .all()
+    )
+    for row in rows:
+        try:
+            payload = json.loads(row.payload or "{}")
+        except Exception:
+            payload = {}
+        try:
+            row_outing = int(payload.get("outing_id") or 0)
+            row_responsible = int(payload.get("responsible_user_id") or 0)
+        except Exception:
+            row_outing = row_responsible = 0
+        if row_outing == int(outing_id) and row_responsible == int(responsible_user_id):
+            row.status = "cancelled"
+            row.error = reason
+            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=reason))
+            count += 1
+    if count:
+        db.commit()
+    return count
 
 def closing_notification_obsolete_reason(db: Session, row: NotificationQueue) -> str:
     """Cinturón de seguridad justo antes del envío de liquidaciones diferidas.
@@ -1457,12 +1547,18 @@ def captain_status_label_and_message(outing: Outing, r: Reservation, was_waitlis
 
 
 def queue_captain_attendance_changes_emails(db: Session, outing: Outing, before_snapshot: dict, actor_name: str = "", primary_reservation_id: Optional[int] = None, primary_was_waitlisted: bool = False) -> int:
-    """Encola avisos por TODOS los cambios reales generados por una maniobra.
+    """Encola avisos operativos del capitán con debounce y consolidación.
 
-    Corrige el bug observado: el capitán cambiaba un socio y el sistema sólo
-    notificaba al registro tocado, pero no a los invitados afectados en cascada
-    ni a los promovidos/reactivados. Este motor compara antes/después y agrupa
-    por socio responsable para evitar floods innecesarios.
+    Versión 3.8.1:
+    - compara snapshot antes/después;
+    - agrupa por socio responsable;
+    - cancela avisos operativos pendientes del mismo socio/salida;
+    - agenda un único resumen corto luego de una ventana de estabilización;
+    - nunca envía a invitados.
+
+    Resultado: durante la operación viva, el capitán puede corregir varias veces
+    sin que el socio reciba una ráfaga de emails contradictorios. Queda vigente
+    sólo el último resumen operativo pendiente.
     """
     if not outing:
         return 0
@@ -1479,49 +1575,73 @@ def queue_captain_attendance_changes_emails(db: Session, outing: Outing, before_
         groups.setdefault(int(responsible.id), {"user": responsible, "items": []})["items"].append(rr)
 
     queued = 0
+    delay_minutes = smtp_operational_debounce_minutes(db)
+    scheduled = now_local() + timedelta(minutes=delay_minutes) if delay_minutes > 0 else None
+
     for group in groups.values():
         responsible = group["user"]
         items = group["items"]
-        if len(items) == 1:
-            rr = items[0]
-            queued += queue_captain_attendance_status_email(
-                db, outing, rr, actor_name=actor_name,
-                was_waitlisted=bool(primary_was_waitlisted and int(rr.id) == int(primary_reservation_id or 0)),
-                promoted_names=None,
-            )
-            continue
+
+        # Debounce real: el nuevo estado operacional reemplaza cualquier aviso
+        # pendiente anterior para el mismo socio y salida.
+        cancel_pending_operational_notifications_for_responsible(
+            db, outing.id, responsible.id,
+            "Reemplazado por una actualización operativa posterior antes del envío"
+        )
 
         lines = []
         for rr in items:
             old = before_snapshot.get(int(rr.id), {})
             estado, _msg = captain_status_label_and_message(
-                outing, rr, was_waitlisted=bool(primary_was_waitlisted and int(rr.id) == int(primary_reservation_id or 0))
+                outing, rr,
+                was_waitlisted=bool(primary_was_waitlisted and int(rr.id) == int(primary_reservation_id or 0))
             )
             old_att = old.get("attendance") or "sin estado anterior"
+            old_charge = float(old.get("charge_amount") or 0)
             tipo = display_kind(rr.kind)
             charge = float(rr.charge_amount or 0)
             amount = f" · $ {human_money(charge)}" if charge > 0 else ""
-            lines.append(f"- {rr.person_name} ({tipo}): {old_att} → {estado}{amount}")
+            old_amount = f" · antes $ {human_money(old_charge)}" if old_charge > 0 and old_charge != charge else ""
+            lines.append(f"- {rr.person_name} ({tipo}): {old_att} → {estado}{amount}{old_amount}")
 
-        msg = (
-            "El capitán actualizó varias reservas asociadas a tu inscripción:\n"
-            + "\n".join(lines)
-            + "\n\nEste aviso se envía al socio responsable; los invitados no reciben comunicaciones directas."
-        )
+        if len(items) == 1:
+            rr = items[0]
+            estado, base_msg = captain_status_label_and_message(
+                outing, rr,
+                was_waitlisted=bool(primary_was_waitlisted and int(rr.id) == int(primary_reservation_id or 0))
+            )
+            persona_nombre = rr.person_name
+            estado_general = estado
+            detalle = base_msg + "\n\nDetalle operativo:\n" + "\n".join(lines)
+        else:
+            persona_nombre = "varias reservas asociadas"
+            estado_general = "Actualización operativa de embarque"
+            detalle = (
+                "El capitán actualizó varias reservas asociadas a tu inscripción.\n\n"
+                "Detalle operativo:\n" + "\n".join(lines)
+                + "\n\nEste aviso se envía al socio responsable; los invitados no reciben comunicaciones directas."
+            )
+
+        if scheduled:
+            detalle += f"\n\nEste aviso operativo se consolida con una ventana de {delay_minutes} minutos para evitar mensajes repetidos durante correcciones de embarque."
+
         q = queue_email(db, "embarque_estado_socio", responsible.email, responsible.name, {
             "socio_nombre": responsible.name,
-            "persona_nombre": "varias reservas asociadas",
+            "persona_nombre": persona_nombre,
             "salida_nombre": outing.title,
             "fecha": outing.departure_at.strftime("%d/%m/%Y"),
             "hora": outing.departure_at.strftime("%H:%M"),
-            "estado": "Actualización operativa de embarque",
-            "mensaje_embarque": msg,
+            "estado": estado_general,
+            "mensaje_embarque": detalle,
             "actor": actor_name or "Capitán",
             "outing_id": outing.id,
+            "responsible_user_id": responsible.id,
             "reservation_id": ",".join(str(x.id) for x in items),
-            "_allow_multiple": True,
+            "operational_digest": True,
+            "operational_debounce_minutes": delay_minutes,
             "operational_event_id": f"capitan:{outing.id}:{responsible.id}:{now_local().isoformat(timespec='seconds')}",
-        })
+            "_allow_multiple": True,
+        }, scheduled_at=scheduled)
         if q:
             queued += 1
     return queued
@@ -1604,6 +1724,7 @@ def queue_consolidated_closing_emails(db: Session, outing: Outing, sheet: Closin
         q = queue_email(db, "resumen_cierre_socio", u.email, u.name, {
             "outing_id": outing.id,
             "sheet_id": sheet.id,
+            "idempotency_key": f"closing:socio:{outing.id}:{sheet.id}:{u.id}",
             "socio_nombre": u.name,
             "salida_nombre": outing.title,
             "fecha": outing.departure_at.strftime("%d/%m/%Y"),
@@ -1622,6 +1743,7 @@ def queue_consolidated_closing_emails(db: Session, outing: Outing, sheet: Closin
         q = queue_email(db, "cierre_liquidacion_admin", admin_email, "Administración", {
             "outing_id": outing.id,
             "sheet_id": sheet.id,
+            "idempotency_key": f"closing:admin:{outing.id}:{sheet.id}",
             "salida_nombre": outing.title,
             "capitan_nombre": actor_name or sheet.created_by,
             "presentes": str(summary.get("a_bordo") or summary.get("navegaron") or 0),
@@ -1738,6 +1860,8 @@ def ensure_schema():
     with engine.begin() as conn:
         if "scheduled_at" not in notification_columns:
             conn.execute(text("ALTER TABLE notification_queue ADD COLUMN scheduled_at TIMESTAMP"))
+        if "idempotency_key" not in notification_columns:
+            conn.execute(text("ALTER TABLE notification_queue ADD COLUMN idempotency_key VARCHAR DEFAULT ''"))
 
 
 def _reassignment_trace_only_bootstrap(reason: str) -> str:
@@ -1801,6 +1925,7 @@ DB_INDEXES_REQUIRED = [
     ("idx_activity_log_user_id", "activity_log", "user_id"),
     ("idx_notification_queue_status", "notification_queue", "status"),
     ("idx_notification_queue_created_at", "notification_queue", "created_at"),
+    ("idx_notification_queue_idempotency_key", "notification_queue", "idempotency_key"),
     ("idx_notification_log_created_at", "notification_log", "created_at"),
     ("idx_login_attempts_ident_created_at", "login_attempts", "ident_key, created_at"),
     ("idx_login_attempts_ip_created_at", "login_attempts", "ip_hash, created_at"),
@@ -1992,7 +2117,7 @@ def _payload_for_dedupe(payload: dict) -> dict:
 def existing_recent_email(db: Session, event_key: str, recipient_email: str, subject: str, payload: dict, minutes: int = 10):
     """Evita sólo duplicados idénticos por doble click.
 
-    Versión 3.8.0: antes bloqueaba cualquier mail con mismo evento/asunto/
+    Versión 3.8.0/3.8.1: antes bloqueaba cualquier mail con mismo evento/asunto/
     destinatario durante 10 minutos, aunque el contenido fuera distinto. Eso
     hacía perder avisos operativos del capitán. Ahora compara el payload real.
     """
@@ -2043,9 +2168,36 @@ def set_hidden_guest_candidate_dnis(db: Session, dnis: set[str]):
         row.value = payload
         row.updated_at = now_local()
 
+
+def recover_notification_queue_after_restart(db: Session) -> dict:
+    """Repara cola SMTP al iniciar sin duplicar envíos.
+
+    Cancela liquidaciones económicas obsoletas que hayan quedado pendientes por
+    reinicio, caída de worker o reapertura/recierre durante la ventana diferida.
+    Los operativos pendientes se conservan: pueden procesarse normalmente.
+    """
+    cancelled = 0
+    checked = 0
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").all()
+    for row in rows:
+        checked += 1
+        reason = closing_notification_obsolete_reason(db, row)
+        if reason:
+            row.status = "cancelled"
+            row.error = reason
+            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail="startup: " + reason))
+            cancelled += 1
+    if cancelled:
+        db.commit()
+    return {"checked": checked, "cancelled": cancelled}
+
 ensure_schema()
 with SessionLocal() as _db_init:
     backfill_reassignment_state(_db_init)
+    try:
+        recover_notification_queue_after_restart(_db_init)
+    except Exception as _e:
+        APP_LOGGER.warning("notification_queue_recovery_failed", extra={"fjord_error": type(_e).__name__})
 ensure_db_indexes()
 set_system_meta("schema_version", "1")
 set_system_meta("last_schema_check", now_local().isoformat())
@@ -2189,7 +2341,12 @@ def purge_old_login_attempts(db: Session):
     except Exception:
         db.rollback()
 
-app = FastAPI(title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}")
+app = FastAPI(
+    title=f"{CLUB_NAME} · {APP_NAME} · {APP_MODEL} · {VERSION}",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 STATIC_DIR = APP_DIR / "static"
 if not STATIC_DIR.exists():
@@ -4509,6 +4666,113 @@ def cascade_no_board_dependents(db: Session, outing: Outing, socio_reservation: 
     return cascade_dependents_for_responsible_status(db, outing, socio_reservation, mode="no_board_free")
 
 
+# ===== Máquina semántica de embarque 3.8.2 =====
+#
+# Regla de dominio aprobada para Paseos Fjord VI:
+# - PRESENTE ocupa plaza.
+# - AUSENTE / NO EMBARCÓ libera plaza y genera, si corresponde por ventana, reserva incumplida con cargo reglamentario.
+# - NO EMBARCA libera plaza y queda sin cargo por decisión operativa del capitán.
+#
+# La UI puede seguir siendo simple; esta capa evita que cada botón implemente su
+# propia interpretación de cupo, cargo, waitlist, PDF y SMTP.
+
+BOARDING_TRANSITION_PRESENT = "Presente"
+BOARDING_TRANSITION_ABSENT_CHARGED = "Ausente"
+BOARDING_TRANSITION_NO_BOARD_FREE = "No embarca"
+BOARDING_TRANSITION_PENDING = "Por confirmar"
+
+
+def boarding_capacity_effect(r: Reservation) -> str:
+    """Devuelve cómo impacta la reserva en el cupo operativo."""
+    if not r or is_waitlisted(r):
+        return "en_espera"
+    if r.cancelled_at is not None or (r.status or "") == "Cancelado":
+        return "cancelada"
+    if (r.attendance or "") == BOARDING_TRANSITION_PRESENT:
+        return "ocupa_plaza"
+    if (r.attendance or "") in (BOARDING_TRANSITION_ABSENT_CHARGED, BOARDING_TRANSITION_NO_BOARD_FREE, "No embarcable"):
+        return "libera_plaza"
+    return "pendiente_sin_ocupar_plaza_final"
+
+
+def boarding_financial_concept(r: Reservation) -> str:
+    """Concepto institucional visible. No usar nombres técnicos en mails/PDF."""
+    if not r:
+        return ""
+    if is_protocolar(r):
+        return "Participación protocolar"
+    att = (r.attendance or "").strip()
+    charge = float(r.charge_amount or 0)
+    if att == BOARDING_TRANSITION_PRESENT:
+        if canonical_kind(r.kind) == "socio":
+            return "Socio embarcado sin cargo"
+        return "Tarifa de invitado embarcado"
+    if att == BOARDING_TRANSITION_ABSENT_CHARGED:
+        return "Reserva incumplida con cargo reglamentario" if charge > 0 else "Ausente sin cargo"
+    if att == BOARDING_TRANSITION_NO_BOARD_FREE:
+        return "No embarcado por decisión del capitán, sin cargo"
+    if is_waitlisted(r):
+        return "Lista de espera"
+    return "Pendiente de embarque"
+
+
+def apply_boarding_transition(db: Session, outing: Outing, r: Reservation, value: str, no_board_reason: str = "") -> dict:
+    """Aplica una transición única de embarque.
+
+    Esta función es la fuente de verdad para Capitán: no sólo cambia el color
+    visible, también define cupo, cargo, cascadas y motivo institucional. Toda
+    lógica futura de waitlist/PDF/SMTP debe apoyarse en esta semántica, no en ifs
+    sueltos en endpoints o templates.
+    """
+    if value not in (BOARDING_TRANSITION_PRESENT, BOARDING_TRANSITION_ABSENT_CHARGED, BOARDING_TRANSITION_PENDING, BOARDING_TRANSITION_NO_BOARD_FREE):
+        raise ValueError("Transición de embarque inválida")
+
+    previous_trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
+    result = {
+        "transition": value,
+        "capacity_effect": None,
+        "financial_concept": None,
+        "dependents_changed": [],
+        "recalculate_waitlist": False,
+    }
+
+    if value in (BOARDING_TRANSITION_PRESENT, BOARDING_TRANSITION_PENDING):
+        # Presente/Pendiente vuelven a dejar la reserva activa, sin cargo de ausencia.
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.cancel_reason = previous_trace
+        r.charge_amount = 0
+        r.attendance = value
+        result["recalculate_waitlist"] = False
+
+    elif value == BOARDING_TRANSITION_ABSENT_CHARGED:
+        # Botón principal rojo: no se presentó / reserva incumplida.
+        # Libera plaza y, dentro de la ventana reglamentaria, genera cargo.
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.attendance = BOARDING_TRANSITION_ABSENT_CHARGED
+        r.cancel_reason = (previous_trace + " · Ausente / no se presentó") if previous_trace else "Ausente / no se presentó"
+        r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
+        result["dependents_changed"] = cascade_dependents_for_responsible_status(db, outing, r, mode="absent_charged")
+        result["recalculate_waitlist"] = True
+
+    elif value == BOARDING_TRANSITION_NO_BOARD_FREE:
+        # Acción secundaria protegida: decisión operativa del capitán, sin cargo.
+        # También libera plaza y recalcula espera, pero NO es reserva incumplida.
+        r.cancelled_at = None
+        r.status = default_reservation_status(outing, r)
+        r.attendance = BOARDING_TRANSITION_NO_BOARD_FREE
+        reason_txt = (no_board_reason or "Decisión operativa del capitán").strip()
+        r.cancel_reason = (previous_trace + f" · No embarcado por decisión del capitán: {reason_txt}") if previous_trace else f"No embarcado por decisión del capitán: {reason_txt}"
+        r.charge_amount = 0
+        result["dependents_changed"] = cascade_dependents_for_responsible_status(db, outing, r, mode="no_board_free")
+        result["recalculate_waitlist"] = True
+
+    result["capacity_effect"] = boarding_capacity_effect(r)
+    result["financial_concept"] = boarding_financial_concept(r)
+    return result
+
+
 def enforce_responsible_dependency(db: Session, outing: Outing, reservations=None) -> list:
     """Aplica la regla: invitado solo puede embarcar si embarca su socio responsable."""
     changed = []
@@ -4659,7 +4923,8 @@ def replace_guest_under_socio(
         new_waitlisted = False
     db.add(new_guest)
     db.flush()
-    promoted = promote_waitlist(db, outing)
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=getattr(user, "name", "Sistema"), reason="reemplazo de invitado por socio")
+    promoted = recompute_result.get("promoted") or []
     return new_guest, old_charge, new_waitlisted, promoted
 
 def displaceable_guest_for_socios(db: Session, outing: Outing) -> Optional[Reservation]:
@@ -4757,6 +5022,73 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
         chosen.cancelled_at = None
         promoted.append(chosen.person_name)
     return promoted
+
+
+
+
+def reservation_identity_key(r: Reservation) -> str:
+    return norm_dni(getattr(r, "dni", "") or "") or f"row:{getattr(r, 'id', '')}"
+
+
+def validate_outing_operational_invariants(db: Session, outing: Outing, reservations=None) -> list[str]:
+    """Valida estados imposibles antes de cierre, promoción o cirugía.
+
+    No corrige por su cuenta: devuelve errores humanos y deja que el flujo decida
+    si bloquea, reasigna o fuerza una transición oficial. Mantiene una sola
+    semántica para Capitán, Administración, PDF y SMTP.
+    """
+    if not outing:
+        return ["Salida inexistente"]
+    rows = list(reservations) if reservations is not None else db.query(Reservation).filter_by(outing_id=outing.id).all()
+    errors = []
+    seen_active = {}
+    for r in rows:
+        if is_waitlisted(r) and (r.attendance or "") == "Presente":
+            errors.append(f"{r.person_name}: figura Presente y en lista de espera simultáneamente")
+        if is_protocolar(r) and float(getattr(r, "charge_amount", 0) or 0) > 0:
+            errors.append(f"{r.person_name}: participación protocolar con cargo")
+        if reservation_is_active(r):
+            key = reservation_identity_key(r)
+            if key in seen_active:
+                errors.append(f"DNI/persona duplicada activa: {r.person_name} y {seen_active[key]}")
+            else:
+                seen_active[key] = r.person_name
+    errors.extend(present_guest_without_present_responsible_errors(db, outing, rows))
+    active_count = len(active_reservations(rows))
+    if active_count > int(outing.max_crew or MAX_CREW):
+        errors.append(f"Cupo operativo excedido: {active_count}/{outing.max_crew or MAX_CREW}")
+    return errors
+
+
+def recompute_waitlist_for_salida(db: Session, outing: Outing, actor_name: str = "Sistema", reason: str = "") -> dict:
+    """Fuente única para cupo + lista de espera.
+
+    Todas las acciones que liberen o consuman plaza deben pasar por acá. Primero
+    corrige dependencias, luego baja excedentes a espera y finalmente promueve
+    desde espera según prioridad reglamentaria. La función es idempotente: si se
+    ejecuta dos veces con el mismo estado final no debe duplicar promociones ni
+    cargos.
+    """
+    if not outing or is_closed_outing(outing) or is_outing_cancelled_by_captain(outing):
+        return {"promoted": [], "displaced": [], "dependency_changed": [], "errors": []}
+    rows_before = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id.asc()).all()
+    before_sig = [(r.id, r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id) for r in rows_before]
+    dependency_changed = enforce_responsible_dependency(db, outing, rows_before)
+    displaced = enforce_capacity(db, outing)
+    promoted = promote_waitlist(db, outing)
+    rows_after = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id.asc()).all()
+    errors = validate_outing_operational_invariants(db, outing, rows_after)
+    after_sig = [(r.id, r.status, r.attendance, float(r.charge_amount or 0), r.responsible_user_id) for r in rows_after]
+    changed = before_sig != after_sig
+    return {"promoted": promoted, "displaced": displaced, "dependency_changed": dependency_changed, "errors": errors, "changed": changed, "reason": reason or ""}
+
+
+def is_inside_48h(outing: Outing, ref: Optional[datetime] = None) -> bool:
+    """Regla única 48h: exactamente 48h ya entra en ventana reglamentaria."""
+    if not outing:
+        return False
+    ref = ref or now_local()
+    return ref >= cancellation_deadline(outing)
 
 
 def captain_can_activate_waitlisted_reservation(db: Session, outing: Outing, r: Reservation) -> bool:
@@ -4883,7 +5215,7 @@ def cutoff_passed(outing: Outing) -> bool:
     return now_local() >= cutoff_at(outing)
 
 def late_window_passed(outing: Outing) -> bool:
-    return now_local() >= cancellation_deadline(outing)
+    return is_inside_48h(outing, now_local())
 
 def reservation_charge(outing: Outing, r: Reservation) -> float:
     """Cargo reglamentario por plaza perdida.
@@ -7290,7 +7622,8 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
             dep.cancel_reason = "Baja desde lista de espera por baja del socio responsable" if dep_was_waitlisted else "Cancelado por baja del socio responsable"
             dep.charge_amount = 0 if dep_was_waitlisted else (reservation_charge(outing, dep) if late_window_passed(outing) else 0)
 
-    promoted = promote_waitlist(db, outing)
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="cancelación de socio/reserva")
+    promoted = recompute_result.get("promoted") or []
     db.commit()
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
@@ -8067,7 +8400,8 @@ def outing_status(
         cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida reabierta por capitán")
         outing.status = "En reservas"
         recalculate_preliquidation_after_reopen(db, outing, reservations)
-        promoted = promote_waitlist(db, outing)
+        recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="reapertura de salida")
+        promoted = recompute_result.get("promoted") or []
         db.commit()
         audit_event(db, user, "reapertura", f"{outing.title} / desde {old_status} / preliquidaciones recalculadas / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "promovidos": promoted})
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reapertura_ok", status_code=303)
@@ -8075,7 +8409,7 @@ def outing_status(
     return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
 
 @app.post("/captain/attendance/{rid}/{value}")
-def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def attendance(request: Request, rid: int, value: str, no_board_reason: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     r = db.get(Reservation, rid)
     if not r or value not in ["Presente", "Ausente", "Por confirmar", "No embarca"]:
         return RedirectResponse("/captain?msg=accion_invalida", status_code=303)
@@ -8095,8 +8429,11 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
+    if value == "No embarca" and not (no_board_reason or "").strip():
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=motivo_requerido", status_code=303)
+
     # Snapshot real antes de cualquier mutación de capitán. Es la base del
-    # motor único de eventos operativos 3.8.0. Sin esto el sistema podía
+    # motor único de eventos operativos 3.8.1. Sin esto el sistema podía
     # cambiar la ficha/liquidación pero no emitir todos los avisos SMTP.
     before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
     was_waitlisted = is_waitlisted(r)
@@ -8125,51 +8462,20 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     before_attendance = {"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""}
     previous_trace = _reassignment_trace_only_bootstrap(r.cancel_reason or "")
 
-    if value in ("Presente", "Por confirmar"):
-        # Blindaje: un invitado/menor no socio no puede ser marcado presente
-        # si su socio responsable no está presente y activo.
-        if value == "Presente" and canonical_kind(r.kind) in ("invitado", "hijo_menor") and not is_protocolar(r):
-            responsible_row = responsible_reservation_for(db, r.outing_id, r.responsible_user_id)
-            responsible_ok = bool(responsible_row and responsible_row.attendance == "Presente" and reservation_is_active(responsible_row))
-            if not responsible_ok:
-                log(db, user.name, "asistencia bloqueada", f"{r.person_name}: socio responsable no está presente / {outing.title}")
-                return RedirectResponse(f"/captain?outing_id={outing.id}&msg=socio_responsable_no_presente", status_code=303)
-        r.cancelled_at = None
-        r.status = default_reservation_status(outing, r)
-        # No borrar la traza de reasignación: es el candado que impide una segunda
-        # reasignación y además explica la imputación en ficha tras reabrir/corregir.
-        r.cancel_reason = previous_trace
-        r.charge_amount = 0
-        r.attendance = value
-    elif value == "Ausente":
-        # Ausente verdadero: no embarcó y queda como plaza perdida con cargo reglamentario.
-        # Si es socio titular, sus invitados comunes quedan impedidos y con cargo
-        # al socio original, salvo reasignación manual previa a otro socio presente.
-        r.attendance = "Ausente"
-        r.cancel_reason = (previous_trace + " · Ausente / no se presentó") if previous_trace else "Ausente / no se presentó"
-        r.charge_amount = reservation_charge(outing, r) if late_window_passed(outing) else 0
-        cascade_dependents_for_responsible_status(db, outing, r, mode="absent_charged")
-    elif value == "No embarca":
-        # Decisión operativa del capitán: no es reserva incumplida y no genera cargo.
-        r.cancelled_at = None
-        r.status = default_reservation_status(outing, r)
-        r.attendance = "No embarca"
-        r.cancel_reason = (previous_trace + " · No embarcado por decisión del capitán") if previous_trace else "No embarcado por decisión del capitán"
-        r.charge_amount = 0
-        # Si el titular no embarca por decisión del capitán, sus invitados comunes
-        # tampoco pueden navegar bajo ese socio y quedan sin cargo. Los institucionales
-        # no entran en la cascada.
-        cascade_dependents_for_responsible_status(db, outing, r, mode="no_board_free")
+    transition_result = apply_boarding_transition(db, outing, r, value, no_board_reason=no_board_reason)
 
-    # Reaplica la dependencia antes de recalcular cupos/promociones.
-    enforce_responsible_dependency(db, outing)
-    promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
-    enforce_capacity(db, outing)
+    # Recalculo transaccional centralizado 3.8.3: cupo, dependencias y waitlist
+    # pasan por una única función para evitar promociones dobles o estados pisados.
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason=f"asistencia {r.person_name}: {value}") if transition_result.get("recalculate_waitlist") or was_waitlisted else {"promoted": [], "errors": []}
+    if recompute_result.get("errors"):
+        db.rollback()
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_invalido", status_code=303)
+    promoted = recompute_result.get("promoted") or []
     db.commit()
     notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
     if notified_status:
         auto_process_notifications(db, limit=max(5, notified_status + 2))
-    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "emails": notified_status})
+    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "capacity_effect": transition_result.get("capacity_effect"), "financial_concept": transition_result.get("financial_concept"), "dependents_changed": transition_result.get("dependents_changed"), "no_board_reason": no_board_reason or "", "emails": notified_status})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 
@@ -8247,7 +8553,10 @@ def captain_reassign_guest(
     if was_waitlisted:
         captain_activate_waitlisted_reservation(db, outing, r)
 
-    enforce_capacity(db, outing)
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason=f"reasignación {r.person_name}")
+    if recompute_result.get("errors"):
+        db.rollback()
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     db.commit()
     notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
     if notified_status:
@@ -8294,7 +8603,10 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     if not ok:
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=accion_invalida", status_code=303)
 
-    enforce_capacity(db, outing)
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="pre-cierre")
+    if recompute_result.get("errors"):
+        db.rollback()
+        return RedirectResponse(f"/captain/preflight?outing_id={outing.id}&msg=preflight_error", status_code=303)
     preflight = close_preflight_analysis(db, outing)
     if preflight["errors"]:
         return RedirectResponse(f"/captain/preflight?outing_id={outing.id}&msg=preflight_error", status_code=303)
@@ -9492,7 +9804,8 @@ def admin_outing_status(
         annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por Administración")
         outing.status = "En reservas"
         recalculate_preliquidation_after_reopen(db, outing, reservations)
-        promoted = promote_waitlist(db, outing)
+        recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="reapertura por administración")
+        promoted = recompute_result.get("promoted") or []
         detail = f"{outing.title} / {old_status} -> {outing.status} / promovidos {', '.join(promoted) if promoted else '-'}"
     elif status == "Cerrar":
         active = active_reservations(reservations)
