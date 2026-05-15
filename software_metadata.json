@@ -1,10 +1,10 @@
 {
   "version": "3.8.6",
-  "release_label": "Fjord VI · v3.8.6",
+  "release_label": "Fjord VI · v3.8.6 RC6",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI 3.8.6",
+  "app_build": "Fjord VI 3.8.6 RC6",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",

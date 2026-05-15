@@ -8790,6 +8790,13 @@ def attendance(request: Request, rid: int, value: str, no_board_reason: str = Fo
     if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
+    # RC6: las acciones del menú también son autoritativas. Si la pantalla quedó vieja,
+    # no se aplica el cambio: se fuerza refresco para evitar estados falsos.
+    if expected_current and expected_attendance_is_stale(r, expected_current):
+        audit_event(db, user, "acción capitán con pantalla desactualizada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
+        db.commit()
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=pantalla_actualizada", status_code=303)
+
     if value == "No embarca" and not (no_board_reason or "").strip():
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=motivo_requerido", status_code=303)
 
