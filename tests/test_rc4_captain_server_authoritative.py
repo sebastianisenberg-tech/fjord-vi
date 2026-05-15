@@ -22,7 +22,7 @@ def test_rc4_stale_captain_screen_is_blocked_and_audited():
 
 def test_rc4_toggle_semantics_preserve_captain_business_rules():
     body = MAIN[MAIN.index('def resolve_captain_fast_toggle_value'):MAIN.index('def expected_attendance_is_stale')]
-    assert 'current == BOARDING_TRANSITION_PRESENT' in body
-    assert 'return BOARDING_TRANSITION_ABSENT_CHARGED' in body
+    assert 'BOARDING_TRANSITION_PRESENT' in body
+    assert 'return BOARDING_TRANSITION_PENDING' in body
     assert 'return BOARDING_TRANSITION_PRESENT' in body
-    assert 'Las acciones excepcionales sin cargo siguen protegidas en el menú' in body
+    assert 'No embarcó/con cargo y No embarca/sin cargo quedan como acciones explícitas del menú' in body

@@ -133,7 +133,8 @@
       });
     }
 
-    // Tap rápido para flujo habitual; acciones excepcionales quedan en menú ⋯.
+    // Tap rápido para flujo habitual: Pendiente -> Presente.
+    // No embarcó / con cargo y No embarca / sin cargo quedan en menú ⋯ para evitar estados falsos.
     document.querySelectorAll('.captainFastRowV65').forEach(function(row){
       row.addEventListener('click', function(e){
         if(e.target.closest('button, a, summary, details, select, form, [data-tip]')) return;
@@ -144,9 +145,9 @@
         }
         const current = row.getAttribute('data-current') || 'Por confirmar';
         let next = 'Presente';
-        if(current === 'Presente') next = 'Ausente';
-        else if(current === 'Ausente') next = 'Presente';
-        else if(current === 'No embarca' || current === 'No embarcable') next = 'Presente';
+        if(current === 'Presente') next = 'Por confirmar';
+        else if(current === 'Ausente') next = 'Por confirmar';
+        else if(current === 'No embarca' || current === 'No embarcable') next = 'Por confirmar';
         if(next === 'Presente'){
           const presentRows = document.querySelectorAll('#tripulacion .captainFastRowV65.statePresent:not(.waitlisted):not(.inactive)').length;
           if(current !== 'Presente' && presentRows >= 9){
@@ -156,13 +157,22 @@
         }
         const form = row.querySelector('form[data-v65-status="TOGGLE"]');
         if(!form) return;
-        if(next === 'Ausente' && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) return;
         captainRememberScroll(row);
         row.dataset.submitting = '1';
         row.classList.add('isSubmittingV65');
         form.submit();
       });
     });
+
+    document.querySelectorAll('.attendanceAbsentMenuForm').forEach(function(form){
+      form.addEventListener('submit', function(e){
+        if(!confirm('Confirmar NO EMBARCÓ? Esta acción libera plaza y puede generar cargo reglamentario.')){
+          e.preventDefault();
+          return;
+        }
+      });
+    });
+
 
 
     // Acción excepcional protegida: No embarca / sin cargo exige motivo obligatorio.
@@ -374,8 +384,8 @@
 </section>
 
 <section class="card premiumCard captainV65Card" id="tripulacion">
-  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No embarcó. La acción excepcional sin cargo queda en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
-  <div class="captainV65Hint">Tocá una persona para alternar Presente / No embarcó. Usá ⋯ sólo para acciones excepcionales. <span class="helpDot helpDotTiny" data-tip="No embarcó libera plaza y, si corresponde por ventana reglamentaria, genera reserva incumplida con cargo. No embarca/sin cargo queda protegido en ⋯.">i</span></div>
+  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para marcar Presente. Para No embarcó con cargo o No embarca sin cargo usá el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
+  <div class="captainV65Hint">Tocá una persona para marcar Presente. Para registrar No embarcó con cargo o No embarca sin cargo, usá ⋯. <span class="helpDot helpDotTiny" data-tip="No embarcó libera plaza y, si corresponde por ventana reglamentaria, genera reserva incumplida con cargo. No embarca/sin cargo también libera plaza, pero no genera cargo.">i</span></div>
   <div class="captainFilterShellV11612" aria-label="Filtros de tripulación">
     <span class="captainFilterArrowV11612 left" aria-hidden="true">‹</span>
     <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
@@ -421,8 +431,26 @@
             <div class="captainMoreOpsBody">
               {% if reservation_views.get(r.id) and reservation_views.get(r.id).protocolar %}<div class="captainMoreInfo"><b>Institucional del club</b>{% if v.protocolar_reference_name %}<br>Referente: {{v.protocolar_reference_name}}{% endif %}</div>{% elif v.show_responsible %}<div class="captainMoreInfo"><b>Invitado de:</b> {{v.responsible_name}}</div>{% endif %}
               {% if reason_text and not (reservation_views.get(r.id) and reservation_views.get(r.id).protocolar) %}<div class="captainMoreInfo">{{reason_text}}</div>{% endif %}
-              {% if not v.waitlisted %}<form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca"><button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión del capitán: la persona no sube por una razón operativa o de seguridad. No genera cargo.">i</span></button></form>{% endif %}
-              {% if v.waitlisted and v.captain_can_activate_from_waitlist %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Subir desde espera / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Saca a la persona de lista de espera cuando ya hay vacante real y la deja operable para completar el embarque.">i</span></button></form>{% elif v.not_embarked or v.cancelled or r.attendance == 'Ausente' or r.attendance == 'No embarca' %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Reactivar / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Vuelve a dejar la persona pendiente para corregir un estado marcado por error.">i</span></button></form>{% endif %}
+              {% if not v.waitlisted %}
+              <div class="captainMenuSectionTitle">Estado operativo</div>
+              <form class="attendancePresentMenuForm" method="post" action="/captain/attendance/{{r.id}}/Presente">
+                <input type="hidden" name="expected_current" value="{{current_v65}}">
+                <button class="capAction presentAction">Marcar presente</button>
+              </form>
+              <form class="attendanceAbsentMenuForm" method="post" action="/captain/attendance/{{r.id}}/Ausente">
+                <input type="hidden" name="expected_current" value="{{current_v65}}">
+                <button class="capAction absentAction">No se presentó / con cargo <span class="helpDot helpDotTiny" data-tip="Libera la plaza y, dentro de la ventana reglamentaria, genera reserva incumplida con cargo. Es la acción correcta cuando la persona no vino o no subió.">i</span></button>
+              </form>
+              <form class="attendanceNoBoardMenuForm" method="post" action="/captain/attendance/{{r.id}}/No embarca">
+                <input type="hidden" name="expected_current" value="{{current_v65}}">
+                <button class="capAction noBoardAction">No embarca / sin cargo <span class="helpDot helpDotTiny" data-tip="Decisión excepcional del capitán. Libera plaza, pero no genera cargo. Requiere motivo.">i</span></button>
+              </form>
+              <form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar">
+                <input type="hidden" name="expected_current" value="{{current_v65}}">
+                <button class="capAction reactivate">Volver a pendiente</button>
+              </form>
+              {% endif %}
+              {% if v.waitlisted and v.captain_can_activate_from_waitlist %}<form class="reactivateForm" method="post" action="/captain/attendance/{{r.id}}/Por confirmar"><button class="capAction reactivate">Subir desde espera / dejar pendiente <span class="helpDot helpDotTiny" data-tip="Saca a la persona de lista de espera cuando ya hay vacante real y la deja operable para completar el embarque.">i</span></button></form>{% endif %}
               {% if v.show_responsible and captain_responsible_options|length > 0 %}
               <div class="captainReassignBlock">
                 <div class="captainMoreInfo"><b>Reasignar invitado a socio presente:</b> <span class="helpDot helpDotTiny" data-tip="Transfiere el invitado al socio presente seleccionado. El cargo final sigue a la persona y queda a cargo del nuevo responsable; no se duplica al socio original.">i</span></div>
@@ -466,9 +494,9 @@
       <div class="captainQuickGuidePanelV11612">
         <b>Operación del Capitán</b>
         <ul>
-          <li>Tocá una persona para alternar Presente / No embarcó.</li>
+          <li>Tocá una persona para marcar Presente o volver a Pendiente.</li>
+          <li>Usá ⋯ para No embarcó/con cargo o No embarca/sin cargo.</li>
           <li>No embarcó libera plaza y puede generar reserva incumplida con cargo reglamentario.</li>
-          <li>Usá ⋯ para No embarca/sin cargo, reactivar o reasignar invitados.</li>
           <li>Los invitados comunes dependen del socio titular del grupo.</li>
           <li>Los institucionales son del club, pero conservan la referencia del socio que los cargó.</li>
           <li>Cancelar por capitán suspende la salida y no genera cargos.</li>

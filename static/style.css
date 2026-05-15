@@ -9670,3 +9670,21 @@ html body nav.bottom.socioV51Bottom a[href="#inicio"]{
 .smartAlert.safe{background:#ecfdf5;border:1px solid rgba(16,185,129,.28);color:#065f46}
 .smartAlert.warn{background:#fffbeb;border:1px solid rgba(245,158,11,.38);color:#78350f}
 @media(max-width:760px){.smtpMasterStatus{flex-direction:column;align-items:stretch}.masterStatusRight{align-items:flex-start}}
+
+.capAction.absentAction{background:#b42318!important;color:#fff!important;}
+.capAction.noBoardAction{background:#e9e3d8!important;color:#3b342a!important;border:1px solid #d7cbb8!important;}
+
+/* RC6 Capitán: menú de estado explícito y legible */
+.captainMenuSectionTitle{
+  margin:4px 0 6px;
+  font-size:11px;
+  font-weight:950;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#64748b;
+}
+.capAction.presentAction{background:#0b7a3b!important;color:#fff!important;}
+.capAction.absentAction{background:#b42318!important;color:#fff!important;border:1px solid #8f1d14!important;}
+.capAction.noBoardAction{background:#f1f5f9!important;color:#263445!important;border:1px solid #cbd5e1!important;}
+.captainOpsSheetContent .attendanceAbsentMenuForm{display:block!important;visibility:visible!important;opacity:1!important;}
+.captainOpsSheetContent .capAction.absentAction{display:block!important;width:100%!important;min-height:52px!important;font-size:15px!important;}
