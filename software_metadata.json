@@ -30,9 +30,9 @@
   "logging_base": true,
   "release": "v3.8.6 - Release hardening",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
+  "build_note": "RC4: tap rápido del Capitán resuelto en servidor, guard contra pantalla desactualizada, sin cambios en PDF ni UX principal.",
   "app_version": "3.8.6",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PRODUCTION_READY_RC1",
-  "hardening_focus": "SMTP queue transactional claim, restart recovery, release checks and critical regression tests"
+  "release_stage": "PRODUCTION_READY_RC4",
+  "hardening_focus": "RC4 captain logic: server-authoritative fast toggle, stale-screen guard, cancellation/reopen invariants, SMTP hardening retained"
 }

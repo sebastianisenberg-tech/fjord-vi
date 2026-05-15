@@ -43,7 +43,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
 APP_VERSION = "3.8.6"
-APP_RELEASE_STAGE = "PRODUCTION_READY_RC1"
+APP_RELEASE_STAGE = "PRODUCTION_READY_RC4"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -5098,7 +5098,7 @@ def set_reservation_status_guarded(r: Reservation, target_status: str, *, force:
     """Único setter lógico para estados de reserva críticos.
 
     Las rutas existentes conservan compatibilidad, pero toda transición agregada
-    desde 3.8.6-PRODUCTION_READY_RC1 debe pasar por acá. Si aparece una transición no formalizada,
+    desde 3.8.6-PRODUCTION_READY_RC4 debe pasar por acá. Si aparece una transición no formalizada,
     se bloquea antes de grabar una contradicción silenciosa.
     """
     current = (getattr(r, "status", "") or "Confirmado").strip()
@@ -8247,6 +8247,33 @@ def attendance_idempotent_noop(r: Reservation, value: str) -> bool:
     return False
 
 
+def resolve_captain_fast_toggle_value(r: Reservation) -> str:
+    """Alternancia autoritativa del servidor para el tap rápido del Capitán.
+
+    RC4: el navegador puede quedar viejo o recibir un doble toque. El servidor, no
+    la pantalla, decide el próximo estado a partir del estado real persistido:
+    Presente -> Ausente; cualquier otro estado operable -> Presente.
+    Las acciones excepcionales sin cargo siguen protegidas en el menú.
+    """
+    current = (getattr(r, "attendance", "") or "Por confirmar").strip()
+    if current == BOARDING_TRANSITION_PRESENT:
+        return BOARDING_TRANSITION_ABSENT_CHARGED
+    return BOARDING_TRANSITION_PRESENT
+
+
+def expected_attendance_is_stale(r: Reservation, expected_current: str) -> bool:
+    """Detecta pantalla vieja sin romper la operación.
+
+    Se usa para auditar doble sesión/doble toque: si el usuario operó sobre una
+    pantalla desactualizada, se deja rastro y el servidor resuelve con el estado
+    real actual. No se confía en el DOM para calcular cargos ni cupos.
+    """
+    expected = (expected_current or "").strip()
+    if not expected:
+        return False
+    return expected != ((getattr(r, "attendance", "") or "Por confirmar").strip())
+
+
 def close_preflight_analysis(db: Session, outing: Outing) -> dict:
     """Análisis previo al cierre: detecta errores bloqueantes y sugiere correcciones.
 
@@ -8419,9 +8446,18 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
             continue
 
         if is_captain_cancelled(r):
-            r.charge_amount = 0
-            r.attendance = "Ausente"
-            r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
+            # Si la marca viene de una cancelación total de salida, al reabrir no
+            # debe transformarse en reserva incumplida: vuelve a pendiente.
+            # El caso excepcional individual de No embarca/sin cargo se trata abajo.
+            reason_l = (r.cancel_reason or "").lower()
+            if "salida cancelada" in reason_l:
+                r.charge_amount = 0
+                r.attendance = "Por confirmar"
+                r.cancel_reason = reassignment_trace_only(r.cancel_reason or "")
+            else:
+                r.charge_amount = 0
+                r.attendance = "No embarca"
+                r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
             continue
 
         if is_no_board_by_captain(r):
@@ -8553,9 +8589,18 @@ def recalculate_preliquidation_after_reopen(db: Session, outing: Outing, reserva
             continue
 
         if is_captain_cancelled(r):
-            r.charge_amount = 0
-            r.attendance = "Ausente"
-            r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
+            # Si la marca viene de una cancelación total de salida, al reabrir no
+            # debe transformarse en reserva incumplida: vuelve a pendiente.
+            # El caso excepcional individual de No embarca/sin cargo se trata abajo.
+            reason_l = (r.cancel_reason or "").lower()
+            if "salida cancelada" in reason_l:
+                r.charge_amount = 0
+                r.attendance = "Por confirmar"
+                r.cancel_reason = reassignment_trace_only(r.cancel_reason or "")
+            else:
+                r.charge_amount = 0
+                r.attendance = "No embarca"
+                r.cancel_reason = r.cancel_reason or "Cancelado por capitán"
             continue
 
         if is_no_board_by_captain(r):
@@ -8624,24 +8669,39 @@ def outing_status(
 
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
 
+        # Se arma la lista de responsables ANTES de mutar los estados.
+        # Si primero se marcaban como no embarcados, reservation_is_active()
+        # dejaba de encontrarlos y se perdían avisos de cancelación.
+        notify_responsible_ids = []
+        seen_notify_ids = set()
+        for rr in reservations:
+            if reservation_is_active(rr) and rr.responsible_user_id and rr.responsible_user_id not in seen_notify_ids:
+                notify_responsible_ids.append(rr.responsible_user_id)
+                seen_notify_ids.add(rr.responsible_user_id)
+
         # Si existía ficha vigente, queda anulada: nunca se pisa ni se borra.
         annul_current_closing_sheet(db, outing, user.name, "Salida cancelada/reabierta por capitán")
         cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida cancelada por capitán")
 
         for r in reservations:
-            # La cancelación total por capitán anula toda preliquidación,
-            # pero no borra cancel_reason/cancelled_at. Así, si el capitán
-            # reabre la salida, se puede reconstruir la preliquidación de
-            # bajas tardías previas sin perder trazabilidad.
+            # Cancelación total de salida: nadie debe seguir figurando embarcado.
+            # Se conserva la reserva y la trazabilidad, pero el estado operativo
+            # pasa a No embarca/sin cargo y el cupo queda liberado.
+            r.cancelled_at = None
+            r.status = default_reservation_status(outing, r)
+            r.attendance = "No embarca"
             r.charge_amount = 0
+            trace = reassignment_trace_only(r.cancel_reason or "")
+            reason = "Salida cancelada por capitán"
+            r.cancel_reason = (trace + " · " + reason) if trace else reason
 
         set_outing_status_guarded(outing, "Cancelada por capitán")
 
         notified = set()
-        for r in reservations:
-            if not reservation_is_active(r) or not r.responsible_user_id or r.responsible_user_id in notified:
+        for responsible_id in notify_responsible_ids:
+            if responsible_id in notified:
                 continue
-            u = db.get(User, r.responsible_user_id)
+            u = db.get(User, responsible_id)
             if not u or not (u.email or "").strip():
                 continue
             queue_email(db, "salida_cancelada_socio", u.email, u.name, {
@@ -8652,7 +8712,7 @@ def outing_status(
                 "hora": outing.departure_at.strftime("%H:%M"),
                 "estado": outing.status,
             })
-            notified.add(r.responsible_user_id)
+            notified.add(responsible_id)
 
         db.commit()
         audit_event(db, user, "cancelación", f"{outing.title} / desde {old_status}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "charges_zeroed": len(reservations), "notificados": len(notified)})
@@ -8687,8 +8747,30 @@ def outing_status(
 
     return RedirectResponse(f"/captain?outing_id={outing.id}", status_code=303)
 
+@app.post("/captain/attendance_toggle/{rid}")
+def attendance_toggle(request: Request, rid: int, expected_current: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+    """Tap rápido autoritativo RC4.
+
+    Evita que una sesión vieja o un doble toque conviertan una acción visual en
+    un estado operativo incorrecto. Si la pantalla está vieja, no muta datos:
+    fuerza refresh para que el capitán vea el estado real.
+    """
+    r = db.get(Reservation, rid)
+    if not r:
+        return RedirectResponse("/captain?msg=accion_invalida", status_code=303)
+    outing = db.get(Outing, r.outing_id)
+    if not outing:
+        return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
+    if expected_attendance_is_stale(r, expected_current):
+        audit_event(db, user, "tap rápido con pantalla desactualizada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
+        db.commit()
+        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=pantalla_actualizada", status_code=303)
+    value = resolve_captain_fast_toggle_value(r)
+    return attendance(request, rid, value, no_board_reason="", expected_current=expected_current, db=db, user=user)
+
+
 @app.post("/captain/attendance/{rid}/{value}")
-def attendance(request: Request, rid: int, value: str, no_board_reason: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
+def attendance(request: Request, rid: int, value: str, no_board_reason: str = Form(""), expected_current: str = Form(""), db: Session = Depends(db_session), user: User = Depends(require_role("captain", "admin"))):
     r = db.get(Reservation, rid)
     if not r or value not in ["Presente", "Ausente", "Por confirmar", "No embarca"]:
         return RedirectResponse("/captain?msg=accion_invalida", status_code=303)
@@ -10053,7 +10135,7 @@ def update_outing(
                 "hora": outing.departure_at.strftime("%H:%M"),
                 "estado": outing.status,
             })
-            notified.add(r.responsible_user_id)
+            notified.add(responsible_id)
     db.commit()
     if active_count and changed_schedule:
         auto_process_notifications(db, limit=10)
