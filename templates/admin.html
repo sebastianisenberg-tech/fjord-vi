@@ -698,10 +698,10 @@ Estado{width:118px;max-width:150px}.erpTable .colFecha{width:132px;max-width:145
             <td>{% if q.scheduled_at %}{{fmt_admin_datetime(q.scheduled_at)}}{% else %}inmediato{% endif %}</td>
             <td>{{q.event_key}}</td>
             <td>{{q.recipient_email}}</td>
-            <td><span class="badge {% if q.status=='sent' %}ok{% elif q.status=='failed' %}cancel{% else %}warn{% endif %}">{{q.status}}</span></td>
+            <td><span class="badge {% if q.status=='sent' %}ok{% elif q.status in ['failed','expired'] %}cancel{% elif q.status in ['cancelled','cancelled_operational'] %}neutral{% else %}warn{% endif %}">{% if q.status=='cancelled_operational' %}obsoleto{% elif q.status=='expired' %}expirado{% else %}{{q.status}}{% endif %}</span></td>
             <td>{{q.attempts}}</td>
             <td>{{q.error}}</td>
-            <td>{% if q.status!='sent' %}<form method="post" action="/admin/communications/retry/{{q.id}}"><button class="erpBtn" type="submit">Reintentar</button></form>{% endif %}</td>
+            <td>{% if q.status in communications.retryable_statuses %}<form method="post" action="/admin/communications/retry/{{q.id}}"><button class="erpBtn" type="submit">Reintentar</button></form>{% elif q.status in ['cancelled','cancelled_operational','sent'] %}<small>No reintentar</small>{% else %}<small>Procesar cola</small>{% endif %}</td>
           </tr>
           {% else %}
           <tr><td colspan="8"><span class="emptyState">Sin envíos registrados todavía. Ejecutá “Enviar prueba” o “Prueba integral SMTP”.</span></td></tr>
