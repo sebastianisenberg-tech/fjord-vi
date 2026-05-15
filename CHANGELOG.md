@@ -1,3 +1,12 @@
+## 3.8.5 · Release hardening
+
+- Versión unificada 3.8.5.
+- Política operativa de envíos formalizada: inmediatos, diferidos, reemplazables y definitivos.
+- Cola SMTP con expiración de pendientes y retry máximo configurable.
+- Recovery post restart cancela pendientes obsoletos y retries agotados.
+- Release check actualizado para tests críticos 3.8.5.
+- Pytest mínimo agregado para versión, waitlist, SMTP policy y release hardening.
+
 ## 3.8.4 · Release hardening
 
 - Cierre de rutas técnicas públicas: /docs, /redoc y /openapi.json.

@@ -31,6 +31,7 @@ from reportlab.pdfgen import canvas
 from app.core.errors import AppError, render_app_error_html
 from app.core.logging_config import configure_logging, get_logger
 from app.core.settings import load_settings
+from app.reliability import operational_state as op_state
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -41,7 +42,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.8.4"
+APP_VERSION = "3.8.5"
+APP_RELEASE_STAGE = "RC1"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +87,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.8.4"
-RELEASE_LABEL = "Fjord VI · v3.8.4"
+APP_BUILD = "Fjord VI 3.8.5"
+RELEASE_LABEL = "Fjord VI · v3.8.5"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -824,6 +826,7 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
 
     original_to, effective_to, test_mode = effective_email_recipient(db, recipient_email)
     payload2 = dict(payload or {})
+    payload2["_event_policy"] = notification_event_policy(event_key)
     payload2["_original_recipient"] = original_to
     payload2["_effective_recipient"] = effective_to
     payload2["_smtp_test_mode"] = test_mode
@@ -845,9 +848,13 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     return q
 
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
+    expired = expire_stale_notification_queue(db, "Expirado antes de procesar cola")
+    retry_cancelled = cancel_over_retry_limit(db)
     limit = min(limit, smtp_send_limit_per_run(db))
-    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).filter(or_(NotificationQueue.scheduled_at == None, NotificationQueue.scheduled_at <= now_local())).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
+    max_attempts = smtp_retry_max_attempts(db)
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).filter(NotificationQueue.attempts < max_attempts).filter(or_(NotificationQueue.scheduled_at == None, NotificationQueue.scheduled_at <= now_local())).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
     sent = failed = cancelled = 0
+    cancelled += expired + retry_cancelled
     for row in rows:
         obsolete_reason = closing_notification_obsolete_reason(db, row)
         if obsolete_reason:
@@ -873,6 +880,8 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
     return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled}
 
 def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
+    expire_stale_notification_queue(db, "Expirado antes de procesar cola selectiva")
+    cancel_over_retry_limit(db)
     """Procesa únicamente los emails recién generados por una prueba controlada.
 
     Evita que una prueba integral quede parcialmente pendiente porque existían
@@ -1059,6 +1068,80 @@ def smtp_rate_limit_summary(db: Session) -> dict:
         "per_run": smtp_send_limit_per_run(db),
         "label": f"máx. {smtp_send_limit_per_run(db)} por corrida",
     }
+
+def smtp_retry_max_attempts(db: Session) -> int:
+    raw = get_system_meta(db, "smtp_retry_max_attempts", os.getenv("SMTP_RETRY_MAX_ATTEMPTS", "5"))
+    try:
+        return max(1, min(20, int(raw)))
+    except Exception:
+        return 5
+
+
+def smtp_pending_expiry_hours(db: Session) -> int:
+    raw = get_system_meta(db, "smtp_pending_expiry_hours", os.getenv("SMTP_PENDING_EXPIRY_HOURS", "72"))
+    try:
+        return max(1, min(720, int(raw)))
+    except Exception:
+        return 72
+
+
+def notification_event_policy(event_key: str) -> dict:
+    """Política operativa explícita de envíos.
+
+    Inmediato: avisos operativos que informan estado actual.
+    Reemplazable: cambios de estado que pueden ser sustituidos antes de envío.
+    Definitivo: liquidaciones/fichas, sólo válidas si la ficha vigente coincide.
+    """
+    policies = {
+        "reserva_confirmada_socio": {"timing": "inmediato", "replaceable": False, "final": False},
+        "reserva_en_espera_socio": {"timing": "inmediato", "replaceable": False, "final": False},
+        "invitado_agregado_socio": {"timing": "inmediato", "replaceable": False, "final": False},
+        "invitado_en_espera_socio": {"timing": "inmediato", "replaceable": False, "final": False},
+        "embarque_estado_socio": {"timing": "diferido", "replaceable": True, "final": False},
+        "resumen_cierre_socio": {"timing": "diferido", "replaceable": True, "final": True},
+        "cierre_liquidacion_admin": {"timing": "diferido", "replaceable": False, "final": True},
+        "recordatorio_24h_socio": {"timing": "programado", "replaceable": False, "final": False},
+    }
+    return policies.get(event_key, {"timing": "inmediato", "replaceable": False, "final": False})
+
+
+def expire_stale_notification_queue(db: Session, reason_prefix: str = "Expirado") -> int:
+    cutoff = now_local() - timedelta(hours=smtp_pending_expiry_hours(db))
+    rows = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status.in_(["pending", "failed"]))
+        .filter(NotificationQueue.created_at < cutoff)
+        .all()
+    )
+    count = 0
+    for row in rows:
+        row.status = "cancelled"
+        row.error = f"{reason_prefix}: pendiente/fallido por más de {smtp_pending_expiry_hours(db)} h"
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=row.error))
+        count += 1
+    if count:
+        db.commit()
+    return count
+
+
+def cancel_over_retry_limit(db: Session) -> int:
+    max_attempts = smtp_retry_max_attempts(db)
+    rows = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status.in_(["pending", "failed"]))
+        .filter(NotificationQueue.attempts >= max_attempts)
+        .all()
+    )
+    count = 0
+    for row in rows:
+        row.status = "cancelled"
+        row.error = f"Retry agotado: {row.attempts}/{max_attempts}"
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=row.error))
+        count += 1
+    if count:
+        db.commit()
+    return count
+
 
 def smtp_probe_summary(db: Session) -> dict:
     return {
@@ -2170,6 +2253,8 @@ def set_hidden_guest_candidate_dnis(db: Session, dnis: set[str]):
 
 
 def recover_notification_queue_after_restart(db: Session) -> dict:
+    expired = expire_stale_notification_queue(db, "Expirado en recovery post restart")
+    retry_cancelled = cancel_over_retry_limit(db)
     """Repara cola SMTP al iniciar sin duplicar envíos.
 
     Cancela liquidaciones económicas obsoletas que hayan quedado pendientes por
@@ -2189,7 +2274,7 @@ def recover_notification_queue_after_restart(db: Session) -> dict:
             cancelled += 1
     if cancelled:
         db.commit()
-    return {"checked": checked, "cancelled": cancelled}
+    return {"checked": checked, "cancelled": cancelled + expired + retry_cancelled, "expired": expired, "retry_cancelled": retry_cancelled}
 
 ensure_schema()
 with SessionLocal() as _db_init:
@@ -3137,7 +3222,11 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Headers de seguridad", True, "nosniff, sameorigin, referrer-policy, permissions-policy")
     add("Trazabilidad request", True, "X-Fjord-Request-ID + response time")
     add("Tests scaffold", (APP_DIR / "tests").exists(), "pytest/smoke preparado")
-    add("Tests críticos de negocio", (APP_DIR / "tests" / "test_phase18_puntos_9_10_tests_release.py").exists(), "mínimos de reservas/cierre/reapertura/roles/release")
+    critical_tests = [
+        APP_DIR / "tests" / "test_release_hardening_385.py",
+        APP_DIR / "tests" / "test_smtp_policy_385.py",
+    ]
+    add("Tests críticos de negocio", all(p.exists() for p in critical_tests), "reservas/espera/cierre/reapertura/SMTP/release")
     add("Script externo de release", (APP_DIR / "scripts" / "release_check.py").exists(), "python scripts/release_check.py")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
@@ -3149,6 +3238,9 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Preparación multi-barco", True, "boat_id=fjord_vi preparado")
     add("UX operacional compacta", True, "Sistema con navegación interna, secciones plegables y prioridad visual")
     add("Mensajes accionables", True, "alertas traducidas a recomendaciones humanas de operación")
+    add("Política operativa de envíos", True, "inmediato / diferido / reemplazable / definitivo formalizado")
+    add("Retry SMTP limitado", smtp_retry_max_attempts(db) >= 1, f"máx. {smtp_retry_max_attempts(db)} intentos")
+    add("Expiración de pendientes SMTP", smtp_pending_expiry_hours(db) >= 1, f"{smtp_pending_expiry_hours(db)} h")
 
     return rows
 
@@ -4860,9 +4952,49 @@ def protocolar_capacity_available(outing: Outing, rows, exclude_id: Optional[int
         return True
     return len(proto) < institutional_reserve(outing)
 
+def set_reservation_status_guarded(r: Reservation, target_status: str, *, force: bool = False):
+    """Único setter lógico para estados de reserva críticos.
+
+    Las rutas existentes conservan compatibilidad, pero toda transición agregada
+    desde 3.8.5-RC1 debe pasar por acá. Si aparece una transición no formalizada,
+    se bloquea antes de grabar una contradicción silenciosa.
+    """
+    current = (getattr(r, "status", "") or "Confirmado").strip()
+    target = (target_status or "").strip()
+    if not force and not op_state.can_reservation_transition(current, target):
+        raise ValueError(f"Transición de reserva no permitida: {current} -> {target}")
+    r.status = target
+
+
+def set_outing_status_guarded(outing: Outing, target_status: str, *, force: bool = False):
+    """Setter único para estados de salida.
+
+    Evita que cierre, reapertura o cancelación escriban estados no contemplados
+    por el motor formal.
+    """
+    current = (getattr(outing, "status", "") or "Programada").strip()
+    target = (target_status or "").strip()
+    if not force and not op_state.can_outing_transition(current, target):
+        raise ValueError(f"Transición de salida no permitida: {current} -> {target}")
+    outing.status = target
+
+
+def assert_operational_invariants_or_raise(db: Session, outing: Outing, reservations=None, *, context: str = "") -> list[str]:
+    """Guardia dura para cierre/reapertura/waitlist.
+
+    Devuelve lista vacía si el estado es coherente. Lanza ValueError si detecta
+    un estado imposible. Esta función es la frontera entre mutación y commit.
+    """
+    errors = validate_outing_operational_invariants(db, outing, reservations)
+    if errors:
+        prefix = f"{context}: " if context else ""
+        raise ValueError(prefix + " | ".join(errors))
+    return []
+
+
 def put_on_waitlist(r: Reservation, reason: str = "En lista de espera"):
     # La lista de espera no ocupa cupo y nunca genera cargo mientras no sea promovida.
-    r.status = "Lista de espera"
+    set_reservation_status_guarded(r, "Lista de espera")
     r.attendance = "Lista de espera"
     r.charge_amount = 0
     r.cancel_reason = reason
@@ -5015,7 +5147,7 @@ def promote_waitlist(db: Session, outing: Outing) -> list:
             break
         if not chosen:
             break
-        chosen.status = default_reservation_status(outing, chosen)
+        set_reservation_status_guarded(chosen, default_reservation_status(outing, chosen))
         chosen.attendance = "Por confirmar"
         chosen.charge_amount = 0
         chosen.cancel_reason = "Promovido desde lista de espera"
@@ -5041,6 +5173,10 @@ def validate_outing_operational_invariants(db: Session, outing: Outing, reservat
         return ["Salida inexistente"]
     rows = list(reservations) if reservations is not None else db.query(Reservation).filter_by(outing_id=outing.id).all()
     errors = []
+    formal_issues = []
+    for rr in rows:
+        formal_issues.extend(op_state.validate_reservation_record(rr))
+    errors.extend(op_state.issues_to_messages(formal_issues))
     seen_active = {}
     for r in rows:
         if is_waitlisted(r) and (r.attendance or "") == "Presente":
@@ -5055,9 +5191,9 @@ def validate_outing_operational_invariants(db: Session, outing: Outing, reservat
                 seen_active[key] = r.person_name
     errors.extend(present_guest_without_present_responsible_errors(db, outing, rows))
     active_count = len(active_reservations(rows))
-    if active_count > int(outing.max_crew or MAX_CREW):
-        errors.append(f"Cupo operativo excedido: {active_count}/{outing.max_crew or MAX_CREW}")
-    return errors
+    errors.extend(op_state.issues_to_messages(op_state.validate_capacity(active_count, int(outing.max_crew or MAX_CREW))))
+    errors.extend(op_state.issues_to_messages(op_state.validate_unique_active_identities(rows, reservation_is_active)))
+    return list(dict.fromkeys(errors))
 
 
 def recompute_waitlist_for_salida(db: Session, outing: Outing, actor_name: str = "Sistema", reason: str = "") -> dict:
@@ -8197,7 +8333,8 @@ def liquidate_and_close_boarding(db: Session, outing: Outing, reservations, acti
                 r.charge_amount = 0
                 r.cancel_reason = "Socio embarcado sin cargo"
 
-    outing.status = "Embarque cerrado"
+    assert_operational_invariants_or_raise(db, outing, reservations, context="pre-cierre")
+    set_outing_status_guarded(outing, "Embarque cerrado")
 
 
 
@@ -8356,7 +8493,7 @@ def outing_status(
             # bajas tardías previas sin perder trazabilidad.
             r.charge_amount = 0
 
-        outing.status = "Cancelada por capitán"
+        set_outing_status_guarded(outing, "Cancelada por capitán")
 
         notified = set()
         for r in reservations:
@@ -8398,7 +8535,7 @@ def outing_status(
         reservations = db.query(Reservation).filter_by(outing_id=outing.id).all()
         annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por capitán")
         cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida reabierta por capitán")
-        outing.status = "En reservas"
+        set_outing_status_guarded(outing, "En reservas")
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="reapertura de salida")
         promoted = recompute_result.get("promoted") or []
@@ -8643,6 +8780,11 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     # Releer después de liquidar para que la ficha se arme con los estados finales.
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.id).all()
     present = sum(1 for r in reservations if r.attendance == "Presente" and reservation_is_active(r))
+    try:
+        assert_operational_invariants_or_raise(db, outing, reservations, context="cierre final")
+    except ValueError:
+        db.rollback()
+        return RedirectResponse(f"/captain/preflight?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     sheet = create_closing_sheet(db, outing, reservations, user.name)
     db.commit()
     audit_event(db, user, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}", request=request, outing_id=outing.id, after={"status": outing.status, "presentes": present, "activos": active_count, "sheet_id": sheet.id, "sheet_sequence": sheet.sequence})
@@ -9802,7 +9944,7 @@ def admin_outing_status(
     if status == "Reservas abiertas":
         cancel_pending_closing_notifications_for_outing(db, outing.id, "Salida reabierta por Administración")
         annul_current_closing_sheet(db, outing, user.name, "Salida reabierta por Administración")
-        outing.status = "En reservas"
+        set_outing_status_guarded(outing, "En reservas")
         recalculate_preliquidation_after_reopen(db, outing, reservations)
         recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="reapertura por administración")
         promoted = recompute_result.get("promoted") or []
@@ -9814,7 +9956,7 @@ def admin_outing_status(
     elif status == "Cancelada":
         for r in reservations:
             r.charge_amount = 0
-        outing.status = "Cancelada por capitán"
+        set_outing_status_guarded(outing, "Cancelada por capitán")
         detail = f"{outing.title} / {old_status} -> Cancelada por administración"
     else:
         return RedirectResponse(f"/admin?outing_id={outing.id}&msg=estado_invalido", status_code=303)
