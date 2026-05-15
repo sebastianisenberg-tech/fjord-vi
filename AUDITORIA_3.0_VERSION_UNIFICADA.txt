@@ -1,4 +1,4 @@
-Fjord VI v3.7.9 - Corrección de versión unificada
+Fjord VI v3.7.6 - Corrección de versión unificada
 
 Base: FjordVI_3.0_tus_navegaciones_auditado.zip
 

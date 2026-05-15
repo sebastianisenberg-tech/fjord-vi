@@ -1,10 +1,10 @@
 {
-  "version": "3.7.9",
-  "release_label": "Fjord VI · v3.7.9",
+  "version": "3.7.10",
+  "release_label": "Fjord VI · v3.7.10",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
-  "generated_at": "2026-05-13",
+  "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI 3.7.9",
+  "app_build": "Fjord VI 3.7.10",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,10 +28,9 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v3.7.9 - Baseline visual 3.3 recuperado y versión unificada",
+  "release": "v3.7.10 - SMTP App Password Gmail compactada y validación estable",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "3.7.5",
-  "release_focus": "SMTP runtime estable: normalize_email_text presente, eventos operativos y deduplicación por payload",
-  "base_reconstruida_desde": "FjordVI_3.7.7_SMTP_PLANTILLAS_CORREGIDAS.zip"
+  "app_version": "3.7.10",
+  "release_focus": "Recuperar SMTP estable desde 3.7.6 sin agregar eventos nuevos"
 }
