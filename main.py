@@ -41,7 +41,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.7.12"
+APP_VERSION = "3.7.13"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -85,8 +85,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.7.12"
-RELEASE_LABEL = "Fjord VI · v3.7.12"
+APP_BUILD = "Fjord VI 3.7.13"
+RELEASE_LABEL = "Fjord VI · v3.7.13"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -799,37 +799,14 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
     limit = min(limit, smtp_send_limit_per_run(db))
     rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).filter(or_(NotificationQueue.scheduled_at == None, NotificationQueue.scheduled_at <= now_local())).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
-    sent = failed = 0
+    sent = failed = cancelled = 0
     for row in rows:
-        row.attempts = int(row.attempts or 0) + 1
-        ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
-        if ok:
-            row.status = "sent"
-            row.sent_at = now_local()
-            row.error = ""
-            sent += 1
-        else:
-            row.status = "failed"
-            row.error = detail
-            failed += 1
-        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
-    db.commit()
-    set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
-    return {"processed": len(rows), "sent": sent, "failed": failed}
-
-def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
-    """Procesa únicamente los emails recién generados por una prueba controlada.
-
-    Evita que una prueba integral quede parcialmente pendiente porque existían
-    fallidos históricos más antiguos ocupando el límite de procesamiento.
-    """
-    ids = [int(x) for x in (queue_ids or []) if x]
-    if not ids:
-        return {"processed": 0, "sent": 0, "failed": 0}
-    rows = db.query(NotificationQueue).filter(NotificationQueue.id.in_(ids)).order_by(NotificationQueue.created_at.asc()).all()
-    sent = failed = 0
-    for row in rows:
-        if row.status not in ("pending", "failed"):
+        obsolete_reason = closing_notification_obsolete_reason(db, row)
+        if obsolete_reason:
+            row.status = "cancelled"
+            row.error = obsolete_reason
+            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=obsolete_reason))
+            cancelled += 1
             continue
         row.attempts = int(row.attempts or 0) + 1
         ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
@@ -845,7 +822,44 @@ def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
         db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
     db.commit()
     set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
-    return {"processed": len(rows), "sent": sent, "failed": failed}
+    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled}
+
+def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
+    """Procesa únicamente los emails recién generados por una prueba controlada.
+
+    Evita que una prueba integral quede parcialmente pendiente porque existían
+    fallidos históricos más antiguos ocupando el límite de procesamiento.
+    """
+    ids = [int(x) for x in (queue_ids or []) if x]
+    if not ids:
+        return {"processed": 0, "sent": 0, "failed": 0}
+    rows = db.query(NotificationQueue).filter(NotificationQueue.id.in_(ids)).order_by(NotificationQueue.created_at.asc()).all()
+    sent = failed = cancelled = 0
+    for row in rows:
+        if row.status not in ("pending", "failed"):
+            continue
+        obsolete_reason = closing_notification_obsolete_reason(db, row)
+        if obsolete_reason:
+            row.status = "cancelled"
+            row.error = obsolete_reason
+            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=obsolete_reason))
+            cancelled += 1
+            continue
+        row.attempts = int(row.attempts or 0) + 1
+        ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
+        if ok:
+            row.status = "sent"
+            row.sent_at = now_local()
+            row.error = ""
+            sent += 1
+        else:
+            row.status = "failed"
+            row.error = detail
+            failed += 1
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
+    db.commit()
+    set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
+    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled}
 
 
 def smtp_connection_probe(db: Session) -> tuple[bool, str]:
@@ -1281,14 +1295,110 @@ def smtp_liquidation_delay_hours(db: Session) -> int:
     return max(0, min(h, 48))
 
 
+CLOSING_NOTIFICATION_EVENTS = {"resumen_cierre_socio", "cierre_liquidacion_admin", "salida_cerrada_socio", "no_show_cargo_socio"}
+
+def closing_notification_obsolete_reason(db: Session, row: NotificationQueue) -> str:
+    """Cinturón de seguridad justo antes del envío de liquidaciones diferidas.
+
+    Una liquidación económica sólo puede salir si la ficha asociada sigue siendo
+    la única VIGENTE y la salida continúa cerrada. Si durante las 6 horas hubo
+    reapertura, recierre, cancelación o ficha posterior, el email queda cancelado
+    como obsoleto.
+    """
+    if not row or row.event_key not in CLOSING_NOTIFICATION_EVENTS:
+        return ""
+    try:
+        payload = json.loads(row.payload or "{}")
+    except Exception:
+        payload = {}
+    try:
+        sheet_id = int(payload.get("sheet_id") or 0)
+    except Exception:
+        sheet_id = 0
+    try:
+        payload_outing_id = int(payload.get("outing_id") or 0)
+    except Exception:
+        payload_outing_id = 0
+
+    if not sheet_id:
+        return "Email económico sin ficha asociada; cancelado por seguridad operacional"
+    sheet = db.get(ClosingSheet, sheet_id)
+    if not sheet:
+        return f"Ficha {sheet_id} inexistente; email económico cancelado"
+    if payload_outing_id and int(sheet.outing_id or 0) != payload_outing_id:
+        return "La ficha no corresponde a la salida indicada; email económico cancelado"
+    if (sheet.status or "").upper() != "VIGENTE":
+        return f"Ficha V{sheet.sequence} anulada o reemplazada; email económico obsoleto"
+    current = closing_sheet_current(db, sheet.outing_id)
+    if not current or int(current.id) != int(sheet.id):
+        label = f"V{getattr(current, 'sequence', '')}" if current else "sin ficha vigente"
+        return f"Existe una ficha vigente posterior ({label}); email económico obsoleto"
+    outing = db.get(Outing, sheet.outing_id)
+    if not outing:
+        return "Salida inexistente; email económico cancelado"
+    if outing.status not in ("Embarque cerrado", "Realizada"):
+        return f"La salida ya no está cerrada ({outing.status}); email económico cancelado"
+    return ""
+
+def queue_captain_attendance_status_email(db: Session, outing: Outing, r: Reservation, actor_name: str = "", was_waitlisted: bool = False, promoted_names: Optional[list] = None) -> int:
+    """Avisa cambios operativos hechos por capitán al socio responsable.
+
+    Nunca envía al invitado: si la persona afectada es invitado/menor, el
+    destinatario es siempre el socio responsable.
+    """
+    if not outing or not r:
+        return 0
+    uid = getattr(r, "responsible_user_id", None)
+    responsible = db.get(User, uid) if uid else None
+    if not responsible and canonical_kind(r.kind) == "socio":
+        responsible = db.query(User).filter_by(dni=r.dni).first()
+    if not responsible or (responsible.role or "").strip().lower() != "socio" or not (responsible.email or "").strip():
+        return 0
+    att = (r.attendance or "").strip()
+    charge = float(r.charge_amount or 0)
+    if att == "Presente":
+        estado = "Presente / habilitado para embarcar"
+        msg = "La persona quedó registrada como presente para esta salida."
+        if was_waitlisted:
+            msg = "La reserva salió de lista de espera y quedó habilitada para embarcar."
+    elif att == "No embarca":
+        estado = "No embarca / sin cargo"
+        msg = "El capitán marcó que no embarca por decisión operativa. No genera cargo."
+    elif att == "Ausente":
+        if charge > 0:
+            estado = "Reserva incumplida con cargo reglamentario"
+            msg = "La reserva quedó como no presentada dentro de la ventana reglamentaria y genera cargo según corresponda."
+        else:
+            estado = "Ausente / sin cargo"
+            msg = "La reserva quedó registrada como ausente sin cargo."
+    else:
+        estado = att or "Estado actualizado"
+        msg = "Se actualizó el estado operativo de embarque."
+    if canonical_kind(r.kind) in ("invitado", "hijo_menor"):
+        msg += " Este aviso se envía al socio responsable; los invitados no reciben comunicaciones directas."
+    if promoted_names:
+        msg += " También se actualizaron promociones desde lista de espera: " + ", ".join([str(x) for x in promoted_names if x]) + "."
+    q = queue_email(db, "embarque_estado_socio", responsible.email, responsible.name, {
+        "socio_nombre": responsible.name,
+        "persona_nombre": r.person_name,
+        "salida_nombre": outing.title,
+        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+        "hora": outing.departure_at.strftime("%H:%M"),
+        "estado": estado,
+        "mensaje_embarque": msg,
+        "actor": actor_name or "Capitán",
+        "outing_id": outing.id,
+        "reservation_id": r.id,
+    })
+    return 1 if q else 0
+
 def cancel_pending_closing_notifications_for_outing(db: Session, outing_id: int, reason: str = "Liquidación reemplazada o salida reabierta") -> int:
     """Cancela emails económicos pendientes vinculados a una salida.
 
     Evita que una reapertura o nuevo cierre dispare resúmenes obsoletos.
     No toca emails ya enviados ni eventos operativos inmediatos.
     """
-    closers = {"resumen_cierre_socio", "cierre_liquidacion_admin", "salida_cerrada_socio", "no_show_cargo_socio"}
-    rows = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").filter(NotificationQueue.event_key.in_(closers)).all()
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").filter(NotificationQueue.event_key.in_(CLOSING_NOTIFICATION_EVENTS)).all()
     count = 0
     for row in rows:
         try:
@@ -7887,7 +7997,10 @@ def attendance(request: Request, rid: int, value: str, db: Session = Depends(db_
     promoted = promote_waitlist(db, outing) if value in ("Ausente", "No embarca") else []
     enforce_capacity(db, outing)
     db.commit()
-    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or ""})
+    notified_status = queue_captain_attendance_status_email(db, outing, r, actor_name=user.name, was_waitlisted=was_waitlisted, promoted_names=promoted)
+    if notified_status:
+        auto_process_notifications(db, limit=5)
+    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "emails": notified_status})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 
