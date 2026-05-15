@@ -42,8 +42,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.8.5"
-APP_RELEASE_STAGE = "RC1"
+APP_VERSION = "3.8.6"
+APP_RELEASE_STAGE = "PRODUCTION_READY_RC1"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -87,8 +87,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.8.5"
-RELEASE_LABEL = "Fjord VI · v3.8.5"
+APP_BUILD = "Fjord VI 3.8.6"
+RELEASE_LABEL = "Fjord VI · v3.8.6"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -321,8 +321,10 @@ class NotificationQueue(Base):
     recipient_name = Column(String, default="")
     subject = Column(Text, default="")
     body = Column(Text, default="")
-    status = Column(String, default="pending")  # pending / sent / failed / cancelled
+    status = Column(String, default="pending")  # pending / processing / sent / failed / cancelled
     attempts = Column(Integer, default=0)
+    processing_token = Column(String, default="", index=True)
+    processing_started_at = Column(DateTime, nullable=True)
     error = Column(Text, default="")
     idempotency_key = Column(String, default="", index=True)
     payload = Column(Text, default="{}")
@@ -847,76 +849,148 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     db.commit()
     return q
 
+
+def smtp_processing_timeout_minutes(db: Session) -> int:
+    raw = get_system_meta(db, "smtp_processing_timeout_minutes", os.getenv("SMTP_PROCESSING_TIMEOUT_MINUTES", "15"))
+    try:
+        return max(2, min(120, int(raw)))
+    except Exception:
+        return 15
+
+
+def recover_stale_processing_notifications(db: Session, reason_prefix: str = "Recuperado") -> int:
+    """Devuelve a failed los emails que quedaron en processing por reinicio o caída.
+
+    No los marca como enviados ni los borra: quedan reintentables con el contador
+    ya incrementado por el claim previo. Esto evita pérdidas silenciosas y reduce
+    riesgo de duplicación por workers simultáneos.
+    """
+    cutoff = now_local() - timedelta(minutes=smtp_processing_timeout_minutes(db))
+    rows = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status == "processing")
+        .filter(or_(NotificationQueue.processing_started_at == None, NotificationQueue.processing_started_at < cutoff))
+        .all()
+    )
+    count = 0
+    for row in rows:
+        row.status = "failed"
+        row.processing_token = ""
+        row.error = f"{reason_prefix}: envío interrumpido en processing"
+        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="failed", detail=row.error))
+        count += 1
+    if count:
+        db.commit()
+    return count
+
+
+def claim_notification_queue_batch(db: Session, limit: int, allowed_ids: Optional[list[int]] = None) -> tuple[str, list[NotificationQueue]]:
+    """Claim idempotente de cola SMTP antes de enviar.
+
+    Pasa pending/failed a processing en una transacción corta y usa un token de
+    corrida. Otros procesadores concurrentes ya no vuelven a seleccionar esas
+    filas. En Postgres se usa FOR UPDATE SKIP LOCKED; en SQLite queda protegido
+    por el cambio inmediato de estado dentro del mismo commit, suficiente para
+    el uso local/test.
+    """
+    token = uuid.uuid4().hex
+    max_attempts = smtp_retry_max_attempts(db)
+    query = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status.in_(["pending", "failed"]))
+        .filter(NotificationQueue.attempts < max_attempts)
+        .filter(or_(NotificationQueue.scheduled_at == None, NotificationQueue.scheduled_at <= now_local()))
+    )
+    if allowed_ids is not None:
+        ids = [int(x) for x in allowed_ids if x]
+        if not ids:
+            return token, []
+        query = query.filter(NotificationQueue.id.in_(ids))
+    try:
+        if not DB_URL.startswith("sqlite"):
+            query = query.with_for_update(skip_locked=True)
+    except TypeError:
+        pass
+    rows = query.order_by(NotificationQueue.created_at.asc()).limit(limit).all()
+    for row in rows:
+        row.status = "processing"
+        row.processing_token = token
+        row.processing_started_at = now_local()
+        row.attempts = int(row.attempts or 0) + 1
+    db.commit()
+    claimed = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.processing_token == token)
+        .order_by(NotificationQueue.created_at.asc())
+        .all()
+    )
+    return token, claimed
+
+
+def finalize_claimed_notification(db: Session, row: NotificationQueue, status: str, detail: str = ""):
+    row.status = status
+    row.processing_token = ""
+    row.processing_started_at = None
+    row.error = "" if status == "sent" else (detail or "")
+    if status == "sent":
+        row.sent_at = now_local()
+    db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=status, detail=detail or ""))
+    db.commit()
+
 def process_notification_queue(db: Session, limit: int = 25) -> dict:
     expired = expire_stale_notification_queue(db, "Expirado antes de procesar cola")
+    stale_processing = recover_stale_processing_notifications(db, "Recuperado antes de procesar cola")
     retry_cancelled = cancel_over_retry_limit(db)
     limit = min(limit, smtp_send_limit_per_run(db))
-    max_attempts = smtp_retry_max_attempts(db)
-    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).filter(NotificationQueue.attempts < max_attempts).filter(or_(NotificationQueue.scheduled_at == None, NotificationQueue.scheduled_at <= now_local())).order_by(NotificationQueue.created_at.asc()).limit(limit).all()
+    token, rows = claim_notification_queue_batch(db, limit)
     sent = failed = cancelled = 0
     cancelled += expired + retry_cancelled
     for row in rows:
         obsolete_reason = closing_notification_obsolete_reason(db, row)
         if obsolete_reason:
-            row.status = "cancelled"
-            row.error = obsolete_reason
-            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=obsolete_reason))
+            finalize_claimed_notification(db, row, "cancelled", obsolete_reason)
             cancelled += 1
             continue
-        row.attempts = int(row.attempts or 0) + 1
         ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
         if ok:
-            row.status = "sent"
-            row.sent_at = now_local()
-            row.error = ""
+            finalize_claimed_notification(db, row, "sent", detail)
             sent += 1
         else:
-            row.status = "failed"
-            row.error = detail
+            finalize_claimed_notification(db, row, "failed", detail)
             failed += 1
-        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
-    db.commit()
     set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
-    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled}
+    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled, "recovered_processing": stale_processing, "claim_token": token}
 
 def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
     expire_stale_notification_queue(db, "Expirado antes de procesar cola selectiva")
+    recover_stale_processing_notifications(db, "Recuperado antes de procesar cola selectiva")
     cancel_over_retry_limit(db)
     """Procesa únicamente los emails recién generados por una prueba controlada.
 
-    Evita que una prueba integral quede parcialmente pendiente porque existían
-    fallidos históricos más antiguos ocupando el límite de procesamiento.
+    Usa el mismo claim transaccional que la cola general para evitar doble envío
+    ante dos clicks o dos procesadores simultáneos.
     """
     ids = [int(x) for x in (queue_ids or []) if x]
     if not ids:
-        return {"processed": 0, "sent": 0, "failed": 0}
-    rows = db.query(NotificationQueue).filter(NotificationQueue.id.in_(ids)).order_by(NotificationQueue.created_at.asc()).all()
+        return {"processed": 0, "sent": 0, "failed": 0, "cancelled": 0}
+    token, rows = claim_notification_queue_batch(db, min(len(ids), smtp_send_limit_per_run(db)), allowed_ids=ids)
     sent = failed = cancelled = 0
     for row in rows:
-        if row.status not in ("pending", "failed"):
-            continue
         obsolete_reason = closing_notification_obsolete_reason(db, row)
         if obsolete_reason:
-            row.status = "cancelled"
-            row.error = obsolete_reason
-            db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="cancelled", detail=obsolete_reason))
+            finalize_claimed_notification(db, row, "cancelled", obsolete_reason)
             cancelled += 1
             continue
-        row.attempts = int(row.attempts or 0) + 1
         ok, detail = send_email_now(db, row.recipient_email, row.recipient_name, row.subject, row.body, row.event_key)
         if ok:
-            row.status = "sent"
-            row.sent_at = now_local()
-            row.error = ""
+            finalize_claimed_notification(db, row, "sent", detail)
             sent += 1
         else:
-            row.status = "failed"
-            row.error = detail
+            finalize_claimed_notification(db, row, "failed", detail)
             failed += 1
-        db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=row.status, detail=detail))
-    db.commit()
     set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
-    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled}
+    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled, "claim_token": token}
+
 
 
 def smtp_connection_probe(db: Session) -> tuple[bool, str]:
@@ -1945,6 +2019,10 @@ def ensure_schema():
             conn.execute(text("ALTER TABLE notification_queue ADD COLUMN scheduled_at TIMESTAMP"))
         if "idempotency_key" not in notification_columns:
             conn.execute(text("ALTER TABLE notification_queue ADD COLUMN idempotency_key VARCHAR DEFAULT ''"))
+        if "processing_token" not in notification_columns:
+            conn.execute(text("ALTER TABLE notification_queue ADD COLUMN processing_token VARCHAR DEFAULT ''"))
+        if "processing_started_at" not in notification_columns:
+            conn.execute(text("ALTER TABLE notification_queue ADD COLUMN processing_started_at TIMESTAMP"))
 
 
 def _reassignment_trace_only_bootstrap(reason: str) -> str:
@@ -2009,6 +2087,8 @@ DB_INDEXES_REQUIRED = [
     ("idx_notification_queue_status", "notification_queue", "status"),
     ("idx_notification_queue_created_at", "notification_queue", "created_at"),
     ("idx_notification_queue_idempotency_key", "notification_queue", "idempotency_key"),
+    ("idx_notification_queue_processing_token", "notification_queue", "processing_token"),
+    ("idx_notification_queue_status_scheduled", "notification_queue", "status, scheduled_at"),
     ("idx_notification_log_created_at", "notification_log", "created_at"),
     ("idx_login_attempts_ident_created_at", "login_attempts", "ident_key, created_at"),
     ("idx_login_attempts_ip_created_at", "login_attempts", "ip_hash, created_at"),
@@ -2254,6 +2334,7 @@ def set_hidden_guest_candidate_dnis(db: Session, dnis: set[str]):
 
 def recover_notification_queue_after_restart(db: Session) -> dict:
     expired = expire_stale_notification_queue(db, "Expirado en recovery post restart")
+    stale_processing = recover_stale_processing_notifications(db, "Recovery post restart")
     retry_cancelled = cancel_over_retry_limit(db)
     """Repara cola SMTP al iniciar sin duplicar envíos.
 
@@ -2263,7 +2344,7 @@ def recover_notification_queue_after_restart(db: Session) -> dict:
     """
     cancelled = 0
     checked = 0
-    rows = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").all()
+    rows = db.query(NotificationQueue).filter(NotificationQueue.status.in_(["pending", "failed"])).all()
     for row in rows:
         checked += 1
         reason = closing_notification_obsolete_reason(db, row)
@@ -2274,7 +2355,7 @@ def recover_notification_queue_after_restart(db: Session) -> dict:
             cancelled += 1
     if cancelled:
         db.commit()
-    return {"checked": checked, "cancelled": cancelled + expired + retry_cancelled, "expired": expired, "retry_cancelled": retry_cancelled}
+    return {"checked": checked, "cancelled": cancelled + expired + retry_cancelled, "expired": expired, "retry_cancelled": retry_cancelled, "recovered_processing": stale_processing}
 
 ensure_schema()
 with SessionLocal() as _db_init:
@@ -4956,7 +5037,7 @@ def set_reservation_status_guarded(r: Reservation, target_status: str, *, force:
     """Único setter lógico para estados de reserva críticos.
 
     Las rutas existentes conservan compatibilidad, pero toda transición agregada
-    desde 3.8.5-RC1 debe pasar por acá. Si aparece una transición no formalizada,
+    desde 3.8.6-PRODUCTION_READY_RC1 debe pasar por acá. Si aparece una transición no formalizada,
     se bloquea antes de grabar una contradicción silenciosa.
     """
     current = (getattr(r, "status", "") or "Confirmado").strip()

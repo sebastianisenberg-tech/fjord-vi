@@ -1,4 +1,4 @@
-# Release Checklist - Fjord VI 3.8.5
+# Release Checklist - Fjord VI 3.8.6
 
 - Ejecutar `python scripts/release_check.py`.
 - Ejecutar `python -m pytest`.

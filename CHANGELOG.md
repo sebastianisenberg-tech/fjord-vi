@@ -1,3 +1,11 @@
+## 3.8.6 · Production Ready RC1
+
+- Cola SMTP blindada con claim transaccional previo al envío (`processing_token`).
+- Recovery post restart para emails interrumpidos en estado `processing`.
+- Migración segura de columnas SMTP nuevas sin borrar datos.
+- Release check actualizado a 3.8.6 y paquete sin basura técnica.
+- Tests críticos agregados para idempotencia SMTP, recovery y guardas de ficha vigente/anulada.
+
 ## 3.8.5 · Release hardening
 
 - Versión unificada 3.8.5.
