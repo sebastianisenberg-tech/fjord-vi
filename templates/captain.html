@@ -158,6 +158,28 @@
       });
     });
 
+
+    // Acción excepcional protegida: No embarca / sin cargo exige motivo obligatorio.
+    document.querySelectorAll('.attendanceNoBoardMenuForm').forEach(function(form){
+      form.addEventListener('submit', function(e){
+        let reason = prompt('No embarca SIN CARGO. Esta acción libera plaza y no genera cargo reglamentario. Indicar motivo obligatorio:', 'Decisión operativa del capitán');
+        reason = (reason || '').trim();
+        if(!reason){
+          captainToast('Motivo requerido para registrar sin cargo.', 'warning');
+          e.preventDefault();
+          return;
+        }
+        let input = form.querySelector('input[name="no_board_reason"]');
+        if(!input){
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'no_board_reason';
+          form.appendChild(input);
+        }
+        input.value = reason;
+      });
+    });
+
     var msgCode = document.body.getAttribute('data-msg');
     if(msgCode && CAPTAIN_MSGS[msgCode]){ captainToast(CAPTAIN_MSGS[msgCode][0], CAPTAIN_MSGS[msgCode][1]); }
   });
@@ -346,8 +368,8 @@
 </section>
 
 <section class="card premiumCard captainV65Card" id="tripulacion">
-  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No embarcó. Las acciones excepcionales quedan en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
-  <div class="captainV65Hint">Tocá una persona para alternar Presente / No embarcó. Usá ⋯ para acciones excepcionales. <span class="helpDot helpDotTiny" data-tip="No embarca se usa cuando la persona está, pero el capitán decide no subirla. No genera cargo.">i</span></div>
+  <div class="cardTitle captainTripTitle captainTripTitleV65"><div><span class="eyebrow">Embarque <span class="helpDot helpDotTiny" data-tip="Tablero rápido del capitán: tocá una fila para alternar Presente / No embarcó. La acción excepcional sin cargo queda en el menú de tres puntos.">i</span></span><h2>Tripulación</h2></div><div class="captainTripCount">{{present}} presentes</div></div>
+  <div class="captainV65Hint">Tocá una persona para alternar Presente / No embarcó. Usá ⋯ sólo para acciones excepcionales. <span class="helpDot helpDotTiny" data-tip="No embarcó libera plaza y, si corresponde por ventana reglamentaria, genera reserva incumplida con cargo. No embarca/sin cargo queda protegido en ⋯.">i</span></div>
   <div class="captainFilterShellV11612" aria-label="Filtros de tripulación">
     <span class="captainFilterArrowV11612 left" aria-hidden="true">‹</span>
     <div class="captainFilterV43 captainFilterPro captainFilterV65" id="captainFilterV465"><button type="button" class="on" data-filter="all">Todos</button><button type="button" data-filter="socio">Socios</button><button type="button" data-filter="invitado">Invitados</button><button type="button" data-filter="waitlisted">Espera</button><button type="button" data-filter="inactive">Sin cargo</button></div>
@@ -438,6 +460,7 @@
         <b>Operación del Capitán</b>
         <ul>
           <li>Tocá una persona para alternar Presente / No embarcó.</li>
+          <li>No embarcó libera plaza y puede generar reserva incumplida con cargo reglamentario.</li>
           <li>Usá ⋯ para No embarca/sin cargo, reactivar o reasignar invitados.</li>
           <li>Los invitados comunes dependen del socio titular del grupo.</li>
           <li>Los institucionales son del club, pero conservan la referencia del socio que los cargó.</li>
