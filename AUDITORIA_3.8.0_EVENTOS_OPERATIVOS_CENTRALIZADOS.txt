@@ -1,0 +1,45 @@
+Fjord VI 3.8.0 · Eventos operativos centralizados
+
+Objetivo
+- Dejar de sumar parches SMTP aislados.
+- Asegurar que los cambios reales de embarque del capitán generen avisos confiables.
+- Mantener la liquidación diferida blindada de las versiones 3.7.12/3.7.13.
+
+Cambios principales
+1. Snapshot before/after obligatorio en acciones del capitán
+- Se toma snapshot completo de reservas antes de cualquier mutación.
+- Se compara contra el estado posterior para detectar todos los cambios reales.
+- La comparación contempla asistencia, estado, cargo, motivo, responsable y cancelación.
+
+2. Corrección crítica en endpoint /captain/attendance
+- Se incorpora el snapshot previo que faltaba en la ruta de asistencia.
+- Esto corrige el caso donde la ficha y liquidación cambiaban, pero no se generaban todos los eventos SMTP.
+
+3. Deduplicación SMTP corregida
+- Antes se deduplicaba por evento + destinatario + asunto durante 10 minutos.
+- Eso podía bloquear avisos legítimos distintos con el mismo asunto.
+- Ahora la deduplicación compara el contenido real del payload.
+- Los eventos operativos del capitán permiten múltiples avisos legítimos.
+
+4. Regla de destinatarios preservada
+- Invitados nunca reciben emails.
+- Los avisos sobre invitados van al socio responsable.
+- Socios sólo reciben información de su propio grupo.
+
+5. Liquidaciones diferidas preservadas
+- Los resúmenes económicos siguen diferidos según ventana configurable, por defecto 6 horas.
+- Reapertura cancela pendientes anteriores.
+- Antes del envío se revalida que la ficha siga vigente.
+
+Prueba obligatoria
+- Cambiar un socio Presente -> No embarca y verificar mail al socio.
+- Cambiar un invitado Presente -> No embarca y verificar mail al socio responsable.
+- Rehabilitar un invitado desde No embarca -> Presente y verificar mail al socio responsable.
+- Hacer varios cambios seguidos con mismo asunto y verificar que no se bloqueen por falsa deduplicación.
+- Reabrir/cerrar varias veces y verificar que sólo quede pendiente la liquidación de la ficha vigente.
+
+No se modificó
+- Credenciales SMTP.
+- Configuración Gmail.
+- PDFs existentes.
+- Reglas de liquidación de base.

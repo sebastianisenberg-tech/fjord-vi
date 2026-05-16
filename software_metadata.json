@@ -1,10 +1,10 @@
 {
-  "version": "3.7.5",
-  "release_label": "Fjord VI · v3.7.5",
+  "version": "RC9",
+  "release_label": "Fjord VI · RC9 Comunicaciones",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
-  "generated_at": "2026-05-13",
+  "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI 3.7.5",
+  "app_build": "Fjord VI RC9",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -20,7 +20,11 @@
     "evolución mensual por ficha vigente",
     "exportación PDF ejecutiva de estadísticas",
     "botón Informe PDF reunión",
-    "ajustes desktop-first en Estadísticas"
+    "ajustes desktop-first en Estadísticas",
+    "emails HTML institucionales",
+    "subjects unificados Fjord VI",
+    "fallback texto plano",
+    "modo TEST compacto para QA"
   ],
   "phase14_validaciones_tests": true,
   "system_fast": "preserved",
@@ -28,9 +32,11 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v3.7.5 - Baseline visual 3.3 recuperado y versión unificada",
+  "release": "RC9 - comunicaciones HTML institucionales",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "Sistema: se conserva el diseño existente, se limpian checks/textos obsoletos, pruebas Capitán bajo demanda y única advertencia no bloqueante SMTP pendiente.",
-  "app_version": "3.7.5",
-  "release_focus": "SMTP UX/diagnóstico"
+  "build_note": "RC9: reforma completa de comunicaciones por email con HTML institucional, asuntos claros, fallback texto plano y modo TEST menos invasivo. No modifica lógica operativa.",
+  "app_version": "RC9",
+  "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
+  "release_stage": "COMUNICACIONES_RC9",
+  "hardening_focus": "Comunicación clara para socios: menos ruido técnico, jerarquía visual, lenguaje reglamentario pero humano."
 }

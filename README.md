@@ -1,3 +1,3 @@
-# Fjord VI 3.7.5
+# Fjord VI 3.8.6 RC2
 
-Baseline visual recuperado desde la interfaz 2.4 estable.
+Release candidata de hardening operacional: SMTP seguro, auditoría, fichas, waitlist y recovery.

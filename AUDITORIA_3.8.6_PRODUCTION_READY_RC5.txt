@@ -1,0 +1,9 @@
+Fjord VI 3.8.6 · PRODUCTION READY RC5
+
+Hardening del tablero Capitán:
+- Tap rápido ya no convierte Presente en No embarcó.
+- No embarcó / con cargo queda disponible directamente en menú ⋯ desde Pendiente.
+- No embarca / sin cargo sigue protegido con motivo obligatorio.
+- Ambas acciones liberan plaza y disparan recomputo de lista de espera.
+- Se evita el estado falso Pendiente -> Presente -> Ausente para registrar una ausencia real.
+- Se mantiene lógica de ficha vigente/anulada, PDF y SMTP de RC4.

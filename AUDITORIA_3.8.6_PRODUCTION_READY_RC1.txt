@@ -1,0 +1,21 @@
+Fjord VI 3.8.6 · PRODUCTION READY RC1
+
+Hardening incremental realizado sobre v3.8.5.
+
+Cambios aplicados:
+- Versión unificada a 3.8.6 en main.py, VERSION.txt y software_metadata.json.
+- Cola SMTP reforzada con estado intermedio processing, processing_token y processing_started_at.
+- Claim transaccional previo al envío SMTP, con FOR UPDATE SKIP LOCKED en PostgreSQL cuando está disponible.
+- Procesamiento selectivo de cola usa la misma protección anti doble envío.
+- Recovery post restart recupera emails interrumpidos en processing y los deja reintentables como failed.
+- Migración segura agrega columnas nuevas sin borrar datos.
+- Índices nuevos para processing_token y status/scheduled_at.
+- Tests críticos agregados para SMTP queue hardening, recovery y consistencia documental de fichas.
+- Release check actualizado a 3.8.6.
+
+No tocado deliberadamente:
+- UX principal de Capitán.
+- Botonera visual.
+- Lógica validada de ficha vigente/anulada.
+- Modo TEST SMTP y redirección segura.
+- Estructura visible de fichas/liquidaciones.

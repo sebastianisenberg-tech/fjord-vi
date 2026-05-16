@@ -1,0 +1,9 @@
+Fjord VI 3.7.14
+
+Fix principal:
+- El motor de asistencia del capitán ahora compara snapshot antes/después.
+- Encola avisos por todos los cambios reales producidos por una maniobra, incluyendo cascadas a invitados y promociones/reactivaciones.
+- Agrupa múltiples cambios por socio responsable para evitar floods.
+- Invitados/menores nunca son destinatarios directos.
+- Conserva la lógica 3.7.13 de liquidaciones diferidas blindadas y anulación de pendientes obsoletos.
+- No modifica credenciales SMTP ni configuración Gmail.

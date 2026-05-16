@@ -1,0 +1,11 @@
+Fjord VI 3.8.4 · Release hardening
+
+Cambios incorporados sobre 3.8.3 real:
+- FastAPI sin documentación técnica pública (/docs, /redoc, /openapi.json deshabilitados).
+- Cola SMTP reforzada con idempotency_key como columna indexada y fallback a payload histórico.
+- ensure_schema agrega notification_queue.idempotency_key en bases existentes.
+- Botón excepcional No embarca/sin cargo mantiene UX secundaria y exige un único prompt con motivo obligatorio.
+- Metadata, VERSION y changelog actualizados a 3.8.4.
+- Release empaquetado sin __pycache__.
+
+No cambia credenciales SMTP, plantillas principales ni estética del capitán.

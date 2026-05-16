@@ -1,12 +1,7 @@
-# Release Checklist - Fjord VI 3.7.5
+# Release Checklist - Fjord VI 3.8.6
 
-Checklist operativo mínimo para producción:
-
-- VERSION.txt coincide con main.py y software_metadata.json
-- Render levanta `uvicorn main:app`
-- Templates críticos presentes
-- Static críticos presentes
-- DATABASE_URL configurado en producción
-- Diagnóstico operativo en verde
-- Backup SQL disponible
-- Sin locks vencidos
+- Ejecutar `python scripts/release_check.py`.
+- Ejecutar `python -m pytest`.
+- Verificar login/logout/reset de clave.
+- Verificar cierre/reapertura/lista de espera.
+- Verificar SMTP en modo prueba antes de producción.

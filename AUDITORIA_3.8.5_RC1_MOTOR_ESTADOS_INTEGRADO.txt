@@ -1,0 +1,18 @@
+Fjord VI 3.8.5 RC1 - Motor de estados integrado
+
+Objetivo cumplido:
+- Se agregó app/reliability/operational_state.py como autoridad formal de estados reales del sistema.
+- Se conectó el main.py con op_state.
+- Se incorporaron setters guardados para salida y reserva.
+- La lista de espera pasa por set_reservation_status_guarded.
+- La promoción desde espera pasa por set_reservation_status_guarded.
+- El cierre usa set_outing_status_guarded.
+- La cancelación/reapertura pasan por set_outing_status_guarded.
+- El cierre ejecuta assert_operational_invariants_or_raise antes de generar ficha vigente.
+- validate_outing_operational_invariants ahora incorpora validaciones formales del motor.
+
+Decisión de arquitectura:
+No se extrajo todo el monolito porque eso sería una refactorización riesgosa. Se eligió integración progresiva dura: el motor formal queda como frontera obligatoria en los puntos que pueden corromper operación real: waitlist, cierre, reapertura, cancelación y validaciones pre-commit.
+
+Estado:
+RC1 para prueba manual intensiva. No declarar release final hasta completar prueba end-to-end con socios/invitados/menores/protocolares/lista de espera/cierre/reapertura/liquidación/SMTP.

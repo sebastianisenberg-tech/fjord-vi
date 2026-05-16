@@ -1,0 +1,24 @@
+Fjord VI v3.8.2 - Estados operativos de embarque robustos
+
+Objetivo
+- Formalizar la botonera del capitán como una máquina semántica interna, sin cambiar la UX principal.
+
+Regla de dominio incorporada
+- Presente: ocupa plaza.
+- No embarcó / Ausente: libera plaza, genera reserva incumplida con cargo reglamentario si corresponde por ventana.
+- No embarca / sin cargo: libera plaza, no genera cargo, queda como acción secundaria protegida en menú contextual.
+
+Cambios técnicos
+- Se agregó apply_boarding_transition() como fuente de verdad para transiciones de embarque.
+- Se separó explícitamente efecto de cupo, estado operativo y concepto económico.
+- La promoción de lista de espera depende del efecto de cupo, no de ifs aislados.
+- Se mantiene la misma botonera visual: tap rápido alterna Presente / No embarcó; excepción sin cargo en ⋯.
+- Se conserva debounce SMTP operativo, liquidación diferida 6h y anulación de pendientes obsoletos.
+- Invitados siguen sin recibir emails directos.
+
+Puntos a probar
+1. Socio Presente -> No embarcó: libera plaza y promueve espera.
+2. Socio No embarca/sin cargo desde ⋯: libera plaza, sin cargo, promueve espera.
+3. Invitado Presente -> No embarcó: libera plaza y calcula cargo si corresponde.
+4. Socio ausente con invitados: cascada reglamentaria sobre invitados comunes.
+5. Reapertura/cierre múltiple: sólo una ficha vigente y emails diferidos correctos.

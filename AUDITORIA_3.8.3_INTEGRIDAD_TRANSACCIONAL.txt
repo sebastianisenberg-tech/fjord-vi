@@ -1,0 +1,43 @@
+Fjord VI 3.8.3 · Integridad transaccional
+
+Cambios reales incorporados sobre el código 3.8.2:
+
+1. Recalculo centralizado de lista de espera
+- Nueva función recompute_waitlist_for_salida().
+- Toda liberación de plaza debe pasar por la misma lógica: dependencias, cupo, promociones, validaciones.
+- Evita que cada botón o endpoint tenga su propia mini-lógica de waitlist.
+
+2. Estados imposibles
+- Nueva validación validate_outing_operational_invariants().
+- Detecta presente + espera simultáneo, protocolar con cargo, duplicados activos, invitado presente sin socio responsable presente y cupo excedido.
+
+3. 48h centralizado
+- Nueva función is_inside_48h().
+- Exactamente 48h queda dentro de la ventana reglamentaria.
+- late_window_passed() ahora delega en esa función.
+
+4. Idempotencia SMTP
+- Nueva búsqueda por idempotency_key en NotificationQueue.
+- Los emails de liquidación socio/admin se encolan con clave única por salida/ficha/destinatario.
+- Evita duplicados por retry o doble ejecución.
+
+5. Recuperación post reinicio
+- Nueva función recover_notification_queue_after_restart().
+- Al iniciar, cancela liquidaciones económicas pendientes que hayan quedado obsoletas por reapertura, recierre o ficha posterior.
+
+6. No embarca sin cargo protegido
+- El endpoint acepta motivo obligatorio.
+- La UI de Capitán mantiene el mismo aspecto, pero la acción secundaria en ⋯ pide confirmación y motivo.
+- El motivo queda en cancel_reason y en auditoría enriquecida.
+
+7. Rutas críticas actualizadas
+- Capitán/asistencia usa recompute centralizado.
+- Reapertura de capitán usa recompute centralizado.
+- Reasignación de invitado usa recompute centralizado.
+- Cancelación de socio usa recompute centralizado.
+- Pre-cierre usa recompute centralizado antes del análisis final.
+
+Notas:
+- No se tocaron credenciales SMTP.
+- No se cambió la botonera visual principal.
+- Se conserva liquidación diferida 6h, debounce operativo y bloqueo de invitados como destinatarios directos.

@@ -1,0 +1,9 @@
+Fjord VI v3.7.13
+
+Corrección crítica de comunicaciones diferidas:
+- Blindaje justo antes del envío: una liquidación diferida sólo sale si la ficha asociada sigue VIGENTE y la salida sigue cerrada.
+- Si hubo reapertura, recierre, cancelación o ficha posterior, el email queda cancelled/obsoleto.
+- Reapertura reinicia la ventana de estabilización de 6 horas mediante nueva ficha.
+- Se agrega aviso operativo por cambios de asistencia hechos por Capitán al socio responsable.
+- Invitados nunca son destinatarios de email.
+- Se preserva toda la lógica previa de 3.7.12.

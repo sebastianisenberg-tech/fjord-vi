@@ -1,0 +1,36 @@
+Fjord VI v3.7.11 - Comunicaciones transaccionales
+
+Cambios principales:
+1. Se amplió el catálogo de eventos SMTP para cubrir la operación real del Fjord VI:
+   - reserva confirmada
+   - reserva en espera
+   - reserva promovida desde espera
+   - invitado registrado
+   - invitado en espera
+   - invitado desplazado por prioridad
+   - cancelación registrada
+   - cancelación con cargo
+   - salida reprogramada
+   - salida cancelada por capitán
+   - estado de embarque actualizado
+   - salida cerrada para socio
+   - salida cerrada para administración
+   - recordatorio 24h
+   - liquidación/cargo por no show
+   - email de prueba
+
+2. Se corrigió el riesgo de placeholders vacíos:
+   - persona_nombre
+   - motivo_cancelacion
+   - mensaje_cargo
+   - mensaje_embarque
+
+3. Se separó la cancelación sin cargo de la cancelación con cargo reglamentario dentro de las 48 horas.
+
+4. Se agregó aviso a socios responsables cuando Administración reprograma una salida con reservas activas.
+
+5. Se agregó aviso a socios responsables cuando el capitán cancela una salida. La plantilla informa explícitamente que no hay cargos por cancelación operativa de la salida.
+
+6. Se corrigió la prueba integral SMTP para procesar los emails recién generados por la prueba, evitando que fallidos históricos consuman el límite de procesamiento y dejen eventos nuevos en pending.
+
+No se tocaron credenciales SMTP ni autenticación Gmail.

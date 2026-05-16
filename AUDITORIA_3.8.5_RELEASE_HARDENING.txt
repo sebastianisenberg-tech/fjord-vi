@@ -1,0 +1,32 @@
+Fjord VI 3.8.5 · Release Hardening
+
+Objetivo:
+Consolidar una versión apta para operación real controlada sin agregar features decorativas.
+
+Cambios aplicados:
+- Versión unificada a 3.8.5 en main.py, VERSION.txt y software_metadata.json.
+- Release check externo actualizado a 3.8.5.
+- Tests críticos mínimos agregados en tests/.
+- Política operativa de envíos formalizada por evento:
+  - inmediatos,
+  - diferidos,
+  - reemplazables,
+  - definitivos.
+- SMTP queue reforzada:
+  - retry máximo configurable,
+  - expiración de pendientes/fallidos viejos,
+  - cancelación de retries agotados,
+  - recovery post restart con limpieza de obsoletos.
+- Release check interno ampliado:
+  - política operativa de envíos,
+  - retry SMTP limitado,
+  - expiración de pendientes SMTP.
+- Waitlist mantiene recompute centralizado como fuente única de ocupación/espera/cargos.
+
+Verificación realizada:
+- python scripts/release_check.py: OK
+- python -m pytest -q: 5 passed
+
+Notas:
+- No se modificó intencionalmente el diseño visual ni el flujo principal de usuario.
+- No se agregaron funcionalidades nuevas ajenas al hardening.
