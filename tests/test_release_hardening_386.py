@@ -5,10 +5,10 @@ MAIN = (ROOT / "main.py").read_text(encoding="utf-8")
 
 
 def test_version_rc8_unified():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC9"
-    assert 'APP_VERSION = "RC9"' in MAIN
-    assert 'APP_BUILD = "Fjord VI RC9"' in MAIN
-    assert 'RELEASE_LABEL = "Fjord VI · RC9"' in MAIN
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC10A"
+    assert 'APP_VERSION = "RC10A"' in MAIN
+    assert 'APP_BUILD = "Fjord VI RC10A"' in MAIN
+    assert 'RELEASE_LABEL = "Fjord VI · RC10A"' in MAIN
 
 
 def test_waitlist_single_recompute_entrypoint_exists():

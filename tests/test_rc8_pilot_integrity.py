@@ -5,11 +5,11 @@ META = (ROOT / "software_metadata.json").read_text(encoding="utf-8")
 
 
 def test_rc8_version_label_is_unified_for_pilot():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC9"
-    assert 'APP_VERSION = "RC9"' in MAIN
-    assert 'APP_BUILD = "Fjord VI RC9"' in MAIN
-    assert 'RELEASE_LABEL = "Fjord VI · RC9"' in MAIN
-    assert '"release_stage": "COMUNICACIONES_RC9"' in META
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC10A"
+    assert 'APP_VERSION = "RC10A"' in MAIN
+    assert 'APP_BUILD = "Fjord VI RC10A"' in MAIN
+    assert 'RELEASE_LABEL = "Fjord VI · RC10A"' in MAIN
+    assert '"release_stage": "FAST_ASYNC_COMMS_FIX"' in META
 
 
 def test_rc8_waitlist_is_never_chargeable_in_invariants():
