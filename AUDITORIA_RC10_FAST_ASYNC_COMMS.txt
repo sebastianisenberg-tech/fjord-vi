@@ -1,0 +1,14 @@
+Fjord VI RC10 FAST ASYNC COMMS
+
+Objetivo:
+- Mantener emails profesionales RC9.
+- Recuperar agilidad operativa RC8.
+- Evitar que agregar socio/invitado/cancelar espere armado de email o cola SMTP.
+
+Cambios:
+- Agregado BackgroundTasks de FastAPI.
+- Agregado queue_email_after_response().
+- Agregado queue_email_background_task() con sesión DB independiente.
+- add_self, add_guest y cancel_reservation encolan emails luego de responder al navegador.
+- El resumen de invitados se calcula diferido en background.
+- Si el email falla, no bloquea ni revierte la reserva.

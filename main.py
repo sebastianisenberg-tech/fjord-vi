@@ -34,7 +34,7 @@ from app.core.logging_config import configure_logging, get_logger
 from app.core.settings import load_settings
 from app.reliability import operational_state as op_state
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -43,8 +43,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "RC9"
-APP_RELEASE_STAGE = "COMUNICACIONES_RC9"
+APP_VERSION = "RC10A"
+APP_RELEASE_STAGE = "FAST_ASYNC_COMMS_FIX"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -88,8 +88,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI RC9"
-RELEASE_LABEL = "Fjord VI · RC9"
+APP_BUILD = "Fjord VI RC10A"
+RELEASE_LABEL = "Fjord VI · RC10A"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -983,6 +983,72 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     db.add(q)
     db.commit()
     return q
+
+
+# =========================
+# RC10 · COMUNICACIONES ASÍNCRONAS LIVIANAS
+# La operación de reservas no debe esperar el armado/envío de emails.
+# Las acciones del socio guardan primero la reserva y responden al navegador;
+# luego se encola el email en segundo plano con una sesión DB independiente.
+# Si el email falla o tarda, nunca bloquea la reserva.
+# =========================
+
+def queue_email_background_task(event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False, scheduled_at_iso: str = ""):
+    db_bg = SessionLocal()
+    try:
+        payload = dict(payload or {})
+        # Enriquecimiento diferido para no hacer consultas extra antes de responder al socio.
+        if not payload.get("resumen_invitados") and payload.get("outing_id") and payload.get("responsible_user_id"):
+            try:
+                payload["resumen_invitados"] = guest_reservation_summary_for_email(
+                    db_bg,
+                    int(payload.get("outing_id")),
+                    int(payload.get("responsible_user_id")),
+                )
+            except Exception:
+                payload["resumen_invitados"] = "Consultar detalle actualizado en el sistema Fjord VI."
+        scheduled_at = None
+        if scheduled_at_iso:
+            try:
+                scheduled_at = datetime.fromisoformat(scheduled_at_iso)
+            except Exception:
+                scheduled_at = None
+        queue_email(db_bg, event_key, recipient_email, recipient_name, payload, force=force, scheduled_at=scheduled_at)
+    except Exception as exc:
+        try:
+            APP_LOGGER.warning("email_background_queue_failed", extra={"event_key": event_key, "error": str(exc)[:200]})
+        except Exception:
+            pass
+    finally:
+        db_bg.close()
+
+
+def queue_email_after_response(background_tasks: Optional[BackgroundTasks], event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False, scheduled_at: Optional[datetime] = None):
+    """Encola un email sin bloquear la request del usuario.
+
+    Si no hay BackgroundTasks disponible, cae al comportamiento tradicional para no perder comunicaciones.
+    """
+    if not recipient_email:
+        return None
+    payload = dict(payload or {})
+    if background_tasks is not None:
+        background_tasks.add_task(
+            queue_email_background_task,
+            event_key,
+            recipient_email,
+            recipient_name or "",
+            payload,
+            force,
+            scheduled_at.isoformat() if scheduled_at else "",
+        )
+        return None
+    db_fallback = SessionLocal()
+    try:
+        return queue_email(db_fallback, event_key, recipient_email, recipient_name, payload, force=force, scheduled_at=scheduled_at)
+    except Exception:
+        return None
+    finally:
+        db_fallback.close()
 
 
 
@@ -7651,7 +7717,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     })
 
 @app.post("/socio/add_self")
-def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def add_self(background_tasks: BackgroundTasks, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
@@ -7676,19 +7742,20 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        queue_email_after_response(background_tasks, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
-    queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
+    queue_email_after_response(background_tasks, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
 async def add_guest(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(db_session),
     user: User = Depends(require_role("socio"))
 ):
@@ -7781,7 +7848,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
+    queue_email_after_response(background_tasks, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": "", "outing_id": outing.id, "responsible_user_id": user.id})
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -8020,7 +8087,7 @@ def delete_outing(
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
-def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def cancel_reservation(rid: int, background_tasks: BackgroundTasks, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
     ensure_outing_editable(outing)
@@ -8060,7 +8127,7 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
     late_cancel = cargo > 0
-    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
+    queue_email_after_response(background_tasks, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
         "socio_nombre": user.name,
         "persona_nombre": r.person_name,
         "salida_nombre": outing.title,

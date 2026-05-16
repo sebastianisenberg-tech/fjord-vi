@@ -1,10 +1,10 @@
 {
-  "version": "RC9",
-  "release_label": "Fjord VI · RC9 Comunicaciones",
+  "version": "RC10A",
+  "release_label": "Fjord VI · RC10A Fast Async Communications Fix",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI RC9",
+  "app_build": "Fjord VI RC10A",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -32,11 +32,11 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "RC9 - comunicaciones HTML institucionales",
-  "name": "Fjord VI Sistema de Reservas",
-  "build_note": "RC9: reforma completa de comunicaciones por email con HTML institucional, asuntos claros, fallback texto plano y modo TEST menos invasivo. No modifica lógica operativa.",
-  "app_version": "RC9",
+  "release": "RC10A - comunicaciones HTML asíncronas rápidas",
+  "name": "Fjord VI RC10A Fast Async Communications Fix",
+  "build_note": "RC10A: corrige cancelación de socio con comunicaciones async; mantiene velocidad operativa y emails HTML.",
+  "app_version": "RC10A",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "COMUNICACIONES_RC9",
+  "release_stage": "FAST_ASYNC_COMMS_FIX",
   "hardening_focus": "Comunicación clara para socios: menos ruido técnico, jerarquía visual, lenguaje reglamentario pero humano."
 }
