@@ -42,7 +42,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.8.6"
+APP_VERSION = "RC8"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -87,8 +87,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.8.6"
-RELEASE_LABEL = "Fjord VI · v3.8.6"
+APP_BUILD = "Fjord VI RC8"
+RELEASE_LABEL = "Fjord VI · RC8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -1402,7 +1402,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · v3.8.6 RC2",
+        "module_version": "SMTP · RC8",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -3369,6 +3369,9 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
         APP_DIR / "tests" / "test_smtp_policy_385.py",
     ]
     add("Tests críticos de negocio", all(p.exists() for p in critical_tests), "reservas/espera/cierre/reapertura/SMTP/release")
+    add("RC8 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
+    add("RC8 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
+    add("RC8 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
     add("Script externo de release", (APP_DIR / "scripts" / "release_check.py").exists(), "python scripts/release_check.py")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
@@ -5310,6 +5313,11 @@ def validate_outing_operational_invariants(db: Session, outing: Outing, reservat
     No corrige por su cuenta: devuelve errores humanos y deja que el flujo decida
     si bloquea, reasigna o fuerza una transición oficial. Mantiene una sola
     semántica para Capitán, Administración, PDF y SMTP.
+
+    RC8: esta guardia incorpora invariantes reglamentarias explícitas para piloto:
+    - una reserva en lista de espera nunca ocupa plaza ni genera cargo;
+    - un invitado activo no puede quedar confirmado bajo un socio titular en espera;
+    - una salida cerrada no puede conservar registros activos en Por confirmar.
     """
     if not outing:
         return ["Salida inexistente"]
@@ -5320,11 +5328,26 @@ def validate_outing_operational_invariants(db: Session, outing: Outing, reservat
         formal_issues.extend(op_state.validate_reservation_record(rr))
     errors.extend(op_state.issues_to_messages(formal_issues))
     seen_active = {}
+    responsible_rows_by_user = {}
+    for rr in rows:
+        if canonical_kind(rr.kind) == "socio" and rr.responsible_user_id:
+            responsible_rows_by_user[rr.responsible_user_id] = rr
+
     for r in rows:
         if is_waitlisted(r) and (r.attendance or "") == "Presente":
             errors.append(f"{r.person_name}: figura Presente y en lista de espera simultáneamente")
+        if is_waitlisted(r) and float(getattr(r, "charge_amount", 0) or 0) > 0:
+            errors.append(f"{r.person_name}: está en lista de espera con cargo; espera nunca se factura")
+        if is_waitlisted(r) and r.cancelled_at is not None:
+            errors.append(f"{r.person_name}: está en lista de espera y cancelado simultáneamente")
         if is_protocolar(r) and float(getattr(r, "charge_amount", 0) or 0) > 0:
             errors.append(f"{r.person_name}: participación protocolar con cargo")
+        if is_closed_outing(outing) and reservation_is_active(r) and (r.attendance or "Por confirmar") == "Por confirmar":
+            errors.append(f"{r.person_name}: quedó pendiente después del cierre")
+        if canonical_kind(r.kind) in ("invitado", "hijo_menor") and reservation_is_active(r) and not is_waitlisted(r):
+            responsible_row = responsible_rows_by_user.get(r.responsible_user_id)
+            if responsible_row is not None and is_waitlisted(responsible_row):
+                errors.append(f"{r.person_name}: invitado activo con socio responsable todavía en lista de espera")
         if reservation_is_active(r):
             key = reservation_identity_key(r)
             if key in seen_active:

@@ -1,10 +1,10 @@
 {
-  "version": "3.8.6",
-  "release_label": "Fjord VI · v3.8.6 RC6",
+  "version": "RC8",
+  "release_label": "Fjord VI · RC8",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI 3.8.6 RC6",
+  "app_build": "Fjord VI RC8",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,11 +28,11 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "v3.8.6 - Release hardening",
+  "release": "RC8 - piloto operativo controlado",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "RC5: tablero Capitán con No embarcó/con cargo directo desde menú, tap rápido sin estados falsos, promoción de espera al liberar plaza.",
-  "app_version": "3.8.6",
+  "build_note": "RC8: versión candidata real para piloto controlado. Mantiene lógica RC7 y suma guardias duras de integridad antes de cierre/promoción.",
+  "app_version": "RC8",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PRODUCTION_READY_RC5",
-  "hardening_focus": "RC5 captain boarding logic: explicit absent-with-charge from menu, fast tap present/pending only, waitlist promotion when a place is freed"
+  "release_stage": "PILOT_RC8",
+  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado"
 }
