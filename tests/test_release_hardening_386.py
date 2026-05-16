@@ -4,11 +4,11 @@ ROOT = Path(__file__).resolve().parents[1]
 MAIN = (ROOT / "main.py").read_text(encoding="utf-8")
 
 
-def test_version_386_unified():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "3.8.6"
-    assert 'APP_VERSION = "3.8.6"' in MAIN
-    assert 'APP_BUILD = "Fjord VI 3.8.6"' in MAIN
-    assert 'RELEASE_LABEL = "Fjord VI · v3.8.6"' in MAIN
+def test_version_rc8_unified():
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC8"
+    assert 'APP_VERSION = "RC8"' in MAIN
+    assert 'APP_BUILD = "Fjord VI RC8"' in MAIN
+    assert 'RELEASE_LABEL = "Fjord VI · RC8"' in MAIN
 
 
 def test_waitlist_single_recompute_entrypoint_exists():
