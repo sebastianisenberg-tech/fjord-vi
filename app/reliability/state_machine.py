@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List
 
-APP_VERSION = "3.7.5"
+APP_VERSION = "3.8.6"
 
 VALID_TRANSITIONS: Dict[str, List[str]] = {
     "borrador": ["reserva", "cancelada"],
