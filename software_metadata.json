@@ -1,9 +1,9 @@
 {
   "version": "RC8",
-  "release_label": "Fjord VI · RC8",
+  "release_label": "RC8",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
-  "notes": "RC8 original con corrección limitada al menú de invitados del Socio: editar datos, eliminar solo este invitado y cerrar. Sin acciones de Capitán/Administración en el menú del socio.",
+  "notes": "RC8 original + baja individual de invitado en módulo Socio; menú socio simple.",
   "app_build": "Fjord VI RC8",
   "features": [
     "dashboard vivo operacional",
@@ -35,5 +35,5 @@
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
   "release_stage": "PILOT_RC8",
   "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado",
-  "menu_fix": "Socio guest menu simple: editar datos, eliminar solo este invitado, cerrar; sin acciones de Capitán/Administración."
+  "guest_delete_fix": "individual_guest_delete_final"
 }

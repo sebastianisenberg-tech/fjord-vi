@@ -7897,43 +7897,62 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
-
 @app.post("/socio/cancel_guest/{rid}")
-def cancel_guest_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def cancel_guest_individual(
+    rid: int,
+    request: Request,
+    outing_id: Optional[int] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    """Baja individual de un invitado/menor desde el módulo Socio.
+
+    Regla de seguridad: esta acción nunca cancela la reserva del socio titular
+    ni otros invitados del mismo socio. El cancelado del socio titular conserva
+    su ruta histórica /socio/cancel/{rid}, que sí puede aplicar cascada.
+    """
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
+    if not outing:
+        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
     ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id:
-        raise HTTPException(404, "Invitado inexistente")
-    if r.responsible_user_id != user.id or r.dni == user.dni:
+    if not r or r.outing_id != outing.id or not can_user_manage_guest_record(user, outing, r):
         raise HTTPException(403)
-    if not reservation_is_active(r):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+    was_waitlisted = is_waitlisted(r)
+    before = {
+        "id": r.id,
+        "name": r.person_name,
+        "dni": r.dni,
+        "kind": r.kind,
+        "status": r.status,
+        "attendance": r.attendance,
+        "responsible_user_id": r.responsible_user_id,
+        "waitlisted": was_waitlisted,
+    }
 
     now = now_local()
-    was_waitlisted = is_waitlisted(r)
     r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
-    r.cancel_reason = "Baja de invitado desde lista de espera" if was_waitlisted else "Invitado eliminado por socio responsable"
+    r.cancel_reason = "Baja individual de invitado desde lista de espera" if was_waitlisted else "Baja individual de invitado por socio"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
     recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja individual de invitado")
     promoted = recompute_result.get("promoted") or []
     db.commit()
-    log(db, user.name, "elimina invitado", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
-    cargo = float(r.charge_amount or 0)
-    late_cancel = cargo > 0
-    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
-        "socio_nombre": user.name,
-        "persona_nombre": r.person_name,
-        "salida_nombre": outing.title,
-        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
-        "hora": outing.departure_at.strftime("%H:%M"),
-        "importe": "$ " + fmt_money(r.charge_amount or 0),
-        "motivo_cancelacion": r.cancel_reason or "Invitado eliminado por socio responsable",
-        "mensaje_cargo": "La baja del invitado fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja del invitado fue registrada sin cargo reglamentario.",
-    })
+
+    audit_event(
+        db,
+        user,
+        "elimina invitado individual",
+        f"{before['name']} / {outing.title} / cargo {float(r.charge_amount or 0)} / promovidos {', '.join(promoted) if promoted else '-'}",
+        request=request,
+        outing_id=outing.id,
+        reservation_id=r.id,
+        before=before,
+        after={"status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason},
+    )
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
