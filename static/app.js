@@ -53,7 +53,11 @@
     }
 
     document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function(form){
-      if(form.dataset.noAjax === '1' || form.enctype === 'multipart/form-data') return;
+      // RC9 blindaje: por defecto los POST operativos usan submit nativo.
+      // El fetch global fue causa de pantallas congeladas en Android/Render
+      // cuando una redirección 303 o un timeout quedaba atrapado por JS.
+      // Sólo se usa AJAX si el formulario lo pide explícitamente.
+      if(form.dataset.ajax !== '1' || form.dataset.noAjax === '1' || form.enctype === 'multipart/form-data') return;
       form.addEventListener('submit', function(ev){
         if(ev.defaultPrevented) return;
         ev.preventDefault();
@@ -176,7 +180,7 @@
           if(btn.tagName === 'BUTTON' && btn.dataset.originalText){ btn.textContent = btn.dataset.originalText; }
         });
       }
-    }, 14000);
+    }, 45000);
 
     return rid.value;
   }
@@ -248,8 +252,8 @@
   if (window.__fjordOperationalGuardInstalled) return;
   window.__fjordOperationalGuardInstalled = true;
 
-  const SUBMIT_LOCK_MS = 2200;
-  const CLICK_LOCK_MS = 1100;
+  const SUBMIT_LOCK_MS = 45000;
+  const CLICK_LOCK_MS = 1800;
   const downloadSelectors = [
     'a[download]',
     'a[href$=".txt"]',

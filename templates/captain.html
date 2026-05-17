@@ -84,6 +84,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', function(){
+    // RC9: Capitán opera con POST nativo para evitar bloqueos por fetch/303.
+    document.querySelectorAll('form').forEach(function(form){ form.dataset.noAjax='1'; });
     captainRestoreScroll();
     document.querySelectorAll('.captainMoreOpsV65 > summary').forEach(function(summary){
       summary.addEventListener('click', function(e){
