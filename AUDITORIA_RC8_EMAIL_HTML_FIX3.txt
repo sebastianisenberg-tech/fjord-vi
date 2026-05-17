@@ -1,0 +1,8 @@
+FjordVI RC8 EMAIL HTML FIX3
+
+Base: RC8 estable.
+Correcciones quirúrgicas:
+1. Eliminar invitado usa baja individual segura: cancela solo el registro seleccionado.
+2. La baja individual no ejecuta recompute general de grupo; solo promueve lista de espera si corresponde.
+3. Email SMTP se envía como HTML primario para que Gmail muestre la tarjeta visual institucional.
+4. No se tocan reservas, cierre, capitán, liquidación ni reglas de cobro.

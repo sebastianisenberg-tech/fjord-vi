@@ -43,7 +43,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "RC8_EMAIL_HTML_FIX2"
+APP_VERSION = "RC8_EMAIL_HTML_FIX3"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -919,14 +919,13 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
         from_email = settings.get("from_email")
         subject = decorate_smtp_subject(db, subject)
         test_mode_now = smtp_test_mode_enabled(db)
-        body_plain = build_notification_plain_email(body, test_mode_now, original_to, effective_to)
         body_html = build_notification_html_email(subject, body, event_key, test_mode_now, original_to, effective_to)
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
-        msg.set_content(body_plain)
-        # RC8 Email HTML Real: sólo capa visual SMTP; no toca endpoints, cola ni lógica operativa.
-        msg.add_alternative(body_html, subtype="html")
+        # HTML primario: Gmail/Android debe mostrar la tarjeta institucional, no el texto técnico plano.
+        # No se cambia la cola ni la lógica de reservas; solo el MIME del envío SMTP.
+        msg.set_content(body_html, subtype="html")
         with smtplib.SMTP(settings["host"], port, timeout=20) as server:
             if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
                 server.starttls()
@@ -8088,8 +8087,10 @@ def cancel_guest_only(rid: int, outing_id: Optional[int] = Form(None), db: Sessi
     r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Cancelado por socio responsable"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="cancelación individual de invitado")
-    promoted = recompute_result.get("promoted") or []
+    # Baja individual segura: al eliminar un invitado NO se recalcula todo el grupo.
+    # Una baja individual solo libera una plaza y, si corresponde, promueve lista de espera.
+    # No debe tocar otros invitados del mismo socio ni convertirlos en no embarca/cancelados.
+    promoted = promote_waitlist(db, outing)
     db.commit()
     log(db, user.name, "cancela invitado", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
