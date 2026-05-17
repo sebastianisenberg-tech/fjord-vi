@@ -7906,6 +7906,45 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
+@app.post("/socio/cancel_guest/{rid}")
+def cancel_guest_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    """Baja aislada de invitado desde módulo Socio.
+
+    Ruta separada de la cancelación del socio titular para evitar que una acción
+    sobre un invitado pueda cancelar el grupo completo. No encola emails ni
+    procesa SMTP: graba, recompone cupo/espera y redirige.
+    """
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+
+    if not r or not outing or r.outing_id != outing.id:
+        raise HTTPException(403)
+    if r.responsible_user_id != user.id or r.dni == user.dni or canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
+        raise HTTPException(403)
+
+    if not reservation_is_active(r) and not is_waitlisted(r):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+    now = now_local()
+    was_waitlisted = is_waitlisted(r)
+    r.cancelled_at = now
+    r.status = "Cancelado"
+    r.attendance = "Ausente"
+    r.cancel_reason = "Baja de invitado desde módulo Socio"
+    r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
+
+    # Si libera una plaza confirmada, se promueve la lista de espera según reglas vigentes.
+    recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja de invitado")
+    db.commit()
+    try:
+        db.add(AuditLog(actor=user.name, action="elimina invitado", detail=f"{r.person_name} / {outing.title}"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+
 @app.post("/socio/cancel/{rid}")
 def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
@@ -7952,16 +7991,17 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
     late_cancel = cargo > 0
-    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
-        "socio_nombre": user.name,
-        "persona_nombre": r.person_name,
-        "salida_nombre": outing.title,
-        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
-        "hora": outing.departure_at.strftime("%H:%M"),
-        "importe": "$ " + fmt_money(r.charge_amount or 0),
-        "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
-        "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
-    })
+    if selected_kind == "socio":
+        queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
+            "socio_nombre": user.name,
+            "persona_nombre": r.person_name,
+            "salida_nombre": outing.title,
+            "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+            "hora": outing.departure_at.strftime("%H:%M"),
+            "importe": "$ " + fmt_money(r.charge_amount or 0),
+            "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
+            "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
+        })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")

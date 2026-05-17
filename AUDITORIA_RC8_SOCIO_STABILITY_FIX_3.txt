@@ -1,0 +1,28 @@
+AUDITORÍA RC8 SOCIO STABILITY FIX 3
+
+Motivo:
+El test real en móvil mostró que el alta/baja de invitados podía seguir dejando sensación de bloqueo y que la baja de invitado debía quedar completamente aislada de la cancelación del socio titular.
+
+Hallazgos:
+1. El template de Socio tenía la clase socioApp en el div interno, no en el body.
+2. static/app.js intentaba excluir Socio del fetch/AJAX global verificando document.body.classList.contains('socioApp'). Esa condición no se cumplía.
+3. Por ese error, los POST de Socio podían entrar por fetch global en vez de navegar nativamente con redirect, generando redirects ambiguos, botones deshabilitados y sensación de pantalla trabada.
+4. Eliminar invitado seguía usando la misma ruta /socio/cancel/{rid} que la cancelación del socio titular. Aunque la rama estaba protegida, era más seguro separar rutas.
+5. La cancelación genérica podía seguir encolando emails para algunas bajas, agregando trabajo sincrónico al POST.
+
+Correcciones aplicadas:
+1. body de socio.html ahora incluye class="socioApp".
+2. Los POST de Socio quedan efectivamente fuera del fetch/AJAX global y vuelven a POST nativo + redirect 303.
+3. Se acortó el desbloqueo preventivo local de botones de Socio de 8s a 3.5s.
+4. Se creó ruta exclusiva /socio/cancel_guest/{rid} para eliminar invitados.
+5. El menú de invitado en Socio apunta a /socio/cancel_guest/{rid}, no a /socio/cancel/{rid}.
+6. /socio/cancel_guest/{rid} valida que el registro sea invitado/hijo_menor, pertenezca al socio logueado y no sea el DNI del titular.
+7. /socio/cancel_guest/{rid} no encola emails ni procesa SMTP.
+8. La ruta genérica /socio/cancel/{rid} solo encola email cuando la baja es del socio titular.
+
+Alcance respetado:
+No se tocó email SMTP, Capitán, Administración, cierre, reapertura, liquidación, PDF ni diseño general.
+
+Chequeos:
+release_check.py: OK
+pytest: 44 passed
