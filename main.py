@@ -7554,14 +7554,14 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        # FAST_SOCIO: no encolar email sincrónico en alta de socio; la acción debe responder inmediato.
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
-    queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
+    # FAST_SOCIO: no encolar email sincrónico en alta de socio; evita bloqueo de UI móvil.
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
@@ -7659,7 +7659,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
+    # FAST_SOCIO: no encolar email sincrónico ni calcular resumen de invitados en alta; respuesta inmediata.
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -7996,16 +7996,7 @@ def socio_cancel_self(rid: int, outing_id: Optional[int] = Form(None), db: Sessi
     log(db, user.name, "cancela titular", f"{r.person_name} / {outing.title} / invitados {dep_count} / cargo_total {self_charge + dep_charge_total} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(self_charge or 0)
     late_cancel = cargo > 0
-    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
-        "socio_nombre": user.name,
-        "persona_nombre": r.person_name,
-        "salida_nombre": outing.title,
-        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
-        "hora": outing.departure_at.strftime("%H:%M"),
-        "importe": "$ " + fmt_money(self_charge + dep_charge_total),
-        "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
-        "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if (self_charge + dep_charge_total) > 0 else "La baja fue registrada sin cargo reglamentario.",
-    })
+    # FAST_SOCIO: no encolar email sincrónico en cancelación de titular; evita esperas largas en móvil.
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 
