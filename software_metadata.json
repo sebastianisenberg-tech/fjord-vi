@@ -1,10 +1,10 @@
 {
-  "version": "RC8_EMAIL_SKIN",
-  "release_label": "Fjord VI · RC8 Email Skin",
+  "version": "RC8_EMAIL_HTML_FIX2",
+  "release_label": "Fjord VI · RC8 Email HTML Fix2",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
-  "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI RC8 EMAIL SKIN",
+  "notes": "Base RC8 estable con FIX1 de baja individual; sólo mejora real de emails HTML y texto plano amigable. Sin tocar motor operativo.",
+  "app_build": "Fjord VI RC8 EMAIL HTML FIX2",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -34,6 +34,7 @@
   "build_note": "RC8 estable: se modifica solo presentación de emails HTML, sin tocar lógica operativa, endpoints críticos ni timing de reservas.",
   "app_version": "RC8_EMAIL_SKIN",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PILOT_RC8_EMAIL_SKIN",
-  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado"
+  "release_stage": "PILOT_RC8_EMAIL_HTML_FIX2",
+  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado",
+  "build": "Fjord VI RC8 EMAIL SKIN FIX1"
 }
