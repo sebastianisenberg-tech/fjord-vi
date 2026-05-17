@@ -5,11 +5,11 @@ META = (ROOT / "software_metadata.json").read_text(encoding="utf-8")
 
 
 def test_rc8_version_label_is_unified_for_pilot():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC8_EMAIL_SKIN"
-    assert 'APP_VERSION = "RC8_EMAIL_SKIN"' in MAIN
-    assert 'APP_BUILD = "Fjord VI RC8 EMAIL SKIN"' in MAIN
-    assert 'RELEASE_LABEL = "Fjord VI · RC8 Email Skin"' in MAIN
-    assert '"release_stage": "PILOT_RC8_EMAIL_SKIN"' in META
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC8_EMAIL_HTML_FIX2"
+    assert 'APP_VERSION = "RC8_EMAIL_HTML_FIX2"' in MAIN
+    assert 'APP_BUILD = "Fjord VI RC8 EMAIL HTML FIX2"' in MAIN
+    assert 'RELEASE_LABEL = "Fjord VI · RC8 Email HTML Fix2"' in MAIN
+    assert '"release_stage": "PILOT_RC8_EMAIL_HTML_FIX2"' in META
 
 
 def test_rc8_waitlist_is_never_chargeable_in_invariants():

@@ -5,8 +5,8 @@ MAIN = (ROOT / "main.py").read_text(encoding="utf-8")
 
 
 def test_email_skin_generates_html_alternative_only_at_smtp_send():
-    assert "msg.add_alternative(build_notification_html_email" in MAIN
-    assert "RC8 Email Skin: HTML visual sin tocar endpoints" in MAIN
+    assert "msg.add_alternative(body_html" in MAIN
+    assert "RC8 Email HTML Real: sólo capa visual SMTP" in MAIN
 
 
 def test_email_skin_keeps_queue_email_lightweight():
