@@ -1,9 +1,9 @@
 {
-  "version": "RC8",
-  "release_label": "Fjord VI · RC8",
+  "version": "RC8_SOCIO_CANCEL_FIX",
+  "release_label": "RC8",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
-  "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
+  "notes": "RC8 original + baja individual de invitado en módulo Socio; menú socio simple.",
   "app_build": "Fjord VI RC8",
   "features": [
     "dashboard vivo operacional",
@@ -29,10 +29,11 @@
   "services_scaffold": true,
   "logging_base": true,
   "release": "RC8 - piloto operativo controlado",
-  "name": "Fjord VI Sistema de Reservas",
+  "name": "Fjord VI RC8 Socio Cancel Fix",
   "build_note": "RC8: versión candidata real para piloto controlado. Mantiene lógica RC7 y suma guardias duras de integridad antes de cierre/promoción.",
   "app_version": "RC8",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
   "release_stage": "PILOT_RC8",
-  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado"
+  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado",
+  "guest_delete_fix": "individual_guest_delete_final"
 }

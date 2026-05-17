@@ -5042,19 +5042,11 @@ def enforce_responsible_dependency(db: Session, outing: Outing, reservations=Non
                 r.cancel_reason = "No embarcado: socio responsable no embarca / sin cargo por decisión del capitán"
                 r.charge_amount = 0
             else:
-                # RC8 Socio Stability Fix 4:
-                # No se debe convertir una reserva normal "Por confirmar" en "No embarca"
-                # sólo porque el socio todavía no fue marcado Presente. Esa marca pertenece
-                # al flujo operativo del Capitán, no al alta/baja ágil del módulo Socio.
-                # Sólo se bloquea si el invitado ya fue marcado Presente sin socio responsable
-                # presente, o si hay una causa explícita de ausencia/no embarque del socio.
-                if r.attendance == "Presente":
-                    r.attendance = "No embarca"
-                    r.cancel_reason = "No embarcado: socio responsable no presente"
-                    r.charge_amount = 0
-                    changed.append(r.person_name)
-                    continue
-                continue
+                # Sin socio responsable presente verificable: por seguridad operativa
+                # no se permite embarque. Se deja sin cargo hasta corrección/reasignación.
+                r.attendance = "No embarca"
+                r.cancel_reason = "No embarcado: socio responsable no presente"
+                r.charge_amount = 0
             changed.append(r.person_name)
     return changed
 
@@ -7666,17 +7658,8 @@ async def add_guest(
 
     enforce_capacity(db, outing)
     db.commit()
-
-    # RC8 Socio Stability Fix 2:
-    # Alta de invitados es una operación crítica de UX. No debe esperar SMTP ni
-    # tampoco la cola de comunicaciones, porque queue_email() sincroniza
-    # plantillas, busca duplicados y hace otro commit dentro del mismo request.
-    # La reserva ya quedó grabada y el usuario recibe redirect inmediato.
-    try:
-        db.add(AuditLog(actor=user.name, action="agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", detail=f"{person_name} / {outing.title}"))
-        db.commit()
-    except Exception:
-        db.rollback()
+    log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
+    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -7915,104 +7898,138 @@ def delete_outing(
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
 @app.post("/socio/cancel_guest/{rid}")
-def cancel_guest_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    """Baja aislada de invitado desde módulo Socio.
+def cancel_guest_individual(
+    rid: int,
+    request: Request,
+    outing_id: Optional[int] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    """Baja individual de un invitado/menor desde el módulo Socio.
 
-    Ruta separada de la cancelación del socio titular para evitar que una acción
-    sobre un invitado pueda cancelar el grupo completo. No encola emails ni
-    procesa SMTP: graba, recompone cupo/espera y redirige.
+    Regla de seguridad: esta acción nunca cancela la reserva del socio titular
+    ni otros invitados del mismo socio. El cancelado del socio titular conserva
+    su ruta histórica /socio/cancel/{rid}, que sí puede aplicar cascada.
     """
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
+    if not outing:
+        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
     ensure_outing_editable(outing)
-
-    if not r or not outing or r.outing_id != outing.id:
-        raise HTTPException(403)
-    if r.responsible_user_id != user.id or r.dni == user.dni or canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
+    if not r or r.outing_id != outing.id or not can_user_manage_guest_record(user, outing, r):
         raise HTTPException(403)
 
-    if not reservation_is_active(r) and not is_waitlisted(r):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+    was_waitlisted = is_waitlisted(r)
+    before = {
+        "id": r.id,
+        "name": r.person_name,
+        "dni": r.dni,
+        "kind": r.kind,
+        "status": r.status,
+        "attendance": r.attendance,
+        "responsible_user_id": r.responsible_user_id,
+        "waitlisted": was_waitlisted,
+    }
 
     now = now_local()
-    was_waitlisted = is_waitlisted(r)
     r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
-    r.cancel_reason = "Baja de invitado desde módulo Socio"
+    r.cancel_reason = "Baja individual de invitado desde lista de espera" if was_waitlisted else "Baja individual de invitado por socio"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
-    # Si libera una plaza confirmada, se recompone cupo/lista de espera sin pasar
-    # por la cascada de socio titular. La baja de un invitado no puede disparar
-    # reglas de no-embarque ni cancelar/alterar otros invitados del grupo.
-    enforce_capacity(db, outing)
-    promote_waitlist(db, outing)
-    db.commit()
-    try:
-        db.add(AuditLog(actor=user.name, action="elimina invitado", detail=f"{r.person_name} / {outing.title}"))
-        db.commit()
-    except Exception:
-        db.rollback()
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
-
-
-@app.post("/socio/cancel/{rid}")
-def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    r = db.get(Reservation, rid)
-    outing = selected_outing(db, outing_id)
-    ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
-        raise HTTPException(403)
-
-    if not reservation_is_active(r):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
-
-    now = now_local()
-    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
-    was_waitlisted = is_waitlisted(r)
-    r.cancelled_at = now
-    r.status = "Cancelado"
-    r.attendance = "Ausente"
-    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Cancelado por socio"
-    r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
-
-    selected_kind = canonical_kind(r.kind)
-    # RC8 Socio Stability Fix: la cascada sobre dependientes sólo aplica
-    # cuando el registro cancelado es el socio titular. Un invitado, aunque
-    # por error comparta DNI con el socio o use la misma ruta POST, jamás
-    # debe cancelar el grupo ni borrar otros invitados.
-    if selected_kind == "socio" and r.dni == user.dni:
-        dependientes = db.query(Reservation).filter(
-            Reservation.outing_id == outing.id,
-            Reservation.responsible_user_id == user.id,
-            Reservation.dni != user.dni,
-            Reservation.cancelled_at.is_(None)
-        ).all()
-        for dep in dependientes:
-            dep_was_waitlisted = is_waitlisted(dep)
-            dep.cancelled_at = now
-            dep.status = "Cancelado"
-            dep.attendance = "Ausente"
-            dep.cancel_reason = "Baja desde lista de espera por baja del socio responsable" if dep_was_waitlisted else "Cancelado por baja del socio responsable"
-            dep.charge_amount = 0 if dep_was_waitlisted else (reservation_charge(outing, dep) if late_window_passed(outing) else 0)
-
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="cancelación de socio/reserva")
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja individual de invitado")
     promoted = recompute_result.get("promoted") or []
     db.commit()
-    log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
-    cargo = float(r.charge_amount or 0)
-    late_cancel = cargo > 0
-    if selected_kind == "socio":
-        queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
-            "socio_nombre": user.name,
-            "persona_nombre": r.person_name,
-            "salida_nombre": outing.title,
-            "fecha": outing.departure_at.strftime("%d/%m/%Y"),
-            "hora": outing.departure_at.strftime("%H:%M"),
-            "importe": "$ " + fmt_money(r.charge_amount or 0),
-            "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
-            "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
-        })
+
+    audit_event(
+        db,
+        user,
+        "elimina invitado individual",
+        f"{before['name']} / {outing.title} / cargo {float(r.charge_amount or 0)} / promovidos {', '.join(promoted) if promoted else '-'}",
+        request=request,
+        outing_id=outing.id,
+        reservation_id=r.id,
+        before=before,
+        after={"status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason},
+    )
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
+
+@app.post("/socio/cancel/{rid}")
+def cancel_reservation(
+    rid: int,
+    outing_id: Optional[int] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    """Cancela la reserva titular del socio desde el módulo Socio.
+
+    Corrección de estabilidad: esta ruta queda dedicada al botón
+    "Cancelar mi lugar". Si la reserva es la del socio titular, cancela
+    también sus invitados asociados. No intenta reutilizar lógica de baja
+    individual de invitados ni bloquea la respuesta por comunicaciones.
+    """
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    if not outing:
+        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
+    ensure_outing_editable(outing)
+    if not r or r.outing_id != outing.id:
+        raise HTTPException(403)
+
+    is_owner_self = (norm_dni(r.dni or "") == norm_dni(user.dni or "") and canonical_kind(r.kind) == "socio")
+    manages_guest = (r.responsible_user_id == user.id and canonical_kind(r.kind) in ("invitado", "hijo_menor"))
+    if not (is_owner_self or manages_guest):
+        raise HTTPException(403)
+
+    # Si por compatibilidad vieja esta ruta recibe un invitado, baja solo ese invitado.
+    # El flujo normal del menú de invitados usa /socio/cancel_guest/{rid}.
+    targets = []
+    if is_owner_self:
+        targets = db.query(Reservation).filter(
+            Reservation.outing_id == outing.id,
+            ((Reservation.responsible_user_id == user.id) | (Reservation.dni == user.dni)),
+            Reservation.cancelled_at.is_(None)
+        ).all()
+    else:
+        targets = [r] if reservation_is_active(r) or is_waitlisted(r) else []
+
+    if not targets:
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+    now = now_local()
+    cancelled_names = []
+    total_charge = 0.0
+    for row in targets:
+        if row.cancelled_at is not None:
+            continue
+        row_was_waitlisted = is_waitlisted(row)
+        row.cancelled_at = now
+        row.status = "Cancelado"
+        row.attendance = "Ausente"
+        if is_owner_self:
+            if canonical_kind(row.kind) == "socio":
+                row.cancel_reason = "Baja desde lista de espera" if row_was_waitlisted else "Cancelado por socio"
+            else:
+                row.cancel_reason = "Baja desde lista de espera por baja del socio responsable" if row_was_waitlisted else "Cancelado por baja del socio responsable"
+        else:
+            row.cancel_reason = "Baja individual de invitado desde lista de espera" if row_was_waitlisted else "Baja individual de invitado por socio"
+        row.charge_amount = 0 if row_was_waitlisted else (reservation_charge(outing, row) if late_window_passed(outing) else 0)
+        total_charge += float(row.charge_amount or 0)
+        cancelled_names.append(row.person_name)
+
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="cancelación de socio titular" if is_owner_self else "baja individual de invitado")
+    promoted = recompute_result.get("promoted") or []
+    db.commit()
+
+    try:
+        log(db, user.name, "cancela reserva titular" if is_owner_self else "cancela invitado", f"{', '.join(cancelled_names) or r.person_name} / {outing.title} / cargo {total_charge} / promovidos {', '.join(promoted) if promoted else '-'}")
+    except Exception:
+        pass
+
+    # No se encola email desde esta ruta crítica: prioridad absoluta a respuesta rápida
+    # y consistente del flujo Socio. Las comunicaciones se mantienen en el motor SMTP
+    # general para otros eventos.
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 @app.post("/socio/reactivate/{rid}")
