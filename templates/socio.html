@@ -8,6 +8,11 @@
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
 document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
+document.addEventListener('DOMContentLoaded',function(){
+  // FAST_SOCIO: en Socio usamos submit nativo, no AJAX/fetch.
+  // Evita pantallas eternas en Android cuando una redirección 303 queda atrapada por fetch.
+  document.querySelectorAll('form').forEach(function(form){ form.dataset.noAjax='1'; });
+});
 document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){form.querySelectorAll('button').forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});});});});
 
 document.addEventListener("DOMContentLoaded",function(){const toast=document.querySelector(".toastSmart");if(toast){const close=toast.querySelector(".toastClose");if(close){close.addEventListener("click",function(){toast.classList.add("toastLeaving");});}setTimeout(function(){toast.classList.add("toastLeaving");},5200);}document.querySelectorAll("button,.btn,.miEmbCta,.selectRow,.bottom a").forEach(function(el){el.addEventListener("pointerdown",function(){el.classList.add("isPressed");});["pointerup","pointercancel","pointerleave"].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove("isPressed");});});});});
