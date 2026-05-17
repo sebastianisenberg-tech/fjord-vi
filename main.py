@@ -3,7 +3,6 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 import csv
 import hashlib
-import html as html_lib
 import hmac
 import io
 import json
@@ -43,7 +42,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "RC8_EMAIL_HTML_FIX3"
+APP_VERSION = "RC8_GUEST_MENU_FIX"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -88,8 +87,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI RC8 EMAIL HTML FIX2"
-RELEASE_LABEL = "Fjord VI · RC8 Email HTML Fix2"
+APP_BUILD = "Fjord VI RC8 Guest Menu Fix"
+RELEASE_LABEL = "Fjord VI · RC8 Guest Menu Fix"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -740,165 +739,6 @@ def smtp_configured(settings: dict) -> bool:
     )
 
 
-
-def _email_lines_to_html_blocks(body: str) -> str:
-    """Convierte el texto existente de RC8 a HTML institucional, sin tocar la lógica que genera los mensajes."""
-    body = normalize_email_text(body or "")
-    lines = [line.rstrip() for line in body.split("\n")]
-    parts = []
-    bullet_open = False
-
-    def close_bullets():
-        nonlocal bullet_open
-        if bullet_open:
-            parts.append("</ul>")
-            bullet_open = False
-
-    section_titles = {
-        "detalle de tus reservas e invitados asociados",
-        "invitados / reservas embarcadas",
-        "reservas incumplidas con cargo reglamentario",
-        "detalle operativo",
-        "navegaron",
-        "reserva incumplida con cargo",
-    }
-
-    for raw in lines:
-        line = raw.strip()
-        if not line:
-            close_bullets()
-            parts.append('<div style="height:7px;line-height:7px">&nbsp;</div>')
-            continue
-        safe = html_lib.escape(line)
-        lower = line.lower().rstrip(":")
-        if line.startswith("- "):
-            if not bullet_open:
-                parts.append('<ul style="margin:8px 0 12px 20px;padding:0;color:#25364a;font-size:15px;line-height:1.45">')
-                bullet_open = True
-            parts.append(f"<li style='margin:0 0 5px 0'>{html_lib.escape(line[2:].strip())}</li>")
-            continue
-        close_bullets()
-        if lower in section_titles:
-            parts.append(f'<div style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#0b5f8f;margin:16px 0 6px 0;font-weight:800">{safe}</div>')
-        elif line.startswith("Hola "):
-            parts.append(f'<p style="margin:0 0 14px 0;font-size:16px;line-height:1.45;color:#12263a">{safe}</p>')
-        elif line.startswith("Total individual") or line.startswith("Total a") or line.startswith("Importe") or line.startswith("Cargo informado"):
-            parts.append(f'<div style="background:#eef8f4;border:1px solid #cce9dc;border-radius:12px;padding:12px 14px;margin:10px 0;color:#0f5132;font-size:16px;line-height:1.35;font-weight:750">{safe}</div>')
-        elif ":" in line and len(line) < 120:
-            label, value = line.split(":", 1)
-            parts.append(f'<div style="font-size:14px;line-height:1.45;margin:4px 0;color:#25364a"><strong style="color:#12263a">{html_lib.escape(label.strip())}:</strong> {html_lib.escape(value.strip())}</div>')
-        elif line.upper() == line and len(line) < 80:
-            parts.append(f'<div style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#627084;margin:12px 0 4px 0;font-weight:800">{safe}</div>')
-        else:
-            parts.append(f'<p style="margin:0 0 9px 0;font-size:15px;line-height:1.5;color:#25364a">{safe}</p>')
-    close_bullets()
-    return "\n".join(parts)
-
-
-def notification_email_title(event_key: str, subject: str) -> str:
-    titles = {
-        "reserva_confirmada_socio": "Reserva confirmada",
-        "reserva_en_espera_socio": "Reserva en lista de espera",
-        "reserva_promovida_socio": "Reserva confirmada desde espera",
-        "invitado_agregado_socio": "Invitado registrado",
-        "invitado_en_espera_socio": "Invitado en lista de espera",
-        "invitado_desplazado_socio": "Cambio en tus invitados",
-        "cancelacion_socio": "Cancelación registrada",
-        "cancelacion_con_cargo_socio": "Cancelación con cargo reglamentario",
-        "salida_reprogramada_socio": "Salida reprogramada",
-        "salida_cancelada_socio": "Salida cancelada",
-        "embarque_estado_socio": "Actualización de embarque",
-        "salida_cerrada_socio": "Resumen de salida",
-        "salida_cerrada_admin": "Salida cerrada",
-        "resumen_cierre_socio": "Resumen consolidado",
-        "cierre_liquidacion_admin": "Liquidación consolidada",
-        "recordatorio_24h_socio": "Recordatorio de reserva",
-        "no_show_cargo_socio": "Reserva incumplida",
-        "email_prueba": "Prueba de comunicaciones",
-    }
-    return titles.get(event_key, (subject or "Comunicación Fjord VI").replace("[TEST]", "").replace("[TEST Fjord VI]", "").strip())
-
-
-def build_notification_plain_email(body: str, test_mode: bool = False, original_to: str = "", effective_to: str = "") -> str:
-    body = normalize_email_text(body or "")
-    if not test_mode:
-        return body
-    notice = (
-        "CORREO DE PRUEBA · Fjord VI\n"
-        "Este mensaje fue redirigido al receptor de pruebas y no genera efectos reales para socios.\n"
-        f"Destinatario original: {original_to or '-'}\n"
-        f"Receptor de prueba: {effective_to or '-'}\n\n"
-    )
-    return notice + body
-
-
-def build_notification_html_email(subject: str, body: str, event_key: str = "", test_mode: bool = False, original_to: str = "", effective_to: str = "") -> str:
-    title = html_lib.escape(notification_email_title(event_key, subject))
-    clean_subject = (subject or "Fjord VI").replace("[TEST]", "").replace("[TEST Fjord VI]", "").strip()
-    preheader = html_lib.escape(clean_subject)
-    content = _email_lines_to_html_blocks(body)
-    test_block = ""
-    if test_mode:
-        test_block = f"""
-        <tr>
-          <td style="padding:0 22px 18px 22px">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff7e6;border:1px solid #f0d9a0;border-radius:12px">
-              <tr><td style="padding:11px 13px;color:#6a4b00;font-size:13px;line-height:1.4">
-                <strong>Correo de prueba</strong><br>
-                Redirigido al receptor de QA. No genera efectos reales para socios.<br>
-                <span style="color:#83620a">Original: {html_lib.escape(original_to or '-')} · Receptor: {html_lib.escape(effective_to or '-')}</span>
-              </td></tr>
-            </table>
-          </td>
-        </tr>"""
-    return f"""<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{preheader}</title>
-</head>
-<body style="margin:0;padding:0;background:#eef5f9;font-family:Arial,'Segoe UI',Roboto,sans-serif;color:#25364a">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">{preheader}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef5f9;margin:0;padding:22px 10px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dce8f0">
-        <tr>
-          <td style="background:#0b3a5b;color:#ffffff;padding:18px 22px">
-            <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9">Yacht Club Argentino</div>
-            <div style="font-size:23px;font-weight:800;margin-top:3px">Fjord VI</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:22px 22px 10px 22px">
-            <h1 style="font-size:23px;line-height:1.25;margin:0;color:#10263b;font-weight:800">{title}</h1>
-            <div style="font-size:14px;color:#6b7888;margin-top:6px">Comunicación operativa de reservas y embarque</div>
-          </td>
-        </tr>
-        {test_block}
-        <tr>
-          <td style="padding:0 22px 22px 22px">
-            <div style="border-top:1px solid #e6edf5;margin:0 0 16px 0"></div>
-            {content}
-            <div style="margin-top:20px;padding:13px 15px;background:#f7fafc;border:1px solid #e2ebf2;border-radius:12px;color:#526174;font-size:13px;line-height:1.45">
-              Los estados e importes se informan según las reglas operativas vigentes del Fjord VI.
-            </div>
-            <div style="margin-top:16px;text-align:center">
-              <a href="https://fjord-vi.onrender.com" style="display:inline-block;background:#0b6d94;color:#ffffff;text-decoration:none;font-weight:700;border-radius:999px;padding:11px 18px;font-size:14px">Ingresar al sistema</a>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:15px 22px;background:#f8fafc;color:#6b7888;font-size:12px;line-height:1.4;border-top:1px solid #e6edf5">
-            {html_lib.escape(CLUB_NAME)} · {html_lib.escape(APP_NAME)} · Mensaje automático
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
-
 def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
     settings = smtp_settings(db)
     if smtp_simulation_mode_enabled(db):
@@ -918,14 +758,11 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
         from_name = settings.get("from_name") or f"{CLUB_NAME} · {APP_NAME}"
         from_email = settings.get("from_email")
         subject = decorate_smtp_subject(db, subject)
-        test_mode_now = smtp_test_mode_enabled(db)
-        body_html = build_notification_html_email(subject, body, event_key, test_mode_now, original_to, effective_to)
+        body = decorate_smtp_body(db, body, original_to, effective_to, event_key)
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
-        # HTML primario: Gmail/Android debe mostrar la tarjeta institucional, no el texto técnico plano.
-        # No se cambia la cola ni la lógica de reservas; solo el MIME del envío SMTP.
-        msg.set_content(body_html, subtype="html")
+        msg.set_content(body)
         with smtplib.SMTP(settings["host"], port, timeout=20) as server:
             if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
                 server.starttls()
@@ -2471,10 +2308,13 @@ def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: s
     if not smtp_test_mode_enabled(db):
         return body
     notice = (
-        "Correo de prueba del sistema Fjord VI\n"
-        "Este mensaje fue redirigido al receptor de QA. No genera efectos reales para socios.\n"
+        "MODO PRUEBA SMTP ACTIVO\n"
+        f"Evento interno: {event_key or '-'}\n"
+        f"Fecha/hora test: {now_local().strftime('%d/%m/%Y %H:%M')}\n"
         f"Destinatario original: {original_to or '-'}\n"
-        f"Receptor de prueba: {effective_to or '-'}\n\n"
+        f"Redirigido a: {effective_to or '-'}\n"
+        "Entorno: TEST / QA controlado\n"
+        "Ningún socio real recibe este correo mientras el modo prueba esté activo.\n\n"
     )
     return notice + body
 
@@ -8057,23 +7897,31 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
-@app.post("/socio/cancel_guest/{rid}")
-def cancel_guest_only(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    """Baja individual de un invitado/menor asociado al socio.
 
-    Regla crítica: este endpoint NO cancela la reserva titular ni otros invitados.
-    La baja general del socio titular sigue usando /socio/cancel/{rid}, que sí cascada
-    sus dependientes. Esta separación evita que el botón "Eliminar invitado" borre
-    accidentalmente todo el grupo familiar/de invitados.
+@app.post("/socio/remove_guest/{rid}")
+def remove_guest_individual(
+    rid: int,
+    outing_id: Optional[int] = Form(None),
+    db: Session = Depends(db_session),
+    user: User = Depends(require_role("socio"))
+):
+    """Baja individual de un invitado del socio.
+
+    Esta ruta existe para evitar que el botón "Eliminar invitado" use la cancelación
+    general de reserva del socio titular. Nunca debe cancelar al socio ni al resto
+    de sus invitados. Solo afecta el registro indicado y luego recalcula la lista
+    de espera si se liberó una plaza.
     """
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
     ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id:
+    if not r or not outing or r.outing_id != outing.id:
         raise HTTPException(403)
-    # Solo el socio responsable puede dar de baja un invitado suyo.
-    # Nunca se permite usar este endpoint sobre la reserva titular del socio.
-    if r.responsible_user_id != user.id or r.dni == user.dni:
+    if r.responsible_user_id != user.id:
+        raise HTTPException(403)
+    if r.dni == user.dni or canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
+        raise HTTPException(403)
+    if not can_user_manage_guest_record(user, outing, r):
         raise HTTPException(403)
 
     if not reservation_is_active(r):
@@ -8084,15 +7932,13 @@ def cancel_guest_only(rid: int, outing_id: Optional[int] = Form(None), db: Sessi
     r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
-    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Cancelado por socio responsable"
+    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Invitado eliminado por socio"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
-    # Baja individual segura: al eliminar un invitado NO se recalcula todo el grupo.
-    # Una baja individual solo libera una plaza y, si corresponde, promueve lista de espera.
-    # No debe tocar otros invitados del mismo socio ni convertirlos en no embarca/cancelados.
-    promoted = promote_waitlist(db, outing)
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja individual de invitado")
+    promoted = recompute_result.get("promoted") or []
     db.commit()
-    log(db, user.name, "cancela invitado", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
+    log(db, user.name, "elimina invitado individual", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
     late_cancel = cargo > 0
     queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
@@ -8102,10 +7948,10 @@ def cancel_guest_only(rid: int, outing_id: Optional[int] = Form(None), db: Sessi
         "fecha": outing.departure_at.strftime("%d/%m/%Y"),
         "hora": outing.departure_at.strftime("%H:%M"),
         "importe": "$ " + fmt_money(r.charge_amount or 0),
-        "motivo_cancelacion": r.cancel_reason or "Cancelado por socio responsable",
+        "motivo_cancelacion": r.cancel_reason or "Invitado eliminado por socio",
         "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
     })
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
 def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):

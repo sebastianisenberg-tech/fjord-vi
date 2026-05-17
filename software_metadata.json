@@ -1,10 +1,10 @@
 {
-  "version": "RC8_EMAIL_HTML_FIX3",
-  "release_label": "RC8_EMAIL_HTML_FIX3",
+  "version": "RC8_GUEST_MENU_FIX",
+  "release_label": "GUEST_MENU_FIX",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
-  "notes": "Base RC8 estable con FIX1 de baja individual; sólo mejora real de emails HTML y texto plano amigable. Sin tocar motor operativo.",
-  "app_build": "Fjord VI RC8 EMAIL HTML FIX2",
+  "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
+  "app_build": "Fjord VI RC8 Guest Menu Fix",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -20,8 +20,7 @@
     "evolución mensual por ficha vigente",
     "exportación PDF ejecutiva de estadísticas",
     "botón Informe PDF reunión",
-    "ajustes desktop-first en Estadísticas",
-    "pulido visual HTML de emails sin modificar motor operativo"
+    "ajustes desktop-first en Estadísticas"
   ],
   "phase14_validaciones_tests": true,
   "system_fast": "preserved",
@@ -29,12 +28,11 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "RC8 Email Skin - RC8 estable con pulido HTML de emails",
+  "release": "RC8 Guest Menu Fix - piloto operativo controlado",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "RC8 estable: se modifica solo presentación de emails HTML, sin tocar lógica operativa, endpoints críticos ni timing de reservas.",
-  "app_version": "RC8_EMAIL_SKIN",
+  "build_note": "Base RC8 estable. Solo corrige menú de tres puntitos e introduce ruta de baja individual de invitados; no toca motor de cierre, liquidación ni capitán.",
+  "app_version": "RC8_GUEST_MENU_FIX",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PILOT_RC8_EMAIL_HTML_FIX3",
-  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado",
-  "build": "Fjord VI RC8 EMAIL SKIN FIX1"
+  "release_stage": "PILOT_RC8_GUEST_MENU_FIX",
+  "hardening_focus": "Corrección quirúrgica de menú de invitados: eliminar invitado individual sin afectar el grupo; cierre de menú robusto."
 }
