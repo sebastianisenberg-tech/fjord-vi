@@ -859,9 +859,32 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
         payload=json.dumps(payload2, ensure_ascii=False),
     )
     db.add(q)
-    db.commit()
+    # En flujos operativos (Socio/Capitán/cierre) la cola de emails no debe
+    # hacer commits repetidos ni alargar el POST. Cuando el endpoint activa
+    # defer_queue_commit, se agrega todo al outbox y se confirma una sola vez.
+    if not db.info.get("defer_queue_commit"):
+        db.commit()
     return q
 
+
+
+@contextmanager
+def defer_notification_queue_commit(db: Session):
+    """Agrupa inserts de NotificationQueue dentro del commit del endpoint.
+
+    Mantiene emails desacoplados del envío SMTP y evita N commits por cada
+    acción operativa. Si algo falla, no debe bloquear la maniobra: se limpia el
+    flag y el endpoint decide si audita o continúa.
+    """
+    previous = bool(db.info.get("defer_queue_commit"))
+    db.info["defer_queue_commit"] = True
+    try:
+        yield
+    finally:
+        if previous:
+            db.info["defer_queue_commit"] = True
+        else:
+            db.info.pop("defer_queue_commit", None)
 
 
 RETRYABLE_NOTIFICATION_STATUSES = {"failed", "expired"}
@@ -2622,19 +2645,29 @@ async def security_headers_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def communications_auto_worker(request: Request, call_next):
-    """Procesa recordatorios y una pequeña tanda de emails pendientes sin worker externo.
+    """Outbox no bloqueante para operación real.
 
-    Se ejecuta de forma liviana al recibir tráfico real. No toca archivos estáticos
-    ni health checks para evitar ruido y mantener baja latencia.
+    Regla de blindaje RC9: Socio y Capitán nunca deben esperar SMTP.
+    Las rutas operativas sólo encolan comunicaciones; el procesamiento real
+    queda para Administración/Comunicaciones o para visitas no operativas.
+    Esto evita que un SMTP lento, una clave vencida o un timeout de red congele
+    altas, bajas, embarque o cierre.
     """
     response = await call_next(request)
     try:
         path = request.url.path or ""
-        if path.startswith("/static") or path.startswith("/health") or path.endswith(".csv"):
+        operational_prefixes = (
+            "/socio", "/captain", "/checkin", "/embarque",
+            "/login", "/logout", "/change-password", "/account",
+            "/static", "/health"
+        )
+        if path.startswith(operational_prefixes) or path.endswith((".csv", ".zip", ".json", ".txt")):
             return response
-        with SessionLocal() as db:
-            queue_due_24h_reminders(db)
-            auto_process_notifications(db, limit=5)
+        # Sólo recordatorios; no SMTP real en middleware. El envío se procesa
+        # desde /admin/comunicaciones para mantener trazabilidad y latencia baja.
+        if path.startswith("/admin"):
+            with SessionLocal() as db:
+                queue_due_24h_reminders(db)
     except Exception:
         pass
     return response
@@ -2735,8 +2768,8 @@ def _outing_id_from_post(path: str, form_data: dict) -> Optional[int]:
     rid = _path_rid(path)
     if not rid:
         return None
-    # Rutas por reserva: /socio/cancel/{rid}, /captain/attendance/{rid}/...
-    if path.startswith("/socio/") or path.startswith("/captain/attendance") or path.startswith("/captain/reassign") or path.startswith("/socio/protocolar"):
+    # Rutas por reserva: /socio/... o reasignación Capitán.
+    if path.startswith("/socio/") or path.startswith("/captain/reassign") or path.startswith("/socio/protocolar"):
         try:
             with SessionLocal() as db:
                 r = db.get(Reservation, rid)
@@ -2753,7 +2786,7 @@ def _critical_post_path(path: str) -> bool:
     critical_prefixes = (
         "/socio/add_self", "/socio/add_guest", "/socio/add_protocolar", "/socio/protocolar/",
         "/socio/cancel/", "/socio/reactivate/",
-        "/captain/outing_status", "/captain/attendance/", "/captain/reassign/", "/captain/close",
+        "/captain/outing_status", "/captain/close",
         "/admin/update_outing", "/admin/outing_status", "/admin/new_outing",
         "/admin/user/reset-password/", "/admin/reset_password/", "/admin/reset_all_passwords",
         "/admin/schema/check", "/admin/system/repair_missing_sheets",
@@ -8811,7 +8844,7 @@ def outing_status(
 
         db.commit()
         audit_event(db, user, "cancelación", f"{outing.title} / desde {old_status}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "charges_zeroed": len(reservations), "notificados": len(notified)})
-        auto_process_notifications(db, limit=10)
+        # SMTP diferido: no procesar cola dentro del POST del capitán.
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
     # ===== CERRAR =====
@@ -8856,10 +8889,11 @@ def attendance_toggle(request: Request, rid: int, expected_current: str = Form("
     outing = db.get(Outing, r.outing_id)
     if not outing:
         return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
+    # En operación real no bloqueamos el toque por una pantalla vieja (antes redirigía con msg=pantalla_actualizada): usamos el estado
+    # actual de base para decidir el toggle. El bloqueo anterior hacía que el capitán
+    # sintiera que la fila quedaba trabada después de cambios hechos por Socio.
     if expected_attendance_is_stale(r, expected_current):
-        audit_event(db, user, "tap rápido con pantalla desactualizada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
-        db.commit()
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=pantalla_actualizada", status_code=303)
+        audit_event(db, user, "tap rápido con pantalla desactualizada tolerado", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
     value = resolve_captain_fast_toggle_value(r)
     return attendance(request, rid, value, no_board_reason="", expected_current=expected_current, db=db, user=user)
 
@@ -8885,12 +8919,11 @@ def attendance(request: Request, rid: int, value: str, no_board_reason: str = Fo
     if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
-    # RC6: las acciones del menú también son autoritativas. Si la pantalla quedó vieja,
-    # no se aplica el cambio: se fuerza refresco para evitar estados falsos.
+    # Las acciones explícitas del capitán se aplican contra el estado real actual.
+    # Si la pantalla estaba vieja, se audita pero no se bloquea el POST: bloquearlo
+    # dejaba al operador sin poder marcar embarque después de altas/bajas de Socio.
     if expected_current and expected_attendance_is_stale(r, expected_current):
-        audit_event(db, user, "acción capitán con pantalla desactualizada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
-        db.commit()
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=pantalla_actualizada", status_code=303)
+        audit_event(db, user, "acción capitán con pantalla desactualizada tolerada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
 
     if value == "No embarca" and not (no_board_reason or "").strip():
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=motivo_requerido", status_code=303)
@@ -8935,10 +8968,17 @@ def attendance(request: Request, rid: int, value: str, no_board_reason: str = Fo
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     promoted = recompute_result.get("promoted") or []
     db.commit()
-    notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
-    if notified_status:
-        auto_process_notifications(db, limit=max(5, notified_status + 2))
-    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "capacity_effect": transition_result.get("capacity_effect"), "financial_concept": transition_result.get("financial_concept"), "dependents_changed": transition_result.get("dependents_changed"), "no_board_reason": no_board_reason or "", "emails": notified_status})
+    # No procesar SMTP dentro del POST del capitán: la operación de embarque debe
+    # responder en milisegundos. Se deja la cola registrada para proceso diferido.
+    try:
+        with defer_notification_queue_commit(db):
+            notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        notified_status = 0
+        audit_event(db, user, "cola email asistencia diferida falló", f"{r.person_name}: {type(e).__name__}", request=request, outing_id=outing.id, reservation_id=r.id)
+    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails_en_cola {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "capacity_effect": transition_result.get("capacity_effect"), "financial_concept": transition_result.get("financial_concept"), "dependents_changed": transition_result.get("dependents_changed"), "no_board_reason": no_board_reason or "", "emails_en_cola": notified_status})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 
@@ -9022,8 +9062,7 @@ def captain_reassign_guest(
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     db.commit()
     notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
-    if notified_status:
-        auto_process_notifications(db, limit=max(5, notified_status + 2))
+    # SMTP diferido: no bloquear la maniobra operativa del capitán.
     audit_event(db, user, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name}{' / reactivado desde espera' if was_waitlisted and not is_waitlisted(r) else ''} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_reassign, after={"responsible_user_id": r.responsible_user_id, "original_responsible_user_id": getattr(r, "original_responsible_user_id", None), "reassignment_count": reservation_reassignment_count_value(r), "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
@@ -9116,8 +9155,15 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     audit_event(db, user, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}", request=request, outing_id=outing.id, after={"status": outing.status, "presentes": present, "activos": active_count, "sheet_id": sheet.id, "sheet_sequence": sheet.sequence})
     # Cierre económico diferido: se agenda una liquidación individual por socio y un consolidado para Administración.
     # No se envían emails económicos inmediatamente para evitar floods si se reabre/corrige la salida.
-    queue_consolidated_closing_emails(db, outing, sheet, actor_name=user.name)
-    auto_process_notifications(db, limit=10)
+    try:
+        with defer_notification_queue_commit(db):
+            queued_close = queue_consolidated_closing_emails(db, outing, sheet, actor_name=user.name)
+        db.commit()
+        audit_event(db, user, "emails cierre en cola", f"{outing.title} / ficha {sheet.sequence} / emails_en_cola {queued_close}", request=request, outing_id=outing.id, after={"sheet_id": sheet.id, "emails_en_cola": queued_close})
+    except Exception as e:
+        db.rollback()
+        audit_event(db, user, "cola email cierre diferida falló", f"{outing.title} / ficha {sheet.sequence} / {type(e).__name__}", request=request, outing_id=outing.id, after={"sheet_id": sheet.id})
+    # SMTP diferido: los emails de cierre quedan agendados, no bloquean la ficha.
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
 
@@ -10239,8 +10285,7 @@ def update_outing(
             })
             notified.add(responsible_id)
     db.commit()
-    if active_count and changed_schedule:
-        auto_process_notifications(db, limit=10)
+    # SMTP diferido: reprogramaciones encolan avisos, no bloquean Administración.
     new = (
         f"{outing.title} / {outing.destination} / "
         f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "
