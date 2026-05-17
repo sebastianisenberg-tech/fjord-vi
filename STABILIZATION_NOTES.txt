@@ -1,1 +1,18 @@
-RC9 Stabilization Core prep. Legacy audit clutter removed pending logical engine rewrite.
+RC9_SOCIO_CORE_SAFE
+
+Objetivo: corregir el núcleo lógico de bajas/reincorporaciones del módulo Socio sin sumar capas ni scripts de parche.
+
+Cambios principales:
+- Separación real de acciones Socio:
+  - /socio/delete_guest/{rid}: elimina sólo un invitado.
+  - /socio/cancel_self/{rid}: cancela titular + dependientes.
+  - /socio/leave_waitlist/{rid}: sale sólo de lista de espera.
+- /socio/cancel/{rid} queda sólo como compatibilidad legacy y despacha a la acción correcta.
+- La baja de invitado ya no puede tocar al titular ni a otros invitados.
+- La baja del titular cancela dependientes en una sola pasada y hace una sola promoción de espera al final.
+- Se eliminó de estas bajas el recompute general peligroso que llamaba enforce_responsible_dependency.
+- En Socio ya no se muestra “Registrar reserva incumplida” como acción del socio.
+
+Chequeos:
+- python -m py_compile main.py: OK
+- pytest -q: 40 passed
