@@ -54,6 +54,9 @@
 
     document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function(form){
       if(form.dataset.noAjax === '1' || form.enctype === 'multipart/form-data') return;
+      // RC8 Socio Stability Fix: en Socio usamos POST nativo + redirect server-side.
+      // Evita fetch superpuesto, redirects ambiguos y pantallas con botones bloqueados.
+      if(document.body && document.body.classList.contains('socioApp')) return;
       form.addEventListener('submit', function(ev){
         if(ev.defaultPrevented) return;
         ev.preventDefault();

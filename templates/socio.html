@@ -8,29 +8,11 @@
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
 document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
-document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){form.querySelectorAll('button').forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});});});});
+document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){var buttons=form.querySelectorAll('button');buttons.forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});setTimeout(function(){buttons.forEach(function(btn){btn.disabled=false;btn.classList.remove('disabledBtn');});},8000);});});});
+window.addEventListener('pageshow',function(){document.querySelectorAll('form button.disabledBtn').forEach(function(btn){btn.disabled=false;btn.classList.remove('disabledBtn');});});
+function closeGuestMenu(btn){var d=btn&&btn.closest?btn.closest('details.guestMenuV123'):null;if(d)d.removeAttribute('open');}
 
 document.addEventListener("DOMContentLoaded",function(){const toast=document.querySelector(".toastSmart");if(toast){const close=toast.querySelector(".toastClose");if(close){close.addEventListener("click",function(){toast.classList.add("toastLeaving");});}setTimeout(function(){toast.classList.add("toastLeaving");},5200);}document.querySelectorAll("button,.btn,.miEmbCta,.selectRow,.bottom a").forEach(function(el){el.addEventListener("pointerdown",function(){el.classList.add("isPressed");});["pointerup","pointercancel","pointerleave"].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove("isPressed");});});});});
-
-document.addEventListener("DOMContentLoaded",function(){
-  document.querySelectorAll(".guestMenuV123").forEach(function(menu){
-    menu.addEventListener("toggle",function(){
-      if(menu.open){
-        document.querySelectorAll(".guestMenuV123[open]").forEach(function(other){
-          if(other!==menu){ other.removeAttribute("open"); }
-        });
-      }
-    });
-    menu.querySelectorAll(".guestMenuCloseV123").forEach(function(btn){
-      btn.addEventListener("click",function(ev){ ev.preventDefault(); menu.removeAttribute("open"); });
-    });
-  });
-  document.addEventListener("click",function(ev){
-    if(!ev.target.closest(".guestMenuV123")){
-      document.querySelectorAll(".guestMenuV123[open]").forEach(function(menu){ menu.removeAttribute("open"); });
-    }
-  });
-});
 
 function showSocioNotice(text){
   var old=document.querySelector('.inlineToastV513');
@@ -105,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <body><div class="app socioApp socioProV464 socioV51 socioV20">
 <header class="top topGreen premiumTop appHeaderPremium socioProHeader">
   <div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small><span class="socioHeaderRole">Socio · <span class="socioHeaderName">{{user.name}}</span></span></small></div></div>
-  <div class="topActionsV123"><a class="socioKeyTopV123" href="/account/password" aria-label="Cambiar clave">🔑 Clave</a><a href="/logout" class="logoutBtn" data-no-lock="1">Salir</a></div>
+  <div class="topActionsV123"><a class="socioKeyTopV123" href="/account/password" aria-label="Cambiar clave">🔑 Clave</a><a href="/logout" class="logoutBtn">Salir</a></div>
 </header>
 <main class="wrap socioWrap">
   <div class="socioReglamentoBarV49 socioTopUtilityV123" id="perfil"><a class="reglamentoSocioBtnV49" href="/static/reglamento.html" target="_blank" rel="noopener">ⓘ Reglamento Fjord VI</a><span class="memberBadgeV123" title="Socio">{{ (user.name[:1] if user.name else 'S')|upper }}{% if user.member_no %} · {{user.member_no}}{% endif %}</span></div>
@@ -271,11 +253,11 @@ document.addEventListener('DOMContentLoaded', function(){
         {% elif v.waitlisted or v.active %}
           <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123">
             <details class="guestSubmenuV123"><summary>Editar datos</summary><form method="post" action="/socio/update_guest/{{r.id}}" class="gridForm premiumForm guestEditFormV123"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" value="{{r.person_name}}" placeholder="Nombre y apellido"><input class="input" name="dni" value="{{r.dni}}" placeholder="DNI / documento"><select name="kind" class="input"><option value="invitado" {% if r.kind=='invitado' %}selected{% endif %}>Invitado</option><option value="hijo_menor" {% if r.kind=='hijo_menor' %}selected{% endif %}>Hijo menor</option></select><input class="input" type="date" name="birth_date" value="{{r.birth_date or ''}}"><button class="menuActionV123 primary" type="submit">Guardar corrección</button></form></details>
-            <form method="post" action="/socio/guest/{{r.id}}/delete"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 danger" type="submit" onclick="return confirm('Eliminar este invitado de la reserva?');">Eliminar invitado</button></form>
-            <button class="menuActionV123 guestMenuCloseV123" type="button">Cerrar</button>
+            <form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 danger" type="submit" onclick="return confirm('Eliminar este invitado de la reserva?');">Eliminar invitado</button></form>
+            <button class="menuActionV123" type="button" onclick="closeGuestMenu(this)">Cerrar</button>
           </div></details>
         {% else %}
-          <span class="pill neutral">Eliminado</span>
+          <span class="pill neutral">Cancelado</span>
         {% endif %}
       </div>
     </div>
@@ -283,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function(){
   {% if ns.count == 0 %}<div class="empty emptyBoarding"><b>Sin invitados cargados</b><small>Todavía no agregaste invitados ni menores para esta salida. Cuando tengas tu reserva activa, podés cargarlos desde este bloque.</small></div>{% endif %}
   {% if outing_cancelled %}<div class="empty lockBox">Alta de invitados deshabilitada.<br>Pendiente de reapertura por capitán.</div>
   {% elif not closed and can_add_guest %}
-  <div class="formIntro" id="agregar-invitado"><b>Agregar invitado</b><small>{% if self_view and self_view.waitlisted %}Tu reserva titular está en espera: tus invitados también quedarán en lista de espera y no ocupan plaza hasta promoción.{% else %}Los invitados quedan asociados a tu reserva titular.{% endif %}</small></div><form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest" data-no-ajax="1"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">{% if (self_view and self_view.waitlisted) or remaining == 0 %}Agregar a lista de espera{% else %}Agregar invitado{% endif %}</button></form>
+  <div class="formIntro" id="agregar-invitado"><b>Agregar invitado</b><small>{% if self_view and self_view.waitlisted %}Tu reserva titular está en espera: tus invitados también quedarán en lista de espera y no ocupan plaza hasta promoción.{% else %}Los invitados quedan asociados a tu reserva titular.{% endif %}</small></div><form class="gridForm guestForm premiumForm" method="post" action="/socio/add_guest"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" placeholder="Nombre y apellido"><input class="input" name="dni" placeholder="DNI / Pasaporte / Documento"><select id="guest_kind" name="kind" onchange="toggleHijoMenorField()" class="input"><option value="invitado">Invitado</option><option value="hijo_menor">Hijo menor de socio no socio</option></select><div id="hijo_menor_fields" style="display:none; margin-top:6px;"><input type="date" name="birth_date" class="input"><div class="muted" style="font-size:12px; margin-top:4px;">Validación contra fecha de salida.</div></div><button class="btn light">{% if (self_view and self_view.waitlisted) or remaining == 0 %}Agregar a lista de espera{% else %}Agregar invitado{% endif %}</button></form>
   {% elif not closed and not can_add_guest %}<div class="empty lockedGuestBox"><button type="button" class="mini neutralBtn lockedBtn" onclick="showSocioNotice('Primero debés anotarte como socio titular para agregar invitados.')">🔒 Agregar invitados</button></div>{% endif %}
 </section>
 
