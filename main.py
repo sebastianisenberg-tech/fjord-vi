@@ -7897,61 +7897,52 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
-@app.post("/socio/cancel_guest/{rid}")
-def cancel_guest_individual(
+
+@app.post("/socio/guest/{rid}/delete")
+def delete_guest_by_socio(
     rid: int,
     request: Request,
     outing_id: Optional[int] = Form(None),
     db: Session = Depends(db_session),
     user: User = Depends(require_role("socio"))
 ):
-    """Baja individual de un invitado/menor desde el módulo Socio.
+    """Elimina exclusivamente un invitado/menor asociado al socio logueado.
 
-    Regla de seguridad: esta acción nunca cancela la reserva del socio titular
-    ni otros invitados del mismo socio. El cancelado del socio titular conserva
-    su ruta histórica /socio/cancel/{rid}, que sí puede aplicar cascada.
+    Esta ruta existe para no reutilizar /socio/cancel/{rid}, que también contiene
+    la lógica de baja del socio titular y su cascada sobre dependientes.
     """
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
-    if not outing:
-        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
     ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id or not can_user_manage_guest_record(user, outing, r):
+    if not r or not outing or not can_user_manage_guest_record(user, outing, r):
         raise HTTPException(403)
 
-    was_waitlisted = is_waitlisted(r)
+    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
     before = {
         "id": r.id,
-        "name": r.person_name,
+        "person_name": r.person_name,
         "dni": r.dni,
         "kind": r.kind,
+        "responsible_user_id": r.responsible_user_id,
         "status": r.status,
         "attendance": r.attendance,
-        "responsible_user_id": r.responsible_user_id,
-        "waitlisted": was_waitlisted,
+        "charge_amount": float(r.charge_amount or 0),
     }
-
-    now = now_local()
-    r.cancelled_at = now
-    r.status = "Cancelado"
-    r.attendance = "Ausente"
-    r.cancel_reason = "Baja individual de invitado desde lista de espera" if was_waitlisted else "Baja individual de invitado por socio"
-    r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
-
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja individual de invitado")
+    deleted_name = r.person_name
+    db.delete(r)
+    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="eliminación individual de invitado")
     promoted = recompute_result.get("promoted") or []
-    db.commit()
-
+    after_operational_snapshot = reservation_operational_snapshot(db, outing.id)
     audit_event(
         db,
         user,
-        "elimina invitado individual",
-        f"{before['name']} / {outing.title} / cargo {float(r.charge_amount or 0)} / promovidos {', '.join(promoted) if promoted else '-'}",
+        "elimina invitado",
+        f"{deleted_name} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}",
         request=request,
         outing_id=outing.id,
-        reservation_id=r.id,
-        before=before,
-        after={"status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason},
+        reservation_id=rid,
+        before={"reservation": before, "operational": before_operational_snapshot},
+        after={"deleted": True, "operational": after_operational_snapshot, "promoted": promoted},
     )
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
 
