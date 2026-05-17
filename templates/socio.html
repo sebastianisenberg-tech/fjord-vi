@@ -8,9 +8,7 @@
 <script>
 function toggleHijoMenorField(){const tipo=document.getElementById('guest_kind');const bloque=document.getElementById('hijo_menor_fields');if(!tipo||!bloque)return;bloque.style.display=(tipo.value==='hijo_menor')?'block':'none';}
 document.addEventListener('DOMContentLoaded',toggleHijoMenorField);
-document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){var buttons=form.querySelectorAll('button');buttons.forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});setTimeout(function(){buttons.forEach(function(btn){btn.disabled=false;btn.classList.remove('disabledBtn');});},3500);});});});
-window.addEventListener('pageshow',function(){document.querySelectorAll('form button.disabledBtn').forEach(function(btn){btn.disabled=false;btn.classList.remove('disabledBtn');});});
-function closeGuestMenu(btn){var d=btn&&btn.closest?btn.closest('details.guestMenuV123'):null;if(d)d.removeAttribute('open');}
+document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('form').forEach(function(form){form.addEventListener('submit',function(){form.querySelectorAll('button').forEach(function(btn){btn.disabled=true;btn.classList.add('disabledBtn');});});});});
 
 document.addEventListener("DOMContentLoaded",function(){const toast=document.querySelector(".toastSmart");if(toast){const close=toast.querySelector(".toastClose");if(close){close.addEventListener("click",function(){toast.classList.add("toastLeaving");});}setTimeout(function(){toast.classList.add("toastLeaving");},5200);}document.querySelectorAll("button,.btn,.miEmbCta,.selectRow,.bottom a").forEach(function(el){el.addEventListener("pointerdown",function(){el.classList.add("isPressed");});["pointerup","pointercancel","pointerleave"].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove("isPressed");});});});});
 
@@ -84,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
 </script>
 </head>
-<body class="socioApp"><div class="app socioApp socioProV464 socioV51 socioV20">
+<body><div class="app socioApp socioProV464 socioV51 socioV20">
 <header class="top topGreen premiumTop appHeaderPremium socioProHeader">
   <div class="headerBrand"><img src="/static/logo_yca.jpg" class="headerLogo headerLogoCapsule" alt="YCA"><div><b>{{club_name}} · {{app_name}}</b><small><span class="socioHeaderRole">Socio · <span class="socioHeaderName">{{user.name}}</span></span></small></div></div>
   <div class="topActionsV123"><a class="socioKeyTopV123" href="/account/password" aria-label="Cambiar clave">🔑 Clave</a><a href="/logout" class="logoutBtn">Salir</a></div>
@@ -202,9 +200,9 @@ document.addEventListener('DOMContentLoaded', function(){
     {% elif closed %}
       <a class="miEmbCta soft ctaDisabledV20" aria-disabled="true" href="#inicio">🔒 Embarque cerrado</a>
     {% elif self_view and self_view.waitlisted %}
-      <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Salir de espera</button></form>
+      <form method="post" action="/socio/cancel/{{self_reservation.id}}" data-no-ajax="1"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Salir de espera</button></form>
     {% elif has_self %}
-      <form method="post" action="/socio/cancel/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Cancelar mi lugar</button></form>
+      <form method="post" action="/socio/cancel/{{self_reservation.id}}" data-no-ajax="1"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta secondary" type="submit">Cancelar mi lugar</button></form>
     {% elif self_reservation %}
       <form method="post" action="/socio/reactivate/{{self_reservation.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="miEmbCta" type="submit">Reincorporarme</button></form>
     {% else %}
@@ -251,13 +249,13 @@ document.addEventListener('DOMContentLoaded', function(){
         {% elif closed %}
           <span class="pill neutral">🔒 Cerrado</span>
         {% elif v.waitlisted or v.active %}
-          <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123">
+          <details class="guestMenuV123 guestMenuSocioSimple"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123">
             <details class="guestSubmenuV123"><summary>Editar datos</summary><form method="post" action="/socio/update_guest/{{r.id}}" class="gridForm premiumForm guestEditFormV123"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" value="{{r.person_name}}" placeholder="Nombre y apellido"><input class="input" name="dni" value="{{r.dni}}" placeholder="DNI / documento"><select name="kind" class="input"><option value="invitado" {% if r.kind=='invitado' %}selected{% endif %}>Invitado</option><option value="hijo_menor" {% if r.kind=='hijo_menor' %}selected{% endif %}>Hijo menor</option></select><input class="input" type="date" name="birth_date" value="{{r.birth_date or ''}}"><button class="menuActionV123 primary" type="submit">Guardar corrección</button></form></details>
-            <form method="post" action="/socio/cancel_guest/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 danger" type="submit" onclick="return confirm('Eliminar este invitado de la reserva?');">Eliminar invitado</button></form>
-            <button class="menuActionV123" type="button" onclick="closeGuestMenu(this)">Cerrar</button>
+            <form method="post" action="/socio/cancel_guest/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 danger" type="submit" onclick="return confirm('{% if v.waitlisted %}Eliminar este invitado de la lista de espera?{% elif cutoff %}Eliminar este invitado. La baja queda registrada según la ventana reglamentaria y puede generar cargo si corresponde. Confirmar?{% else %}Eliminar solo este invitado de la reserva?{% endif %}');">Eliminar invitado</button></form>
+            <button class="menuActionV123" type="button" onclick="this.closest('details').open=false;">Cerrar</button>
           </div></details>
         {% else %}
-          <span class="pill neutral">Cancelado</span>
+          <details class="guestMenuV123 guestMenuSocioSimple"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123"><form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 primary" type="submit">Reincorporar</button></form><button class="menuActionV123" type="button" onclick="this.closest('details').open=false;">Cerrar</button></div></details>
         {% endif %}
       </div>
     </div>
@@ -337,4 +335,22 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+
+<script>
+(function(){
+  document.addEventListener('toggle', function(ev){
+    var d = ev.target;
+    if (!d || !d.matches || !d.matches('details.guestMenuV123')) return;
+    if (d.open) {
+      document.querySelectorAll('details.guestMenuV123[open]').forEach(function(other){
+        if (other !== d) other.open = false;
+      });
+    }
+  }, true);
+  document.addEventListener('click', function(ev){
+    if (ev.target.closest && ev.target.closest('details.guestMenuV123')) return;
+    document.querySelectorAll('details.guestMenuV123[open]').forEach(function(d){ d.open = false; });
+  });
+})();
+</script>
 </body></html>
