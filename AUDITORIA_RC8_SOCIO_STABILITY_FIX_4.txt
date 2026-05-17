@@ -1,0 +1,27 @@
+RC8_SOCIO_STABILITY_FIX_4
+
+Foco: baja de invitado desde Socio sin arrastre del grupo.
+
+Hallazgo real:
+- La ruta /socio/cancel_guest/{rid} ya estaba separada de /socio/cancel/{rid}, pero seguía llamando a recompute_waitlist_for_salida().
+- Esa función ejecuta enforce_responsible_dependency(), pensada para coherencia operativa de embarque/capitán.
+- En el estado normal previo al embarque, el socio titular todavía está "Por confirmar", no "Presente".
+- La lógica anterior podía interpretar invitados "Por confirmar" como no embarcables por socio no presente y cambiar varios invitados del mismo socio a estados de No embarca/Cancelado visual.
+
+Corrección aplicada:
+1. /socio/cancel_guest/{rid} ya no llama recompute_waitlist_for_salida().
+2. La baja de invitado hace solamente:
+   - validar que sea invitado/hijo menor propio;
+   - marcar ese registro como Cancelado;
+   - calcular cargo si corresponde;
+   - enforce_capacity();
+   - promote_waitlist();
+   - commit;
+   - redirect.
+3. enforce_responsible_dependency() ya no convierte invitados "Por confirmar" en "No embarca" sólo porque el socio aún no está Presente. Esa decisión queda reservada al flujo de Capitán o a casos donde el invitado ya fue marcado Presente sin responsable.
+
+Módulos no tocados funcionalmente:
+- Emails: no se agregaron envíos.
+- Administración: sin cambios de ruta.
+- Cierre/liquidación/PDF: sin cambios.
+- Diseño general: sin cambios.

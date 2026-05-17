@@ -5042,11 +5042,19 @@ def enforce_responsible_dependency(db: Session, outing: Outing, reservations=Non
                 r.cancel_reason = "No embarcado: socio responsable no embarca / sin cargo por decisión del capitán"
                 r.charge_amount = 0
             else:
-                # Sin socio responsable presente verificable: por seguridad operativa
-                # no se permite embarque. Se deja sin cargo hasta corrección/reasignación.
-                r.attendance = "No embarca"
-                r.cancel_reason = "No embarcado: socio responsable no presente"
-                r.charge_amount = 0
+                # RC8 Socio Stability Fix 4:
+                # No se debe convertir una reserva normal "Por confirmar" en "No embarca"
+                # sólo porque el socio todavía no fue marcado Presente. Esa marca pertenece
+                # al flujo operativo del Capitán, no al alta/baja ágil del módulo Socio.
+                # Sólo se bloquea si el invitado ya fue marcado Presente sin socio responsable
+                # presente, o si hay una causa explícita de ausencia/no embarque del socio.
+                if r.attendance == "Presente":
+                    r.attendance = "No embarca"
+                    r.cancel_reason = "No embarcado: socio responsable no presente"
+                    r.charge_amount = 0
+                    changed.append(r.person_name)
+                    continue
+                continue
             changed.append(r.person_name)
     return changed
 
@@ -7934,8 +7942,11 @@ def cancel_guest_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: S
     r.cancel_reason = "Baja de invitado desde módulo Socio"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
-    # Si libera una plaza confirmada, se promueve la lista de espera según reglas vigentes.
-    recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja de invitado")
+    # Si libera una plaza confirmada, se recompone cupo/lista de espera sin pasar
+    # por la cascada de socio titular. La baja de un invitado no puede disparar
+    # reglas de no-embarque ni cancelar/alterar otros invitados del grupo.
+    enforce_capacity(db, outing)
+    promote_waitlist(db, outing)
     db.commit()
     try:
         db.add(AuditLog(actor=user.name, action="elimina invitado", detail=f"{r.person_name} / {outing.title}"))
