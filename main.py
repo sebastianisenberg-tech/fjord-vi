@@ -7658,8 +7658,28 @@ async def add_guest(
 
     enforce_capacity(db, outing)
     db.commit()
-    log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
+
+    # RC8 guest hardening: el alta del invitado ya quedó confirmada en DB.
+    # Auditoría/cola de mail no deben bloquear el redirect del socio ni dejar la UI girando.
+    try:
+        log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
+    except Exception as exc:
+        try:
+            db.rollback()
+            db.add(AuditLog(actor="sistema", action="warning alta invitado", detail=f"No se pudo registrar log: {type(exc).__name__}"))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    try:
+        queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
+    except Exception as exc:
+        try:
+            db.rollback()
+            db.add(AuditLog(actor="sistema", action="warning email invitado", detail=f"No se pudo encolar aviso: {type(exc).__name__}"))
+            db.commit()
+        except Exception:
+            db.rollback()
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
