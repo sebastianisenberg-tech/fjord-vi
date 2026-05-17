@@ -42,7 +42,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "RC8_GUEST_MENU_FIX"
+APP_VERSION = "RC8"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -87,8 +87,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI RC8 Guest Menu Fix"
-RELEASE_LABEL = "Fjord VI · RC8 Guest Menu Fix"
+APP_BUILD = "Fjord VI RC8"
+RELEASE_LABEL = "Fjord VI · RC8"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -7898,32 +7898,15 @@ def delete_outing(
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
 
-@app.post("/socio/remove_guest/{rid}")
-def remove_guest_individual(
-    rid: int,
-    outing_id: Optional[int] = Form(None),
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("socio"))
-):
-    """Baja individual de un invitado del socio.
-
-    Esta ruta existe para evitar que el botón "Eliminar invitado" use la cancelación
-    general de reserva del socio titular. Nunca debe cancelar al socio ni al resto
-    de sus invitados. Solo afecta el registro indicado y luego recalcula la lista
-    de espera si se liberó una plaza.
-    """
+@app.post("/socio/cancel_guest/{rid}")
+def cancel_guest_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
     ensure_outing_editable(outing)
-    if not r or not outing or r.outing_id != outing.id:
+    if not r or r.outing_id != outing.id:
+        raise HTTPException(404, "Invitado inexistente")
+    if r.responsible_user_id != user.id or r.dni == user.dni:
         raise HTTPException(403)
-    if r.responsible_user_id != user.id:
-        raise HTTPException(403)
-    if r.dni == user.dni or canonical_kind(r.kind) not in ("invitado", "hijo_menor"):
-        raise HTTPException(403)
-    if not can_user_manage_guest_record(user, outing, r):
-        raise HTTPException(403)
-
     if not reservation_is_active(r):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
@@ -7932,13 +7915,13 @@ def remove_guest_individual(
     r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
-    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Invitado eliminado por socio"
+    r.cancel_reason = "Baja de invitado desde lista de espera" if was_waitlisted else "Invitado eliminado por socio responsable"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
     recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja individual de invitado")
     promoted = recompute_result.get("promoted") or []
     db.commit()
-    log(db, user.name, "elimina invitado individual", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
+    log(db, user.name, "elimina invitado", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
     late_cancel = cargo > 0
     queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
@@ -7948,8 +7931,8 @@ def remove_guest_individual(
         "fecha": outing.departure_at.strftime("%d/%m/%Y"),
         "hora": outing.departure_at.strftime("%H:%M"),
         "importe": "$ " + fmt_money(r.charge_amount or 0),
-        "motivo_cancelacion": r.cancel_reason or "Invitado eliminado por socio",
-        "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
+        "motivo_cancelacion": r.cancel_reason or "Invitado eliminado por socio responsable",
+        "mensaje_cargo": "La baja del invitado fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja del invitado fue registrada sin cargo reglamentario.",
     })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
 

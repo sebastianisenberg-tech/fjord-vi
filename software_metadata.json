@@ -1,10 +1,10 @@
 {
-  "version": "RC8_GUEST_MENU_FIX",
-  "release_label": "GUEST_MENU_FIX",
+  "version": "RC8",
+  "release_label": "Fjord VI · RC8",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
-  "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI RC8 Guest Menu Fix",
+  "notes": "RC8 original con corrección limitada al menú de invitados del Socio: editar datos, eliminar solo este invitado y cerrar. Sin acciones de Capitán/Administración en el menú del socio.",
+  "app_build": "Fjord VI RC8",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,11 +28,12 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "RC8 Guest Menu Fix - piloto operativo controlado",
+  "release": "RC8 - piloto operativo controlado",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "Base RC8 estable. Solo corrige menú de tres puntitos e introduce ruta de baja individual de invitados; no toca motor de cierre, liquidación ni capitán.",
-  "app_version": "RC8_GUEST_MENU_FIX",
+  "build_note": "RC8: versión candidata real para piloto controlado. Mantiene lógica RC7 y suma guardias duras de integridad antes de cierre/promoción.",
+  "app_version": "RC8",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PILOT_RC8_GUEST_MENU_FIX",
-  "hardening_focus": "Corrección quirúrgica de menú de invitados: eliminar invitado individual sin afectar el grupo; cierre de menú robusto."
+  "release_stage": "PILOT_RC8",
+  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado",
+  "menu_fix": "Socio guest menu simple: editar datos, eliminar solo este invitado, cerrar; sin acciones de Capitán/Administración."
 }
