@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 import csv
 import hashlib
+import html as html_lib
 import hmac
 import io
 import json
@@ -16,7 +17,6 @@ import time
 import uuid
 import zipfile
 import re
-import html as html_lib
 from urllib.parse import parse_qs
 import smtplib
 from email.message import EmailMessage
@@ -34,7 +34,7 @@ from app.core.logging_config import configure_logging, get_logger
 from app.core.settings import load_settings
 from app.reliability import operational_state as op_state
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -43,8 +43,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "RC10A"
-APP_RELEASE_STAGE = "FAST_ASYNC_COMMS_FIX"
+APP_VERSION = "RC8_EMAIL_SKIN"
+APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
@@ -88,8 +88,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI RC10A"
-RELEASE_LABEL = "Fjord VI · RC10A"
+APP_BUILD = "Fjord VI RC8 EMAIL SKIN"
+RELEASE_LABEL = "Fjord VI · RC8 Email Skin"
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -620,36 +620,6 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                           '\n'
                           'Si recibiste este mensaje, SMTP está funcionando.'}}
 
-
-# =========================
-# RC9 · COMUNICACIONES
-# Plantillas de email más claras, institucionales y aptas para socios.
-# No modifica la lógica operativa de reservas, capitán, fichas ni liquidaciones.
-# =========================
-EMAIL_TEMPLATE_OVERRIDES_RC9 = {
-    "reserva_confirmada_socio": {"subject": "Fjord VI · Reserva confirmada · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nTu reserva para {{salida_nombre}} quedó confirmada.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nEstado: {{estado}}\n\nSi finalmente no podés asistir, recordá cancelar con la mayor anticipación posible. Las bajas dentro del período reglamentario pueden generar cargo.\n\nPodés consultar el estado actualizado ingresando al sistema Fjord VI.\n\n{{club_nombre}} · {{app_name}}"},
-    "reserva_en_espera_socio": {"subject": "Fjord VI · Lista de espera · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nTu solicitud para {{salida_nombre}} quedó registrada en lista de espera.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nEstado: {{estado}}\n\nMientras sigas en lista de espera no ocupás plaza ni se genera cargo. Si se libera una vacante y corresponde asignarla, el sistema actualizará tu estado.\n\n{{club_nombre}} · {{app_name}}"},
-    "reserva_promovida_socio": {"subject": "Fjord VI · Reserva confirmada desde espera · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nSe liberó una plaza y tu solicitud para {{salida_nombre}} pasó de lista de espera a reserva confirmada.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nEstado: Confirmada\n\nPodés consultar el detalle ingresando al sistema Fjord VI.\n\n{{club_nombre}} · {{app_name}}"},
-    "invitado_agregado_socio": {"subject": "Fjord VI · Invitado registrado · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nSe registró a {{invitado_nombre}} para {{salida_nombre}}.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nEstado: {{estado}}\n\nInvitados asociados a tu reserva:\n{{resumen_invitados}}\n\nRecordá que los invitados embarcan bajo responsabilidad del socio titular y quedan sujetos al cupo y a las reglas operativas de la salida.\n\n{{club_nombre}} · {{app_name}}"},
-    "invitado_en_espera_socio": {"subject": "Fjord VI · Invitado en lista de espera · {{fecha}}", "body": "Hola {{socio_nombre}},\n\n{{invitado_nombre}} quedó registrado en lista de espera para {{salida_nombre}}.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\n\nInvitados asociados a tu reserva:\n{{resumen_invitados}}\n\nMientras permanezca en lista de espera no ocupa plaza ni genera cargo.\n\n{{club_nombre}} · {{app_name}}"},
-    "invitado_desplazado_socio": {"subject": "Fjord VI · Cambio de estado de invitado · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nSe actualizó el estado de {{invitado_nombre}} para {{salida_nombre}} por aplicación de las reglas operativas de cupo y prioridad.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nEstado actual: {{estado}}\n\nPodés consultar el detalle ingresando al sistema Fjord VI.\n\n{{club_nombre}} · {{app_name}}"},
-    "cancelacion_socio": {"subject": "Fjord VI · Reserva cancelada · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nRegistramos la cancelación de {{persona_nombre}} para {{salida_nombre}}.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nCargo informado: {{importe}}\n\n{{mensaje_cargo}}\n\n{{club_nombre}} · {{app_name}}"},
-    "cancelacion_con_cargo_socio": {"subject": "Fjord VI · Cancelación con cargo reglamentario · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nRegistramos la cancelación de {{persona_nombre}} para {{salida_nombre}} dentro del período reglamentario.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nImporte informado: {{importe}}\n\nEl cargo se informa porque la plaza permaneció ocupada dentro del plazo en que ya no puede liberarse normalmente para otro socio.\n\n{{club_nombre}} · {{app_name}}"},
-    "salida_reprogramada_socio": {"subject": "Fjord VI · Salida reprogramada · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nLa salida {{salida_nombre}} fue reprogramada.\n\nNueva fecha: {{fecha}}\nNueva hora: {{hora}}\nEstado: {{estado}}\n\nPor favor revisá tu reserva y la de tus invitados asociados en el sistema.\n\n{{club_nombre}} · {{app_name}}"},
-    "salida_cancelada_socio": {"subject": "Fjord VI · Salida cancelada · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nLa salida {{salida_nombre}} fue cancelada por razones operativas.\n\nFecha prevista: {{fecha}}\nHora prevista: {{hora}}\n\nNo se generan cargos por la cancelación de la salida.\n\n{{club_nombre}} · {{app_name}}"},
-    "embarque_estado_socio": {"subject": "Fjord VI · Actualización de embarque · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nSe actualizó el estado de embarque de {{persona_nombre}} para {{salida_nombre}}.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nEstado: {{estado}}\n\n{{mensaje_embarque}}\n\nEste aviso consolida correcciones operativas para evitar mensajes repetidos durante el embarque.\n\n{{club_nombre}} · {{app_name}}"},
-    "salida_cerrada_socio": {"subject": "Fjord VI · Resumen de salida · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nLa salida {{salida_nombre}} fue cerrada.\n\nFecha: {{fecha}}\nHora: {{hora}}\n\nDetalle asociado a tu reserva:\n{{detalle_cargos}}\n\nTotal individual informado: {{total_socio}}\n\n{{club_nombre}} · {{app_name}}"},
-    "salida_cerrada_admin": {"subject": "Fjord VI · Salida cerrada · Ficha {{ficha_numero}}", "body": "Administración,\n\nLa salida {{salida_nombre}} fue cerrada por {{capitan_nombre}}.\n\nFicha: {{ficha_numero}}\nPresentes: {{presentes}}\nTotal general: {{total}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}"},
-    "resumen_cierre_socio": {"subject": "Fjord VI · Resumen de cierre · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nTe enviamos el resumen de cierre de tu participación en {{salida_nombre}}.\n\nSalida: {{salida_nombre}}\nFecha: {{fecha}}\nHora: {{hora}}\nFicha vigente: {{ficha_numero}}\nLiquidación: {{liquidation_id}}\n\nDetalle de tu reserva e invitados asociados:\n{{detalle_cargos}}\n\nTotal individual a liquidar: {{total_socio}}\n\nEste resumen incluye únicamente tus movimientos y los de tus invitados asociados. Los importes se calculan según las reglas operativas vigentes del Fjord VI.\n\n{{club_nombre}} · {{app_name}}"},
-    "cierre_liquidacion_admin": {"subject": "Fjord VI · Liquidación consolidada · {{ficha_numero}}", "body": "Administración,\n\nLa liquidación consolidada de {{salida_nombre}} quedó estable y vigente.\n\nFicha: {{ficha_numero}}\nLiquidación: {{liquidation_id}}\nPresentes: {{presentes}}\nTotal general a liquidar: {{total}}\n\nVer ficha: {{link_ficha}}\n\n{{club_nombre}} · {{app_name}}"},
-    "recordatorio_24h_socio": {"subject": "Fjord VI · Recordatorio de reserva · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nTe recordamos tu reserva para {{salida_nombre}}.\n\nFecha: {{fecha}}\nHora: {{hora}}\nPunto de encuentro: {{punto_encuentro}}\n\nPersonas asociadas a tu reserva:\n{{lista_personas}}\n\nPodés consultar el estado actualizado ingresando al sistema Fjord VI.\n\n{{club_nombre}} · {{app_name}}"},
-    "no_show_cargo_socio": {"subject": "Fjord VI · Reserva incumplida con cargo · {{fecha}}", "body": "Hola {{socio_nombre}},\n\nEl cierre de {{salida_nombre}} registró una reserva incumplida con cargo reglamentario asociada a tu reserva.\n\nDetalle:\n{{detalle_cargos}}\n\nTotal individual a liquidar: {{total_socio}}\n\nLos cargos se calculan según las reglas operativas vigentes del Fjord VI.\n\n{{club_nombre}} · {{app_name}}"},
-    "email_prueba": {"subject": "Fjord VI · Prueba de comunicaciones", "body": "Este es un correo de prueba enviado desde {{app_name}} {{version}}.\n\nSi recibiste este mensaje, el envío de comunicaciones está funcionando correctamente.\n\n{{club_nombre}} · {{app_name}}"},
-}
-for _email_key, _email_data in EMAIL_TEMPLATE_OVERRIDES_RC9.items():
-    if _email_key in COMMUNICATION_EVENTS:
-        COMMUNICATION_EVENTS[_email_key].update(_email_data)
-
 def normalize_email_text(value) -> str:
     """Normaliza texto para emails: convierte escapes literales y sanea listas simples."""
     if value is None:
@@ -771,93 +741,118 @@ def smtp_configured(settings: dict) -> bool:
 
 
 
-def email_body_to_html(body: str, subject: str = "") -> str:
-    raw = normalize_email_text(body or "")
-    lines = [ln.rstrip() for ln in raw.split("\n")]
-    test_lines = []
-    content_lines = lines
-    if lines and lines[0].startswith("MODO PRUEBA SMTP ACTIVO"):
-        split_at = 0
-        for i, ln in enumerate(lines):
-            if i > 0 and not ln.strip():
-                split_at = i + 1
-                break
-        test_lines = [ln for ln in lines[:split_at] if ln.strip()]
-        content_lines = lines[split_at:]
-    def esc(s):
-        return html_lib.escape(str(s or ""))
-    blocks = []
-    cur = []
-    for ln in content_lines:
-        if ln.strip():
-            cur.append(ln)
+def _email_lines_to_html_blocks(body: str) -> str:
+    """Convierte el texto existente de RC8 a HTML prolijo sin cambiar templates ni payloads."""
+    body = normalize_email_text(body or "")
+    lines = [line.rstrip() for line in body.split("\n")]
+    parts = []
+    bullet_open = False
+
+    def close_bullets():
+        nonlocal bullet_open
+        if bullet_open:
+            parts.append("</ul>")
+            bullet_open = False
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            close_bullets()
+            parts.append('<div style="height:8px;line-height:8px">&nbsp;</div>')
+            continue
+        safe = html_lib.escape(line)
+        if line.startswith("- "):
+            if not bullet_open:
+                parts.append('<ul style="margin:8px 0 12px 22px;padding:0;color:#25364a;font-size:15px;line-height:1.45">')
+                bullet_open = True
+            parts.append(f"<li>{html_lib.escape(line[2:].strip())}</li>")
+            continue
+        close_bullets()
+        lower = line.lower()
+        if lower.startswith("correo de prueba"):
+            parts.append(f'<div style="background:#fff7e6;border:1px solid #f0d9a0;color:#624600;border-radius:10px;padding:10px 12px;margin:0 0 12px 0;font-size:13px;line-height:1.35"><strong>{safe}</strong></div>')
+        elif ":" in line and len(line) < 110:
+            label, value = line.split(":", 1)
+            parts.append(f'<div style="font-size:14px;line-height:1.45;margin:3px 0;color:#25364a"><strong>{html_lib.escape(label.strip())}:</strong> {html_lib.escape(value.strip())}</div>')
+        elif line.upper() == line and len(line) < 80:
+            parts.append(f'<div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#627084;margin:12px 0 4px 0;font-weight:700">{safe}</div>')
         else:
-            if cur:
-                blocks.append(cur)
-                cur = []
-    if cur:
-        blocks.append(cur)
-    html_blocks = []
-    for idx, block in enumerate(blocks):
-        text_block = "\n".join(block).strip()
-        low = text_block.lower()
-        if not text_block:
-            continue
-        if idx == 0 and text_block.startswith("Hola "):
-            html_blocks.append(f'<p style="margin:0 0 16px 0;font-size:16px;line-height:1.45;color:#0f172a;">{esc(text_block)}</p>')
-            continue
-        if "total individual" in low or "total general" in low or "total a liquidar" in low or "importe informado" in low:
-            html_blocks.append(f'<div style="margin:18px 0;padding:14px 16px;border-radius:14px;background:#eef7fb;border:1px solid #cfe3ec;font-size:17px;font-weight:700;color:#0f2a3d;line-height:1.4;">{esc(text_block).replace(chr(10), "<br>")}</div>')
-            continue
-        if any(x in low for x in ["salida:", "fecha:", "hora:", "estado:", "ficha", "liquidación", "punto de encuentro", "cargo informado"]):
-            rows=[]
-            for ln in block:
-                if ":" in ln:
-                    a,b=ln.split(":",1)
-                    rows.append(f'<tr><td style="padding:5px 10px 5px 0;color:#64748b;font-weight:700;white-space:nowrap;vertical-align:top;">{esc(a)}</td><td style="padding:5px 0;color:#0f172a;vertical-align:top;">{esc(b.strip())}</td></tr>')
-                else:
-                    rows.append(f'<tr><td colspan="2" style="padding:5px 0;color:#0f172a;">{esc(ln)}</td></tr>')
-            html_blocks.append('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0;border-collapse:collapse;font-size:14px;line-height:1.35;">'+"".join(rows)+'</table>')
-            continue
-        if any(ln.strip().startswith("-") for ln in block):
-            lis=[]; pre=[]
-            for ln in block:
-                if ln.strip().startswith("-"):
-                    lis.append(f'<li style="margin:5px 0;">{esc(ln.strip()[1:].strip())}</li>')
-                else:
-                    pre.append(esc(ln))
-            lead = ''.join(f'<p style="margin:0 0 8px 0;font-weight:700;color:#334155;">{x}</p>' for x in pre)
-            html_blocks.append(f'<div style="margin:14px 0;padding:14px 16px;border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0;">{lead}<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.45;color:#0f172a;">{"".join(lis)}</ul></div>')
-            continue
-        html_blocks.append(f'<p style="margin:0 0 14px 0;font-size:15px;line-height:1.5;color:#0f172a;">{esc(text_block).replace(chr(10), "<br>")}</p>')
-    test_html = ""
-    if test_lines:
-        detail = '<br>'.join(esc(x) for x in test_lines[1:])
-        test_html = '<div style="margin:0 0 16px 0;padding:10px 12px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:12px;line-height:1.35;"><strong>Correo de prueba</strong>' + (('<br>'+detail) if detail else '') + '</div>'
-    title = esc(subject.replace('[TEST] ', '').strip() or 'Fjord VI')
+            parts.append(f'<p style="margin:0 0 9px 0;font-size:15px;line-height:1.5;color:#25364a">{safe}</p>')
+    close_bullets()
+    return "\n".join(parts)
+
+
+def notification_email_title(event_key: str, subject: str) -> str:
+    titles = {
+        "reserva_confirmada_socio": "Reserva confirmada",
+        "reserva_en_espera_socio": "Reserva en lista de espera",
+        "reserva_promovida_socio": "Reserva confirmada desde espera",
+        "invitado_agregado_socio": "Invitado registrado",
+        "invitado_en_espera_socio": "Invitado en lista de espera",
+        "invitado_desplazado_socio": "Cambio de estado de invitado",
+        "cancelacion_socio": "Cancelación registrada",
+        "cancelacion_con_cargo_socio": "Cancelación con cargo reglamentario",
+        "salida_reprogramada_socio": "Salida reprogramada",
+        "salida_cancelada_socio": "Salida cancelada",
+        "embarque_estado_socio": "Actualización de embarque",
+        "salida_cerrada_socio": "Resumen de salida",
+        "salida_cerrada_admin": "Salida cerrada",
+        "resumen_cierre_socio": "Resumen consolidado",
+        "cierre_liquidacion_admin": "Liquidación consolidada",
+        "recordatorio_24h_socio": "Recordatorio de reserva",
+        "no_show_cargo_socio": "Reserva incumplida",
+        "email_prueba": "Prueba de comunicaciones",
+    }
+    return titles.get(event_key, (subject or "Comunicación Fjord VI").replace("[TEST]", "").strip())
+
+
+def build_notification_html_email(subject: str, body: str, event_key: str = "", test_mode: bool = False) -> str:
+    title = html_lib.escape(notification_email_title(event_key, subject))
+    preheader = html_lib.escape((subject or "Fjord VI").replace("[TEST]", "").strip())
+    content = _email_lines_to_html_blocks(body)
+    test_badge = ""
+    if test_mode:
+        test_badge = '<div style="display:inline-block;background:#fff7e6;color:#6a4b00;border:1px solid #f0d9a0;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;margin-bottom:12px">Correo de prueba</div>'
     return f"""<!doctype html>
 <html>
-  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-    <div style="display:none;max-height:0;overflow:hidden;color:transparent;">YCA · Fjord VI</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:22px 0;">
-      <tr><td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dbe5ec;">
-          <tr><td style="background:#0b3a57;color:#ffffff;padding:18px 22px;">
-            <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Yacht Club Argentino</div>
-            <div style="font-size:22px;font-weight:700;margin-top:2px;">Fjord VI</div>
-          </td></tr>
-          <tr><td style="padding:22px;">
-            <h1 style="margin:0 0 18px 0;font-size:22px;line-height:1.25;color:#0f2a3d;">{title}</h1>
-            {test_html}
-            {''.join(html_blocks)}
-            <div style="margin-top:22px;padding-top:16px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;line-height:1.45;">
-              Este correo corresponde al sistema de reservas y embarque del Fjord VI. Los importes y estados se calculan según las reglas operativas vigentes.
-            </div>
-          </td></tr>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{preheader}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f6fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#25364a">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">{preheader}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f6fa;margin:0;padding:24px 10px">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #dfe7f0;box-shadow:0 4px 18px rgba(20,42,70,.06)">
+          <tr>
+            <td style="background:#0b2f55;color:#ffffff;padding:18px 22px">
+              <div style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;opacity:.86">Yacht Club Argentino</div>
+              <div style="font-size:22px;font-weight:700;margin-top:3px">Fjord VI</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px">
+              {test_badge}
+              <h1 style="font-size:22px;line-height:1.25;margin:0 0 14px 0;color:#0b2f55;font-weight:750">{title}</h1>
+              <div style="border-top:1px solid #e6edf5;margin:0 0 16px 0"></div>
+              {content}
+              <div style="margin-top:22px;padding:14px 16px;background:#f7f9fc;border:1px solid #e6edf5;border-radius:12px;color:#526174;font-size:13px;line-height:1.45">
+                Los importes y estados se calculan según las reglas operativas vigentes del Fjord VI.
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 22px;background:#f8fafc;color:#6b7888;font-size:12px;line-height:1.4;border-top:1px solid #e6edf5">
+              {html_lib.escape(CLUB_NAME)} · {html_lib.escape(APP_NAME)} · Comunicación automática
+            </td>
+          </tr>
         </table>
-      </td></tr>
-    </table>
-  </body>
+      </td>
+    </tr>
+  </table>
+</body>
 </html>"""
 
 def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
@@ -884,7 +879,8 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
         msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
         msg.set_content(body)
-        msg.add_alternative(email_body_to_html(body, subject), subtype="html")
+        # RC8 Email Skin: HTML visual sin tocar endpoints, cola ni lógica operativa.
+        msg.add_alternative(build_notification_html_email(subject, body, event_key, smtp_test_mode_enabled(db)), subtype="html")
         with smtplib.SMTP(settings["host"], port, timeout=20) as server:
             if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
                 server.starttls()
@@ -983,72 +979,6 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     db.add(q)
     db.commit()
     return q
-
-
-# =========================
-# RC10 · COMUNICACIONES ASÍNCRONAS LIVIANAS
-# La operación de reservas no debe esperar el armado/envío de emails.
-# Las acciones del socio guardan primero la reserva y responden al navegador;
-# luego se encola el email en segundo plano con una sesión DB independiente.
-# Si el email falla o tarda, nunca bloquea la reserva.
-# =========================
-
-def queue_email_background_task(event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False, scheduled_at_iso: str = ""):
-    db_bg = SessionLocal()
-    try:
-        payload = dict(payload or {})
-        # Enriquecimiento diferido para no hacer consultas extra antes de responder al socio.
-        if not payload.get("resumen_invitados") and payload.get("outing_id") and payload.get("responsible_user_id"):
-            try:
-                payload["resumen_invitados"] = guest_reservation_summary_for_email(
-                    db_bg,
-                    int(payload.get("outing_id")),
-                    int(payload.get("responsible_user_id")),
-                )
-            except Exception:
-                payload["resumen_invitados"] = "Consultar detalle actualizado en el sistema Fjord VI."
-        scheduled_at = None
-        if scheduled_at_iso:
-            try:
-                scheduled_at = datetime.fromisoformat(scheduled_at_iso)
-            except Exception:
-                scheduled_at = None
-        queue_email(db_bg, event_key, recipient_email, recipient_name, payload, force=force, scheduled_at=scheduled_at)
-    except Exception as exc:
-        try:
-            APP_LOGGER.warning("email_background_queue_failed", extra={"event_key": event_key, "error": str(exc)[:200]})
-        except Exception:
-            pass
-    finally:
-        db_bg.close()
-
-
-def queue_email_after_response(background_tasks: Optional[BackgroundTasks], event_key: str, recipient_email: str, recipient_name: str, payload: dict, force: bool = False, scheduled_at: Optional[datetime] = None):
-    """Encola un email sin bloquear la request del usuario.
-
-    Si no hay BackgroundTasks disponible, cae al comportamiento tradicional para no perder comunicaciones.
-    """
-    if not recipient_email:
-        return None
-    payload = dict(payload or {})
-    if background_tasks is not None:
-        background_tasks.add_task(
-            queue_email_background_task,
-            event_key,
-            recipient_email,
-            recipient_name or "",
-            payload,
-            force,
-            scheduled_at.isoformat() if scheduled_at else "",
-        )
-        return None
-    db_fallback = SessionLocal()
-    try:
-        return queue_email(db_fallback, event_key, recipient_email, recipient_name, payload, force=force, scheduled_at=scheduled_at)
-    except Exception:
-        return None
-    finally:
-        db_fallback.close()
 
 
 
@@ -2496,13 +2426,10 @@ def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: s
     if not smtp_test_mode_enabled(db):
         return body
     notice = (
-        "MODO PRUEBA SMTP ACTIVO\n"
-        f"Evento interno: {event_key or '-'}\n"
-        f"Fecha/hora test: {now_local().strftime('%d/%m/%Y %H:%M')}\n"
+        "Correo de prueba del sistema Fjord VI\n"
+        "Este mensaje fue redirigido al receptor de QA. No genera efectos reales para socios.\n"
         f"Destinatario original: {original_to or '-'}\n"
-        f"Redirigido a: {effective_to or '-'}\n"
-        "Entorno: TEST / QA controlado\n"
-        "Ningún socio real recibe este correo mientras el modo prueba esté activo.\n\n"
+        f"Receptor de prueba: {effective_to or '-'}\n\n"
     )
     return notice + body
 
@@ -3557,9 +3484,9 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
         APP_DIR / "tests" / "test_smtp_policy_385.py",
     ]
     add("Tests críticos de negocio", all(p.exists() for p in critical_tests), "reservas/espera/cierre/reapertura/SMTP/release")
-    add("RC9 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
-    add("RC9 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
-    add("RC9 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
+    add("RC8 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
+    add("RC8 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
+    add("RC8 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
     add("Script externo de release", (APP_DIR / "scripts" / "release_check.py").exists(), "python scripts/release_check.py")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
@@ -7717,7 +7644,7 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     })
 
 @app.post("/socio/add_self")
-def add_self(background_tasks: BackgroundTasks, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
     existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
@@ -7742,20 +7669,19 @@ def add_self(background_tasks: BackgroundTasks, outing_id: Optional[int] = Form(
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        queue_email_after_response(background_tasks, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
-    queue_email_after_response(background_tasks, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
+    queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
 async def add_guest(
     request: Request,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(db_session),
     user: User = Depends(require_role("socio"))
 ):
@@ -7848,7 +7774,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email_after_response(background_tasks, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": "", "outing_id": outing.id, "responsible_user_id": user.id})
+    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -8087,7 +8013,7 @@ def delete_outing(
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
 @app.post("/socio/cancel/{rid}")
-def cancel_reservation(rid: int, background_tasks: BackgroundTasks, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
     ensure_outing_editable(outing)
@@ -8127,7 +8053,7 @@ def cancel_reservation(rid: int, background_tasks: BackgroundTasks, outing_id: O
     log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(r.charge_amount or 0)
     late_cancel = cargo > 0
-    queue_email_after_response(background_tasks, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
+    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
         "socio_nombre": user.name,
         "persona_nombre": r.person_name,
         "salida_nombre": outing.title,

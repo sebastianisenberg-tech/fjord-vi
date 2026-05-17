@@ -1,10 +1,10 @@
 {
-  "version": "RC10A",
-  "release_label": "Fjord VI · RC10A Fast Async Communications Fix",
+  "version": "RC8_EMAIL_SKIN",
+  "release_label": "Fjord VI · RC8 Email Skin",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI RC10A",
+  "app_build": "Fjord VI RC8 EMAIL SKIN",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -21,10 +21,7 @@
     "exportación PDF ejecutiva de estadísticas",
     "botón Informe PDF reunión",
     "ajustes desktop-first en Estadísticas",
-    "emails HTML institucionales",
-    "subjects unificados Fjord VI",
-    "fallback texto plano",
-    "modo TEST compacto para QA"
+    "pulido visual HTML de emails sin modificar motor operativo"
   ],
   "phase14_validaciones_tests": true,
   "system_fast": "preserved",
@@ -32,11 +29,11 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "RC10A - comunicaciones HTML asíncronas rápidas",
-  "name": "Fjord VI RC10A Fast Async Communications Fix",
-  "build_note": "RC10A: corrige cancelación de socio con comunicaciones async; mantiene velocidad operativa y emails HTML.",
-  "app_version": "RC10A",
+  "release": "RC8 Email Skin - RC8 estable con pulido HTML de emails",
+  "name": "Fjord VI Sistema de Reservas",
+  "build_note": "RC8 estable: se modifica solo presentación de emails HTML, sin tocar lógica operativa, endpoints críticos ni timing de reservas.",
+  "app_version": "RC8_EMAIL_SKIN",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "FAST_ASYNC_COMMS_FIX",
-  "hardening_focus": "Comunicación clara para socios: menos ruido técnico, jerarquía visual, lenguaje reglamentario pero humano."
+  "release_stage": "PILOT_RC8_EMAIL_SKIN",
+  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado"
 }
