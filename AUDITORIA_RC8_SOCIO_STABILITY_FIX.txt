@@ -1,0 +1,40 @@
+Fjord VI RC8 · SOCIO STABILITY FIX
+
+Alcance aplicado:
+- Se trabajó sólo sobre módulo Socio: alta de invitado, baja de invitado, menú de invitado y comportamiento de submit/logout en pantalla Socio.
+- No se tocaron emails, Capitán, Administración, cierre, reapertura, liquidación, PDFs ni diseño general.
+
+Auditoría inicial:
+1. POST /socio/add_guest
+   - Termina con RedirectResponse 303.
+   - No envía SMTP en línea. Sólo encola notificación en base de datos mediante queue_email.
+   - Mantiene validación de duplicado, socio/documento, menor y socio titular requerido.
+   - Mantiene cálculo de cupo/lista de espera y commit antes del redirect.
+
+2. POST /socio/cancel/{rid}
+   - Era una ruta compartida para socio titular e invitados.
+   - Se blindó la cascada: sólo el registro de tipo socio titular puede cancelar dependientes.
+   - Un invitado seleccionado ya no puede cancelar grupo, socio titular ni otros invitados.
+
+3. Logout
+   - GET /logout sigue limpiando cookie y redirigiendo.
+   - Se evitó que el flujo AJAX de Socio pueda dejar la pantalla con botones bloqueados.
+
+4. JavaScript Socio
+   - Se detectaron múltiples guardas globales de submit.
+   - En Socio se desactiva el submit AJAX global y se vuelve a POST nativo con redirect server-side.
+   - Se agregó recuperación de botones por timeout y pageshow, para evitar bloqueo por error, vuelta atrás o BFCache.
+
+Correcciones aplicadas:
+- main.py: guardia explícita selected_kind == "socio" para cascada de cancelación.
+- static/app.js: exclusión de body.socioApp del submit AJAX global.
+- templates/socio.html: desbloqueo defensivo de botones y pageshow.
+- templates/socio.html: menú de invitado reducido a Editar datos, Eliminar invitado y Cerrar.
+- tests/test_rc8_socio_stability_fix.py: tests de regresión para impedir reintroducir el bug.
+
+Chequeos ejecutados:
+- python scripts/release_check.py: OK
+- pytest -q: 44 passed
+
+Limitación honesta:
+- No se ejecutó prueba manual en navegador/celular real desde este entorno. Se dejó cubierta la regresión por tests y revisión de código.

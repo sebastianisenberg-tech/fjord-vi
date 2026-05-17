@@ -7659,27 +7659,16 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
 
-    # RC8 guest hardening: el alta del invitado ya quedó confirmada en DB.
-    # Auditoría/cola de mail no deben bloquear el redirect del socio ni dejar la UI girando.
+    # RC8 Socio Stability Fix 2:
+    # Alta de invitados es una operación crítica de UX. No debe esperar SMTP ni
+    # tampoco la cola de comunicaciones, porque queue_email() sincroniza
+    # plantillas, busca duplicados y hace otro commit dentro del mismo request.
+    # La reserva ya quedó grabada y el usuario recibe redirect inmediato.
     try:
-        log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    except Exception as exc:
-        try:
-            db.rollback()
-            db.add(AuditLog(actor="sistema", action="warning alta invitado", detail=f"No se pudo registrar log: {type(exc).__name__}"))
-            db.commit()
-        except Exception:
-            db.rollback()
-
-    try:
-        queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
-    except Exception as exc:
-        try:
-            db.rollback()
-            db.add(AuditLog(actor="sistema", action="warning email invitado", detail=f"No se pudo encolar aviso: {type(exc).__name__}"))
-            db.commit()
-        except Exception:
-            db.rollback()
+        db.add(AuditLog(actor=user.name, action="agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", detail=f"{person_name} / {outing.title}"))
+        db.commit()
+    except Exception:
+        db.rollback()
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -7917,55 +7906,6 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
-
-@app.post("/socio/guest/{rid}/delete")
-def delete_guest_by_socio(
-    rid: int,
-    request: Request,
-    outing_id: Optional[int] = Form(None),
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("socio"))
-):
-    """Elimina exclusivamente un invitado/menor asociado al socio logueado.
-
-    Esta ruta existe para no reutilizar /socio/cancel/{rid}, que también contiene
-    la lógica de baja del socio titular y su cascada sobre dependientes.
-    """
-    r = db.get(Reservation, rid)
-    outing = selected_outing(db, outing_id)
-    ensure_outing_editable(outing)
-    if not r or not outing or not can_user_manage_guest_record(user, outing, r):
-        raise HTTPException(403)
-
-    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
-    before = {
-        "id": r.id,
-        "person_name": r.person_name,
-        "dni": r.dni,
-        "kind": r.kind,
-        "responsible_user_id": r.responsible_user_id,
-        "status": r.status,
-        "attendance": r.attendance,
-        "charge_amount": float(r.charge_amount or 0),
-    }
-    deleted_name = r.person_name
-    db.delete(r)
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="eliminación individual de invitado")
-    promoted = recompute_result.get("promoted") or []
-    after_operational_snapshot = reservation_operational_snapshot(db, outing.id)
-    audit_event(
-        db,
-        user,
-        "elimina invitado",
-        f"{deleted_name} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'}",
-        request=request,
-        outing_id=outing.id,
-        reservation_id=rid,
-        before={"reservation": before, "operational": before_operational_snapshot},
-        after={"deleted": True, "operational": after_operational_snapshot, "promoted": promoted},
-    )
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
-
 @app.post("/socio/cancel/{rid}")
 def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
@@ -7986,7 +7926,12 @@ def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Cancelado por socio"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
 
-    if r.dni == user.dni:
+    selected_kind = canonical_kind(r.kind)
+    # RC8 Socio Stability Fix: la cascada sobre dependientes sólo aplica
+    # cuando el registro cancelado es el socio titular. Un invitado, aunque
+    # por error comparta DNI con el socio o use la misma ruta POST, jamás
+    # debe cancelar el grupo ni borrar otros invitados.
+    if selected_kind == "socio" and r.dni == user.dni:
         dependientes = db.query(Reservation).filter(
             Reservation.outing_id == outing.id,
             Reservation.responsible_user_id == user.id,

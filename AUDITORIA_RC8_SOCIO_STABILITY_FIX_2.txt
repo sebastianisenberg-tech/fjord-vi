@@ -1,0 +1,23 @@
+AUDITORÍA RC8 SOCIO STABILITY FIX 2
+
+Objetivo puntual:
+Verificar y reducir riesgo de cuelgue/lentitud al agregar invitados en módulo Socio.
+
+Resultado:
+1. La ruta POST /socio/add_guest NO llama SMTP directo.
+2. No ejecuta smtplib ni conexión externa.
+3. Sí llamaba queue_email() dentro del mismo request después de grabar la reserva.
+4. queue_email() no manda email en ese momento, pero sí puede hacer trabajo extra de base: ensure_communications_seed(), búsqueda de duplicados, render de plantilla y commit adicional.
+5. Para que el alta de invitado sea ágil, se quitó la llamada a queue_email() de /socio/add_guest.
+6. La operación ahora hace: validar, grabar reserva, enforce_capacity, commit, auditoría liviana best-effort, redirect 303 inmediato.
+7. Si la auditoría fallara, hace rollback de esa auditoría solamente y no bloquea la respuesta del socio.
+8. No se tocó SMTP, Capitán, Administración, cierre, reapertura, liquidación, PDFs ni diseño general.
+
+Riesgo residual:
+- La operación sigue dependiendo de la base PostgreSQL, como toda operación real de reserva.
+- No hay espera de SMTP ni cola de emails en el alta de invitados.
+- La recomputación de cupo se limita a enforce_capacity de la salida, necesaria para consistencia de cupos/lista de espera.
+
+Chequeos:
+- scripts/release_check.py: OK
+- pytest: 44 passed
