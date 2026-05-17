@@ -7897,29 +7897,55 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
-@app.post("/socio/cancel_guest/{rid}")
-def cancel_guest_individual(
-    rid: int,
-    request: Request,
-    outing_id: Optional[int] = Form(None),
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("socio"))
-):
-    """Baja individual de un invitado/menor desde el módulo Socio.
+# ===== RC8 SOCIO_DELETE_GUEST_SAFE =====
+# Separación semántica fuerte:
+# - delete_guest: baja exactamente un invitado/menor del socio logueado.
+# - cancel_self: cancela el lugar del socio titular y sus dependientes.
+# - leave_waitlist: sale de lista de espera sin cargo y sin cascadas.
+# El endpoint histórico /socio/cancel/{rid} queda solo como compatibilidad y deriva
+# a la acción explícita correspondiente. Nunca más debe mezclar todas las bajas.
 
-    Regla de seguridad: esta acción nunca cancela la reserva del socio titular
-    ni otros invitados del mismo socio. El cancelado del socio titular conserva
-    su ruta histórica /socio/cancel/{rid}, que sí puede aplicar cascada.
+
+def _redirect_socio_action(outing: Outing, msg: str = "cancelado") -> RedirectResponse:
+    oid = getattr(outing, "id", None)
+    suffix = f"?outing_id={oid}&msg={msg}" if oid else f"?msg={msg}"
+    return RedirectResponse(f"/socio{suffix}", status_code=303)
+
+
+def _cancel_single_socio_row(outing: Outing, r: Reservation, *, now: datetime, reason: str) -> None:
+    was_waitlisted = is_waitlisted(r)
+    r.cancelled_at = now
+    r.status = "Cancelado"
+    r.attendance = "Ausente"
+    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else reason
+    r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
+
+
+def _promote_after_socio_capacity_release(db: Session, outing: Outing) -> list:
+    """Promoción segura para acciones del módulo Socio.
+
+    Deliberadamente NO llama a recompute_waitlist_for_salida() porque esa función
+    ejecuta enforce_responsible_dependency(), regla de Capitán/cierre que exige
+    socio responsable Presente y puede convertir invitados Por confirmar en
+    No embarca. Para una baja voluntaria desde Socio solo corresponde liberar
+    cupo y promover espera elegible.
     """
+    if not outing or is_closed_outing(outing) or is_outing_cancelled_by_captain(outing):
+        return []
+    return promote_waitlist(db, outing)
+
+
+@app.post("/socio/delete_guest/{rid}")
+def socio_delete_guest(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
-    if not outing:
-        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
     ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id or not can_user_manage_guest_record(user, outing, r):
+    if not r or not can_user_manage_guest_record(user, outing, r):
         raise HTTPException(403)
+    if not reservation_is_active(r) and not is_waitlisted(r):
+        return _redirect_socio_action(outing, "invitado_eliminado")
 
-    was_waitlisted = is_waitlisted(r)
+    now = now_local()
     before = {
         "id": r.id,
         "name": r.person_name,
@@ -7927,110 +7953,110 @@ def cancel_guest_individual(
         "kind": r.kind,
         "status": r.status,
         "attendance": r.attendance,
-        "responsible_user_id": r.responsible_user_id,
-        "waitlisted": was_waitlisted,
+        "charge_amount": float(r.charge_amount or 0),
     }
+    was_waitlisted = is_waitlisted(r)
+    _cancel_single_socio_row(outing, r, now=now, reason="Cancelado por socio responsable")
+    promoted = _promote_after_socio_capacity_release(db, outing)
+    db.commit()
+    audit_event(db, user, "elimina invitado", f"{before['name']} / {outing.title}", outing_id=outing.id, reservation_id=r.id, before=before, after={"status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0), "promoted": promoted})
+    log(db, user.name, "elimina invitado", f"{r.person_name} / {outing.title} / espera {was_waitlisted} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
+    return _redirect_socio_action(outing, "invitado_eliminado")
+
+
+@app.post("/socio/leave_waitlist/{rid}")
+def socio_leave_waitlist(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
+        raise HTTPException(403)
+    if not is_waitlisted(r):
+        return _redirect_socio_action(outing, "ya_anotado" if reservation_is_active(r) else "cancelado")
 
     now = now_local()
-    r.cancelled_at = now
-    r.status = "Cancelado"
-    r.attendance = "Ausente"
-    r.cancel_reason = "Baja individual de invitado desde lista de espera" if was_waitlisted else "Baja individual de invitado por socio"
-    r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
-
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="baja individual de invitado")
-    promoted = recompute_result.get("promoted") or []
+    before = {"id": r.id, "name": r.person_name, "dni": r.dni, "kind": r.kind, "status": r.status, "attendance": r.attendance}
+    _cancel_single_socio_row(outing, r, now=now, reason="Baja desde lista de espera")
     db.commit()
+    audit_event(db, user, "sale de lista de espera", f"{before['name']} / {outing.title}", outing_id=outing.id, reservation_id=r.id, before=before, after={"status": r.status, "attendance": r.attendance})
+    log(db, user.name, "sale de lista de espera", f"{r.person_name} / {outing.title}")
+    return _redirect_socio_action(outing, "cancelado")
 
-    audit_event(
-        db,
-        user,
-        "elimina invitado individual",
-        f"{before['name']} / {outing.title} / cargo {float(r.charge_amount or 0)} / promovidos {', '.join(promoted) if promoted else '-'}",
-        request=request,
-        outing_id=outing.id,
-        reservation_id=r.id,
-        before=before,
-        after={"status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason},
-    )
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_eliminado", status_code=303)
+
+@app.post("/socio/cancel_self/{rid}")
+def socio_cancel_self(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    r = db.get(Reservation, rid)
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    if not r or r.outing_id != outing.id or r.dni != user.dni or canonical_kind(r.kind) != "socio":
+        raise HTTPException(403)
+    if not reservation_is_active(r) and not is_waitlisted(r):
+        return _redirect_socio_action(outing, "cancelado")
+
+    now = now_local()
+    before_self = {"id": r.id, "name": r.person_name, "status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0)}
+    _cancel_single_socio_row(outing, r, now=now, reason="Cancelado por socio")
+
+    dependientes = db.query(Reservation).filter(
+        Reservation.outing_id == outing.id,
+        Reservation.responsible_user_id == user.id,
+        Reservation.dni != user.dni,
+        Reservation.cancelled_at.is_(None),
+        Reservation.status != "Cancelado",
+    ).order_by(Reservation.created_at.asc(), Reservation.id.asc()).all()
+    cancelled_dependents = []
+    for dep in dependientes:
+        dep_before = {"id": dep.id, "name": dep.person_name, "status": dep.status, "attendance": dep.attendance, "charge_amount": float(dep.charge_amount or 0)}
+        dep_was_waitlisted = is_waitlisted(dep)
+        _cancel_single_socio_row(
+            outing,
+            dep,
+            now=now,
+            reason="Cancelado por baja del socio responsable",
+        )
+        if dep_was_waitlisted:
+            dep.cancel_reason = "Baja desde lista de espera por baja del socio responsable"
+        cancelled_dependents.append({"before": dep_before, "after": {"id": dep.id, "status": dep.status, "attendance": dep.attendance, "charge_amount": float(dep.charge_amount or 0)}})
+
+    promoted = _promote_after_socio_capacity_release(db, outing)
+    db.commit()
+    audit_event(db, user, "cancela lugar titular", f"{r.person_name} / {outing.title} / dependientes {len(cancelled_dependents)}", outing_id=outing.id, reservation_id=r.id, before={"self": before_self}, after={"self": {"status": r.status, "attendance": r.attendance, "charge_amount": float(r.charge_amount or 0)}, "dependents": cancelled_dependents, "promoted": promoted})
+    log(db, user.name, "cancela lugar titular", f"{r.person_name} / {outing.title} / dependientes {len(cancelled_dependents)} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
+
+    cargo = float(r.charge_amount or 0)
+    late_cancel = cargo > 0
+    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
+        "socio_nombre": user.name,
+        "persona_nombre": r.person_name,
+        "salida_nombre": outing.title,
+        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+        "hora": outing.departure_at.strftime("%H:%M"),
+        "importe": "$ " + fmt_money(r.charge_amount or 0),
+        "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
+        "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
+    })
+    return _redirect_socio_action(outing, "cancelado")
+
 
 @app.post("/socio/cancel/{rid}")
-def cancel_reservation(
-    rid: int,
-    outing_id: Optional[int] = Form(None),
-    db: Session = Depends(db_session),
-    user: User = Depends(require_role("socio"))
-):
-    """Cancela la reserva titular del socio desde el módulo Socio.
+def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    """Compatibilidad legacy: deriva al endpoint semántico correcto.
 
-    Corrección de estabilidad: esta ruta queda dedicada al botón
-    "Cancelar mi lugar". Si la reserva es la del socio titular, cancela
-    también sus invitados asociados. No intenta reutilizar lógica de baja
-    individual de invitados ni bloquea la respuesta por comunicaciones.
+    Este bloque queda para evitar formularios viejos/cacheados, pero no contiene
+    lógica propia de cancelación ni recomputación general.
     """
     r = db.get(Reservation, rid)
     outing = selected_outing(db, outing_id)
-    if not outing:
-        return RedirectResponse("/socio?msg=datos_invalidos", status_code=303)
     ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id:
+    if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
         raise HTTPException(403)
-
-    is_owner_self = (norm_dni(r.dni or "") == norm_dni(user.dni or "") and canonical_kind(r.kind) == "socio")
-    manages_guest = (r.responsible_user_id == user.id and canonical_kind(r.kind) in ("invitado", "hijo_menor"))
-    if not (is_owner_self or manages_guest):
-        raise HTTPException(403)
-
-    # Si por compatibilidad vieja esta ruta recibe un invitado, baja solo ese invitado.
-    # El flujo normal del menú de invitados usa /socio/cancel_guest/{rid}.
-    targets = []
-    if is_owner_self:
-        targets = db.query(Reservation).filter(
-            Reservation.outing_id == outing.id,
-            ((Reservation.responsible_user_id == user.id) | (Reservation.dni == user.dni)),
-            Reservation.cancelled_at.is_(None)
-        ).all()
-    else:
-        targets = [r] if reservation_is_active(r) or is_waitlisted(r) else []
-
-    if not targets:
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
-
-    now = now_local()
-    cancelled_names = []
-    total_charge = 0.0
-    for row in targets:
-        if row.cancelled_at is not None:
-            continue
-        row_was_waitlisted = is_waitlisted(row)
-        row.cancelled_at = now
-        row.status = "Cancelado"
-        row.attendance = "Ausente"
-        if is_owner_self:
-            if canonical_kind(row.kind) == "socio":
-                row.cancel_reason = "Baja desde lista de espera" if row_was_waitlisted else "Cancelado por socio"
-            else:
-                row.cancel_reason = "Baja desde lista de espera por baja del socio responsable" if row_was_waitlisted else "Cancelado por baja del socio responsable"
-        else:
-            row.cancel_reason = "Baja individual de invitado desde lista de espera" if row_was_waitlisted else "Baja individual de invitado por socio"
-        row.charge_amount = 0 if row_was_waitlisted else (reservation_charge(outing, row) if late_window_passed(outing) else 0)
-        total_charge += float(row.charge_amount or 0)
-        cancelled_names.append(row.person_name)
-
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="cancelación de socio titular" if is_owner_self else "baja individual de invitado")
-    promoted = recompute_result.get("promoted") or []
-    db.commit()
-
-    try:
-        log(db, user.name, "cancela reserva titular" if is_owner_self else "cancela invitado", f"{', '.join(cancelled_names) or r.person_name} / {outing.title} / cargo {total_charge} / promovidos {', '.join(promoted) if promoted else '-'}")
-    except Exception:
-        pass
-
-    # No se encola email desde esta ruta crítica: prioridad absoluta a respuesta rápida
-    # y consistente del flujo Socio. Las comunicaciones se mantienen en el motor SMTP
-    # general para otros eventos.
-    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+    if is_waitlisted(r):
+        return socio_leave_waitlist(rid, outing_id, db, user)
+    if canonical_kind(r.kind) == "socio" and r.dni == user.dni:
+        return socio_cancel_self(rid, outing_id, db, user)
+    if canonical_kind(r.kind) in ("invitado", "hijo_menor") and r.responsible_user_id == user.id:
+        return socio_delete_guest(rid, outing_id, db, user)
+    raise HTTPException(403)
 
 @app.post("/socio/reactivate/{rid}")
 def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):

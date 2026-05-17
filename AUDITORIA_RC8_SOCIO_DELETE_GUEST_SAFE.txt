@@ -1,0 +1,35 @@
+Fjord VI RC8_SOCIO_DELETE_GUEST_SAFE
+
+Objetivo único:
+Corregir el bug histórico del módulo Socio donde la acción de eliminar un invitado podía afectar a todos los invitados o a la reserva titular.
+
+Cambios realizados:
+1. Se separaron las acciones del módulo Socio en endpoints explícitos:
+   - POST /socio/delete_guest/{rid}: elimina exactamente un invitado o hijo menor del socio logueado.
+   - POST /socio/cancel_self/{rid}: cancela el lugar del socio titular y sus dependientes.
+   - POST /socio/leave_waitlist/{rid}: baja únicamente un registro en lista de espera.
+
+2. El endpoint legacy POST /socio/cancel/{rid} queda solo como compatibilidad y deriva a la acción semántica correcta.
+
+3. La baja individual de invitado no ejecuta recompute_waitlist_for_salida(), porque esa recomputación llama a enforce_responsible_dependency(), regla operativa de Capitán/cierre que puede marcar invitados como No embarca si el socio todavía no figura Presente.
+
+4. La baja individual solo cancela el registro objetivo y luego ejecuta una promoción segura de lista de espera mediante promote_waitlist().
+
+5. Se actualizó la plantilla templates/socio.html para que los botones llamen a endpoints separados.
+
+6. Se eliminó del módulo Socio el texto de acción "Registrar reserva incumplida". Esa calificación corresponde a Capitán/cierre, no a una acción directa del socio.
+
+Matriz de prueba esperada:
+- Agregar 5 invitados: deben quedar 5 registros dependientes.
+- Eliminar invitado 2: debe quedar el titular + 4 invitados; no deben tocarse los otros 4.
+- Recargar la página: deben seguir los mismos 4.
+- Cancelar mi lugar: debe cancelar socio titular + invitados activos dependientes.
+- Salir de espera: debe afectar únicamente el registro en espera seleccionado.
+- Invitado duplicado: debe seguir bloqueado por DNI.
+- Sin cupo: debe seguir enviando a espera según reglas existentes.
+- Logout: no fue modificado por este parche.
+
+Archivos modificados:
+- main.py
+- templates/socio.html
+- tests/test_rc8_socio_delete_guest_safe.py
