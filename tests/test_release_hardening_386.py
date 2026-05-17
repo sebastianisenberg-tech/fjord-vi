@@ -5,8 +5,8 @@ MAIN = (ROOT / "main.py").read_text(encoding="utf-8")
 
 
 def test_version_rc8_unified():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC8_EMAIL_HTML_FIX2"
-    assert 'APP_VERSION = "RC8_EMAIL_HTML_FIX2"' in MAIN
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "RC8_EMAIL_HTML_FIX3"
+    assert 'APP_VERSION = "RC8_EMAIL_HTML_FIX3"' in MAIN
     assert 'APP_BUILD = "Fjord VI RC8 EMAIL HTML FIX2"' in MAIN
     assert 'RELEASE_LABEL = "Fjord VI · RC8 Email HTML Fix2"' in MAIN
 
