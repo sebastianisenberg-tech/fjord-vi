@@ -9688,3 +9688,5 @@ html body nav.bottom.socioV51Bottom a[href="#inicio"]{
 .capAction.noBoardAction{background:#f1f5f9!important;color:#263445!important;border:1px solid #cbd5e1!important;}
 .captainOpsSheetContent .attendanceAbsentMenuForm{display:block!important;visibility:visible!important;opacity:1!important;}
 .captainOpsSheetContent .capAction.absentAction{display:block!important;width:100%!important;min-height:52px!important;font-size:15px!important;}
+/* RC8_GUEST_MENU_FIX: cierre explícito del menú de invitados */
+.menuActionV123.ghost{background:#eef5f8;color:#163247;border:1px solid #d8e5eb;}

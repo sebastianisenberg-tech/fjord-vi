@@ -3,7 +3,7 @@ import json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET_VERSION = "RC8_EMAIL_HTML_FIX3"
+TARGET_VERSION = "RC8_GUEST_MENU_FIX"
 
 CRITICAL = [
     "main.py",
@@ -35,7 +35,7 @@ def main() -> int:
             data = json.loads(read(meta))
             vals = [str(v) for k,v in data.items() if "version" in k.lower()]
             if TARGET_VERSION not in vals:
-                errors.append("software_metadata.json no contiene versión RC8_EMAIL_HTML_FIX3")
+                errors.append("software_metadata.json no contiene versión RC8_GUEST_MENU_FIX")
         except Exception as e:
             errors.append(f"software_metadata.json inválido: {e}")
 

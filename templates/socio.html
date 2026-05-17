@@ -42,6 +42,31 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   }
 
+
+  // Menú de invitados: un solo menú abierto, cierre al tocar afuera o botón Cerrar.
+  document.querySelectorAll('details.guestMenuV123').forEach(function(menu){
+    var summary = menu.querySelector('summary');
+    if(summary){
+      summary.addEventListener('click', function(){
+        document.querySelectorAll('details.guestMenuV123[open]').forEach(function(other){
+          if(other !== menu){ other.removeAttribute('open'); }
+        });
+      });
+    }
+  });
+  document.addEventListener('click', function(ev){
+    if(!ev.target.closest('details.guestMenuV123')){
+      document.querySelectorAll('details.guestMenuV123[open]').forEach(function(menu){ menu.removeAttribute('open'); });
+    }
+  });
+  document.querySelectorAll('.guestMenuCloseV1').forEach(function(btn){
+    btn.addEventListener('click', function(ev){
+      ev.preventDefault();
+      var menu = btn.closest('details.guestMenuV123');
+      if(menu){ menu.removeAttribute('open'); }
+    });
+  });
+
   function smoothScrollTop(duration){
     closeTransientUI();
     duration = duration || 380;
@@ -94,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function(){
 {% set warn_msgs = ['lista_espera_ok','ya_anotado','cancelado'] %}
 <div class="toast compactToast toastSmart {% if msg in error_msgs %}toastError{% elif msg in warn_msgs %}toastWarn{% else %}toastOk{% endif %}" role="status" aria-live="polite">
   <span class="toastIcon">{% if msg in error_msgs %}!{% elif msg in warn_msgs %}i{% else %}✓{% endif %}</span>
-  <span class="toastText">{% if msg=='cupo_completo' %}Cupo completo. La reserva pasa a lista de espera si corresponde.{% elif msg=='socio_requerido' %}Primero tenés que anotarte como socio titular para agregar invitados.{% elif msg=='duplicado' or msg=='dni_duplicado' %}Ese documento ya está cargado en esta salida.{% elif msg=='persona_ya_registrada' %}Esta persona ya figura en esta salida o está asignada a otro socio.{% elif msg=='socio_documento' %}Ese documento pertenece a un socio registrado. Debe anotarse como socio, no como invitado.{% elif msg=='hijo_menor_invalido' %}Revisá la fecha de nacimiento del menor para validar la condición reglamentaria.{% elif msg=='datos_invalidos' %}Revisá nombre, documento y tipo de participante.{% elif msg=='cancelado' %}Reserva actualizada. El lugar quedó liberado según corresponda.{% elif msg=='reserva_ok' %}Reserva registrada correctamente.{% elif msg=='invitado_ok' %}Invitado agregado correctamente.{% elif msg=='reactivado' %}Reserva reincorporada correctamente.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa.{% elif msg=='lista_espera_ok' %}Te anotamos en lista de espera. Se activa automáticamente si se libera una vacante.{% elif msg=='socio_prioridad_ok' %}Reserva registrada por prioridad de socio.{% else %}Operación registrada.{% endif %}</span><button type="button" class="toastClose" aria-label="Cerrar aviso">×</button>
+  <span class="toastText">{% if msg=='cupo_completo' %}Cupo completo. La reserva pasa a lista de espera si corresponde.{% elif msg=='socio_requerido' %}Primero tenés que anotarte como socio titular para agregar invitados.{% elif msg=='duplicado' or msg=='dni_duplicado' %}Ese documento ya está cargado en esta salida.{% elif msg=='persona_ya_registrada' %}Esta persona ya figura en esta salida o está asignada a otro socio.{% elif msg=='socio_documento' %}Ese documento pertenece a un socio registrado. Debe anotarse como socio, no como invitado.{% elif msg=='hijo_menor_invalido' %}Revisá la fecha de nacimiento del menor para validar la condición reglamentaria.{% elif msg=='datos_invalidos' %}Revisá nombre, documento y tipo de participante.{% elif msg=='cancelado' %}Reserva actualizada. El lugar quedó liberado según corresponda.{% elif msg=='reserva_ok' %}Reserva registrada correctamente.{% elif msg=='invitado_ok' %}Invitado agregado correctamente.{% elif msg=='invitado_eliminado' %}Invitado eliminado correctamente. El resto de la reserva se mantiene sin cambios.{% elif msg=='reactivado' %}Reserva reincorporada correctamente.{% elif msg=='ya_anotado' %}Esa reserva ya estaba activa.{% elif msg=='lista_espera_ok' %}Te anotamos en lista de espera. Se activa automáticamente si se libera una vacante.{% elif msg=='socio_prioridad_ok' %}Reserva registrada por prioridad de socio.{% else %}Operación registrada.{% endif %}</span><button type="button" class="toastClose" aria-label="Cerrar aviso">×</button>
 </div>
 {% endif %}
 
@@ -249,15 +274,15 @@ document.addEventListener('DOMContentLoaded', function(){
         {% elif closed %}
           <span class="pill neutral">🔒 Cerrado</span>
         {% elif v.waitlisted %}
-          <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123"><form method="post" action="/socio/cancel_guest/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123" type="submit">Salir de espera</button></form></div></details>
+          <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123"><form method="post" action="/socio/cancel/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123" type="submit">Salir de espera</button></form></div></details>
         {% elif v.active %}
           <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123">
             <details class="guestSubmenuV123"><summary>Editar datos</summary><form method="post" action="/socio/update_guest/{{r.id}}" class="gridForm premiumForm guestEditFormV123"><input type="hidden" name="outing_id" value="{{outing.id}}"><input class="input" name="name" value="{{r.person_name}}" placeholder="Nombre y apellido"><input class="input" name="dni" value="{{r.dni}}" placeholder="DNI / documento"><select name="kind" class="input"><option value="invitado" {% if r.kind=='invitado' %}selected{% endif %}>Invitado</option><option value="hijo_menor" {% if r.kind=='hijo_menor' %}selected{% endif %}>Hijo menor</option></select><input class="input" type="date" name="birth_date" value="{{r.birth_date or ''}}"><button class="menuActionV123 primary" type="submit">Guardar corrección</button></form></details>
             {% if user.can_manage_protocolar %}<form method="post" action="/socio/protocolar/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}">{% if v.protocolar %}<input type="hidden" name="remove" value="1"><button class="menuActionV123" type="submit">Quitar institucional</button>{% else %}<input type="hidden" name="protocolar_reason" value="Autorizado por Comisión Fjord VI"><button class="menuActionV123" type="submit">Marcar institucional</button>{% endif %}</form>{% endif %}
-            <form method="post" action="/socio/cancel_guest/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 danger" type="submit" onclick="return confirm('{% if cutoff %}Esta salida ya está dentro de las 48 horas previas. La baja registra una reserva incumplida con cargo reglamentario. Confirmar?{% else %}Eliminar este invitado de la reserva?{% endif %}');">{% if cutoff %}Registrar reserva incumplida{% else %}Eliminar invitado{% endif %}</button></form>
+            <form method="post" action="/socio/remove_guest/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 danger" type="submit" onclick="return confirm('{% if cutoff %}Esta salida ya está dentro de las 48 horas previas. La baja registra una reserva incumplida con cargo reglamentario solo para este invitado. Confirmar?{% else %}Eliminar solo este invitado de la reserva?{% endif %}');">{% if cutoff %}Registrar reserva incumplida{% else %}Eliminar invitado{% endif %}</button></form><button type="button" class="menuActionV123 ghost guestMenuCloseV1">Cerrar</button>
           </div></details>
         {% else %}
-          <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123"><form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 primary" type="submit">Reincorporar</button></form></div></details>
+          <details class="guestMenuV123"><summary aria-label="Acciones del invitado">⋯</summary><div class="guestMenuPanelV123"><form method="post" action="/socio/reactivate/{{r.id}}"><input type="hidden" name="outing_id" value="{{outing.id}}"><button class="menuActionV123 primary" type="submit">Reincorporar</button></form><button type="button" class="menuActionV123 ghost guestMenuCloseV1">Cerrar</button></div></details>
         {% endif %}
       </div>
     </div>
