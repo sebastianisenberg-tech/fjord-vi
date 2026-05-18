@@ -1,3 +1,10 @@
+
+## 3.9.0-OPERATIONAL-RC1H
+
+- Hardening mínimo de comunicaciones: agrega loop periódico daemon para procesar cola SMTP vencida automáticamente en Render.
+- Cambia el disparo automático por request a thread daemon propio para no depender sólo de Starlette BackgroundTask.
+- No toca motor de reservas, Socio, Capitán, cierres, PDFs ni lógica reglamentaria.
+
 # Fjord VI 3.8.6 RC2
 
 - Hardening de cola SMTP: reintento manual sólo para estados fallidos o expirados.

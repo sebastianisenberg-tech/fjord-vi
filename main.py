@@ -46,7 +46,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1G"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1H"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -2916,15 +2916,88 @@ def run_communications_auto_worker(trigger_path: str = "") -> dict:
             pass
 
 
-def attach_communications_background_worker(response: Response, path: str):
-    """Adjunta el worker después de enviar la respuesta al navegador.
+COMMUNICATIONS_PERIODIC_THREAD_STARTED = False
 
-    Si la respuesta ya trae BackgroundTask propio, no lo reemplaza para no
-    interferir con otras funciones.
+def communications_periodic_loop_seconds() -> int:
+    raw = os.getenv("COMMUNICATIONS_AUTO_LOOP_SECONDS", "60")
+    try:
+        seconds = int(str(raw).strip())
+    except Exception:
+        seconds = 60
+    return max(15, min(seconds, 900))
+
+def communications_periodic_worker_loop():
+    """Loop autónomo para Render.
+
+    Garantiza que los pendientes vencidos salgan aunque no haya clicks en
+    Administración. El procesamiento mantiene tandas chicas y lock de proceso;
+    no toca reservas ni UI.
+    """
+    while True:
+        try:
+            run_communications_auto_worker("periodic_loop")
+        except Exception as e:
+            try:
+                set_system_meta("communications_last_auto_error", f"periodic_loop: {type(e).__name__}: {str(e)[:300]}")
+            except Exception:
+                pass
+        time.sleep(communications_periodic_loop_seconds())
+
+@app.on_event("startup")
+def start_communications_periodic_worker():
+    global COMMUNICATIONS_PERIODIC_THREAD_STARTED
+    if COMMUNICATIONS_PERIODIC_THREAD_STARTED:
+        return
+    COMMUNICATIONS_PERIODIC_THREAD_STARTED = True
+    try:
+        t = threading.Thread(
+            target=communications_periodic_worker_loop,
+            daemon=True,
+            name="fjord-communications-periodic-loop",
+        )
+        t.start()
+        set_system_meta("communications_periodic_worker", "started")
+    except Exception as e:
+        try:
+            set_system_meta("communications_last_auto_error", f"periodic_start_failed: {type(e).__name__}: {str(e)[:300]}")
+        except Exception:
+            pass
+
+
+def trigger_communications_auto_worker_async(path: str = "") -> bool:
+    """Dispara el procesador automático sin bloquear Socio ni Capitán.
+
+    Usa un thread daemon muy chico para no depender de BackgroundTask de
+    Starlette/Render. El propio worker aplica lock, throttle e idempotencia de
+    cola, por lo que este disparo es seguro aunque entren varios requests.
     """
     try:
-        if getattr(response, "background", None) is None:
-            response.background = BackgroundTask(run_communications_auto_worker, path)
+        t = threading.Thread(
+            target=run_communications_auto_worker,
+            args=(path or "http",),
+            daemon=True,
+            name="fjord-communications-auto-worker",
+        )
+        t.start()
+        return True
+    except Exception as e:
+        try:
+            set_system_meta("communications_last_auto_error", f"thread_start_failed: {type(e).__name__}: {str(e)[:200]}")
+        except Exception:
+            pass
+        return False
+
+
+def attach_communications_background_worker(response: Response, path: str):
+    """Dispara el worker después de preparar la respuesta.
+
+    RC1H: se usa thread daemon propio en vez de confiar sólo en
+    response.background, porque en Render puede no ejecutarse cuando la
+    respuesta ya trae una tarea de fondo o según el ciclo ASGI. No toca la
+    operación: sólo procesa emails ya vencidos en tandas chicas.
+    """
+    try:
+        trigger_communications_auto_worker_async(path)
     except Exception:
         pass
 
