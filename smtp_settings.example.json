@@ -16,6 +16,6 @@
   "smtp_test_recipient_email": "sebastianisenberg@gmail.com",
   "smtp_force_redirect_in_test": true,
   "smtp_block_real_recipients_in_test": true,
-  "smtp_test_prefix_subject": true,
+  "smtp_test_prefix_subject": false,
   "smtp_show_test_banner": true
 }

@@ -44,7 +44,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1C"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1D"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -2418,10 +2418,14 @@ def effective_email_recipient(db: Session, recipient_email: str) -> tuple[str, s
     return original, effective, test_mode
 
 def decorate_smtp_subject(db: Session, subject: str) -> str:
-    subject = (subject or "").strip()
-    if smtp_test_mode_enabled(db) and not subject.startswith("[TEST"):
-        return "[TEST] " + subject
-    return subject
+    """Devuelve el asunto final de producción.
+
+    En modo prueba NO se antepone [TEST], porque Administración necesita ver
+    exactamente el asunto que recibirá el socio/capitán/admin cuando el envío
+    quede habilitado. La advertencia de QA queda exclusivamente en el pie del
+    cuerpo del email y en la auditoría interna.
+    """
+    return (subject or "").strip()
 
 
 def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: str, event_key: str = "") -> str:
@@ -2439,14 +2443,16 @@ def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: s
     footer_lines = [
         "",
         "---",
-        "Modo prueba Fjord VI: este correo fue redirigido al receptor de pruebas.",
-        "El cuerpo anterior es el texto real que recibiría el destinatario cuando se desactive el modo prueba.",
+        "Modo prueba QA",
+        "El mensaje anterior es el texto real de producción.",
     ]
     if original_to:
         footer_lines.append(f"Destinatario real previsto: {original_to}")
     if effective_to and effective_to != original_to:
         footer_lines.append(f"Recibido ahora por prueba: {effective_to}")
-    footer_lines.append("Ningún socio real recibió este mensaje.")
+    if event_key:
+        footer_lines.append(f"Evento técnico: {event_key}")
+    footer_lines.append("Ningún socio real recibió este mensaje mientras el modo prueba esté activo.")
     return body.rstrip() + "\n" + "\n".join(footer_lines) + "\n"
 
 
