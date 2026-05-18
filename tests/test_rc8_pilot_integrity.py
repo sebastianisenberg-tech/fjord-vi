@@ -7,8 +7,8 @@ META = (ROOT / "software_metadata.json").read_text(encoding="utf-8")
 def test_rc8_version_label_is_unified_for_pilot():
     assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "3.9.0-OPERATIONAL-RC1"
     assert 'APP_VERSION = "3.9.0-OPERATIONAL-RC1"' in MAIN
-    assert 'APP_BUILD = "Fjord VI 3.9.0-OPERATIONAL-RC1"' in MAIN
-    assert 'RELEASE_LABEL = "Fjord VI · 3.9.0 Operational RC1"' in MAIN
+    assert 'APP_BUILD = APP_VERSION' in MAIN
+    assert 'RELEASE_LABEL = APP_VERSION' in MAIN
     assert '"release_stage": "OPERATIONAL_RC1"' in META
 
 
@@ -33,6 +33,6 @@ def test_rc8_waitlisted_responsible_blocks_active_guest():
 
 
 def test_rc8_system_release_check_exposes_pilot_controls():
-    assert 'RC8 · espera nunca facturable' in MAIN
-    assert 'RC8 · socio en espera con invitados' in MAIN
-    assert 'RC8 · cierre sin pendientes finales' in MAIN
+    assert 'RC1 · espera nunca facturable' in MAIN
+    assert 'RC1 · socio en espera con invitados' in MAIN
+    assert 'RC1 · cierre sin pendientes finales' in MAIN
