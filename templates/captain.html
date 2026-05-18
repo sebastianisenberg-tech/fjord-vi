@@ -84,6 +84,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', function(){
+    // RC9: Capitán opera con POST nativo para evitar bloqueos por fetch/303.
+    document.querySelectorAll('form').forEach(function(form){ form.dataset.noAjax='1'; });
     captainRestoreScroll();
     document.querySelectorAll('.captainMoreOpsV65 > summary').forEach(function(summary){
       summary.addEventListener('click', function(e){
@@ -94,7 +96,26 @@
     });
     document.addEventListener('submit', function(e){
       var f = e.target;
-      if(f && f.closest && f.closest('#captainOpsSheet')){ captainHandleOperationalSubmit(e, f); }
+      if(f && f.closest && f.closest('#captainOpsSheet')){
+        // Fallback defensivo: si el formulario se dispara por teclado o por el navegador,
+        // validamos pero dejamos POST nativo. El click principal se maneja abajo con submit nativo.
+        captainHandleOperationalSubmit(e, f);
+      }
+    }, true);
+
+    // RC9.2: acciones críticas dentro del panel inferior del Capitán.
+    // El contenido del panel se clona desde la fila; los listeners originales no viajan con cloneNode().
+    // Por eso el submit se gobierna acá, por delegación, y se manda con POST nativo para no quedar atrapado
+    // por AJAX, doble click guards o redirecciones 303 en Android/Render.
+    document.addEventListener('click', function(e){
+      var btn = e.target && e.target.closest ? e.target.closest('#captainOpsSheet button.capAction') : null;
+      if(!btn) return;
+      if(e.target.closest('[data-tip]')) return;
+      var form = btn.closest('form');
+      if(!form) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      captainSubmitOpsFormNative(form, btn);
     }, true);
     document.querySelectorAll('form').forEach(function(form){
       form.addEventListener('submit', function(e){
@@ -214,6 +235,12 @@
     content.innerHTML = '';
     if(body){
       content.appendChild(body.cloneNode(true));
+      var rowId = row && row.id ? row.id : '';
+      content.querySelectorAll('form').forEach(function(f){
+        f.dataset.noAjax = '1';
+        f.dataset.noLock = '1';
+        if(rowId) f.setAttribute('data-row-id', rowId);
+      });
     } else {
       content.innerHTML = '<div class="empty">No hay acciones disponibles.</div>';
     }
@@ -226,6 +253,44 @@
     var sheet = document.getElementById('captainOpsSheet');
     if(sheet){ sheet.classList.add('hidden'); sheet.setAttribute('aria-hidden','true'); }
     document.body.classList.remove('captainSheetOpen');
+  }
+
+  function captainSubmitOpsFormNative(form, btn){
+    if(!form || form.dataset.captainSubmitting === '1') return false;
+    var action = form.getAttribute('action') || '';
+    var absent = form.classList.contains('attendanceAbsentForm') || form.classList.contains('attendanceAbsentMenuForm') || action.indexOf('/Ausente') !== -1;
+    var noBoard = form.classList.contains('attendanceNoBoardForm') || form.classList.contains('attendanceNoBoardMenuForm') || action.indexOf('/No%20embarca') !== -1 || action.indexOf('/No embarca') !== -1;
+    var reassign = form.classList.contains('reassignGuestForm');
+    if(reassign){
+      var sel = form.querySelector('select[name="new_responsible_user_id"], input[name="new_responsible_user_id"]');
+      if(!sel || !sel.value){ captainToast('Elegí un socio presente para reasignar.', 'warning'); return false; }
+      if(!confirm('Confirmar reasignación del invitado al nuevo socio responsable?')) return false;
+    }
+    if(absent && !confirm('Confirmar NO EMBARCÓ? Esta acción genera cargo reglamentario.')) return false;
+    if(noBoard){
+      if(!confirm('Confirmar NO EMBARCA / SIN CARGO? Usar solo por decisión operativa del capitán.')) return false;
+      var reason = prompt('No embarca SIN CARGO. Esta acción libera plaza y no genera cargo reglamentario. Indicar motivo obligatorio:', 'Decisión operativa del capitán');
+      reason = (reason || '').trim();
+      if(!reason){ captainToast('Motivo requerido para registrar sin cargo.', 'warning'); return false; }
+      var input = form.querySelector('input[name="no_board_reason"]');
+      if(!input){
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'no_board_reason';
+        form.appendChild(input);
+      }
+      input.value = reason;
+    }
+    try {
+      var rowId = form.getAttribute('data-row-id') || '';
+      if(rowId){ captainRememberScroll({id: rowId}); }
+    } catch(e) {}
+    form.dataset.captainSubmitting = '1';
+    form.dataset.noAjax = '1';
+    form.dataset.noLock = '1';
+    if(btn){ btn.disabled = true; btn.classList.add('disabledBtn'); btn.textContent = 'Procesando...'; }
+    HTMLFormElement.prototype.submit.call(form);
+    return true;
   }
 
   function captainHandleOperationalSubmit(e, form){
