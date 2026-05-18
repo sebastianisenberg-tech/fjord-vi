@@ -44,7 +44,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1B"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -344,7 +344,7 @@ class NotificationLog(Base):
 
 COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada al socio',
                               'description': 'Email al socio cuando su lugar queda confirmado dentro del cupo.',
-                              'subject': 'Reserva confirmada · {{salida_nombre}} · {{fecha}}',
+                              'subject': 'Reserva confirmada · {{salida_nombre}}',
                               'body': 'Hola {{socio_nombre}},\n'
                                       '\n'
                                       'Tu reserva para {{salida_nombre}} quedó confirmada.\n'
@@ -357,10 +357,10 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                       'posible. Las bajas dentro de las 48 horas previas pueden generar cargo '
                                       'reglamentario.\n'
                                       '\n'
-                                      '{{club_nombre}} · {{app_name}}'},
+                                      'YCA · Fjord VI'},
  'reserva_en_espera_socio': {'name': 'Reserva en lista de espera',
                              'description': 'Email al socio cuando queda en lista de espera.',
-                             'subject': 'Reserva en espera · {{salida_nombre}} · {{fecha}}',
+                             'subject': 'Reserva en espera · {{salida_nombre}}',
                              'body': 'Hola {{socio_nombre}},\n'
                                      '\n'
                                      'Tu solicitud para {{salida_nombre}} quedó registrada en lista de espera.\n'
@@ -370,9 +370,9 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                      'Estado: {{estado}}\n'
                                      '\n'
                                      'Si se libera una plaza y te corresponde por prioridad u orden de espera, el '
-                                     'sistema actualizará tu estado y te avisará.\n'
+                                     'sistema actualizará tu estado.\n'
                                      '\n'
-                                     '{{club_nombre}} · {{app_name}}'},
+                                     'YCA · Fjord VI'},
  'reserva_promovida_socio': {'name': 'Reserva promovida desde espera',
                              'description': 'Email al socio cuando pasa de lista de espera a lugar confirmado.',
                              'subject': 'Tu reserva fue confirmada · {{salida_nombre}}',
@@ -385,7 +385,7 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                      'Hora: {{hora}}\n'
                                      'Estado: Confirmada\n'
                                      '\n'
-                                     '{{club_nombre}} · {{app_name}}'},
+                                     'YCA · Fjord VI'},
  'invitado_agregado_socio': {'name': 'Invitado registrado',
                              'description': 'Email al socio cuando registra un invitado o hijo menor no socio.',
                              'subject': 'Invitado registrado · {{salida_nombre}}',
@@ -396,14 +396,16 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                      'Fecha: {{fecha}}\n'
                                      'Hora: {{hora}}\n'
                                      'Estado: {{estado}}\n'
+                                     'Registrado por: {{actor}}\n'
+                                     'Momento de registro: {{momento_operativo}}\n'
                                      '\n'
                                      'Resumen operativo actual de tus invitados asociados:\n'
                                      '{{resumen_invitados}}\n'
                                      '\n'
                                      'Recordá que los invitados embarcan bajo responsabilidad del socio titular y '
-                                     'quedan sujetos al cupo, a la prioridad reglamentaria y a las reglas operativas de la salida.\n'
+                                     'quedan sujetos al cupo y al reglamento de la salida.\n'
                                      '\n'
-                                     '{{club_nombre}} · {{app_name}}'},
+                                     'YCA · Fjord VI'},
  'invitado_en_espera_socio': {'name': 'Invitado en lista de espera',
                               'description': 'Email al socio cuando un invitado queda en espera por cupo completo.',
                               'subject': 'Invitado en espera · {{salida_nombre}}',
@@ -414,18 +416,20 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                       '\n'
                                       'Fecha: {{fecha}}\n'
                                       'Hora: {{hora}}\n'
+                                      'Registrado por: {{actor}}\n'
+                                      'Momento de registro: {{momento_operativo}}\n'
                                       '\n'
                                       'Resumen operativo actual de tus invitados asociados:\n'
                                       '{{resumen_invitados}}\n'
                                       '\n'
-                                      'Si se libera una vacante y corresponde activarlo, el sistema actualizará el '
+                                      'Si se libera una plaza y corresponde activarlo, el sistema actualizará su '
                                       'estado.\n'
                                       '\n'
-                                      '{{club_nombre}} · {{app_name}}'},
+                                      'YCA · Fjord VI'},
  'invitado_desplazado_socio': {'name': 'Invitado desplazado por prioridad',
                                'description': 'Email al socio cuando un invitado pasa a espera por prioridad de socio '
                                               'antes del corte de 48 horas.',
-                               'subject': 'Cambio de estado de invitado · {{salida_nombre}}',
+                               'subject': 'Cambio en invitado · {{salida_nombre}}',
                                'body': 'Hola {{socio_nombre}},\n'
                                        '\n'
                                        'Por prioridad reglamentaria de socios antes del corte de 48 horas, '
@@ -434,10 +438,9 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                        'Fecha: {{fecha}}\n'
                                        'Hora: {{hora}}\n'
                                        '\n'
-                                       'Si luego se libera una vacante, podrá volver a ser activado según '
-                                       'corresponda.\n'
+                                       'Si luego se libera una plaza, podrá volver a quedar activo según corresponda.\n'
                                        '\n'
-                                       '{{club_nombre}} · {{app_name}}'},
+                                       'YCA · Fjord VI'},
  'cancelacion_socio': {'name': 'Cancelación registrada',
                        'description': 'Email al socio cuando cancela una reserva propia o de un invitado.',
                        'subject': 'Cancelación registrada · {{salida_nombre}}',
@@ -448,11 +451,10 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                'Fecha: {{fecha}}\n'
                                'Hora: {{hora}}\n'
                                'Cargo informado: {{importe}}\n'
-                               'Motivo operativo: {{motivo_cancelacion}}\n'
                                '\n'
                                '{{mensaje_cargo}}\n'
                                '\n'
-                               '{{club_nombre}} · {{app_name}}'},
+                               'YCA · Fjord VI'},
  'cancelacion_con_cargo_socio': {'name': 'Cancelación con cargo',
                                  'description': 'Email específico para bajas dentro de las 48 horas con cargo '
                                                 'reglamentario.',
@@ -469,14 +471,14 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                          'El cargo se informa porque la plaza permaneció ocupada dentro del período en '
                                          'que ya no puede liberarse normalmente para otro socio.\n'
                                          '\n'
-                                         '{{club_nombre}} · {{app_name}}'},
+                                         'YCA · Fjord VI'},
  'salida_reprogramada_socio': {'name': 'Salida reprogramada',
                                'description': 'Email a los socios afectados cuando Administración cambia fecha u '
                                               'horario de una salida.',
                                'subject': 'Salida reprogramada · {{salida_nombre}}',
                                'body': 'Hola {{socio_nombre}},\n'
                                        '\n'
-                                       'La salida {{salida_nombre}} fue reprogramada por Administración.\n'
+                                       'La salida {{salida_nombre}} fue reprogramada.\n'
                                        '\n'
                                        'Nueva fecha: {{fecha}}\n'
                                        'Nueva hora: {{hora}}\n'
@@ -484,54 +486,51 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                        '\n'
                                        'Por favor revisá tu reserva y la de tus invitados asociados.\n'
                                        '\n'
-                                       '{{club_nombre}} · {{app_name}}'},
- 'salida_cancelada_socio': {'name': 'Salida cancelada por capitán',
-                            'description': 'Email a los socios cuando el capitán cancela una salida.',
+                                       'YCA · Fjord VI'},
+ 'salida_cancelada_socio': {'name': 'Salida cancelada',
+                            'description': 'Email a los socios afectados cuando una salida se cancela.',
                             'subject': 'Salida cancelada · {{salida_nombre}}',
                             'body': 'Hola {{socio_nombre}},\n'
                                     '\n'
-                                    'La salida {{salida_nombre}} fue cancelada por el capitán.\n'
+                                    'La salida {{salida_nombre}} fue cancelada.\n'
                                     '\n'
-                                    'Fecha prevista: {{fecha}}\n'
-                                    'Hora prevista: {{hora}}\n'
+                                    'Fecha: {{fecha}}\n'
+                                    'Hora: {{hora}}\n'
+                                    'Motivo: {{motivo_cancelacion}}\n'
                                     '\n'
-                                    'No se generan cargos por la cancelación operativa de la salida.\n'
+                                    'No se generarán cargos por esta salida cancelada.\n'
                                     '\n'
-                                    '{{club_nombre}} · {{app_name}}'},
- 'embarque_estado_socio': {'name': 'Estado de embarque actualizado',
-                           'description': 'Email al socio cuando cambia su estado de embarque o el de una persona '
-                                          'asociada.',
-                           'subject': 'Actualización operativa de embarque · {{salida_nombre}}',
+                                    'YCA · Fjord VI'},
+ 'embarque_estado_socio': {'name': 'Actualización de embarque',
+                           'description': 'Email al socio cuando Capitán registra una novedad operativa de embarque.',
+                           'subject': 'Actualización de embarque · {{salida_nombre}}',
                            'body': 'Hola {{socio_nombre}},\n'
                                    '\n'
-                                   'Se actualizó el estado operativo de embarque de {{persona_nombre}} para {{salida_nombre}}.\n'
+                                   'Se registró una actualización de embarque para {{persona_nombre}} en '
+                                   '{{salida_nombre}}.\n'
                                    '\n'
-                                   'Estado: {{estado}}\n'
                                    'Fecha: {{fecha}}\n'
                                    'Hora: {{hora}}\n'
-                                   'Registrado por: {{actor}}\n'
-                                   'Momento de registro: {{momento_operativo}}\n'
-                                   '\n'
+                                   'Estado: {{estado}}\n'
                                    '{{mensaje_embarque}}\n'
                                    '\n'
-                                   'Este aviso operativo se consolida con una ventana corta para evitar mensajes repetidos durante correcciones de embarque.\n'
-                                   '\n'
-                                   '{{club_nombre}} · {{app_name}}'},
- 'salida_cerrada_socio': {'name': 'Salida cerrada para socio (legado)',
+                                   'YCA · Fjord VI'},
+ 'salida_cerrada_socio': {'name': 'Salida cerrada para socio',
                           'description': 'Evento legado. Para producción usar resumen_cierre_socio diferido.',
-                          'subject': 'Resumen de salida · {{salida_nombre}} · {{fecha}}',
+                          'subject': 'Resumen de salida · {{salida_nombre}}',
                           'body': 'Hola {{socio_nombre}},\n'
                                   '\n'
                                   'La salida {{salida_nombre}} fue cerrada.\n'
                                   '\n'
                                   'Fecha: {{fecha}}\n'
                                   'Hora: {{hora}}\n'
+                                  '\n'
                                   'Detalle asociado a tu reserva:\n'
                                   '{{detalle_cargos}}\n'
                                   '\n'
                                   'Total informado: {{total_socio}}\n'
                                   '\n'
-                                  '{{club_nombre}} · {{app_name}}'},
+                                  'YCA · Fjord VI'},
  'salida_cerrada_admin': {'name': 'Salida cerrada para administración',
                           'description': 'Email a Administración cuando el capitán cierra la salida y genera ficha.',
                           'subject': 'Salida cerrada · {{salida_nombre}} · Ficha {{ficha_numero}}',
@@ -545,14 +544,14 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                   '\n'
                                   'Ver ficha: {{link_ficha}}\n'
                                   '\n'
-                                  '{{club_nombre}} · {{app_name}}'},
-
+                                  'YCA · Fjord VI'},
  'resumen_cierre_socio': {'name': 'Resumen consolidado del socio',
-                          'description': 'Email diferido al socio responsable con su liquidación individual; no incluye datos de otros socios.',
-                          'subject': 'Resumen consolidado · {{salida_nombre}} · {{fecha}}',
+                          'description': 'Email diferido al socio responsable con su liquidación individual; no '
+                                         'incluye datos de otros socios.',
+                          'subject': 'Resumen de tu salida · {{salida_nombre}}',
                           'body': 'Hola {{socio_nombre}},\n'
                                   '\n'
-                                  'Te enviamos el resumen consolidado de tu participación en {{salida_nombre}}.\n'
+                                  'Te enviamos el resumen de tu participación en {{salida_nombre}}.\n'
                                   '\n'
                                   'Ficha vigente: {{ficha_numero}}\n'
                                   'Liquidación: {{liquidation_id}}\n'
@@ -566,13 +565,13 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                   '\n'
                                   'Este resumen sólo incluye tus movimientos y los de tus invitados asociados.\n'
                                   '\n'
-                                  '{{club_nombre}} · {{app_name}}'},
+                                  'YCA · Fjord VI'},
  'cierre_liquidacion_admin': {'name': 'Liquidación consolidada Administración',
                               'description': 'Email diferido a Administración con el consolidado global de la salida.',
                               'subject': 'Liquidación consolidada · {{salida_nombre}} · {{ficha_numero}}',
                               'body': 'Administración,\n'
                                       '\n'
-                                      'La liquidación consolidada de {{salida_nombre}} quedó estable y vigente.\n'
+                                      'La liquidación consolidada de {{salida_nombre}} quedó vigente.\n'
                                       '\n'
                                       'Ficha: {{ficha_numero}}\n'
                                       'Liquidación: {{liquidation_id}}\n'
@@ -581,7 +580,7 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                       '\n'
                                       'Ver ficha: {{link_ficha}}\n'
                                       '\n'
-                                      '{{club_nombre}} · {{app_name}}'},
+                                      'YCA · Fjord VI'},
  'recordatorio_24h_socio': {'name': 'Recordatorio 24h al socio',
                             'description': 'Email automático al socio responsable 24 horas antes de la salida.',
                             'subject': 'Recordatorio · {{salida_nombre}} · {{fecha}} {{hora}}',
@@ -597,14 +596,15 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                     '\n'
                                     'Punto de encuentro: {{punto_encuentro}}\n'
                                     '\n'
-                                    '{{club_nombre}} · {{app_name}}'},
+                                    'YCA · Fjord VI'},
  'no_show_cargo_socio': {'name': 'Reserva incumplida / cargo al socio',
                          'description': 'Email al socio responsable cuando el cierre genera cargo por reserva '
                                         'incumplida propia o de invitados.',
-                         'subject': 'Reserva incumplida · {{salida_nombre}} · {{fecha}}',
+                         'subject': 'Reserva incumplida · {{salida_nombre}}',
                          'body': 'Hola {{socio_nombre}},\n'
                                  '\n'
-                                 'Se registró una reserva incumplida con cargo reglamentario asociada a tu reserva en {{salida_nombre}}.\n'
+                                 'Se registró una reserva incumplida con cargo reglamentario asociada a tu reserva en '
+                                 '{{salida_nombre}}.\n'
                                  '\n'
                                  'Detalle:\n'
                                  '{{detalle_cargos}}\n'
@@ -613,13 +613,15 @@ COMMUNICATION_EVENTS = {'reserva_confirmada_socio': {'name': 'Reserva confirmada
                                  '\n'
                                  'Ficha: {{link_ficha}}\n'
                                  '\n'
-                                 '{{club_nombre}} · {{app_name}}'},
+                                 'YCA · Fjord VI'},
  'email_prueba': {'name': 'Email de prueba',
                   'description': 'Prueba manual de SMTP desde Administración.',
-                  'subject': 'Prueba de comunicaciones · {{app_name}} {{version}}',
-                  'body': 'Este es un email de prueba enviado desde {{app_name}} {{version}}.\n'
+                  'subject': 'Prueba de comunicaciones · Fjord VI',
+                  'body': 'Este es un email de prueba enviado desde Fjord VI.\n'
                           '\n'
-                          'Si recibiste este mensaje, SMTP está funcionando.'}}
+                          'Si recibiste este mensaje, SMTP está funcionando correctamente.\n'
+                          '\n'
+                          'YCA · Fjord VI'}}
 
 def normalize_email_text(value) -> str:
     """Normaliza texto para emails: convierte escapes literales y sanea listas simples."""
@@ -2427,13 +2429,8 @@ def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: s
     if not smtp_test_mode_enabled(db):
         return body
     notice = (
-        "MODO PRUEBA SMTP ACTIVO\n"
-        f"Evento interno: {event_key or '-'}\n"
-        f"Fecha/hora test: {now_local().strftime('%d/%m/%Y %H:%M')}\n"
-        f"Destinatario original: {original_to or '-'}\n"
-        f"Redirigido a: {effective_to or '-'}\n"
-        "Entorno: TEST / QA controlado\n"
-        "Ningún socio real recibe este correo mientras el modo prueba esté activo.\n\n"
+        "Modo prueba: este correo fue redirigido al receptor de pruebas. "
+        "Ningún socio real recibe este mensaje mientras el modo prueba esté activo.\n\n"
     )
     return notice + body
 

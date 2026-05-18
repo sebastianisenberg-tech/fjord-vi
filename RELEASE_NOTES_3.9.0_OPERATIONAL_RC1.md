@@ -1,4 +1,4 @@
-# Fjord VI 3.9.0-OPERATIONAL-RC1
+# Fjord VI 3.9.0-OPERATIONAL-RC1B
 
 Primera candidata operativa para pruebas controladas con socios.
 

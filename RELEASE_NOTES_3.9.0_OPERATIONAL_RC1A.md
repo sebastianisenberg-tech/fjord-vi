@@ -1,6 +1,6 @@
-# Fjord VI 3.9.0-OPERATIONAL-RC1A
+# Fjord VI 3.9.0-OPERATIONAL-RC1BB
 
-Release de corrección focalizada sobre 3.9.0-OPERATIONAL-RC1.
+Release de corrección focalizada sobre 3.9.0-OPERATIONAL-RC1B.
 
 ## Objetivo
 
@@ -11,9 +11,9 @@ Corregir dos flancos detectados durante el test operativo:
 
 ## Cambios
 
-- `APP_VERSION`, `APP_BUILD` y `RELEASE_LABEL` quedan unificados exactamente como `3.9.0-OPERATIONAL-RC1`.
+- `APP_VERSION`, `APP_BUILD` y `RELEASE_LABEL` quedan unificados exactamente como `3.9.0-OPERATIONAL-RC1B`.
 - Release check ahora valida igualdad exacta entre las tres fuentes de versión.
-- Comunicaciones deja de mostrar `SMTP · RC8` y muestra `SMTP · 3.9.0-OPERATIONAL-RC1`.
+- Comunicaciones deja de mostrar `SMTP · RC8` y muestra `SMTP · 3.9.0-OPERATIONAL-RC1B`.
 - Corrección de textos visibles de release check que todavía mencionaban RC8.
 - SMTP fuerza conexión IPv4 para evitar fallos de salida por IPv6 sin ruta en el contenedor.
 - Diagnóstico SMTP ahora agrega explicación operativa cuando falla por red, timeout, autenticación o host inválido.
