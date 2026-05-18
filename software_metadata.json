@@ -1,5 +1,5 @@
 {
-  "version": "3.9.0-OPERATIONAL-RC1D",
+  "version": "3.9.0-OPERATIONAL-RC1G",
   "release_label": "3.9.0-OPERATIONAL-RC1D",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
@@ -28,7 +28,7 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "3.9.0-OPERATIONAL-RC1D",
+  "release": "RC1G_SOCIO_EMAIL_OUTBOX",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "3.9.0-OPERATIONAL-RC1D: primera candidata operativa para test controlado con Socio, Capitán, cierre, ficha y PDF coherentes; SMTP desacoplado de acciones operativas.",
   "app_version": "3.9.0-OPERATIONAL-RC1D",

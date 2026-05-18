@@ -46,7 +46,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1F"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1G"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -1371,8 +1371,10 @@ def notification_event_policy(event_key: str) -> dict:
     policies = {
         "reserva_confirmada_socio": {"timing": "inmediato", "replaceable": False, "final": False},
         "reserva_en_espera_socio": {"timing": "inmediato", "replaceable": False, "final": False},
-        "invitado_agregado_socio": {"timing": "inmediato", "replaceable": False, "final": False},
-        "invitado_en_espera_socio": {"timing": "inmediato", "replaceable": False, "final": False},
+        "invitado_agregado_socio": {"timing": "diferido", "replaceable": True, "final": False},
+        "invitado_en_espera_socio": {"timing": "diferido", "replaceable": True, "final": False},
+        "cancelacion_socio": {"timing": "diferido", "replaceable": True, "final": False},
+        "cancelacion_con_cargo_socio": {"timing": "diferido", "replaceable": True, "final": False},
         "embarque_estado_socio": {"timing": "diferido", "replaceable": True, "final": False},
         "resumen_cierre_socio": {"timing": "diferido", "replaceable": True, "final": True},
         "cierre_liquidacion_admin": {"timing": "diferido", "replaceable": False, "final": True},
@@ -1713,7 +1715,7 @@ def smtp_liquidation_delay_hours(db: Session) -> int:
 
 
 CLOSING_NOTIFICATION_EVENTS = {"resumen_cierre_socio", "cierre_liquidacion_admin", "salida_cerrada_socio", "no_show_cargo_socio"}
-OPERATIONAL_DEBOUNCE_EVENTS = {"embarque_estado_socio"}
+OPERATIONAL_DEBOUNCE_EVENTS = {"embarque_estado_socio", "invitado_agregado_socio", "invitado_en_espera_socio", "cancelacion_socio", "cancelacion_con_cargo_socio"}
 
 def smtp_operational_debounce_minutes(db: Session) -> int:
     """Ventana corta de estabilización para avisos operativos del capitán."""
@@ -1723,6 +1725,61 @@ def smtp_operational_debounce_minutes(db: Session) -> int:
     except Exception:
         value = 10
     return max(0, min(value, 60))
+
+def _outing_email_payload(outing: Outing, user: User, extra: Optional[dict] = None) -> dict:
+    payload = {
+        "outing_id": outing.id,
+        "responsible_user_id": user.id,
+        "socio_nombre": user.name,
+        "salida_nombre": outing.title,
+        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
+        "hora": outing.departure_at.strftime("%H:%M"),
+        "actor": user.name,
+        "momento_operativo": now_local().strftime("%d/%m/%Y %H:%M"),
+    }
+    payload.update(extra or {})
+    return payload
+
+def queue_socio_operational_email(
+    db: Session,
+    event_key: str,
+    user: User,
+    outing: Outing,
+    extra: Optional[dict] = None,
+    *,
+    delay_minutes: Optional[int] = None,
+    replace_pending: bool = True,
+) -> Optional[NotificationQueue]:
+    """Encola emails de Socio sin tocar SMTP ni bloquear por envío.
+
+    RC1G: restaura avisos operativos de Socio manteniendo el principio FAST_SOCIO:
+    el endpoint sólo inserta una fila liviana en notification_queue. No manda SMTP,
+    no recalcula liquidaciones, no toca Capitán ni PDFs. Los cambios menores de
+    invitado/menor se consolidan durante una ventana corta para evitar spam.
+    """
+    if not user or not normalize_email(getattr(user, "email", "")) or not outing:
+        return None
+    try:
+        if delay_minutes is None:
+            delay_minutes = smtp_operational_debounce_minutes(db) if event_key in OPERATIONAL_DEBOUNCE_EVENTS else 0
+        if replace_pending and event_key in OPERATIONAL_DEBOUNCE_EVENTS:
+            cancel_pending_operational_notifications_for_responsible(
+                db, outing.id, user.id, "Reemplazado por actualización de Socio más reciente"
+            )
+        payload = _outing_email_payload(outing, user, extra)
+        if "resumen_invitados" not in payload:
+            payload["resumen_invitados"] = guest_reservation_summary_for_email(db, outing.id, user.id)
+        scheduled_at = now_local() + timedelta(minutes=max(0, int(delay_minutes or 0)))
+        if delay_minutes == 0:
+            scheduled_at = now_local()
+        return queue_email(db, event_key, user.email, user.name, payload, scheduled_at=scheduled_at)
+    except Exception as e:
+        # La comunicación nunca debe romper la operación principal de Socio.
+        try:
+            APP_LOGGER.warning("socio_email_enqueue_failed", extra={"fjord_error": type(e).__name__, "event_key": event_key})
+        except Exception:
+            pass
+        return None
 
 def cancel_pending_operational_notifications_for_responsible(db: Session, outing_id: int, responsible_user_id: int, reason: str = "Reemplazado por actualización operativa más reciente") -> int:
     """Cancela avisos operativos pendientes del mismo socio/salida.
@@ -7806,14 +7863,15 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        # FAST_SOCIO: no encolar email sincrónico en alta de socio; la acción debe responder inmediato.
+        queue_socio_operational_email(db, "reserva_en_espera_socio", user, outing, {"estado": "Lista de espera"}, delay_minutes=0, replace_pending=False)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
+        queue_socio_operational_email(db, "reserva_confirmada_socio", user, outing, {"estado": "Confirmada con prioridad"}, delay_minutes=0, replace_pending=False)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
-    # FAST_SOCIO: no encolar email sincrónico en alta de socio; evita bloqueo de UI móvil.
+    queue_socio_operational_email(db, "reserva_confirmada_socio", user, outing, {"estado": "Confirmada"}, delay_minutes=0, replace_pending=False)
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
@@ -7911,7 +7969,11 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    # FAST_SOCIO: no encolar email sincrónico ni calcular resumen de invitados en alta; respuesta inmediata.
+    queue_socio_operational_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user, outing, {
+        "invitado_nombre": person_name,
+        "persona_nombre": person_name,
+        "estado": "Lista de espera" if guest_must_waitlist else ("Hijo menor de socio no socio" if kind == "hijo_menor" else "Registrado"),
+    })
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -8084,6 +8146,11 @@ async def socio_update_guest(
     r.birth_date = birth_date
     db.commit()
     audit_event(db, user, "corrige invitado", f"{before['name']} -> {person_name} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before, after={"name": r.person_name, "dni": r.dni, "kind": r.kind, "birth_date": r.birth_date or ""})
+    queue_socio_operational_email(db, "invitado_agregado_socio", user, outing, {
+        "invitado_nombre": person_name,
+        "persona_nombre": person_name,
+        "estado": "Datos actualizados",
+    })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=invitado_actualizado", status_code=303)
 
 
@@ -8122,6 +8189,11 @@ async def socio_replace_guest(
     db.commit()
     detail = f"{r.person_name} -> {new_name} / {outing.title} / cargo_anterior {old_charge}"
     audit_event(db, user, "reemplaza invitado", detail, request=request, outing_id=outing.id, reservation_id=new_guest.id, before={"replaced_reservation_id": r.id, "old_name": r.person_name, "old_dni": r.dni, "old_charge": float(old_charge or 0)}, after={"new_reservation_id": new_guest.id, "new_name": new_guest.person_name, "new_dni": new_guest.dni, "waitlisted": new_waitlisted, "promoted": promoted})
+    queue_socio_operational_email(db, "invitado_en_espera_socio" if new_waitlisted else "invitado_agregado_socio", user, outing, {
+        "invitado_nombre": new_guest.person_name,
+        "persona_nombre": new_guest.person_name,
+        "estado": "Lista de espera" if new_waitlisted else "Reemplazado / registrado",
+    })
     msg = "invitado_reemplazado_espera" if new_waitlisted else "invitado_reemplazado"
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={msg}", status_code=303)
 
@@ -8200,6 +8272,11 @@ def socio_delete_guest(rid: int, outing_id: Optional[int] = Form(None), db: Sess
     promoted = [] if is_waitlisted(r) else _socio_promote_waitlist_once(db, outing)
     db.commit()
     log(db, user.name, "elimina invitado", f"{r.person_name} / {outing.title} / cargo {charge} / promovidos {', '.join(promoted) if promoted else '-'}")
+    queue_socio_operational_email(db, "cancelacion_con_cargo_socio" if float(charge or 0) > 0 else "cancelacion_socio", user, outing, {
+        "persona_nombre": r.person_name,
+        "importe": "$ " + fmt_money(charge or 0),
+        "mensaje_cargo": "Baja registrada con cargo reglamentario." if float(charge or 0) > 0 else "Baja registrada sin cargo.",
+    })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 
@@ -8214,6 +8291,11 @@ def socio_leave_waitlist(rid: int, outing_id: Optional[int] = Form(None), db: Se
     _socio_cancel_one_reservation(db, outing, r, now=now, reason="Salida de lista de espera")
     db.commit()
     log(db, user.name, "sale de espera", f"{r.person_name} / {outing.title}")
+    queue_socio_operational_email(db, "cancelacion_socio", user, outing, {
+        "persona_nombre": r.person_name,
+        "importe": "$ 0",
+        "mensaje_cargo": "Salida de lista de espera registrada sin cargo.",
+    })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 
@@ -8248,7 +8330,11 @@ def socio_cancel_self(rid: int, outing_id: Optional[int] = Form(None), db: Sessi
     log(db, user.name, "cancela titular", f"{r.person_name} / {outing.title} / invitados {dep_count} / cargo_total {self_charge + dep_charge_total} / promovidos {', '.join(promoted) if promoted else '-'}")
     cargo = float(self_charge or 0)
     late_cancel = cargo > 0
-    # FAST_SOCIO: no encolar email sincrónico en cancelación de titular; evita esperas largas en móvil.
+    queue_socio_operational_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user, outing, {
+        "persona_nombre": r.person_name,
+        "importe": "$ " + fmt_money(self_charge + dep_charge_total),
+        "mensaje_cargo": "Baja registrada con cargo reglamentario." if late_cancel else "Baja registrada sin cargo.",
+    })
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
 
 
@@ -8279,11 +8365,14 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
         db.commit()
         if result == "waitlist":
             log(db, user.name, "lista de espera reactiva", f"{r.person_name} / {outing.title}")
+            queue_socio_operational_email(db, "reserva_en_espera_socio", user, outing, {"estado": "Lista de espera"}, delay_minutes=0, replace_pending=False)
             return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
         if result == "active_displaced":
             log(db, user.name, "reactiva socio con prioridad", f"{r.person_name} / {outing.title} / desplazado: {displaced_name}")
+            queue_socio_operational_email(db, "reserva_confirmada_socio", user, outing, {"estado": "Confirmada con prioridad"}, delay_minutes=0, replace_pending=False)
             return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
         log(db, user.name, "reactiva reserva", f"{r.person_name} / {outing.title}")
+        queue_socio_operational_email(db, "reserva_confirmada_socio", user, outing, {"estado": "Confirmada"}, delay_minutes=0, replace_pending=False)
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reactivado", status_code=303)
 
     if len(active) >= outing.max_crew:
