@@ -5,8 +5,8 @@ MAIN = (ROOT / "main.py").read_text(encoding="utf-8")
 
 
 def test_version_rc8_unified():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "3.9.0-OPERATIONAL-RC1B"
-    assert 'APP_VERSION = "3.9.0-OPERATIONAL-RC1B"' in MAIN
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "3.9.0-OPERATIONAL-RC1C"
+    assert 'APP_VERSION = "3.9.0-OPERATIONAL-RC1C"' in MAIN
     assert 'APP_BUILD = APP_VERSION' in MAIN
     assert 'RELEASE_LABEL = APP_VERSION' in MAIN
 
