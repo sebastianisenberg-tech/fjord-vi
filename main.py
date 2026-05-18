@@ -18,6 +18,8 @@ import zipfile
 import re
 from urllib.parse import parse_qs
 import smtplib
+import socket
+import ssl
 from email.message import EmailMessage
 from urllib.parse import urlparse
 from typing import Optional
@@ -87,8 +89,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI 3.9.0-OPERATIONAL-RC1"
-RELEASE_LABEL = "Fjord VI · 3.9.0 Operational RC1"
+APP_BUILD = APP_VERSION
+RELEASE_LABEL = APP_VERSION
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -739,6 +741,106 @@ def smtp_configured(settings: dict) -> bool:
     )
 
 
+
+class SMTPIPv4(smtplib.SMTP):
+    """SMTP con resolución IPv4 explícita.
+
+    Algunos entornos de hosting devuelven registros IPv6 para smtp.gmail.com
+    aunque el contenedor no tenga ruta IPv6. El síntoma típico es:
+    OSError: [Errno 101] Network is unreachable. Forzar AF_INET evita ese
+    falso bloqueo sin volver a acoplar Socio/Capitán al envío de emails.
+    """
+    def _get_socket(self, host, port, timeout):
+        if self.debuglevel > 0:
+            self._print_debug('connect IPv4 only:', (host, port))
+        last_error = None
+        for family, socktype, proto, canonname, sockaddr in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+            sock = None
+            try:
+                sock = socket.socket(family, socktype, proto)
+                if timeout is not None:
+                    sock.settimeout(timeout)
+                sock.connect(sockaddr)
+                return sock
+            except OSError as exc:
+                last_error = exc
+                try:
+                    if sock:
+                        sock.close()
+                except Exception:
+                    pass
+        if last_error:
+            raise last_error
+        raise OSError(f'No se pudo resolver IPv4 para {host}:{port}')
+
+
+def smtp_error_hint(exc: Exception) -> str:
+    """Traduce errores SMTP/red a una causa operativa accionable."""
+    msg = str(exc) or ''
+    if isinstance(exc, smtplib.SMTPAuthenticationError):
+        return 'Credenciales rechazadas. En Gmail usar App Password de 16 caracteres, 2FA activo, usuario completo y reiniciar Render si se cambiaron variables.'
+    if isinstance(exc, (socket.timeout, TimeoutError)) or 'timed out' in msg.lower():
+        return 'Timeout de red hacia SMTP. Revisar host/puerto, salida del hosting y probar puerto 587 STARTTLS.'
+    if isinstance(exc, OSError) and getattr(exc, 'errno', None) == 101:
+        return 'Red no alcanzable desde el servidor. Se fuerza IPv4 en esta versión; si persiste, el hosting/proveedor bloquea salida SMTP y conviene usar relay/API transaccional.'
+    if 'Network is unreachable' in msg:
+        return 'Red no alcanzable desde el servidor. Se fuerza IPv4 en esta versión; si persiste, el hosting/proveedor bloquea salida SMTP y conviene usar relay/API transaccional.'
+    if 'Name or service not known' in msg or 'nodename nor servname' in msg:
+        return 'Host SMTP no resuelve. Revisar SMTP_HOST, sin espacios ni comillas.'
+    if 'Connection refused' in msg:
+        return 'Conexión rechazada. Revisar puerto/SSL/TLS o bloqueo del proveedor.'
+    return 'Revisar configuración SMTP, variables Render y logs del proveedor.'
+
+
+def open_smtp_session(settings: dict, timeout: int = 25):
+    """Abre sesión SMTP sin depender de IPv6.
+
+    Política operacional: Socio y Capitán solo encolan; esta función se usa
+    desde validación/procesamiento de cola. Soporta 587 STARTTLS y 465 SSL.
+    """
+    host = (settings.get('host') or '').strip()
+    port = int(settings.get('port') or 587)
+    use_tls = str(settings.get('tls', '1')).lower() in ('1', 'true', 'yes', 'on')
+    if port == 465:
+        # SMTP_SSL no permite heredar _get_socket de SMTPIPv4 de forma simple;
+        # se abre socket IPv4 y luego se envuelve con SSL.
+        last_error = None
+        for family, socktype, proto, canonname, sockaddr in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+            raw_sock = None
+            try:
+                raw_sock = socket.socket(family, socktype, proto)
+                raw_sock.settimeout(timeout)
+                raw_sock.connect(sockaddr)
+                context = ssl.create_default_context()
+                ssl_sock = context.wrap_socket(raw_sock, server_hostname=host)
+                server = smtplib.SMTP_SSL(timeout=timeout)
+                server.sock = ssl_sock
+                server.file = None
+                server.helo_resp = None
+                server.ehlo_resp = None
+                server.esmtp_features = {}
+                server.does_esmtp = False
+                server._host = host
+                code, msg = server.getreply()
+                if code != 220:
+                    raise smtplib.SMTPConnectError(code, msg)
+                return server
+            except OSError as exc:
+                last_error = exc
+                try:
+                    if raw_sock:
+                        raw_sock.close()
+                except Exception:
+                    pass
+        if last_error:
+            raise last_error
+    server = SMTPIPv4(host, port, timeout=timeout)
+    server.ehlo()
+    if use_tls:
+        server.starttls()
+        server.ehlo()
+    return server
+
 def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
     settings = smtp_settings(db)
     if smtp_simulation_mode_enabled(db):
@@ -763,9 +865,7 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
         msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
         msg.set_content(body)
-        with smtplib.SMTP(settings["host"], port, timeout=20) as server:
-            if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
-                server.starttls()
+        with open_smtp_session(settings, timeout=20) as server:
             if settings.get("username"):
                 server.login(settings.get("username"), settings.get("password") or "")
             server.send_message(msg)
@@ -773,7 +873,7 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
             return True, f"enviado TEST a {effective_to}; original {original_to}"
         return True, "enviado"
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)[:300]}"
+        return False, f"{type(e).__name__}: {str(e)[:300]} | {smtp_error_hint(e)}"
 
 
 
@@ -1095,14 +1195,10 @@ def smtp_connection_probe(db: Session) -> tuple[bool, str]:
     except Exception:
         return False, "Puerto inválido: " + str(settings.get("port"))
     try:
-        with smtplib.SMTP(settings["host"], port, timeout=25) as server:
-            server.ehlo()
-            if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
-                server.starttls()
-                server.ehlo()
+        with open_smtp_session(settings, timeout=25) as server:
             if settings.get("username"):
                 server.login(settings.get("username"), settings.get("password") or "")
-        return True, "Conexión SMTP validada: host, TLS y autenticación OK"
+        return True, "Conexión SMTP validada: host, TLS/autenticación OK, salida de red OK"
     except smtplib.SMTPAuthenticationError as e:
         code = getattr(e, "smtp_code", "")
         raw = getattr(e, "smtp_error", b"")
@@ -1115,7 +1211,7 @@ def smtp_connection_probe(db: Session) -> tuple[bool, str]:
     except TimeoutError as e:
         return False, f"Timeout conectando SMTP: {e}"
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)[:300]}"
+        return False, f"{type(e).__name__}: {str(e)[:300]} | {smtp_error_hint(e)}"
 
 
 def smtp_readiness_summary(db: Session) -> dict:
@@ -1425,7 +1521,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · RC8",
+        "module_version": f"SMTP · {APP_VERSION}",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -3348,7 +3444,7 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Sin JSON técnico en raíz", True, "raíz protegida contra Method Not Allowed visible")
 
     # Versión y build
-    add("Versión unificada", VERSION == APP_VERSION and VERSION in RELEASE_LABEL and VERSION in APP_BUILD, f"{VERSION} / {APP_BUILD}")
+    add("Versión unificada", VERSION == APP_VERSION == APP_BUILD == RELEASE_LABEL, f"{VERSION} / {APP_BUILD} / {RELEASE_LABEL}")
 
     # Base de datos
     db_ok = True
@@ -3402,9 +3498,9 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
         APP_DIR / "tests" / "test_smtp_policy_385.py",
     ]
     add("Tests críticos de negocio", all(p.exists() for p in critical_tests), "reservas/espera/cierre/reapertura/SMTP/release")
-    add("RC8 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
-    add("RC8 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
-    add("RC8 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
+    add("RC1 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
+    add("RC1 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
+    add("RC1 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
     add("Script externo de release", (APP_DIR / "scripts" / "release_check.py").exists(), "python scripts/release_check.py")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
@@ -4258,7 +4354,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         {"ok": True, "name": "Sistema rápido", "detail": f"cache corto {SYSTEM_FAST_CACHE_SECONDS}s + checks diferidos"},
         {"ok": True, "name": "Seguridad base", "detail": "CSRF existente + headers básicos"},
         {"ok": True, "name": "Observabilidad liviana", "detail": "request-id + tiempo de respuesta"},
-        {"ok": True, "name": "Versión unificada", "detail": f"{VERSION} / {APP_BUILD}"},
+        {"ok": True, "name": "Versión unificada", "detail": f"{VERSION} / {APP_BUILD} / {RELEASE_LABEL}"},
     ]
     operational_rows = [
         {"ok": db_ok, "level": "ok" if db_ok else "bad", "area": "Infraestructura", "name": "Base de datos responde", "detail": db_engine_label()},

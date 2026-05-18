@@ -1,10 +1,10 @@
 {
   "version": "3.9.0-OPERATIONAL-RC1",
-  "release_label": "Fjord VI · 3.9.0 Operational RC1",
+  "release_label": "3.9.0-OPERATIONAL-RC1",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI 3.9.0-OPERATIONAL-RC1",
+  "app_build": "3.9.0-OPERATIONAL-RC1",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,7 +28,7 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "3.9.0 Operational RC1 - candidato operativo controlado",
+  "release": "3.9.0-OPERATIONAL-RC1",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "3.9.0-OPERATIONAL-RC1: primera candidata operativa para test controlado con Socio, Capitán, cierre, ficha y PDF coherentes; SMTP desacoplado de acciones operativas.",
   "app_version": "3.9.0-OPERATIONAL-RC1",
