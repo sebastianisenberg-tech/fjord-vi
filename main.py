@@ -16,6 +16,7 @@ import time
 import uuid
 import zipfile
 import re
+import threading
 from urllib.parse import parse_qs
 import smtplib
 import socket
@@ -37,6 +38,7 @@ from app.reliability import operational_state as op_state
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.background import BackgroundTask
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -44,11 +46,18 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1D"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1E"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
 APP_LOGGER = get_logger("fjord.app")
+
+# Worker liviano de comunicaciones. Es un lock de proceso: evita que dos
+# requests del mismo contenedor intenten procesar la cola SMTP en paralelo.
+# No participa de la lógica de Socio/Capitán/cierre; sólo despacha emails ya
+# encolados después de que la respuesta operativa fue enviada al navegador.
+COMMUNICATIONS_AUTO_WORKER_LOCK = threading.Lock()
+
 
 
 # =========================
@@ -1125,7 +1134,7 @@ def finalize_claimed_notification(db: Session, row: NotificationQueue, status: s
     db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status=status, detail=detail or ""))
     db.commit()
 
-def process_notification_queue(db: Session, limit: int = 25) -> dict:
+def process_notification_queue(db: Session, limit: int = 25, source: str = "manual") -> dict:
     expired = expire_stale_notification_queue(db, "Expirado antes de procesar cola")
     stale_processing = recover_stale_processing_notifications(db, "Recuperado antes de procesar cola")
     retry_cancelled = cancel_over_retry_limit(db)
@@ -1146,8 +1155,17 @@ def process_notification_queue(db: Session, limit: int = 25) -> dict:
         else:
             finalize_claimed_notification(db, row, "failed", detail)
             failed += 1
-    set_system_meta("communications_last_manual_process_at", now_local().strftime("%d/%m/%Y %H:%M"))
-    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled, "recovered_processing": stale_processing, "claim_token": token}
+    meta_key = "communications_last_auto_process_at" if source == "auto" else "communications_last_manual_process_at"
+    set_system_meta(meta_key, now_local().strftime("%d/%m/%Y %H:%M"))
+    set_system_meta("communications_last_process_result", json.dumps({
+        "source": source,
+        "processed": len(rows),
+        "sent": sent,
+        "failed": failed,
+        "cancelled": cancelled,
+        "at": now_local().isoformat(timespec="seconds"),
+    }, ensure_ascii=False))
+    return {"processed": len(rows), "sent": sent, "failed": failed, "cancelled": cancelled, "recovered_processing": stale_processing, "claim_token": token, "source": source}
 
 def process_notification_queue_ids(db: Session, queue_ids: list[int]) -> dict:
     expire_stale_notification_queue(db, "Expirado antes de procesar cola selectiva")
@@ -1579,7 +1597,7 @@ def auto_process_notifications(db: Session, limit: int = 5) -> dict:
         pending = db.query(NotificationQueue).filter(NotificationQueue.status == "pending").count()
         if pending <= 0:
             return {"processed": 0, "sent": 0, "failed": 0}
-        return process_notification_queue(db, limit=limit)
+        return process_notification_queue(db, limit=limit, source="auto")
     except Exception as e:
         try:
             db.rollback()
@@ -1672,17 +1690,26 @@ def queue_no_show_charge_emails(db: Session, outing: Outing, reservations: list,
     return queued
 
 
-def smtp_liquidation_delay_hours(db: Session) -> int:
-    """Ventana de estabilización para liquidaciones al socio.
+def smtp_closing_delay_minutes(db: Session) -> int:
+    """Ventana de estabilización para emails de cierre/liquidación.
 
-    Valor operativo acordado para paseos de fin de semana: 6 horas desde el cierre.
+    El cierre genera ficha inmediatamente, pero el aviso económico se demora
+    para absorber correcciones normales del capitán: cerrar, reabrir, corregir
+    y volver a cerrar. Si aparece una ficha nueva o la salida se reabre, el
+    email pendiente anterior queda obsoleto antes de salir.
     """
-    raw = get_system_meta(db, "smtp_liquidation_delay_hours", "6")
+    raw = get_system_meta(db, "smtp_closing_delay_minutes", os.getenv("SMTP_CLOSING_DELAY_MINUTES", "15"))
     try:
-        h = int(str(raw).strip())
+        minutes = int(str(raw).strip())
     except Exception:
-        h = 6
-    return max(0, min(h, 48))
+        minutes = 15
+    return max(0, min(minutes, 24 * 60))
+
+
+def smtp_liquidation_delay_hours(db: Session) -> int:
+    """Compatibilidad histórica: ya no gobierna los cierres nuevos."""
+    minutes = smtp_closing_delay_minutes(db)
+    return max(0, int(round(minutes / 60)))
 
 
 CLOSING_NOTIFICATION_EVENTS = {"resumen_cierre_socio", "cierre_liquidacion_admin", "salida_cerrada_socio", "no_show_cargo_socio"}
@@ -1731,7 +1758,7 @@ def closing_notification_obsolete_reason(db: Session, row: NotificationQueue) ->
     """Cinturón de seguridad justo antes del envío de liquidaciones diferidas.
 
     Una liquidación económica sólo puede salir si la ficha asociada sigue siendo
-    la única VIGENTE y la salida continúa cerrada. Si durante las 6 horas hubo
+    la única VIGENTE y la salida continúa cerrada. Si durante la ventana diferida hubo
     reapertura, recierre, cancelación o ficha posterior, el email queda cancelado
     como obsoleto.
     """
@@ -2050,7 +2077,7 @@ def queue_consolidated_closing_emails(db: Session, outing: Outing, sheet: Closin
     ensure_communications_seed(db)
     cancel_pending_closing_notifications_for_outing(db, outing.id, "Reemplazado por nueva liquidación vigente")
     data = sheet_payload(sheet)
-    scheduled = now_local() + timedelta(hours=smtp_liquidation_delay_hours(db))
+    scheduled = now_local() + timedelta(minutes=smtp_closing_delay_minutes(db))
     queued = 0
     users_by_member = {str(u.member_no or "").strip(): u for u in db.query(User).filter(User.role == "socio", User.active == True).all() if str(u.member_no or "").strip()}
     users_by_name = {(u.name or "").strip().lower(): u for u in db.query(User).filter(User.role == "socio", User.active == True).all() if (u.name or "").strip()}
@@ -2757,31 +2784,109 @@ async def security_headers_middleware(request: Request, call_next):
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response
 
+def communications_auto_interval_seconds(db: Session) -> int:
+    raw = get_system_meta(db, "communications_auto_interval_seconds", os.getenv("COMMUNICATIONS_AUTO_INTERVAL_SECONDS", "60"))
+    try:
+        seconds = int(str(raw).strip())
+    except Exception:
+        seconds = 60
+    return max(15, min(seconds, 900))
+
+
+def communications_auto_worker_enabled(db: Session) -> bool:
+    return get_system_bool(db, "communications_auto_worker_enabled", True)
+
+
+def _parse_local_datetime(value: str):
+    value = (value or "").strip()
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%d/%m/%Y %H:%M"):
+        try:
+            return datetime.strptime(value[:19], fmt).replace(tzinfo=TZ) if fmt.startswith("%Y") else datetime.strptime(value, fmt).replace(tzinfo=TZ)
+        except Exception:
+            pass
+    try:
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=TZ)
+        return dt.astimezone(TZ)
+    except Exception:
+        return None
+
+
+def run_communications_auto_worker(trigger_path: str = "") -> dict:
+    """Procesa la cola SMTP en segundo plano, sin intervención de Administración.
+
+    Está pensado para fines de semana: Socio y Capitán sólo encolan; este worker
+    envía automáticamente tandas chicas cuando cualquier usuario usa el sistema.
+    Nunca modifica reservas, asistencia, fichas ni liquidaciones.
+    """
+    if not COMMUNICATIONS_AUTO_WORKER_LOCK.acquire(blocking=False):
+        return {"skipped": "worker_busy"}
+    try:
+        with SessionLocal() as db:
+            if not communications_auto_worker_enabled(db):
+                return {"skipped": "disabled"}
+            now = now_local()
+            interval = communications_auto_interval_seconds(db)
+            last = _parse_local_datetime(get_system_meta(db, "communications_last_auto_attempt_at", ""))
+            if last and (now - last).total_seconds() < interval:
+                return {"skipped": "throttled"}
+            set_system_meta_db(db, "communications_last_auto_attempt_at", now.isoformat(timespec="seconds"))
+            db.commit()
+
+            queued_reminders = queue_due_24h_reminders(db)
+            result = auto_process_notifications(db, limit=5)
+            set_system_meta("communications_last_auto_trigger", trigger_path or "system")
+            set_system_meta("communications_last_auto_detail", json.dumps({
+                "trigger": trigger_path,
+                "queued_reminders": queued_reminders,
+                "result": result,
+                "at": now_local().isoformat(timespec="seconds"),
+            }, ensure_ascii=False))
+            return {"queued_reminders": queued_reminders, **(result or {})}
+    except Exception as e:
+        try:
+            set_system_meta("communications_last_auto_error", f"{type(e).__name__}: {str(e)[:300]}")
+        except Exception:
+            pass
+        return {"error": f"{type(e).__name__}: {str(e)[:200]}"}
+    finally:
+        try:
+            COMMUNICATIONS_AUTO_WORKER_LOCK.release()
+        except Exception:
+            pass
+
+
+def attach_communications_background_worker(response: Response, path: str):
+    """Adjunta el worker después de enviar la respuesta al navegador.
+
+    Si la respuesta ya trae BackgroundTask propio, no lo reemplaza para no
+    interferir con otras funciones.
+    """
+    try:
+        if getattr(response, "background", None) is None:
+            response.background = BackgroundTask(run_communications_auto_worker, path)
+    except Exception:
+        pass
+
+
 @app.middleware("http")
 async def communications_auto_worker(request: Request, call_next):
-    """Outbox no bloqueante para operación real.
+    """Outbox automático no bloqueante para operación real.
 
-    Regla de blindaje RC9: Socio y Capitán nunca deben esperar SMTP.
-    Las rutas operativas sólo encolan comunicaciones; el procesamiento real
-    queda para Administración/Comunicaciones o para visitas no operativas.
-    Esto evita que un SMTP lento, una clave vencida o un timeout de red congele
-    altas, bajas, embarque o cierre.
+    Socio y Capitán nunca esperan SMTP: sus rutas sólo encolan emails. El envío
+    se ejecuta como tarea de fondo, en tandas chicas y con throttle, después de
+    responder al navegador. Así la operación de fin de semana no depende de que
+    Administración apriete "Procesar cola".
     """
     response = await call_next(request)
     try:
         path = request.url.path or ""
-        operational_prefixes = (
-            "/socio", "/captain", "/checkin", "/embarque",
-            "/login", "/logout", "/change-password", "/account",
-            "/static", "/health"
-        )
-        if path.startswith(operational_prefixes) or path.endswith((".csv", ".zip", ".json", ".txt")):
+        if path.startswith(("/static", "/health")) or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".csv", ".zip", ".json", ".txt")):
             return response
-        # Sólo recordatorios; no SMTP real en middleware. El envío se procesa
-        # desde /admin/comunicaciones para mantener trazabilidad y latencia baja.
-        if path.startswith("/admin"):
-            with SessionLocal() as db:
-                queue_due_24h_reminders(db)
+        attach_communications_background_worker(response, path)
     except Exception:
         pass
     return response
