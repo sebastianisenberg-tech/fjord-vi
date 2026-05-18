@@ -44,7 +44,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1B"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1C"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -2425,14 +2425,29 @@ def decorate_smtp_subject(db: Session, subject: str) -> str:
 
 
 def decorate_smtp_body(db: Session, body: str, original_to: str, effective_to: str, event_key: str = "") -> str:
+    """Decora emails en modo prueba sin alterar el texto real.
+
+    El objetivo del modo prueba es que Administración vea exactamente el mensaje
+    que recibiría el socio/capitán/administración. Por eso la leyenda técnica va
+    al final y no reemplaza el saludo ni el cuerpo de la plantilla.
+    """
     body = normalize_email_text(body or "")
     if not smtp_test_mode_enabled(db):
         return body
-    notice = (
-        "Modo prueba: este correo fue redirigido al receptor de pruebas. "
-        "Ningún socio real recibe este mensaje mientras el modo prueba esté activo.\n\n"
-    )
-    return notice + body
+    original_to = normalize_email(original_to or "")
+    effective_to = normalize_email(effective_to or "")
+    footer_lines = [
+        "",
+        "---",
+        "Modo prueba Fjord VI: este correo fue redirigido al receptor de pruebas.",
+        "El cuerpo anterior es el texto real que recibiría el destinatario cuando se desactive el modo prueba.",
+    ]
+    if original_to:
+        footer_lines.append(f"Destinatario real previsto: {original_to}")
+    if effective_to and effective_to != original_to:
+        footer_lines.append(f"Recibido ahora por prueba: {effective_to}")
+    footer_lines.append("Ningún socio real recibió este mensaje.")
+    return body.rstrip() + "\n" + "\n".join(footer_lines) + "\n"
 
 
 def queue_dedup_key(event_key: str, recipient_email: str, subject: str, payload: dict) -> str:
@@ -11661,31 +11676,44 @@ def admin_communications_full_test(db: Session = Depends(db_session), user: User
     if not test_email:
         return RedirectResponse("/admin?page=comunicaciones&msg=smtp_test_sin_receptor", status_code=303)
 
-    sample_payload = {
-        "app_name": APP_NAME,
-        "version": VERSION,
-        "club_nombre": CLUB_NAME,
-        "socio_nombre": user.name or "Socio de prueba",
-        "salida_nombre": "Paseo Fjord VI Prueba",
-        "fecha": now_local().strftime("%d/%m/%Y"),
-        "hora": "11:00",
-        "estado": "prueba controlada",
-        "invitado_nombre": "Invitado de prueba",
-        "detalle_cargos": "Ejemplo de cargo reglamentario de prueba",
-        "total_socio": "$ 0",
-        "link_ficha": "Prueba sin ficha real",
-        "ficha_numero": "TEST",
-        "capitan_nombre": "Capitán de prueba",
-        "presentes": "0",
-        "total": "$ 0",
-        "punto_encuentro": "Dársena Norte",
-        "lista_personas": "- Socio de prueba\\n- Invitado de prueba",
-    }
+    def sample_payload_for_event(event_key: str) -> dict:
+        is_admin = event_key.endswith("_admin") or event_key in ("cierre_liquidacion_admin",)
+        socio_nombre = "Sebastián Isenberg de Amorrortu"
+        recipient_name = "Administración" if is_admin else socio_nombre
+        payload = {
+            "app_name": APP_NAME,
+            "version": VERSION,
+            "club_nombre": CLUB_NAME,
+            "recipient_name": recipient_name,
+            "socio_nombre": recipient_name if not is_admin else "Administración",
+            "salida_nombre": "Paseo Fjord VI Prueba",
+            "fecha": now_local().strftime("%d/%m/%Y"),
+            "hora": "11:00",
+            "estado": "confirmada",
+            "invitado_nombre": "Carlos García",
+            "persona_nombre": "Carlos García",
+            "detalle_cargos": "- Carlos García: invitado embarcado, $ 45.000\n- Ramón Balcarce: reserva incumplida, $ 45.000",
+            "total_socio": "$ 90.000",
+            "link_ficha": "Ficha de prueba",
+            "ficha_numero": "TEST",
+            "liquidation_id": "LIQ-TEST",
+            "capitan_nombre": "Gastón Busquet",
+            "presentes": "9",
+            "total": "$ 405.000",
+            "punto_encuentro": "Dársena Norte",
+            "lista_personas": "- Sebastián Isenberg de Amorrortu\n- Carlos García\n- Ramón Balcarce",
+            "motivo_cancelacion": "Cancelación por capitán",
+            "mensaje_cargo": "Sin cargo en esta prueba.",
+            "mensaje_embarque": "",
+        }
+        return payload
 
     count = 0
     queued_ids = []
     for tpl in db.query(NotificationTemplate).order_by(NotificationTemplate.key.asc()).all():
-        q = queue_email(db, tpl.key, test_email, user.name or "Prueba", sample_payload, force=True)
+        payload = sample_payload_for_event(tpl.key)
+        recipient_name = payload.get("recipient_name") or payload.get("socio_nombre") or "Prueba"
+        q = queue_email(db, tpl.key, test_email, recipient_name, payload, force=True)
         if q:
             count += 1
             queued_ids.append(q.id)
