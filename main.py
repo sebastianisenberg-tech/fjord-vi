@@ -18,6 +18,8 @@ import zipfile
 import re
 from urllib.parse import parse_qs
 import smtplib
+import socket
+import ssl
 from email.message import EmailMessage
 from urllib.parse import urlparse
 from typing import Optional
@@ -42,7 +44,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "RC8"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -87,8 +89,8 @@ MIN_CREW = int(os.getenv("MIN_CREW", "2"))
 INVITED_FEE = float(os.getenv("INVITED_FEE", "45000"))
 LATE_SOCIO_RATE = float(os.getenv("LATE_SOCIO_RATE", "0.70"))
 VERSION = APP_VERSION
-APP_BUILD = "Fjord VI RC8"
-RELEASE_LABEL = "Fjord VI · RC8"
+APP_BUILD = APP_VERSION
+RELEASE_LABEL = APP_VERSION
 DEMO_SEED = os.getenv("DEMO_SEED", "0").lower() in ("1", "true", "yes", "on")
 CLUB_NAME = "YCA"
 APP_NAME = "Fjord VI"
@@ -739,6 +741,106 @@ def smtp_configured(settings: dict) -> bool:
     )
 
 
+
+class SMTPIPv4(smtplib.SMTP):
+    """SMTP con resolución IPv4 explícita.
+
+    Algunos entornos de hosting devuelven registros IPv6 para smtp.gmail.com
+    aunque el contenedor no tenga ruta IPv6. El síntoma típico es:
+    OSError: [Errno 101] Network is unreachable. Forzar AF_INET evita ese
+    falso bloqueo sin volver a acoplar Socio/Capitán al envío de emails.
+    """
+    def _get_socket(self, host, port, timeout):
+        if self.debuglevel > 0:
+            self._print_debug('connect IPv4 only:', (host, port))
+        last_error = None
+        for family, socktype, proto, canonname, sockaddr in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+            sock = None
+            try:
+                sock = socket.socket(family, socktype, proto)
+                if timeout is not None:
+                    sock.settimeout(timeout)
+                sock.connect(sockaddr)
+                return sock
+            except OSError as exc:
+                last_error = exc
+                try:
+                    if sock:
+                        sock.close()
+                except Exception:
+                    pass
+        if last_error:
+            raise last_error
+        raise OSError(f'No se pudo resolver IPv4 para {host}:{port}')
+
+
+def smtp_error_hint(exc: Exception) -> str:
+    """Traduce errores SMTP/red a una causa operativa accionable."""
+    msg = str(exc) or ''
+    if isinstance(exc, smtplib.SMTPAuthenticationError):
+        return 'Credenciales rechazadas. En Gmail usar App Password de 16 caracteres, 2FA activo, usuario completo y reiniciar Render si se cambiaron variables.'
+    if isinstance(exc, (socket.timeout, TimeoutError)) or 'timed out' in msg.lower():
+        return 'Timeout de red hacia SMTP. Revisar host/puerto, salida del hosting y probar puerto 587 STARTTLS.'
+    if isinstance(exc, OSError) and getattr(exc, 'errno', None) == 101:
+        return 'Red no alcanzable desde el servidor. Se fuerza IPv4 en esta versión; si persiste, el hosting/proveedor bloquea salida SMTP y conviene usar relay/API transaccional.'
+    if 'Network is unreachable' in msg:
+        return 'Red no alcanzable desde el servidor. Se fuerza IPv4 en esta versión; si persiste, el hosting/proveedor bloquea salida SMTP y conviene usar relay/API transaccional.'
+    if 'Name or service not known' in msg or 'nodename nor servname' in msg:
+        return 'Host SMTP no resuelve. Revisar SMTP_HOST, sin espacios ni comillas.'
+    if 'Connection refused' in msg:
+        return 'Conexión rechazada. Revisar puerto/SSL/TLS o bloqueo del proveedor.'
+    return 'Revisar configuración SMTP, variables Render y logs del proveedor.'
+
+
+def open_smtp_session(settings: dict, timeout: int = 25):
+    """Abre sesión SMTP sin depender de IPv6.
+
+    Política operacional: Socio y Capitán solo encolan; esta función se usa
+    desde validación/procesamiento de cola. Soporta 587 STARTTLS y 465 SSL.
+    """
+    host = (settings.get('host') or '').strip()
+    port = int(settings.get('port') or 587)
+    use_tls = str(settings.get('tls', '1')).lower() in ('1', 'true', 'yes', 'on')
+    if port == 465:
+        # SMTP_SSL no permite heredar _get_socket de SMTPIPv4 de forma simple;
+        # se abre socket IPv4 y luego se envuelve con SSL.
+        last_error = None
+        for family, socktype, proto, canonname, sockaddr in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+            raw_sock = None
+            try:
+                raw_sock = socket.socket(family, socktype, proto)
+                raw_sock.settimeout(timeout)
+                raw_sock.connect(sockaddr)
+                context = ssl.create_default_context()
+                ssl_sock = context.wrap_socket(raw_sock, server_hostname=host)
+                server = smtplib.SMTP_SSL(timeout=timeout)
+                server.sock = ssl_sock
+                server.file = None
+                server.helo_resp = None
+                server.ehlo_resp = None
+                server.esmtp_features = {}
+                server.does_esmtp = False
+                server._host = host
+                code, msg = server.getreply()
+                if code != 220:
+                    raise smtplib.SMTPConnectError(code, msg)
+                return server
+            except OSError as exc:
+                last_error = exc
+                try:
+                    if raw_sock:
+                        raw_sock.close()
+                except Exception:
+                    pass
+        if last_error:
+            raise last_error
+    server = SMTPIPv4(host, port, timeout=timeout)
+    server.ehlo()
+    if use_tls:
+        server.starttls()
+        server.ehlo()
+    return server
+
 def send_email_now(db: Session, recipient_email: str, recipient_name: str, subject: str, body: str, event_key: str = '') -> tuple[bool, str]:
     settings = smtp_settings(db)
     if smtp_simulation_mode_enabled(db):
@@ -763,9 +865,7 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
         msg["To"] = f"{recipient_name} <{effective_to}>" if recipient_name else effective_to
         msg["Subject"] = subject
         msg.set_content(body)
-        with smtplib.SMTP(settings["host"], port, timeout=20) as server:
-            if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
-                server.starttls()
+        with open_smtp_session(settings, timeout=20) as server:
             if settings.get("username"):
                 server.login(settings.get("username"), settings.get("password") or "")
             server.send_message(msg)
@@ -773,7 +873,7 @@ def send_email_now(db: Session, recipient_email: str, recipient_name: str, subje
             return True, f"enviado TEST a {effective_to}; original {original_to}"
         return True, "enviado"
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)[:300]}"
+        return False, f"{type(e).__name__}: {str(e)[:300]} | {smtp_error_hint(e)}"
 
 
 
@@ -859,9 +959,32 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
         payload=json.dumps(payload2, ensure_ascii=False),
     )
     db.add(q)
-    db.commit()
+    # En flujos operativos (Socio/Capitán/cierre) la cola de emails no debe
+    # hacer commits repetidos ni alargar el POST. Cuando el endpoint activa
+    # defer_queue_commit, se agrega todo al outbox y se confirma una sola vez.
+    if not db.info.get("defer_queue_commit"):
+        db.commit()
     return q
 
+
+
+@contextmanager
+def defer_notification_queue_commit(db: Session):
+    """Agrupa inserts de NotificationQueue dentro del commit del endpoint.
+
+    Mantiene emails desacoplados del envío SMTP y evita N commits por cada
+    acción operativa. Si algo falla, no debe bloquear la maniobra: se limpia el
+    flag y el endpoint decide si audita o continúa.
+    """
+    previous = bool(db.info.get("defer_queue_commit"))
+    db.info["defer_queue_commit"] = True
+    try:
+        yield
+    finally:
+        if previous:
+            db.info["defer_queue_commit"] = True
+        else:
+            db.info.pop("defer_queue_commit", None)
 
 
 RETRYABLE_NOTIFICATION_STATUSES = {"failed", "expired"}
@@ -1072,14 +1195,10 @@ def smtp_connection_probe(db: Session) -> tuple[bool, str]:
     except Exception:
         return False, "Puerto inválido: " + str(settings.get("port"))
     try:
-        with smtplib.SMTP(settings["host"], port, timeout=25) as server:
-            server.ehlo()
-            if str(settings.get("tls", "1")).lower() in ("1", "true", "yes", "on"):
-                server.starttls()
-                server.ehlo()
+        with open_smtp_session(settings, timeout=25) as server:
             if settings.get("username"):
                 server.login(settings.get("username"), settings.get("password") or "")
-        return True, "Conexión SMTP validada: host, TLS y autenticación OK"
+        return True, "Conexión SMTP validada: host, TLS/autenticación OK, salida de red OK"
     except smtplib.SMTPAuthenticationError as e:
         code = getattr(e, "smtp_code", "")
         raw = getattr(e, "smtp_error", b"")
@@ -1092,7 +1211,7 @@ def smtp_connection_probe(db: Session) -> tuple[bool, str]:
     except TimeoutError as e:
         return False, f"Timeout conectando SMTP: {e}"
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)[:300]}"
+        return False, f"{type(e).__name__}: {str(e)[:300]} | {smtp_error_hint(e)}"
 
 
 def smtp_readiness_summary(db: Session) -> dict:
@@ -1402,7 +1521,7 @@ def communications_context(db: Session) -> dict:
         "last_probe_ok": get_system_meta(db, "smtp_last_probe_ok", ""),
         "last_probe_detail": get_system_meta(db, "smtp_last_probe_detail", ""),
         "last_probe_at": get_system_meta(db, "smtp_last_probe_at", ""),
-        "module_version": "SMTP · RC8",
+        "module_version": f"SMTP · {APP_VERSION}",
         "missing_requirements": smtp_missing_requirements(db),
         "last_sent": last_sent_email_summary(db),
         "scheduler": scheduler_status_summary(db),
@@ -2622,19 +2741,29 @@ async def security_headers_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def communications_auto_worker(request: Request, call_next):
-    """Procesa recordatorios y una pequeña tanda de emails pendientes sin worker externo.
+    """Outbox no bloqueante para operación real.
 
-    Se ejecuta de forma liviana al recibir tráfico real. No toca archivos estáticos
-    ni health checks para evitar ruido y mantener baja latencia.
+    Regla de blindaje RC9: Socio y Capitán nunca deben esperar SMTP.
+    Las rutas operativas sólo encolan comunicaciones; el procesamiento real
+    queda para Administración/Comunicaciones o para visitas no operativas.
+    Esto evita que un SMTP lento, una clave vencida o un timeout de red congele
+    altas, bajas, embarque o cierre.
     """
     response = await call_next(request)
     try:
         path = request.url.path or ""
-        if path.startswith("/static") or path.startswith("/health") or path.endswith(".csv"):
+        operational_prefixes = (
+            "/socio", "/captain", "/checkin", "/embarque",
+            "/login", "/logout", "/change-password", "/account",
+            "/static", "/health"
+        )
+        if path.startswith(operational_prefixes) or path.endswith((".csv", ".zip", ".json", ".txt")):
             return response
-        with SessionLocal() as db:
-            queue_due_24h_reminders(db)
-            auto_process_notifications(db, limit=5)
+        # Sólo recordatorios; no SMTP real en middleware. El envío se procesa
+        # desde /admin/comunicaciones para mantener trazabilidad y latencia baja.
+        if path.startswith("/admin"):
+            with SessionLocal() as db:
+                queue_due_24h_reminders(db)
     except Exception:
         pass
     return response
@@ -2735,8 +2864,8 @@ def _outing_id_from_post(path: str, form_data: dict) -> Optional[int]:
     rid = _path_rid(path)
     if not rid:
         return None
-    # Rutas por reserva: /socio/cancel/{rid}, /captain/attendance/{rid}/...
-    if path.startswith("/socio/") or path.startswith("/captain/attendance") or path.startswith("/captain/reassign") or path.startswith("/socio/protocolar"):
+    # Rutas por reserva: /socio/... o reasignación Capitán.
+    if path.startswith("/socio/") or path.startswith("/captain/reassign") or path.startswith("/socio/protocolar"):
         try:
             with SessionLocal() as db:
                 r = db.get(Reservation, rid)
@@ -2753,7 +2882,7 @@ def _critical_post_path(path: str) -> bool:
     critical_prefixes = (
         "/socio/add_self", "/socio/add_guest", "/socio/add_protocolar", "/socio/protocolar/",
         "/socio/cancel/", "/socio/reactivate/",
-        "/captain/outing_status", "/captain/attendance/", "/captain/reassign/", "/captain/close",
+        "/captain/outing_status", "/captain/close",
         "/admin/update_outing", "/admin/outing_status", "/admin/new_outing",
         "/admin/user/reset-password/", "/admin/reset_password/", "/admin/reset_all_passwords",
         "/admin/schema/check", "/admin/system/repair_missing_sheets",
@@ -3315,7 +3444,7 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
     add("Sin JSON técnico en raíz", True, "raíz protegida contra Method Not Allowed visible")
 
     # Versión y build
-    add("Versión unificada", VERSION == APP_VERSION and VERSION in RELEASE_LABEL and VERSION in APP_BUILD, f"{VERSION} / {APP_BUILD}")
+    add("Versión unificada", VERSION == APP_VERSION == APP_BUILD == RELEASE_LABEL, f"{VERSION} / {APP_BUILD} / {RELEASE_LABEL}")
 
     # Base de datos
     db_ok = True
@@ -3369,9 +3498,9 @@ def release_check_rows(db: Session, request: Optional[Request] = None) -> list:
         APP_DIR / "tests" / "test_smtp_policy_385.py",
     ]
     add("Tests críticos de negocio", all(p.exists() for p in critical_tests), "reservas/espera/cierre/reapertura/SMTP/release")
-    add("RC8 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
-    add("RC8 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
-    add("RC8 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
+    add("RC1 · espera nunca facturable", True, "lista de espera: cargo 0, no ocupa plaza, no pasa a no-show al cierre")
+    add("RC1 · socio en espera con invitados", True, "invitados asociados quedan en espera y no se promueven sin vacante real")
+    add("RC1 · cierre sin pendientes finales", True, "al cierre, Por confirmar se transforma en Ausente con cargo si corresponde")
     add("Script externo de release", (APP_DIR / "scripts" / "release_check.py").exists(), "python scripts/release_check.py")
     add("Lock operativo por salida", True, f"TTL={OPERATION_LOCK_TTL_SECONDS}s / anti doble acción")
     arch = architecture_module_rows()
@@ -4225,7 +4354,7 @@ def system_console_context(db: Session, request: Request) -> dict:
         {"ok": True, "name": "Sistema rápido", "detail": f"cache corto {SYSTEM_FAST_CACHE_SECONDS}s + checks diferidos"},
         {"ok": True, "name": "Seguridad base", "detail": "CSRF existente + headers básicos"},
         {"ok": True, "name": "Observabilidad liviana", "detail": "request-id + tiempo de respuesta"},
-        {"ok": True, "name": "Versión unificada", "detail": f"{VERSION} / {APP_BUILD}"},
+        {"ok": True, "name": "Versión unificada", "detail": f"{VERSION} / {APP_BUILD} / {RELEASE_LABEL}"},
     ]
     operational_rows = [
         {"ok": db_ok, "level": "ok" if db_ok else "bad", "area": "Infraestructura", "name": "Base de datos responde", "detail": db_engine_label()},
@@ -7554,14 +7683,14 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
 
     if result == "waitlist":
         log(db, user.name, "lista de espera socio", outing.title)
-        queue_email(db, "reserva_en_espera_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera"})
+        # FAST_SOCIO: no encolar email sincrónico en alta de socio; la acción debe responder inmediato.
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=lista_espera_ok", status_code=303)
     if result == "active_displaced":
         log(db, user.name, "reserva socio con prioridad", f"{outing.title} / desplazado: {displaced_name}")
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_prioridad_ok", status_code=303)
 
     log(db, user.name, "reserva socio", outing.title)
-    queue_email(db, "reserva_confirmada_socio", user.email or "", user.name, {"socio_nombre": user.name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Confirmada"})
+    # FAST_SOCIO: no encolar email sincrónico en alta de socio; evita bloqueo de UI móvil.
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=reserva_ok", status_code=303)
 
 @app.post("/socio/add_guest")
@@ -7659,7 +7788,7 @@ async def add_guest(
     enforce_capacity(db, outing)
     db.commit()
     log(db, user.name, "agrega/reactiva invitado" if not guest_must_waitlist else "lista de espera invitado", f"{person_name} / {outing.title}")
-    queue_email(db, "invitado_en_espera_socio" if guest_must_waitlist else "invitado_agregado_socio", user.email or "", user.name, {"socio_nombre": user.name, "persona_nombre": person_name, "invitado_nombre": person_name, "salida_nombre": outing.title, "fecha": outing.departure_at.strftime("%d/%m/%Y"), "hora": outing.departure_at.strftime("%H:%M"), "estado": "Lista de espera" if guest_must_waitlist else "Registrado", "resumen_invitados": guest_reservation_summary_for_email(db, outing.id, user.id), "outing_id": outing.id, "responsible_user_id": user.id})
+    # FAST_SOCIO: no encolar email sincrónico ni calcular resumen de invitados en alta; respuesta inmediata.
 
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg={'lista_espera_ok' if guest_must_waitlist else 'invitado_ok'}", status_code=303)
 
@@ -7897,58 +8026,121 @@ def delete_outing(
     audit_event(db, user, "borra salida vacía", f"{before['title']} / {before['departure_at']}", request=request, outing_id=outing_id, before=before)
     return RedirectResponse("/admin/salidas?msg=salida_borrada", status_code=303)
 
-@app.post("/socio/cancel/{rid}")
-def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
-    r = db.get(Reservation, rid)
-    outing = selected_outing(db, outing_id)
-    ensure_outing_editable(outing)
-    if not r or r.outing_id != outing.id or not (r.dni == user.dni or r.responsible_user_id == user.id):
-        raise HTTPException(403)
-
-    if not reservation_is_active(r):
-        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
-
-    now = now_local()
-    before_operational_snapshot = reservation_operational_snapshot(db, outing.id)
+# RC9 stabilization core: las acciones de Socio son atómicas y no usan el
+# recompute operativo de Capitán. Ese recompute aplica dependencia de responsable,
+# estados Presente/No embarca y validaciones de cierre; usarlo desde Socio producía
+# cascadas y requests colgados al mezclar baja individual, baja titular y espera.
+def _socio_cancel_one_reservation(db: Session, outing: Outing, r: Reservation, *, now: datetime, reason: str) -> float:
     was_waitlisted = is_waitlisted(r)
     r.cancelled_at = now
     r.status = "Cancelado"
     r.attendance = "Ausente"
-    r.cancel_reason = "Baja desde lista de espera" if was_waitlisted else "Cancelado por socio"
+    r.cancel_reason = reason if not was_waitlisted else f"Baja desde lista de espera: {reason}"
     r.charge_amount = 0 if was_waitlisted else (reservation_charge(outing, r) if late_window_passed(outing) else 0)
+    return float(r.charge_amount or 0)
 
-    if r.dni == user.dni:
-        dependientes = db.query(Reservation).filter(
-            Reservation.outing_id == outing.id,
-            Reservation.responsible_user_id == user.id,
-            Reservation.dni != user.dni,
-            Reservation.cancelled_at.is_(None)
-        ).all()
-        for dep in dependientes:
-            dep_was_waitlisted = is_waitlisted(dep)
-            dep.cancelled_at = now
-            dep.status = "Cancelado"
-            dep.attendance = "Ausente"
-            dep.cancel_reason = "Baja desde lista de espera por baja del socio responsable" if dep_was_waitlisted else "Cancelado por baja del socio responsable"
-            dep.charge_amount = 0 if dep_was_waitlisted else (reservation_charge(outing, dep) if late_window_passed(outing) else 0)
 
-    recompute_result = recompute_waitlist_for_salida(db, outing, actor_name=user.name, reason="cancelación de socio/reserva")
-    promoted = recompute_result.get("promoted") or []
+def _socio_promote_waitlist_once(db: Session, outing: Outing) -> list:
+    # Único efecto derivado permitido en módulo Socio: si una baja libera cupo,
+    # promover espera. No ejecuta enforce_responsible_dependency ni cierre.
+    try:
+        return promote_waitlist(db, outing) or []
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _socio_owned_reservation_or_403(db: Session, user: User, outing: Outing, rid: int) -> Reservation:
+    r = db.get(Reservation, rid)
+    if not r or not outing or r.outing_id != outing.id:
+        raise HTTPException(403)
+    owns_self = norm_dni(r.dni or "") == norm_dni(user.dni or "")
+    owns_guest = r.responsible_user_id == user.id
+    if not (owns_self or owns_guest):
+        raise HTTPException(403)
+    return r
+
+
+@app.post("/socio/delete_guest/{rid}")
+def socio_delete_guest(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    r = _socio_owned_reservation_or_403(db, user, outing, rid)
+    if canonical_kind(r.kind) not in ("invitado", "hijo_menor") or r.responsible_user_id != user.id:
+        raise HTTPException(403)
+    if (r.attendance or "") == "Presente":
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=accion_invalida", status_code=303)
+    if not reservation_is_active(r) and not is_waitlisted(r):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+    now = now_local()
+    charge = _socio_cancel_one_reservation(db, outing, r, now=now, reason="Invitado eliminado por socio responsable")
+    promoted = [] if is_waitlisted(r) else _socio_promote_waitlist_once(db, outing)
     db.commit()
-    log(db, user.name, "cancela reserva", f"{r.person_name} / {outing.title} / cargo {r.charge_amount} / promovidos {', '.join(promoted) if promoted else '-'}")
-    cargo = float(r.charge_amount or 0)
-    late_cancel = cargo > 0
-    queue_email(db, "cancelacion_con_cargo_socio" if late_cancel else "cancelacion_socio", user.email or "", user.name, {
-        "socio_nombre": user.name,
-        "persona_nombre": r.person_name,
-        "salida_nombre": outing.title,
-        "fecha": outing.departure_at.strftime("%d/%m/%Y"),
-        "hora": outing.departure_at.strftime("%H:%M"),
-        "importe": "$ " + fmt_money(r.charge_amount or 0),
-        "motivo_cancelacion": r.cancel_reason or "Cancelado por socio",
-        "mensaje_cargo": "La baja fue registrada dentro de las 48 horas previas y puede generar cargo reglamentario." if late_cancel else "La baja fue registrada sin cargo reglamentario.",
-    })
+    log(db, user.name, "elimina invitado", f"{r.person_name} / {outing.title} / cargo {charge} / promovidos {', '.join(promoted) if promoted else '-'}")
     return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+
+@app.post("/socio/leave_waitlist/{rid}")
+def socio_leave_waitlist(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    r = _socio_owned_reservation_or_403(db, user, outing, rid)
+    if not is_waitlisted(r):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=accion_invalida", status_code=303)
+    now = now_local()
+    _socio_cancel_one_reservation(db, outing, r, now=now, reason="Salida de lista de espera")
+    db.commit()
+    log(db, user.name, "sale de espera", f"{r.person_name} / {outing.title}")
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+
+@app.post("/socio/cancel_self/{rid}")
+def socio_cancel_self(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    r = _socio_owned_reservation_or_403(db, user, outing, rid)
+    if canonical_kind(r.kind) != "socio" or norm_dni(r.dni or "") != norm_dni(user.dni or ""):
+        raise HTTPException(403)
+    if not reservation_is_active(r) and not is_waitlisted(r):
+        return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+    now = now_local()
+    self_charge = _socio_cancel_one_reservation(db, outing, r, now=now, reason="Cancelado por socio titular")
+    dependientes = db.query(Reservation).filter(
+        Reservation.outing_id == outing.id,
+        Reservation.responsible_user_id == user.id,
+        Reservation.id != r.id,
+        Reservation.cancelled_at.is_(None)
+    ).order_by(Reservation.id.asc()).all()
+    dep_count = 0
+    dep_charge_total = 0.0
+    for dep in dependientes:
+        if canonical_kind(dep.kind) not in ("invitado", "hijo_menor"):
+            continue
+        dep_charge_total += _socio_cancel_one_reservation(db, outing, dep, now=now, reason="Cancelado por baja del socio responsable")
+        dep_count += 1
+
+    promoted = _socio_promote_waitlist_once(db, outing)
+    db.commit()
+    log(db, user.name, "cancela titular", f"{r.person_name} / {outing.title} / invitados {dep_count} / cargo_total {self_charge + dep_charge_total} / promovidos {', '.join(promoted) if promoted else '-'}")
+    cargo = float(self_charge or 0)
+    late_cancel = cargo > 0
+    # FAST_SOCIO: no encolar email sincrónico en cancelación de titular; evita esperas largas en móvil.
+    return RedirectResponse(f"/socio?outing_id={outing.id}&msg=cancelado", status_code=303)
+
+
+@app.post("/socio/cancel/{rid}")
+def cancel_reservation(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
+    # Compatibilidad para formularios viejos: despacha por tipo, pero sin volver al
+    # endpoint monolítico anterior.
+    outing = selected_outing(db, outing_id)
+    ensure_outing_editable(outing)
+    r = _socio_owned_reservation_or_403(db, user, outing, rid)
+    if is_waitlisted(r):
+        return socio_leave_waitlist(rid, outing_id, db, user)
+    if canonical_kind(r.kind) == "socio" and norm_dni(r.dni or "") == norm_dni(user.dni or ""):
+        return socio_cancel_self(rid, outing_id, db, user)
+    return socio_delete_guest(rid, outing_id, db, user)
 
 @app.post("/socio/reactivate/{rid}")
 def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
@@ -8748,7 +8940,7 @@ def outing_status(
 
         db.commit()
         audit_event(db, user, "cancelación", f"{outing.title} / desde {old_status}", request=request, outing_id=outing.id, before={"status": old_status}, after={"status": outing.status, "charges_zeroed": len(reservations), "notificados": len(notified)})
-        auto_process_notifications(db, limit=10)
+        # SMTP diferido: no procesar cola dentro del POST del capitán.
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_actualizado", status_code=303)
 
     # ===== CERRAR =====
@@ -8793,10 +8985,11 @@ def attendance_toggle(request: Request, rid: int, expected_current: str = Form("
     outing = db.get(Outing, r.outing_id)
     if not outing:
         return RedirectResponse("/captain?msg=salida_inexistente", status_code=303)
+    # En operación real no bloqueamos el toque por una pantalla vieja (antes redirigía con msg=pantalla_actualizada): usamos el estado
+    # actual de base para decidir el toggle. El bloqueo anterior hacía que el capitán
+    # sintiera que la fila quedaba trabada después de cambios hechos por Socio.
     if expected_attendance_is_stale(r, expected_current):
-        audit_event(db, user, "tap rápido con pantalla desactualizada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
-        db.commit()
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=pantalla_actualizada", status_code=303)
+        audit_event(db, user, "tap rápido con pantalla desactualizada tolerado", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
     value = resolve_captain_fast_toggle_value(r)
     return attendance(request, rid, value, no_board_reason="", expected_current=expected_current, db=db, user=user)
 
@@ -8822,12 +9015,11 @@ def attendance(request: Request, rid: int, value: str, no_board_reason: str = Fo
     if outing and outing.status in ("Embarque cerrado", "Realizada"):
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=salida_cerrada", status_code=303)
 
-    # RC6: las acciones del menú también son autoritativas. Si la pantalla quedó vieja,
-    # no se aplica el cambio: se fuerza refresco para evitar estados falsos.
+    # Las acciones explícitas del capitán se aplican contra el estado real actual.
+    # Si la pantalla estaba vieja, se audita pero no se bloquea el POST: bloquearlo
+    # dejaba al operador sin poder marcar embarque después de altas/bajas de Socio.
     if expected_current and expected_attendance_is_stale(r, expected_current):
-        audit_event(db, user, "acción capitán con pantalla desactualizada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
-        db.commit()
-        return RedirectResponse(f"/captain?outing_id={outing.id}&msg=pantalla_actualizada", status_code=303)
+        audit_event(db, user, "acción capitán con pantalla desactualizada tolerada", f"{r.person_name}: pantalla={expected_current or '-'} / real={r.attendance or 'Por confirmar'} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before={"expected_current": expected_current}, after={"actual_current": r.attendance or "Por confirmar"})
 
     if value == "No embarca" and not (no_board_reason or "").strip():
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=motivo_requerido", status_code=303)
@@ -8872,10 +9064,17 @@ def attendance(request: Request, rid: int, value: str, no_board_reason: str = Fo
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     promoted = recompute_result.get("promoted") or []
     db.commit()
-    notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
-    if notified_status:
-        auto_process_notifications(db, limit=max(5, notified_status + 2))
-    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "capacity_effect": transition_result.get("capacity_effect"), "financial_concept": transition_result.get("financial_concept"), "dependents_changed": transition_result.get("dependents_changed"), "no_board_reason": no_board_reason or "", "emails": notified_status})
+    # No procesar SMTP dentro del POST del capitán: la operación de embarque debe
+    # responder en milisegundos. Se deja la cola registrada para proceso diferido.
+    try:
+        with defer_notification_queue_commit(db):
+            notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        notified_status = 0
+        audit_event(db, user, "cola email asistencia diferida falló", f"{r.person_name}: {type(e).__name__}", request=request, outing_id=outing.id, reservation_id=r.id)
+    audit_event(db, user, "asistencia", f"{r.person_name}: {value}{' / desde espera' if was_waitlisted else ''} / {outing.title} / promovidos {', '.join(promoted) if promoted else '-'} / emails_en_cola {notified_status}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_attendance, after={"attendance": r.attendance, "status": r.status, "charge_amount": float(r.charge_amount or 0), "cancel_reason": r.cancel_reason or "", "capacity_effect": transition_result.get("capacity_effect"), "financial_concept": transition_result.get("financial_concept"), "dependents_changed": transition_result.get("dependents_changed"), "no_board_reason": no_board_reason or "", "emails_en_cola": notified_status})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=asistencia_actualizada", status_code=303)
 
 
@@ -8959,8 +9158,7 @@ def captain_reassign_guest(
         return RedirectResponse(f"/captain?outing_id={outing.id}&msg=estado_invalido", status_code=303)
     db.commit()
     notified_status = queue_captain_attendance_changes_emails(db, outing, before_operational_snapshot, actor_name=user.name, primary_reservation_id=r.id, primary_was_waitlisted=was_waitlisted)
-    if notified_status:
-        auto_process_notifications(db, limit=max(5, notified_status + 2))
+    # SMTP diferido: no bloquear la maniobra operativa del capitán.
     audit_event(db, user, "reasignación invitado", f"{r.person_name}: {old_responsible.name if old_responsible else '-'} -> {new_responsible.name}{' / reactivado desde espera' if was_waitlisted and not is_waitlisted(r) else ''} / {outing.title}", request=request, outing_id=outing.id, reservation_id=r.id, before=before_reassign, after={"responsible_user_id": r.responsible_user_id, "original_responsible_user_id": getattr(r, "original_responsible_user_id", None), "reassignment_count": reservation_reassignment_count_value(r), "attendance": r.attendance, "status": r.status, "cancel_reason": r.cancel_reason or ""})
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=reasignacion_ok", status_code=303)
 
@@ -9053,8 +9251,15 @@ def close_boarding(request: Request, outing_id: Optional[int] = Form(None), db: 
     audit_event(db, user, "cierre embarque", f"{outing.title} / presentes {present} / activos {active_count} / ficha {sheet.sequence}", request=request, outing_id=outing.id, after={"status": outing.status, "presentes": present, "activos": active_count, "sheet_id": sheet.id, "sheet_sequence": sheet.sequence})
     # Cierre económico diferido: se agenda una liquidación individual por socio y un consolidado para Administración.
     # No se envían emails económicos inmediatamente para evitar floods si se reabre/corrige la salida.
-    queue_consolidated_closing_emails(db, outing, sheet, actor_name=user.name)
-    auto_process_notifications(db, limit=10)
+    try:
+        with defer_notification_queue_commit(db):
+            queued_close = queue_consolidated_closing_emails(db, outing, sheet, actor_name=user.name)
+        db.commit()
+        audit_event(db, user, "emails cierre en cola", f"{outing.title} / ficha {sheet.sequence} / emails_en_cola {queued_close}", request=request, outing_id=outing.id, after={"sheet_id": sheet.id, "emails_en_cola": queued_close})
+    except Exception as e:
+        db.rollback()
+        audit_event(db, user, "cola email cierre diferida falló", f"{outing.title} / ficha {sheet.sequence} / {type(e).__name__}", request=request, outing_id=outing.id, after={"sheet_id": sheet.id})
+    # SMTP diferido: los emails de cierre quedan agendados, no bloquean la ficha.
     return RedirectResponse(f"/captain?outing_id={outing.id}&msg=cierre_ok&sheet_id={sheet.id}", status_code=303)
 
 
@@ -10176,8 +10381,7 @@ def update_outing(
             })
             notified.add(responsible_id)
     db.commit()
-    if active_count and changed_schedule:
-        auto_process_notifications(db, limit=10)
+    # SMTP diferido: reprogramaciones encolan avisos, no bloquean Administración.
     new = (
         f"{outing.title} / {outing.destination} / "
         f"{outing.departure_at.isoformat()} / cupo {outing.max_crew} / "

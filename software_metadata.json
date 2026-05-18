@@ -1,10 +1,10 @@
 {
-  "version": "RC8",
-  "release_label": "Fjord VI · RC8",
+  "version": "3.9.0-OPERATIONAL-RC1",
+  "release_label": "3.9.0-OPERATIONAL-RC1",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "Fjord VI RC8",
+  "app_build": "3.9.0-OPERATIONAL-RC1",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -28,11 +28,11 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "RC8 - piloto operativo controlado",
+  "release": "3.9.0-OPERATIONAL-RC1",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "RC8: versión candidata real para piloto controlado. Mantiene lógica RC7 y suma guardias duras de integridad antes de cierre/promoción.",
-  "app_version": "RC8",
+  "build_note": "3.9.0-OPERATIONAL-RC1: primera candidata operativa para test controlado con Socio, Capitán, cierre, ficha y PDF coherentes; SMTP desacoplado de acciones operativas.",
+  "app_version": "3.9.0-OPERATIONAL-RC1",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
-  "release_stage": "PILOT_RC8",
-  "hardening_focus": "RC8 real: invariantes reglamentarias de espera, cierre sin pendientes finales, socio en espera con invitados y release check actualizado"
+  "release_stage": "OPERATIONAL_RC1",
+  "hardening_focus": "Versionado unificado, operación Socio/Capitán rápida, acciones de Capitán por POST nativo, emails en cola diferida, cierre y ficha preservados."
 }
