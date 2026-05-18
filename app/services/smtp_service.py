@@ -22,8 +22,6 @@ def _effective_recipient(to_email, cfg):
     return original_to, to_email, test_mode
 
 def _decorate_subject(subject, cfg, test_mode):
-    if test_mode and cfg.get("smtp_test_prefix_subject", True) and not subject.startswith("[TEST Fjord VI]"):
-        return "[TEST Fjord VI] " + subject
     return subject
 
 def _decorate_body(body_html, original_to, effective_to, test_mode):
