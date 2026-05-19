@@ -1,10 +1,10 @@
 {
-  "version": "3.9.0-OPERATIONAL-RC1J",
-  "release_label": "3.9.0-OPERATIONAL-RC1J",
+  "version": "3.9.0-OPERATIONAL-RC1K",
+  "release_label": "3.9.0-OPERATIONAL-RC1K",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
   "notes": "Reconstrucción conservadora desde la UI visual correcta 3.3: mantiene densidad premium, invitados compactos, menú contextual, tracker, header y badge de socio. No modifica lógica operativa.",
-  "app_build": "3.9.0-OPERATIONAL-RC1J",
+  "app_build": "3.9.0-OPERATIONAL-RC1K",
   "features": [
     "dashboard vivo operacional",
     "alertas humanas accionables",
@@ -30,8 +30,8 @@
   "logging_base": true,
   "release": "RC1H_AUTO_WORKER_LOOP",
   "name": "Fjord VI Sistema de Reservas",
-  "build_note": "3.9.0-OPERATIONAL-RC1J: refinamiento controlado de textos de emails y etiquetas humanas sin tocar motor operativo, cola, scheduler, SMTP, Socio, Capitán, cierres, PDFs ni liquidaciones.",
-  "app_version": "3.9.0-OPERATIONAL-RC1J",
+  "build_note": "3.9.0-OPERATIONAL-RC1K: refinamiento controlado de textos de emails y etiquetas humanas sin tocar motor operativo, cola, scheduler, SMTP, Socio, Capitán, cierres, PDFs ni liquidaciones.",
+  "app_version": "3.9.0-OPERATIONAL-RC1K",
   "release_focus": "Release hardening operativo: invariantes, política SMTP, expiración/retry de cola, tests críticos mínimos, coherencia de cierre/reapertura/lista de espera y control documental.",
   "release_stage": "OPERATIONAL_RC1",
   "hardening_focus": "Versionado unificado, operación Socio/Capitán rápida, acciones de Capitán por POST nativo, emails en cola diferida, cierre y ficha preservados."

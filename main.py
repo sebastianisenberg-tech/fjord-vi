@@ -46,7 +46,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1J"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1K"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -1770,6 +1770,64 @@ def _outing_email_payload(outing: Outing, user: User, extra: Optional[dict] = No
     payload.update(extra or {})
     return payload
 
+def _pending_operational_notification_for_responsible(db: Session, outing_id: int, responsible_user_id: int) -> Optional[NotificationQueue]:
+    """Devuelve el email operativo consolidable vigente para socio+salida.
+
+    Sólo mira filas pending de eventos operativos. No toca liquidaciones, cierre,
+    PDFs ni estados de reserva. Esta búsqueda permite actualizar un único email
+    final en vez de cancelar todos y correr el riesgo de no dejar ninguno vivo.
+    """
+    rows = (
+        db.query(NotificationQueue)
+        .filter(NotificationQueue.status == "pending")
+        .filter(NotificationQueue.event_key.in_(OPERATIONAL_DEBOUNCE_EVENTS))
+        .order_by(NotificationQueue.created_at.asc(), NotificationQueue.id.asc())
+        .all()
+    )
+    for row in rows:
+        try:
+            payload = json.loads(row.payload or "{}")
+            row_outing = int(payload.get("outing_id") or 0)
+            row_responsible = int(payload.get("responsible_user_id") or 0)
+        except Exception:
+            continue
+        if row_outing == int(outing_id) and row_responsible == int(responsible_user_id):
+            return row
+    return None
+
+
+def _render_notification_row_from_template(db: Session, row: NotificationQueue, event_key: str, payload: dict, scheduled_at: datetime) -> Optional[NotificationQueue]:
+    """Actualiza una fila pending existente con el último estado consolidado.
+
+    No envía SMTP. Es una actualización liviana en DB para mantener FAST_SOCIO.
+    """
+    ensure_communications_seed(db)
+    ev = db.get(NotificationEventSetting, event_key)
+    tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
+    if not ev or not tpl or not ev.enabled or not tpl.enabled or not ev.channel_email:
+        return None
+    original_to, effective_to, test_mode = effective_email_recipient(db, row.recipient_email)
+    payload2 = dict(payload or {})
+    payload2["_event_policy"] = notification_event_policy(event_key)
+    payload2["_original_recipient"] = original_to
+    payload2["_effective_recipient"] = effective_to
+    payload2["_smtp_test_mode"] = test_mode
+    payload2["_consolidated"] = True
+    payload2["_consolidated_updated_at"] = now_local().isoformat(timespec="seconds")
+
+    row.event_key = event_key
+    row.subject = render_comm_template(tpl.subject, payload2)
+    row.body = render_comm_template(tpl.body, payload2)
+    row.payload = json.dumps(payload2, ensure_ascii=False)
+    row.scheduled_at = scheduled_at
+    row.error = ""
+    row.processing_token = ""
+    row.processing_started_at = None
+    row.status = "pending"
+    db.add(row)
+    return row
+
+
 def queue_socio_operational_email(
     db: Session,
     event_key: str,
@@ -1782,27 +1840,45 @@ def queue_socio_operational_email(
 ) -> Optional[NotificationQueue]:
     """Encola emails de Socio sin tocar SMTP ni bloquear por envío.
 
-    RC1G: restaura avisos operativos de Socio manteniendo el principio FAST_SOCIO:
-    el endpoint sólo inserta una fila liviana en notification_queue. No manda SMTP,
-    no recalcula liquidaciones, no toca Capitán ni PDFs. Los cambios menores de
-    invitado/menor se consolidan durante una ventana corta para evitar spam.
+    RC1K: consolidado garantizado. Para cambios menores de Socio/Capitán queda
+    siempre una única fila pending vigente por socio+salida. Los cambios
+    posteriores actualizan esa misma fila; no se cancela sin dejar reemplazo.
+    La ventana normal es 10 min desde el último cambio, con límite absoluto de
+    15 min desde el primer cambio para evitar starvation.
     """
     if not user or not normalize_email(getattr(user, "email", "")) or not outing:
         return None
     try:
         if delay_minutes is None:
             delay_minutes = smtp_operational_debounce_minutes(db) if event_key in OPERATIONAL_DEBOUNCE_EVENTS else 0
-        if replace_pending and event_key in OPERATIONAL_DEBOUNCE_EVENTS:
-            cancel_pending_operational_notifications_for_responsible(
-                db, outing.id, user.id, "Reemplazado por actualización de Socio más reciente"
-            )
+
         payload = _outing_email_payload(outing, user, extra)
         if "resumen_invitados" not in payload:
             payload["resumen_invitados"] = guest_reservation_summary_for_email(db, outing.id, user.id)
-        scheduled_at = now_local() + timedelta(minutes=max(0, int(delay_minutes or 0)))
+
+        now = now_local()
+        normal_schedule = now + timedelta(minutes=max(0, int(delay_minutes or 0)))
         if delay_minutes == 0:
-            scheduled_at = now_local()
-        return queue_email(db, event_key, user.email, user.name, payload, scheduled_at=scheduled_at)
+            normal_schedule = now
+
+        if replace_pending and event_key in OPERATIONAL_DEBOUNCE_EVENTS:
+            existing = _pending_operational_notification_for_responsible(db, outing.id, user.id)
+            if existing:
+                first_created = existing.created_at or now
+                if first_created.tzinfo is None:
+                    first_created = first_created.replace(tzinfo=TZ)
+                absolute_limit = first_created + timedelta(minutes=15)
+                scheduled_at = min(normal_schedule, absolute_limit)
+                if scheduled_at < now:
+                    scheduled_at = now
+                row = _render_notification_row_from_template(db, existing, event_key, payload, scheduled_at)
+                if row:
+                    db.add(NotificationLog(queue_id=row.id, event_key=row.event_key, recipient_email=row.recipient_email, status="pending", detail="Email operativo consolidado actualizado; se mantiene una única fila vigente"))
+                    if not db.info.get("defer_queue_commit"):
+                        db.commit()
+                    return row
+
+        return queue_email(db, event_key, user.email, user.name, payload, scheduled_at=normal_schedule)
     except Exception as e:
         # La comunicación nunca debe romper la operación principal de Socio.
         try:
