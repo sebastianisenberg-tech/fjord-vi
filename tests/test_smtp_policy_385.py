@@ -6,7 +6,7 @@ MAIN = (ROOT / "main.py").read_text(encoding="utf-8")
 
 def test_smtp_policy_is_explicit():
     assert "def notification_event_policy" in MAIN
-    assert '"invitado_en_espera_socio": {"timing": "diferido"' in MAIN
+    assert '"actualizacion_invitados_socio": {"timing": "consolidado_corto"' in MAIN
     assert '"embarque_estado_socio": {"timing": "diferido", "replaceable": True' in MAIN
     assert '"cierre_liquidacion_admin": {"timing": "diferido", "replaceable": False, "final": True' in MAIN
     assert '"resumen_cierre_socio": {"timing": "diferido", "replaceable": True, "final": True' in MAIN

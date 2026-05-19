@@ -5,8 +5,8 @@ META = (ROOT / "software_metadata.json").read_text(encoding="utf-8")
 
 
 def test_rc8_version_label_is_unified_for_pilot():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "3.9.0-OPERATIONAL-RC1K"
-    assert 'APP_VERSION = "3.9.0-OPERATIONAL-RC1K"' in MAIN
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "3.9.0-OPERATIONAL-RC1L"
+    assert 'APP_VERSION = "3.9.0-OPERATIONAL-RC1L"' in MAIN
     assert 'APP_BUILD = APP_VERSION' in MAIN
     assert 'RELEASE_LABEL = APP_VERSION' in MAIN
     assert '"release_stage": "OPERATIONAL_RC1"' in META
