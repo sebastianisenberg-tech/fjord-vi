@@ -46,7 +46,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1L"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1M"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -700,15 +700,21 @@ def ensure_communications_seed(db: Session):
     """
     for key, info in COMMUNICATION_EVENTS.items():
         ev = db.get(NotificationEventSetting, key)
+        essential_keys = globals().get("ESSENTIAL_OPERATIONAL_EMAIL_EVENTS", set())
+        is_essential = key in essential_keys
         if not ev:
-            ev = NotificationEventSetting(key=key, name=info["name"], enabled=False, channel_email=True, description=info.get("description", ""), updated_at=now_local())
+            ev = NotificationEventSetting(key=key, name=info["name"], enabled=is_essential, channel_email=True, description=info.get("description", ""), updated_at=now_local())
             db.add(ev)
         else:
             ev.name = info["name"]
             ev.description = info.get("description", ev.description or "")
+            if is_essential:
+                ev.enabled = True
+                ev.channel_email = True
+                ev.updated_at = now_local()
         tpl = db.query(NotificationTemplate).filter_by(key=key).first()
         if not tpl:
-            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=False, updated_at=now_local())
+            tpl = NotificationTemplate(key=key, name=info["name"], subject=info.get("subject", ""), body=info.get("body", ""), enabled=is_essential, updated_at=now_local())
             db.add(tpl)
         else:
             # Sincronización deliberada de plantillas base para corregir placeholders/escapes de versiones anteriores.
@@ -716,7 +722,7 @@ def ensure_communications_seed(db: Session):
             tpl.subject = info.get("subject", tpl.subject or "")
             tpl.body = info.get("body", tpl.body or "")
             tpl.updated_at = now_local()
-            if ev.enabled and not tpl.enabled:
+            if is_essential or (ev.enabled and not tpl.enabled):
                 tpl.enabled = True
     db.commit()
 
@@ -951,8 +957,29 @@ def queue_email(db: Session, event_key: str, recipient_email: str, recipient_nam
     ev = db.get(NotificationEventSetting, event_key)
     tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
     if not ev or not tpl:
+        try:
+            db.add(NotificationLog(queue_id=None, event_key=event_key, recipient_email=recipient_email, status="not_queued", detail="Evento o plantilla inexistente; email no encolado"))
+            if not db.info.get("defer_queue_commit"):
+                db.commit()
+        except Exception:
+            pass
         return None
+    is_essential = event_key in globals().get("ESSENTIAL_OPERATIONAL_EMAIL_EVENTS", set())
+    if is_essential and (not ev.enabled or not tpl.enabled or not ev.channel_email):
+        ev.enabled = True
+        ev.channel_email = True
+        tpl.enabled = True
+        ev.updated_at = now_local()
+        tpl.updated_at = now_local()
+        db.add(ev)
+        db.add(tpl)
     if not force and (not ev.enabled or not tpl.enabled or not ev.channel_email):
+        try:
+            db.add(NotificationLog(queue_id=None, event_key=event_key, recipient_email=recipient_email, status="not_queued", detail="Evento o plantilla desactivada; email no encolado"))
+            if not db.info.get("defer_queue_commit"):
+                db.commit()
+        except Exception:
+            pass
         return None
     subject = render_comm_template(tpl.subject, payload)
     body = render_comm_template(tpl.body, payload)
@@ -1803,6 +1830,15 @@ CLOSING_NOTIFICATION_EVENTS = {"resumen_cierre_socio", "cierre_liquidacion_admin
 OPERATIONAL_DEBOUNCE_EVENTS = {"actualizacion_invitados_socio", "embarque_estado_socio"}
 CRITICAL_IMMEDIATE_EVENTS = {"reserva_confirmada_socio", "reserva_en_espera_socio", "reserva_promovida_socio", "salida_reprogramada_socio", "salida_cancelada_socio", "cancelacion_socio", "cancelacion_con_cargo_socio"}
 
+# Eventos mínimos que no pueden fallar en silencio en producción.
+# Si existen movimientos reales, deben generar outbox aunque una base existente
+# haya quedado con el evento/template apagado por versiones anteriores.
+ESSENTIAL_OPERATIONAL_EMAIL_EVENTS = (
+    OPERATIONAL_DEBOUNCE_EVENTS
+    | CRITICAL_IMMEDIATE_EVENTS
+    | {"invitado_agregado_socio", "invitado_en_espera_socio", "invitado_desplazado_socio"}
+)
+
 def smtp_operational_debounce_minutes(db: Session) -> int:
     """Ventana corta de estabilización para avisos operativos del capitán."""
     raw = get_system_meta(db, "smtp_operational_debounce_minutes", "5")
@@ -1860,7 +1896,18 @@ def _render_notification_row_from_template(db: Session, row: NotificationQueue, 
     ensure_communications_seed(db)
     ev = db.get(NotificationEventSetting, event_key)
     tpl = db.query(NotificationTemplate).filter_by(key=event_key).first()
-    if not ev or not tpl or not ev.enabled or not tpl.enabled or not ev.channel_email:
+    if not ev or not tpl:
+        return None
+    is_essential = event_key in globals().get("ESSENTIAL_OPERATIONAL_EMAIL_EVENTS", set())
+    if is_essential and (not ev.enabled or not tpl.enabled or not ev.channel_email):
+        ev.enabled = True
+        ev.channel_email = True
+        tpl.enabled = True
+        ev.updated_at = now_local()
+        tpl.updated_at = now_local()
+        db.add(ev)
+        db.add(tpl)
+    if not ev.enabled or not tpl.enabled or not ev.channel_email:
         return None
     original_to, effective_to, test_mode = effective_email_recipient(db, row.recipient_email)
     payload2 = dict(payload or {})
@@ -1902,7 +1949,15 @@ def queue_socio_operational_email(
     La ventana normal es 10 min desde el último cambio, con límite absoluto de
     15 min desde el primer cambio para evitar starvation.
     """
-    if not user or not normalize_email(getattr(user, "email", "")) or not outing:
+    if not user or not outing:
+        return None
+    if not normalize_email(getattr(user, "email", "")):
+        try:
+            db.add(NotificationLog(queue_id=None, event_key=event_key, recipient_email="", status="not_queued", detail=f"Socio sin email cargado; user_id={getattr(user, 'id', '')}; outing_id={getattr(outing, 'id', '')}"))
+            if not db.info.get("defer_queue_commit"):
+                db.commit()
+        except Exception:
+            pass
         return None
     try:
         if delay_minutes is None:
@@ -1934,7 +1989,15 @@ def queue_socio_operational_email(
                         db.commit()
                     return row
 
-        return queue_email(db, event_key, user.email, user.name, payload, scheduled_at=normal_schedule)
+        q = queue_email(db, event_key, user.email, user.name, payload, scheduled_at=normal_schedule)
+        if not q:
+            try:
+                db.add(NotificationLog(queue_id=None, event_key=event_key, recipient_email=normalize_email(user.email), status="not_queued", detail=f"No se pudo crear fila en cola para socio+salida; user_id={user.id}; outing_id={outing.id}"))
+                if not db.info.get("defer_queue_commit"):
+                    db.commit()
+            except Exception:
+                pass
+        return q
     except Exception as e:
         # La comunicación nunca debe romper la operación principal de Socio.
         try:
