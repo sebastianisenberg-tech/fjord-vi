@@ -1,5 +1,5 @@
 {
-  "version": "3.9.0-OPERATIONAL-RC1K",
+  "version": "3.9.0-OPERATIONAL-RC1N",
   "release_label": "3.9.0-OPERATIONAL-RC1K",
   "phase": "Fase 15 · Arquitectura backend, errores y servicios",
   "generated_at": "2026-05-15",
@@ -28,7 +28,7 @@
   "repositories_scaffold": true,
   "services_scaffold": true,
   "logging_base": true,
-  "release": "RC1H_AUTO_WORKER_LOOP",
+  "release": "OPERATIONAL-RC1N",
   "name": "Fjord VI Sistema de Reservas",
   "build_note": "3.9.0-OPERATIONAL-RC1K: refinamiento controlado de textos de emails y etiquetas humanas sin tocar motor operativo, cola, scheduler, SMTP, Socio, Capitán, cierres, PDFs ni liquidaciones.",
   "app_version": "3.9.0-OPERATIONAL-RC1K",

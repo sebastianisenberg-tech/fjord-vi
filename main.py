@@ -46,7 +46,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-APP_VERSION = "3.9.0-OPERATIONAL-RC1M"
+APP_VERSION = "3.9.0-OPERATIONAL-RC1N"
 APP_RELEASE_STAGE = "PRODUCTION_READY_RC5"
 APP_SETTINGS = load_settings(app_version=APP_VERSION)
 configure_logging(APP_SETTINGS.log_level)
@@ -4975,6 +4975,86 @@ def normalize_member_reservations(db: Session, reservations) -> bool:
             changed = True
     return changed
 
+
+# RC1N: defensa liviana contra duplicación de socio titular por salida.
+# No recorre todo el sistema: sólo actúa sobre las reservas ya cargadas para la salida
+# que se está leyendo u operando. Evita el caso observado donde el titular desaparece
+# de la vista pero sus invitados siguen asociados, y luego "Reservar mi lugar" crea
+# una segunda fila equivalente del mismo socio.
+def _reservation_active_rank(r: Reservation) -> int:
+    if reservation_is_active(r):
+        return 3
+    if is_waitlisted(r):
+        return 2
+    if getattr(r, "cancelled_at", None) is None and (getattr(r, "status", "") or "") != "Cancelado":
+        return 1
+    return 0
+
+
+def _reservation_created_key(r: Reservation):
+    return (getattr(r, "created_at", None) or datetime.min, getattr(r, "id", 0) or 0)
+
+
+def canonical_socio_reservation_for_user(db: Session, outing_id: int, user: User) -> Optional[Reservation]:
+    """Devuelve la reserva titular canónica del socio para una salida.
+
+    Busca por DNI normalizado y por responsible_user_id para cubrir datos heredados
+    donde el DNI pudo quedar con formato distinto. Es una consulta puntual y barata.
+    """
+    if not outing_id or not user:
+        return None
+    user_dni = norm_dni(getattr(user, "dni", "") or "")
+    rows = db.query(Reservation).filter(Reservation.outing_id == outing_id).filter(
+        (Reservation.responsible_user_id == user.id) | (Reservation.dni == user_dni)
+    ).all()
+    candidates = [r for r in rows if canonical_kind(r.kind) == "socio" and (norm_dni(r.dni or "") == user_dni or r.responsible_user_id == user.id)]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda r: (-_reservation_active_rank(r), _reservation_created_key(r)))
+    return candidates[0]
+
+
+def dedupe_socio_reservations_for_outing(db: Session, outing_id: int, *, reservations=None) -> bool:
+    """Normaliza duplicados equivalentes de socios dentro de una misma salida.
+
+    Mantiene visible una única fila operativa por DNI de socio. Si encuentra duplicados
+    no presentes ni cerrados, deja canónica la más antigua/activa y marca las demás
+    como canceladas operativas. No borra auditoría ni toca invitados, Capitán, fichas
+    ni liquidaciones.
+    """
+    rows = list(reservations) if reservations is not None else db.query(Reservation).filter_by(outing_id=outing_id).all()
+    groups = {}
+    for r in rows:
+        if canonical_kind(r.kind) != "socio":
+            continue
+        dni = norm_dni(r.dni or "")
+        if not dni:
+            continue
+        groups.setdefault(dni, []).append(r)
+
+    changed = False
+    for dni, group in groups.items():
+        if len(group) <= 1:
+            continue
+        # No automatizar casos ya embarcados/cerrados: ahí debe resolver Administración.
+        if any((g.attendance or "") == "Presente" for g in group):
+            continue
+        group.sort(key=lambda r: (-_reservation_active_rank(r), _reservation_created_key(r)))
+        keep = group[0]
+        for dup in group[1:]:
+            if dup.id == keep.id:
+                continue
+            # Sólo baja duplicados recuperables de prueba/operación previa; no destruye historial.
+            if dup.cancelled_at is None or (dup.status or "") != "Cancelado":
+                dup.status = "Cancelado"
+                dup.attendance = "No embarca"
+                dup.cancelled_at = dup.cancelled_at or now_local()
+                reason = "Anulado automáticamente por duplicado de socio titular en la misma salida (RC1N)"
+                dup.cancel_reason = (dup.cancel_reason + " · " + reason).strip(" ·") if dup.cancel_reason else reason
+                dup.charge_amount = 0
+                changed = True
+    return changed
+
 def parse_birth_date(value: Optional[str]):
     if not value:
         return None
@@ -7772,9 +7852,12 @@ def readiness_state(outing: Outing, active_count: int, present: int = 0) -> dict
 def outing_context(db: Session, outing_id: Optional[int] = None):
     outing = selected_outing(db, outing_id)
     reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all() if outing else []
-    if outing and normalize_member_reservations(db, reservations):
-        db.commit()
-        reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all()
+    if outing:
+        normalized = normalize_member_reservations(db, reservations)
+        deduped = dedupe_socio_reservations_for_outing(db, outing.id, reservations=reservations)
+        if normalized or deduped:
+            db.commit()
+            reservations = db.query(Reservation).filter_by(outing_id=outing.id).order_by(Reservation.cancelled_at.isnot(None), Reservation.id).all()
     active = active_reservations(reservations)
     present = sum(1 for r in active if r.attendance == "Presente")
     absent = sum(1 for r in reservations if r.attendance in ("Ausente", "No embarcable", "No embarca"))
@@ -8113,8 +8196,9 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
     # El titular debe resolverse únicamente contra una reserva de tipo socio.
     # Antes cualquier registro con el DNI del usuario podía ocupar el bloque "Tu lugar"
     # y dejar sin botón de alta/reincorporación al socio titular.
-    self_candidates = [r for r in reservations if r.dni == user.dni and canonical_kind(r.kind) == "socio"]
-    self_reservation = next((r for r in self_candidates if reservation_is_active(r)), None) or (self_candidates[0] if self_candidates else None)
+    self_candidates = [r for r in reservations if norm_dni(r.dni or "") == norm_dni(user.dni or "") and canonical_kind(r.kind) == "socio"]
+    self_candidates.sort(key=lambda r: (-_reservation_active_rank(r), _reservation_created_key(r)))
+    self_reservation = self_candidates[0] if self_candidates else None
     has_self = bool(self_reservation and reservation_is_active(self_reservation))
     # RC7: un socio que quedó en lista de espera sigue siendo socio titular de esa solicitud.
     # Debe poder cargar invitados/menores asociados, que también quedan en lista de espera
@@ -8139,8 +8223,10 @@ def socio(request: Request, outing_id: Optional[int] = None, db: Session = Depen
 def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_session), user: User = Depends(require_role("socio"))):
     outing, reservations, active, *_ = outing_context(db, outing_id)
     ensure_outing_editable(outing)
-    existing = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
+    existing = canonical_socio_reservation_for_user(db, outing.id, user)
     if existing and reservation_is_active(existing) and canonical_kind(existing.kind) == "socio":
+        dedupe_socio_reservations_for_outing(db, outing.id)
+        db.commit()
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if existing:
         # Reincorporación unificada del titular: si existía un registro histórico
@@ -8156,6 +8242,7 @@ def add_self(outing_id: Optional[int] = Form(None), db: Session = Depends(db_ses
         db.flush()
 
     result, displaced_name = place_socio_with_priority(db, outing, target)
+    dedupe_socio_reservations_for_outing(db, outing.id)
     enforce_capacity(db, outing)
     db.commit()
 
@@ -8220,7 +8307,9 @@ async def add_guest(
     if registered_user and registered_user.role == "socio":
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_documento", status_code=303)
 
-    self_row = db.query(Reservation).filter_by(outing_id=outing.id, dni=user.dni).first()
+    self_row = canonical_socio_reservation_for_user(db, outing.id, user)
+    if self_row:
+        dedupe_socio_reservations_for_outing(db, outing.id)
     responsible_waitlisted = bool(self_row and is_waitlisted(self_row))
     if not self_row or canonical_kind(self_row.kind) != "socio" or not (reservation_is_active(self_row) or responsible_waitlisted):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=socio_requerido", status_code=303)
@@ -8658,7 +8747,13 @@ def reactivate_by_socio(rid: int, outing_id: Optional[int] = Form(None), db: Ses
     if reservation_is_active(r):
         return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
     if canonical_kind(r.kind) == "socio":
+        existing = canonical_socio_reservation_for_user(db, outing.id, user)
+        if existing and existing.id != r.id and reservation_is_active(existing):
+            dedupe_socio_reservations_for_outing(db, outing.id)
+            db.commit()
+            return RedirectResponse(f"/socio?outing_id={outing.id}&msg=ya_anotado", status_code=303)
         result, displaced_name = place_socio_with_priority(db, outing, r)
+        dedupe_socio_reservations_for_outing(db, outing.id)
         db.commit()
         if result == "waitlist":
             log(db, user.name, "lista de espera reactiva", f"{r.person_name} / {outing.title}")
